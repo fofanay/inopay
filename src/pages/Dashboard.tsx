@@ -1,12 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Layout from "@/components/layout/Layout";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 
@@ -18,6 +22,7 @@ interface DependencyItem {
 }
 
 interface AnalysisResult {
+  id?: string;
   score: number;
   platform: string;
   totalFiles: number;
@@ -25,18 +30,65 @@ interface AnalysisResult {
   recommendations: string[];
 }
 
+interface HistoryItem {
+  id: string;
+  project_name: string;
+  file_name: string;
+  portability_score: number;
+  status: string;
+  created_at: string;
+}
+
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  
   const [state, setState] = useState<AnalysisState>("idle");
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [fileName, setFileName] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Fetch user's analysis history
+  useEffect(() => {
+    if (user) {
+      fetchHistory();
+    }
+  }, [user]);
+
+  const fetchHistory = async () => {
+    if (!user) return;
+    
+    setLoadingHistory(true);
+    const { data, error } = await supabase
+      .from("projects_analysis")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Error fetching history:", error);
+    } else {
+      setHistory(data || []);
+    }
+    setLoadingHistory(false);
+  };
 
   // Simulated analysis data
-  const mockResult: AnalysisResult = {
-    score: 87,
-    platform: "Lovable",
-    totalFiles: 47,
+  const generateMockResult = (projectName: string): AnalysisResult => ({
+    score: Math.floor(Math.random() * 20) + 75, // 75-95 range
+    platform: ["Lovable", "Bolt", "v0", "Cursor"][Math.floor(Math.random() * 4)],
+    totalFiles: Math.floor(Math.random() * 50) + 20,
     dependencies: [
       { name: "react", type: "Package", status: "compatible", note: "Standard React - aucun changement requis" },
       { name: "react-router-dom", type: "Package", status: "compatible", note: "Compatible avec tout environnement" },
@@ -48,15 +100,45 @@ const Dashboard = () => {
       { name: "GPTEngineer", type: "Config", status: "incompatible", note: "Fichiers de configuration Lovable - à supprimer" },
     ],
     recommendations: [
-      "Supprimer les dépendances spécifiques à Lovable (lovable-tagger)",
+      "Supprimer les dépendances spécifiques à la plateforme",
       "Configurer les alias de chemin (@/) dans votre bundler (Vite/Webpack)",
-      "Exporter et migrer les données Supabase si utilisé",
+      "Exporter et migrer les données si vous utilisez un backend cloud",
       "Mettre à jour les variables d'environnement selon votre hébergeur",
       "Tester l'application localement avec npm run dev avant déploiement",
     ],
+  });
+
+  const saveAnalysis = async (projectName: string, analysisResult: AnalysisResult) => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("projects_analysis")
+      .insert([{
+        user_id: user.id,
+        project_name: projectName,
+        file_name: fileName,
+        portability_score: analysisResult.score,
+        detected_issues: JSON.parse(JSON.stringify(analysisResult.dependencies.filter(d => d.status !== "compatible"))),
+        recommendations: JSON.parse(JSON.stringify(analysisResult.recommendations)),
+        status: "analyzed" as const,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving analysis:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder l'analyse",
+        variant: "destructive",
+      });
+    } else {
+      setResult({ ...analysisResult, id: data.id });
+      fetchHistory();
+    }
   };
 
-  const simulateAnalysis = useCallback(() => {
+  const simulateAnalysis = useCallback((projectName: string) => {
     setState("uploading");
     setProgress(0);
 
@@ -83,18 +165,20 @@ const Dashboard = () => {
       if (currentStep >= messages.length) {
         clearInterval(interval);
         setTimeout(() => {
+          const mockResult = generateMockResult(projectName);
           setState("complete");
-          setResult(mockResult);
+          saveAnalysis(projectName, mockResult);
         }, 500);
       }
     }, 1000);
-  }, []);
+  }, [user, fileName]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
       setFileName(file.name);
-      simulateAnalysis();
+      const projectName = file.name.replace(".zip", "");
+      simulateAnalysis(projectName);
     }
   }, [simulateAnalysis]);
 
@@ -142,6 +226,16 @@ const Dashboard = () => {
     return "text-destructive";
   };
 
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12">
@@ -158,32 +252,85 @@ const Dashboard = () => {
 
           {/* Upload Zone */}
           {state === "idle" && (
-            <Card className="border-dashed border-2 hover:border-primary/50 transition-colors animate-fade-in">
-              <CardContent className="p-0">
-                <div
-                  {...getRootProps()}
-                  className={`flex flex-col items-center justify-center py-20 px-8 cursor-pointer transition-colors ${
-                    isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/30"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <div className={`flex h-20 w-20 items-center justify-center rounded-2xl mb-6 transition-all ${
-                    isDragActive ? "bg-primary text-primary-foreground glow-primary" : "bg-muted text-muted-foreground"
-                  }`}>
-                    <Upload className="h-10 w-10" />
+            <>
+              <Card className="border-dashed border-2 hover:border-primary/50 transition-colors animate-fade-in mb-8">
+                <CardContent className="p-0">
+                  <div
+                    {...getRootProps()}
+                    className={`flex flex-col items-center justify-center py-20 px-8 cursor-pointer transition-colors ${
+                      isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/30"
+                    }`}
+                  >
+                    <input {...getInputProps()} />
+                    <div className={`flex h-20 w-20 items-center justify-center rounded-2xl mb-6 transition-all ${
+                      isDragActive ? "bg-primary text-primary-foreground glow-primary" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <Upload className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      ou cliquez pour sélectionner un fichier
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Format accepté : .zip (max 50MB)
+                    </p>
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    ou cliquez pour sélectionner un fichier
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Format accepté : .zip (max 50MB)
-                  </p>
+                </CardContent>
+              </Card>
+
+              {/* History */}
+              {history.length > 0 && (
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Historique des analyses
+                    </CardTitle>
+                    <CardDescription>Vos dernières analyses de projets</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Projet</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {history.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.project_name}</TableCell>
+                            <TableCell>
+                              <span className={getScoreColor(item.portability_score)}>
+                                {item.portability_score}/100
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="capitalize">
+                                {item.status === "analyzed" ? "Analysé" : item.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(item.created_at).toLocaleDateString("fr-FR")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {loadingHistory && (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </>
           )}
 
           {/* Analysis Progress */}

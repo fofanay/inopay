@@ -2,8 +2,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket } from "lucide-react";
 import Layout from "@/components/layout/Layout";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
+  const { user } = useAuth();
+
   const platforms = [
     { name: "Lovable", icon: "💜" },
     { name: "Bolt", icon: "⚡" },
@@ -80,9 +83,9 @@ const Index = () => {
 
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-              <Link to="/dashboard">
+              <Link to={user ? "/dashboard" : "/auth"}>
                 <Button size="lg" className="glow-primary text-lg px-8 py-6">
-                  Analyser mon projet
+                  {user ? "Aller au Dashboard" : "Commencer gratuitement"}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -198,9 +201,9 @@ const Index = () => {
             <p className="text-lg text-muted-foreground mb-10">
               Analysez gratuitement votre premier projet et découvrez son niveau de portabilité.
             </p>
-            <Link to="/dashboard">
+            <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="glow-primary text-lg px-10 py-6">
-                Commencer maintenant
+                {user ? "Analyser mon projet" : "Créer un compte gratuit"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
