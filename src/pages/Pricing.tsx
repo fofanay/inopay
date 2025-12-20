@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, FileCode, Github, Server, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,14 @@ const PRICES = {
   CAD: { pack: "29 $", pro: "59 $", symbol: "CAD" },
   USD: { pack: "21 $", pro: "43 $", symbol: "USD" },
   EUR: { pack: "19 €", pro: "39 €", symbol: "EUR" },
+};
+
+// Plan limits configuration
+const PLAN_LIMITS = {
+  free: { maxFiles: 100, maxRepos: 3, apiDelay: "Lent" },
+  pack: { maxFiles: 200, maxRepos: 10, apiDelay: "Normal" },
+  pro: { maxFiles: 500, maxRepos: 50, apiDelay: "Rapide" },
+  enterprise: { maxFiles: 2000, maxRepos: "Illimité", apiDelay: "Ultra-rapide" },
 };
 
 const Pricing = () => {
@@ -94,6 +103,8 @@ const Pricing = () => {
         "Nettoyage IA inclus",
         "Configuration Docker",
         "Support par email",
+        `Jusqu'à ${PLAN_LIMITS.pack.maxFiles} fichiers analysés`,
+        `${PLAN_LIMITS.pack.maxRepos} dépôts GitHub`,
       ],
       buttonText: "Acheter le Pack",
       buttonVariant: "outline" as const,
@@ -112,7 +123,9 @@ const Pricing = () => {
         "Configuration Docker",
         "Push vers GitHub",
         "Support prioritaire",
-        "Nouvelles fonctionnalités en avant-première",
+        `Jusqu'à ${PLAN_LIMITS.pro.maxFiles} fichiers analysés`,
+        `${PLAN_LIMITS.pro.maxRepos} dépôts GitHub`,
+        "Token GitHub personnel supporté",
       ],
       buttonText: "Devenir Pro",
       buttonVariant: "default" as const,
@@ -224,6 +237,139 @@ const Pricing = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Comparison Table */}
+          <div className="mt-24 max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4 text-foreground">
+                Comparaison détaillée
+              </h2>
+              <p className="text-muted-foreground">
+                Toutes les fonctionnalités et limites par plan
+              </p>
+            </div>
+
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[200px]">Fonctionnalité</TableHead>
+                    <TableHead className="text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold">Gratuit</span>
+                        <span className="text-xs text-muted-foreground">0 €</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold">Pack</span>
+                        <span className="text-xs text-muted-foreground">{PRICES[currency].pack}</span>
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center bg-primary/5">
+                      <div className="flex flex-col items-center gap-1">
+                        <Badge className="bg-primary text-primary-foreground text-xs">Populaire</Badge>
+                        <span className="font-semibold">Pro</span>
+                        <span className="text-xs text-muted-foreground">{PRICES[currency].pro}/mois</span>
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="h-4 w-4 text-muted-foreground" />
+                        Fichiers analysés max
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.free.maxFiles}</TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.pack.maxFiles}</TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.maxFiles}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Github className="h-4 w-4 text-muted-foreground" />
+                        Dépôts GitHub
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.free.maxRepos}</TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.pack.maxRepos}</TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.maxRepos}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Server className="h-4 w-4 text-muted-foreground" />
+                        Vitesse d'analyse
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.free.apiDelay}</TableCell>
+                    <TableCell className="text-center">{PLAN_LIMITS.pack.apiDelay}</TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.apiDelay}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-muted-foreground" />
+                        Export de projet
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        Nettoyage IA
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Github className="h-4 w-4 text-muted-foreground" />
+                        Token GitHub personnel
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Card>
+
+            {/* GitHub Token Info */}
+            <Card className="mt-8 border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Github className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Token GitHub personnel</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Les utilisateurs Pro peuvent connecter leur propre token GitHub pour augmenter les limites API. 
+                      Avec votre token personnel, vous bénéficiez de 5000 requêtes/heure au lieu de la limite partagée.
+                    </p>
+                    <Link to="/settings">
+                      <Button variant="outline" size="sm">
+                        Configurer dans les paramètres
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Bottom CTA */}

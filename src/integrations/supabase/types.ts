@@ -187,6 +187,7 @@ export type Database = {
           api_key: string | null
           api_provider: string
           created_at: string
+          github_token: string | null
           id: string
           updated_at: string
           user_id: string
@@ -195,6 +196,7 @@ export type Database = {
           api_key?: string | null
           api_provider?: string
           created_at?: string
+          github_token?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -203,6 +205,7 @@ export type Database = {
           api_key?: string | null
           api_provider?: string
           created_at?: string
+          github_token?: string | null
           id?: string
           updated_at?: string
           user_id?: string
