@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Zap, Github, Twitter, Mail } from "lucide-react";
+import { Github, Twitter, Mail } from "lucide-react";
+import inopayLogo from "@/assets/inopay-logo.png";
 
 const Footer = () => {
   return (
@@ -9,13 +10,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Zap className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-bold">
-                <span className="text-primary">Ino</span>
-                <span className="text-foreground">pay</span>
-              </span>
+              <img src={inopayLogo} alt="Inopay" className="h-8 object-contain" />
             </Link>
             <p className="text-sm text-muted-foreground max-w-md">
               Libérez votre code des plateformes IA. Analysez la portabilité de vos projets 
