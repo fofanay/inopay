@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -11,24 +11,9 @@ import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { analyzeZipFile, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
-
-interface DependencyItem {
-  name: string;
-  type: string;
-  status: "compatible" | "warning" | "incompatible";
-  note: string;
-}
-
-interface AnalysisResult {
-  id?: string;
-  score: number;
-  platform: string;
-  totalFiles: number;
-  dependencies: DependencyItem[];
-  recommendations: string[];
-}
 
 interface HistoryItem {
   id: string;
@@ -48,7 +33,7 @@ const Dashboard = () => {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [fileName, setFileName] = useState("");
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<(RealAnalysisResult & { id?: string }) | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -84,32 +69,19 @@ const Dashboard = () => {
     setLoadingHistory(false);
   };
 
-  // Simulated analysis data
-  const generateMockResult = (projectName: string): AnalysisResult => ({
-    score: Math.floor(Math.random() * 20) + 75, // 75-95 range
-    platform: ["Lovable", "Bolt", "v0", "Cursor"][Math.floor(Math.random() * 4)],
-    totalFiles: Math.floor(Math.random() * 50) + 20,
-    dependencies: [
-      { name: "react", type: "Package", status: "compatible", note: "Standard React - aucun changement requis" },
-      { name: "react-router-dom", type: "Package", status: "compatible", note: "Compatible avec tout environnement" },
-      { name: "@tanstack/react-query", type: "Package", status: "compatible", note: "Librairie standard" },
-      { name: "tailwindcss", type: "Style", status: "compatible", note: "Configuration portable" },
-      { name: "@/components/ui/*", type: "Import path", status: "warning", note: "Alias @ à configurer dans votre projet" },
-      { name: "supabase", type: "Backend", status: "warning", note: "Remplacer par votre propre backend ou garder Supabase" },
-      { name: "lovable-tagger", type: "Package", status: "incompatible", note: "Spécifique à Lovable - à supprimer" },
-      { name: "GPTEngineer", type: "Config", status: "incompatible", note: "Fichiers de configuration Lovable - à supprimer" },
-    ],
-    recommendations: [
-      "Supprimer les dépendances spécifiques à la plateforme",
-      "Configurer les alias de chemin (@/) dans votre bundler (Vite/Webpack)",
-      "Exporter et migrer les données si vous utilisez un backend cloud",
-      "Mettre à jour les variables d'environnement selon votre hébergeur",
-      "Tester l'application localement avec npm run dev avant déploiement",
-    ],
-  });
-
-  const saveAnalysis = async (projectName: string, analysisResult: AnalysisResult) => {
+  const saveAnalysis = async (projectName: string, analysisResult: RealAnalysisResult) => {
     if (!user) return;
+
+    // Convertir les issues en format compatible avec detected_issues
+    const detectedIssues = [
+      ...analysisResult.issues.map(issue => ({
+        name: issue.pattern,
+        type: "Import",
+        status: issue.severity === "critical" ? "incompatible" : "warning",
+        note: `${issue.file}${issue.line ? `:${issue.line}` : ""} - ${issue.description}`,
+      })),
+      ...analysisResult.dependencies.filter(d => d.status !== "compatible"),
+    ];
 
     const { data, error } = await supabase
       .from("projects_analysis")
@@ -118,7 +90,7 @@ const Dashboard = () => {
         project_name: projectName,
         file_name: fileName,
         portability_score: analysisResult.score,
-        detected_issues: JSON.parse(JSON.stringify(analysisResult.dependencies.filter(d => d.status !== "compatible"))),
+        detected_issues: JSON.parse(JSON.stringify(detectedIssues)),
         recommendations: JSON.parse(JSON.stringify(analysisResult.recommendations)),
         status: "analyzed" as const,
       }])
@@ -135,52 +107,48 @@ const Dashboard = () => {
     } else {
       setResult({ ...analysisResult, id: data.id });
       fetchHistory();
+      toast({
+        title: "Analyse terminée",
+        description: `Score de portabilité: ${analysisResult.score}/100`,
+      });
     }
   };
 
-  const simulateAnalysis = useCallback((projectName: string) => {
+  const runRealAnalysis = useCallback(async (file: File, projectName: string) => {
     setState("uploading");
     setProgress(0);
 
-    const messages = [
-      "Extraction de l'archive...",
-      "Analyse de la structure du projet...",
-      "Détection des dépendances...",
-      "Vérification des imports...",
-      "Analyse des configurations...",
-      "Génération du rapport...",
-    ];
+    try {
+      const analysisResult = await analyzeZipFile(file, (progress, message) => {
+        setProgress(progress);
+        setProgressMessage(message);
+        if (progress > 20) {
+          setState("analyzing");
+        }
+      });
 
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      currentStep++;
-      const newProgress = Math.min((currentStep / messages.length) * 100, 100);
-      setProgress(newProgress);
-      setProgressMessage(messages[Math.min(currentStep - 1, messages.length - 1)]);
-
-      if (currentStep === 2) {
-        setState("analyzing");
-      }
-
-      if (currentStep >= messages.length) {
-        clearInterval(interval);
-        setTimeout(() => {
-          const mockResult = generateMockResult(projectName);
-          setState("complete");
-          saveAnalysis(projectName, mockResult);
-        }, 500);
-      }
-    }, 1000);
-  }, [user, fileName]);
+      setState("complete");
+      setResult(analysisResult);
+      await saveAnalysis(projectName, analysisResult);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: "Erreur d'analyse",
+        description: "Impossible d'analyser le fichier ZIP",
+        variant: "destructive",
+      });
+      setState("idle");
+    }
+  }, [user, fileName, toast]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
       setFileName(file.name);
       const projectName = file.name.replace(".zip", "");
-      simulateAnalysis(projectName);
+      runRealAnalysis(file, projectName);
     }
-  }, [simulateAnalysis]);
+  }, [runRealAnalysis]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -220,10 +188,27 @@ const Dashboard = () => {
     }
   };
 
+  const getSeverityBadge = (severity: AnalysisIssue["severity"]) => {
+    switch (severity) {
+      case "critical":
+        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Critique</Badge>;
+      case "warning":
+        return <Badge className="bg-warning/20 text-warning border-warning/30">Attention</Badge>;
+      case "info":
+        return <Badge className="bg-primary/20 text-primary border-primary/30">Info</Badge>;
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
     if (score >= 60) return "text-warning";
     return "text-destructive";
+  };
+
+  const getScoreMessage = (score: number) => {
+    if (score >= 80) return "Projet facilement portable";
+    if (score >= 60) return "Migration possible avec modifications";
+    return "Migration complexe requise";
   };
 
   if (authLoading) {
@@ -348,7 +333,7 @@ const Dashboard = () => {
                   </div>
 
                   <h3 className="text-xl font-semibold mb-2">
-                    {state === "uploading" ? "Téléchargement en cours..." : "Analyse en cours..."}
+                    {state === "uploading" ? "Extraction en cours..." : "Analyse en cours..."}
                   </h3>
                   <p className="text-muted-foreground mb-6">{progressMessage}</p>
 
@@ -399,6 +384,9 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <p className="text-lg font-medium mt-4">Score de Portabilité</p>
+                    <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
+                      {getScoreMessage(result.score)}
+                    </p>
                   </div>
 
                   {/* Info */}
@@ -409,13 +397,19 @@ const Dashboard = () => {
                         <span className="text-muted-foreground">Fichier</span>
                         <span className="font-medium">{fileName}</span>
                       </div>
+                      {result.platform && (
+                        <div className="flex justify-between items-center py-2 border-b border-border/50">
+                          <span className="text-muted-foreground">Plateforme détectée</span>
+                          <Badge variant="secondary">{result.platform}</Badge>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
-                        <span className="text-muted-foreground">Plateforme détectée</span>
-                        <Badge variant="secondary">{result.platform}</Badge>
+                        <span className="text-muted-foreground">Fichiers totaux</span>
+                        <span className="font-medium">{result.totalFiles}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Fichiers analysés</span>
-                        <span className="font-medium">{result.totalFiles}</span>
+                        <span className="font-medium">{result.analyzedFiles}</span>
                       </div>
                       <div className="flex justify-between items-center py-2">
                         <span className="text-muted-foreground">Dépendances</span>
@@ -426,19 +420,64 @@ const Dashboard = () => {
                 </div>
               </Card>
 
+              {/* Issues Table */}
+              {result.issues.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileWarning className="h-5 w-5 text-destructive" />
+                      Fichiers à risque
+                    </CardTitle>
+                    <CardDescription>
+                      {result.issues.length} problème{result.issues.length > 1 ? "s" : ""} détecté{result.issues.length > 1 ? "s" : ""} dans le code source
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fichier</TableHead>
+                          <TableHead>Ligne</TableHead>
+                          <TableHead>Pattern</TableHead>
+                          <TableHead>Sévérité</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {result.issues.map((issue, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-mono text-sm max-w-[200px] truncate" title={issue.file}>
+                              {issue.file}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {issue.line || "-"}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {issue.pattern}
+                            </TableCell>
+                            <TableCell>
+                              {getSeverityBadge(issue.severity)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Dependencies Table */}
               <Card>
                 <CardHeader>
                   <CardTitle>Analyse des dépendances</CardTitle>
                   <CardDescription>
-                    Liste des éléments détectés et leur compatibilité pour la migration
+                    {result.dependencies.length} dépendances analysées
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Élément</TableHead>
+                        <TableHead>Package</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Statut</TableHead>
                         <TableHead>Note</TableHead>
