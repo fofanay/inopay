@@ -1,0 +1,91 @@
+# ============================================
+# INOPAY - Docker Compose (Développement)
+# ============================================
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # Frontend React/Vite
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - inopay-network
+    restart: unless-stopped
+
+  # ==========================================
+  # Backend API (Express)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+    networks:
+      - inopay-network
+    restart: unless-stopped
+
+  # ==========================================
+  # PostgreSQL (Alternative à Supabase)
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-inopay}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-inopay_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-inopay}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - inopay-network
+    restart: unless-stopped
+
+  # ==========================================
+  # Redis (Cache optionnel)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - inopay-network
+    restart: unless-stopped
+
+networks:
+  inopay-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
