@@ -88,58 +88,22 @@ const AdminTesters = () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // First find the user by email via edge function
-      const response = await supabase.functions.invoke("admin-list-users", {
+      const response = await supabase.functions.invoke("admin-manage-tester", {
         headers: {
           Authorization: `Bearer ${sessionData.session?.access_token}`,
         },
+        body: {
+          action: "add",
+          email: newTesterEmail.trim(),
+        },
       });
 
-      const targetUser = response.data?.users?.find(
-        (u: any) => u.email?.toLowerCase() === newTesterEmail.toLowerCase()
-      );
-
-      if (!targetUser) {
-        toast.error("Utilisateur non trouvé. Vérifiez que l'email est correct et que l'utilisateur est inscrit.");
-        setActionLoading(false);
-        return;
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
-      // Check if user already has a subscription
-      const { data: existingSub } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", targetUser.user_id)
-        .maybeSingle();
-
-      if (existingSub) {
-        // Update existing subscription
-        const { error } = await supabase
-          .from("subscriptions")
-          .update({
-            plan_type: "pro",
-            status: "active",
-            credits_remaining: 999999,
-            free_credits: 999999,
-            current_period_end: "2099-12-31",
-          })
-          .eq("user_id", targetUser.user_id);
-
-        if (error) throw error;
-      } else {
-        // Create new subscription
-        const { error } = await supabase
-          .from("subscriptions")
-          .insert({
-            user_id: targetUser.user_id,
-            plan_type: "pro",
-            status: "active",
-            credits_remaining: 999999,
-            free_credits: 999999,
-            current_period_end: "2099-12-31",
-          });
-
-        if (error) throw error;
+      if (response.data?.error) {
+        throw new Error(response.data.error);
       }
 
       toast.success(`${newTesterEmail} ajouté comme testeur avec accès Pro illimité`);
@@ -148,7 +112,7 @@ const AdminTesters = () => {
       fetchTesters();
     } catch (error) {
       console.error("Error adding tester:", error);
-      toast.error("Erreur lors de l'ajout du testeur");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'ajout du testeur");
     } finally {
       setActionLoading(false);
     }
@@ -157,25 +121,31 @@ const AdminTesters = () => {
   const handleRemoveTester = async (tester: Tester) => {
     setActionLoading(true);
     try {
-      // Reset to free plan
-      const { error } = await supabase
-        .from("subscriptions")
-        .update({
-          plan_type: "free",
-          status: "inactive",
-          credits_remaining: 0,
-          free_credits: 0,
-          current_period_end: null,
-        })
-        .eq("user_id", tester.user_id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("admin-manage-tester", {
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+        body: {
+          action: "remove",
+          user_id: tester.user_id,
+        },
+      });
 
-      if (error) throw error;
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
 
       toast.success(`Accès testeur retiré pour ${tester.email}`);
       fetchTesters();
     } catch (error) {
       console.error("Error removing tester:", error);
-      toast.error("Erreur lors du retrait du testeur");
+      toast.error(error instanceof Error ? error.message : "Erreur lors du retrait du testeur");
     } finally {
       setActionLoading(false);
     }
