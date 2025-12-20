@@ -161,84 +161,139 @@ const AdminTesters = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Testeurs actifs</p>
+                <p className="text-3xl font-bold text-primary-foreground">{testers.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <FlaskConical className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-accent to-accent/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-accent-foreground/80">Projets analysés</p>
+                <p className="text-3xl font-bold text-accent-foreground">
+                  {testers.reduce((acc, t) => acc + t.project_count, 0)}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-accent-foreground/20">
+                <CheckCircle2 className="h-6 w-6 text-accent-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Statut accès</p>
+                <p className="text-3xl font-bold text-white">Pro ∞</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <Crown className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="border-b border-border/50 bg-muted/30">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <FlaskConical className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <FlaskConical className="h-5 w-5 text-primary" />
+                </div>
                 Comptes Testeurs
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="mt-1">
                 {testers.length} compte{testers.length > 1 ? "s" : ""} avec accès Pro gratuit à vie
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={fetchTesters}>
+              <Button variant="outline" size="sm" onClick={fetchTesters} className="border-border/50 hover:bg-muted">
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button size="sm" onClick={() => setShowAddDialog(true)}>
+              <Button size="sm" onClick={() => setShowAddDialog(true)} className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter un testeur
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {testers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <FlaskConical className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Aucun compte testeur configuré</p>
+              <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
+                <FlaskConical className="h-12 w-12 opacity-50" />
+              </div>
+              <p className="font-medium">Aucun compte testeur configuré</p>
               <p className="text-sm">Ajoutez des testeurs pour leur donner un accès Pro gratuit à vie</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Projets analysés</TableHead>
-                  <TableHead>Ajouté le</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {testers.map((tester) => (
-                  <TableRow key={tester.user_id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{tester.email}</span>
-                        <Badge className="bg-primary/10 text-primary border-primary/20 gap-1">
-                          <Crown className="h-3 w-3" />
-                          Testeur
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-success/10 text-success border-success/20 gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Pro Illimité
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{tester.project_count}</TableCell>
-                    <TableCell>
-                      {new Date(tester.created_at).toLocaleDateString("fr-FR")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleRemoveTester(tester)}
-                        disabled={actionLoading}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="font-semibold">Email</TableHead>
+                    <TableHead className="font-semibold">Statut</TableHead>
+                    <TableHead className="font-semibold">Projets analysés</TableHead>
+                    <TableHead className="font-semibold">Ajouté le</TableHead>
+                    <TableHead className="text-right font-semibold">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {testers.map((tester) => (
+                    <TableRow key={tester.user_id} className="hover:bg-muted/20">
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{tester.email}</span>
+                          <Badge className="bg-primary/10 text-primary border-primary/20 gap-1">
+                            <Crown className="h-3 w-3" />
+                            Testeur
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-success/10 text-success border-success/20 gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Pro Illimité
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{tester.project_count}</span>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(tester.created_at).toLocaleDateString("fr-FR")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRemoveTester(tester)}
+                          disabled={actionLoading}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
