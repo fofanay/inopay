@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle } from "lucide-react";
+import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Github, Download } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -93,46 +93,140 @@ const Index = () => {
     }
   ];
 
+  const heroBenefits = [
+    "Libérez votre code en moins de 5 minutes",
+    "Zéro dépendance aux plateformes IA",
+    "Déployez sur n'importe quel hébergeur",
+  ];
+
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-24 lg:py-32">
-        {/* Background Effects */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-        </div>
-
+      {/* Hero Section - Inspired by AppBuilder design */}
+      <section className="relative overflow-hidden py-20 lg:py-28">
+        {/* Background gradient */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
+        
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
-              <Unlock className="h-4 w-4" />
-              Libération de code IA
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left Column - Content */}
+            <div className="max-w-xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
+                <Shield className="h-4 w-4" />
+                100% Indépendance Garantie
+              </div>
+
+              {/* Title */}
+              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-6 animate-fade-in-up text-foreground leading-tight">
+                Libérez Votre Code IA en{" "}
+                <span className="text-primary">Open Source</span>
+              </h1>
+
+              {/* Subtitle */}
+              <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.1s" }}>
+                Vous avez créé une application géniale avec Lovable, Bolt ou Cursor. Maintenant, rendez-la totalement autonome et déployable partout.
+              </p>
+
+              {/* Benefits list with checkmarks */}
+              <ul className="space-y-4 mb-10 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+                {heroBenefits.map((benefit, index) => (
+                  <li key={index} className="flex items-center gap-3">
+                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-foreground font-medium">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA Button */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+                <Link to={user ? "/dashboard" : "/auth"}>
+                  <Button size="lg" className="text-lg px-8 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all bg-primary hover:bg-primary/90">
+                    Libérer mon projet
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                
+                {/* Trust indicator */}
+                <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+                  <Unlock className="h-4 w-4" />
+                  Premier projet gratuit, sans carte bancaire
+                </p>
+              </div>
             </div>
 
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up text-foreground">
-              Votre code vous appartient{" "}
-              <span className="text-primary">enfin.</span>
-              <br />
-              <span className="text-muted-foreground">Reprenez le contrôle.</span>
-            </h1>
+            {/* Right Column - Visual Mockup */}
+            <div className="relative lg:pl-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+              {/* Main visual card - Code editor mockup */}
+              <div className="relative">
+                {/* Glow effect behind */}
+                <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-2xl opacity-60" />
+                
+                {/* Main card */}
+                <div className="relative rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
+                  {/* Window header */}
+                  <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                      <div className="w-3 h-3 rounded-full bg-warning/60" />
+                      <div className="w-3 h-3 rounded-full bg-primary/60" />
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-2">mon-projet-libere/</span>
+                  </div>
+                  
+                  {/* Code content simulation */}
+                  <div className="p-6 space-y-4 bg-gradient-to-br from-card to-primary/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Code2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">Projet Nettoyé</p>
+                        <p className="text-sm text-muted-foreground">100% Open Source</p>
+                      </div>
+                    </div>
+                    
+                    {/* Progress bars */}
+                    <div className="space-y-3 pt-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Dépendances propriétaires</span>
+                        <span className="text-primary font-medium">0 restantes</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full w-full" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 pt-2">
+                      <div className="flex-1 p-3 rounded-xl bg-primary/10 text-center">
+                        <p className="text-2xl font-bold text-primary">42</p>
+                        <p className="text-xs text-muted-foreground">Fichiers</p>
+                      </div>
+                      <div className="flex-1 p-3 rounded-xl bg-accent/10 text-center">
+                        <p className="text-2xl font-bold text-accent">100%</p>
+                        <p className="text-xs text-muted-foreground">Portable</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Subtitle */}
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-              FreedomCode transforme vos projets Lovable en applications standards et 100% indépendantes.
-            </p>
-
-            {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-              <Link to={user ? "/dashboard" : "/auth"}>
-                <Button size="lg" className="text-lg px-8 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Libérer mon premier projet (Gratuit)
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+                {/* Floating badges */}
+                <div className="absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2 animate-bounce" style={{ animationDuration: "3s" }}>
+                  <Github className="h-4 w-4 text-foreground" />
+                  <span className="text-sm font-medium">GitHub</span>
+                </div>
+                
+                <div className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "0.5s" }}>
+                  <Download className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Docker Ready</span>
+                </div>
+                
+                <div className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "1s" }}>
+                  <Zap className="h-4 w-4" />
+                  <span className="text-sm font-medium">En 5 min</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
