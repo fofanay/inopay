@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield, Lock, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -48,7 +48,7 @@ interface HistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, subscription } = useAuth();
   const { toast } = useToast();
   
   const [state, setState] = useState<AnalysisState>("idle");
@@ -695,7 +695,25 @@ const Dashboard = () => {
 
               {/* Issues Table - Step 3 Cleaning */}
               {result.issues.length > 0 && (
-                <Card className="card-shadow border border-border status-border-yellow">
+                <Card className="card-shadow border border-border status-border-yellow relative">
+                  {/* Paywall overlay for cleaning */}
+                  {!subscription.subscribed && (
+                    <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
+                      <div className="h-16 w-16 rounded-2xl bg-warning/10 flex items-center justify-center mb-4">
+                        <Lock className="h-8 w-8 text-warning" />
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">Fonctionnalité Premium</h3>
+                      <p className="text-muted-foreground text-center mb-6 max-w-md">
+                        Le nettoyage IA nécessite un abonnement. Débloquez cette fonctionnalité pour libérer votre code.
+                      </p>
+                      <Link to="/tarifs">
+                        <Button className="gap-2 rounded-lg shadow-lg">
+                          <Crown className="h-4 w-4" />
+                          Voir les tarifs
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
@@ -746,6 +764,7 @@ const Dashboard = () => {
                                 size="sm"
                                 onClick={() => handleCleanFile(issue.file)}
                                 className="gap-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 border-0"
+                                disabled={!subscription.subscribed}
                               >
                                 <Sparkles className="h-3 w-3" />
                                 Démarrer la libération
@@ -801,7 +820,25 @@ const Dashboard = () => {
               </Card>
 
               {/* Step 4: Export Card */}
-              <Card className="card-shadow border border-border status-border-green">
+              <Card className="card-shadow border border-border status-border-green relative">
+                {/* Paywall overlay for export */}
+                {!subscription.subscribed && (
+                  <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
+                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                      <Lock className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Débloquez l'export</h3>
+                    <p className="text-muted-foreground text-center mb-6 max-w-md">
+                      Téléchargez votre projet 100% autonome avec un abonnement Pro ou un Pack Liberté.
+                    </p>
+                    <Link to="/tarifs">
+                      <Button className="gap-2 rounded-lg shadow-lg">
+                        <Crown className="h-4 w-4" />
+                        Voir les tarifs
+                      </Button>
+                    </Link>
+                  </div>
+                )}
                 <CardHeader className="text-center">
                   <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
                     <Rocket className="h-3 w-3" />
@@ -818,6 +855,7 @@ const Dashboard = () => {
                       size="lg" 
                       className="flex-1 rounded-lg shadow-lg hover:shadow-xl transition-shadow gap-2" 
                       onClick={() => setExporterOpen(true)}
+                      disabled={!subscription.subscribed}
                     >
                       <Download className="h-5 w-5" />
                       Télécharger le projet libre (.zip)
@@ -827,6 +865,7 @@ const Dashboard = () => {
                       variant="outline" 
                       className="flex-1 rounded-lg border-border gap-2" 
                       onClick={() => setExporterOpen(true)}
+                      disabled={!subscription.subscribed}
                     >
                       <Github className="h-5 w-5" />
                       Pousser vers un nouveau repo
