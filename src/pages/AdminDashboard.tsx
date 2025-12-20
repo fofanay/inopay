@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { 
   Users, 
   FileText, 
-  Shield, 
   Loader2,
   BarChart3,
   LogOut,
@@ -30,6 +29,7 @@ import AdminEmailCMS from "@/components/admin/AdminEmailCMS";
 import AdminReminders from "@/components/admin/AdminReminders";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminSettings from "@/components/admin/AdminSettings";
+import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -103,23 +103,30 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg text-foreground">Admin Inopay</span>
+      <aside className="w-72 bg-secondary flex flex-col">
+        {/* Logo Header */}
+        <div className="p-6 border-b border-secondary/50">
+          <div className="flex items-center justify-center mb-3">
+            <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
           </div>
-          <Badge className="mt-2 bg-destructive/10 text-destructive border-destructive/20">
-            Mode Administrateur
-          </Badge>
+          <div className="text-center">
+            <Badge className="bg-primary/20 text-primary-foreground border-primary/30 hover:bg-primary/30">
+              Administration
+            </Badge>
+          </div>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => (
             <Button
               key={item.id}
-              variant={activeTab === item.id ? "secondary" : "ghost"}
-              className="w-full justify-start gap-2"
+              variant="ghost"
+              className={`w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 ${
+                activeTab === item.id 
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
+                  : ""
+              }`}
               onClick={() => setActiveTab(item.id)}
             >
               <item.icon className="h-4 w-4" />
@@ -128,10 +135,11 @@ const AdminDashboard = () => {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border space-y-2">
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-secondary/50 space-y-2">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-2"
+            className="w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10"
             onClick={() => navigate("/dashboard")}
           >
             <Home className="h-4 w-4" />
@@ -139,7 +147,7 @@ const AdminDashboard = () => {
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4" />
@@ -149,23 +157,27 @@ const AdminDashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">{getPageTitle()}</h1>
-            <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
-          </div>
+      <main className="flex-1 overflow-auto">
+        {/* Top Header */}
+        <header className="bg-card border-b border-border px-8 py-6">
+          <h1 className="text-2xl font-bold text-foreground">{getPageTitle()}</h1>
+          <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
+        </header>
 
-          {activeTab === "overview" && <AdminStats />}
-          {activeTab === "users" && <AdminUsersList />}
-          {activeTab === "payments" && <AdminPayments />}
-          {activeTab === "subscriptions" && <AdminSubscriptions />}
-          {activeTab === "analytics" && <AdminAnalytics />}
-          {activeTab === "emails" && <AdminEmailCMS />}
-          {activeTab === "reminders" && <AdminReminders />}
-          {activeTab === "exports" && <AdminExportsList />}
-          {activeTab === "testers" && <AdminTesters />}
-          {activeTab === "settings" && <AdminSettings />}
+        {/* Content Area */}
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            {activeTab === "overview" && <AdminStats />}
+            {activeTab === "users" && <AdminUsersList />}
+            {activeTab === "payments" && <AdminPayments />}
+            {activeTab === "subscriptions" && <AdminSubscriptions />}
+            {activeTab === "analytics" && <AdminAnalytics />}
+            {activeTab === "emails" && <AdminEmailCMS />}
+            {activeTab === "reminders" && <AdminReminders />}
+            {activeTab === "exports" && <AdminExportsList />}
+            {activeTab === "testers" && <AdminTesters />}
+            {activeTab === "settings" && <AdminSettings />}
+          </div>
         </div>
       </main>
     </div>

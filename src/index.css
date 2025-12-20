@@ -2,90 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Inopay Design System - Light Mode Professional
-   Primary: Emerald Green (#10B981) - Symbol of freedom
-   Accent: Indigo Blue (#6366F1)
+/* Inopay Design System
+   Primary: Inopay Green (#2ECC71 / #27AE60)
+   Accent: Inopay Navy Blue (#1B3A5F / #234B73)
 */
 
 @layer base {
   :root {
     --background: 210 20% 98%;
-    --foreground: 224 71% 4%;
+    --foreground: 210 29% 24%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
+    --card-foreground: 210 29% 24%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
+    --popover-foreground: 210 29% 24%;
 
-    --primary: 160 84% 39%;
+    --primary: 145 63% 49%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 71% 4%;
+    --secondary: 210 29% 24%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 210 15% 50%;
 
-    --accent: 239 84% 67%;
+    --accent: 210 54% 28%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 160 84% 39%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 145 63% 49%;
 
     --radius: 0.75rem;
 
-    --success: 160 84% 39%;
+    --success: 145 63% 42%;
     --success-foreground: 0 0% 100%;
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     
-    --info: 239 84% 67%;
+    --info: 210 54% 28%;
     --info-foreground: 0 0% 100%;
+    
+    --inopay-green: 145 63% 49%;
+    --inopay-green-dark: 145 63% 42%;
+    --inopay-navy: 210 54% 28%;
+    --inopay-navy-dark: 210 54% 22%;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
+    --background: 210 29% 10%;
+    --foreground: 210 20% 98%;
 
-    --card: 224 71% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 29% 14%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 224 71% 6%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 29% 12%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 160 84% 39%;
+    --primary: 145 63% 49%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 29% 20%;
+    --secondary-foreground: 210 20% 98%;
 
-    --muted: 215 28% 17%;
-    --muted-foreground: 217 10% 64%;
+    --muted: 210 29% 18%;
+    --muted-foreground: 210 15% 60%;
 
-    --accent: 239 84% 67%;
+    --accent: 210 54% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 45%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 160 84% 39%;
+    --border: 210 29% 20%;
+    --input: 210 29% 20%;
+    --ring: 145 63% 49%;
 
-    --success: 160 84% 39%;
+    --success: 145 63% 42%;
     --success-foreground: 0 0% 100%;
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     
-    --info: 239 84% 67%;
+    --info: 210 54% 45%;
     --info-foreground: 0 0% 100%;
+    
+    --inopay-green: 145 63% 49%;
+    --inopay-green-dark: 145 63% 42%;
+    --inopay-navy: 210 54% 45%;
+    --inopay-navy-dark: 210 54% 35%;
   }
 }
 
@@ -102,11 +112,15 @@
 
 @layer utilities {
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    background: linear-gradient(135deg, hsl(var(--inopay-green)) 0%, hsl(var(--inopay-navy)) 100%);
+  }
+  
+  .gradient-inopay {
+    background: linear-gradient(135deg, hsl(145 63% 49%) 0%, hsl(210 54% 28%) 100%);
   }
   
   .gradient-bg {
-    background: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(220 14% 96%) 100%);
+    background: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(210 20% 96%) 100%);
   }
   
   .card-shadow {
@@ -140,5 +154,21 @@
   
   .status-border-red {
     border-left: 4px solid hsl(var(--destructive));
+  }
+  
+  .bg-inopay-green {
+    background-color: hsl(145 63% 49%);
+  }
+  
+  .bg-inopay-navy {
+    background-color: hsl(210 54% 28%);
+  }
+  
+  .text-inopay-green {
+    color: hsl(145 63% 49%);
+  }
+  
+  .text-inopay-navy {
+    color: hsl(210 54% 28%);
   }
 }
