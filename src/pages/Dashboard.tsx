@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -371,7 +371,7 @@ const Dashboard = () => {
               Libérez votre code
             </h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Nous préparons votre code pour un hébergement indépendant
+              Transformez vos applications générées par IA en projets 100% autonomes et portables
             </p>
           </div>
 
@@ -384,27 +384,14 @@ const Dashboard = () => {
               <GitHubConnectButton />
               
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-3">Ou utilisez une autre méthode :</p>
-                <div className="flex justify-center gap-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setImportMethod("zip")}
-                    className="gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Fichier ZIP
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setImportMethod("github-url")}
-                    className="gap-2"
-                  >
-                    <Github className="h-4 w-4" />
-                    URL directe
-                  </Button>
-                </div>
+                <Button 
+                  variant="link" 
+                  onClick={() => setImportMethod("zip")}
+                  className="text-muted-foreground hover:text-foreground gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Ou uploader un fichier .zip
+                </Button>
               </div>
             </div>
           )}
@@ -418,27 +405,14 @@ const Dashboard = () => {
               />
               
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-3">Ou utilisez une autre méthode :</p>
-                <div className="flex justify-center gap-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setImportMethod("zip")}
-                    className="gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Fichier ZIP
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setImportMethod("github-url")}
-                    className="gap-2"
-                  >
-                    <Github className="h-4 w-4" />
-                    URL directe
-                  </Button>
-                </div>
+                <Button 
+                  variant="link" 
+                  onClick={() => setImportMethod("zip")}
+                  className="text-muted-foreground hover:text-foreground gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Ou uploader un fichier .zip
+                </Button>
               </div>
             </div>
           )}
@@ -598,10 +572,19 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Analysis Progress */}
+          {/* Analysis Progress - Step 2 */}
           {(state === "uploading" || state === "analyzing") && (
             <Card className="animate-fade-in card-shadow border border-border status-border-blue">
-              <CardContent className="py-16 px-8">
+              <CardHeader className="text-center pb-2">
+                <Badge className="mx-auto mb-4 bg-info/10 text-info border-info/20">
+                  En cours
+                </Badge>
+                <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
+                <CardDescription className="max-w-md mx-auto">
+                  Nous scannons votre code pour identifier les dépendances propriétaires et les verrous technologiques.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="py-12 px-8">
                 <div className="flex flex-col items-center text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mb-6 animate-pulse-soft">
                     <Loader2 className="h-8 w-8 text-accent animate-spin" />
@@ -612,14 +595,14 @@ const Dashboard = () => {
                     <span className="font-medium text-foreground">{fileName}</span>
                   </div>
 
-                  <h3 className="text-xl font-semibold mb-2 text-foreground">
-                    {state === "uploading" ? "Extraction en cours..." : "Analyse en cours..."}
+                  <h3 className="text-lg font-semibold mb-2 text-foreground">
+                    Analyse de la structure en cours...
                   </h3>
                   <p className="text-muted-foreground mb-6">{progressMessage}</p>
 
                   <div className="w-full max-w-md">
                     <Progress value={progress} className="h-2 bg-muted" />
-                    <p className="text-sm text-muted-foreground mt-2">{Math.round(progress)}%</p>
+                    <p className="text-sm text-muted-foreground mt-2">Score de liberté actuel : {Math.round(progress)}%</p>
                   </div>
                 </div>
               </CardContent>
@@ -629,8 +612,18 @@ const Dashboard = () => {
           {/* Results */}
           {state === "complete" && result && (
             <div className="space-y-8 animate-fade-in">
-              {/* Score Card */}
+              {/* Score Card - Step 2 Complete */}
               <Card className="overflow-hidden card-shadow-lg border border-border status-border-green">
+                <CardHeader className="text-center pb-2 bg-muted/30">
+                  <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Complété
+                  </Badge>
+                  <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
+                  <CardDescription>
+                    Scan terminé – voici le diagnostic de votre projet
+                  </CardDescription>
+                </CardHeader>
                 <div className="grid md:grid-cols-2">
                   {/* Score */}
                   <div className="flex flex-col items-center justify-center py-12 px-8 bg-muted/50">
@@ -663,7 +656,7 @@ const Dashboard = () => {
                         <span className="text-muted-foreground">/100</span>
                       </div>
                     </div>
-                    <p className="text-lg font-medium mt-4 text-foreground">Score de Portabilité</p>
+                    <p className="text-lg font-medium mt-4 text-foreground">Score de liberté</p>
                     <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
                       {getScoreMessage(result.score)}
                     </p>
@@ -700,19 +693,29 @@ const Dashboard = () => {
                 </div>
               </Card>
 
-              {/* Issues Table */}
+              {/* Issues Table - Step 3 Cleaning */}
               {result.issues.length > 0 && (
-                <Card className="card-shadow border border-border status-border-red">
+                <Card className="card-shadow border border-border status-border-yellow">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                      <FileWarning className="h-5 w-5 text-destructive" />
-                      Fichiers à risque
-                    </CardTitle>
-                    <CardDescription>
-                      {result.issues.length} problème{result.issues.length > 1 ? "s" : ""} détecté{result.issues.length > 1 ? "s" : ""} dans le code source
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-foreground">
+                          <Sparkles className="h-5 w-5 text-warning" />
+                          Étape 3 : Nettoyage Intelligent
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Notre IA remplace les composants verrouillés par des standards Open Source universels.
+                        </CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
+                    <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-success" />
+                        Votre code original reste inchangé sur GitHub, nous créons une version optimisée.
+                      </p>
+                    </div>
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border hover:bg-transparent">
@@ -741,12 +744,11 @@ const Dashboard = () => {
                             <TableCell>
                               <Button
                                 size="sm"
-                                variant="outline"
                                 onClick={() => handleCleanFile(issue.file)}
-                                className="gap-1 rounded-lg border-border"
+                                className="gap-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 border-0"
                               >
                                 <Sparkles className="h-3 w-3" />
-                                Nettoyer
+                                Démarrer la libération
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -798,39 +800,48 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Recommendations */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recommandations</CardTitle>
-                  <CardDescription>
-                    Étapes suggérées pour une migration réussie
+              {/* Step 4: Export Card */}
+              <Card className="card-shadow border border-border status-border-green">
+                <CardHeader className="text-center">
+                  <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
+                    <Rocket className="h-3 w-3" />
+                    Prêt
+                  </Badge>
+                  <CardTitle className="text-xl text-foreground">Étape 4 : Prêt pour le déploiement</CardTitle>
+                  <CardDescription className="max-w-md mx-auto">
+                    Votre projet est maintenant 100% autonome et inclut sa configuration Docker.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {result.recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <span className="text-muted-foreground">{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <CardContent className="flex flex-col items-center pb-8">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
+                    <Button 
+                      size="lg" 
+                      className="flex-1 rounded-lg shadow-lg hover:shadow-xl transition-shadow gap-2" 
+                      onClick={() => setExporterOpen(true)}
+                    >
+                      <Download className="h-5 w-5" />
+                      Télécharger le projet libre (.zip)
+                    </Button>
+                    <Button 
+                      size="lg" 
+                      variant="outline" 
+                      className="flex-1 rounded-lg border-border gap-2" 
+                      onClick={() => setExporterOpen(true)}
+                    >
+                      <Github className="h-5 w-5" />
+                      Pousser vers un nouveau repo
+                    </Button>
+                  </div>
+                  <Button 
+                    variant="link" 
+                    className="mt-4 text-muted-foreground hover:text-foreground" 
+                    onClick={resetAnalysis}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Analyser un autre projet
+                  </Button>
                 </CardContent>
               </Card>
-
-              {/* Actions */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" className="rounded-lg shadow-lg hover:shadow-xl transition-shadow" onClick={() => setExporterOpen(true)}>
-                  <Package className="mr-2 h-5 w-5" />
-                  Exporter le projet autonome
-                </Button>
-                <Button size="lg" variant="outline" className="rounded-lg border-border" onClick={resetAnalysis}>
-                  <RefreshCw className="mr-2 h-5 w-5" />
-                  Analyser un autre projet
-                </Button>
-              </div>
             </div>
           )}
         </div>

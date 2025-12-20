@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar } from "lucide-react";
+import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +24,10 @@ interface GitHubRepo {
 interface GitHubRepoSelectorProps {
   onSelectRepo: (repo: GitHubRepo) => void;
   isLoading: boolean;
+  isCompleted?: boolean;
 }
 
-const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps) => {
+const GitHubRepoSelector = ({ onSelectRepo, isLoading, isCompleted }: GitHubRepoSelectorProps) => {
   const { toast } = useToast();
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [filteredRepos, setFilteredRepos] = useState<GitHubRepo[]>([]);
@@ -153,16 +154,24 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
   return (
     <Card className="card-shadow border border-border status-border-blue">
       <CardHeader className="pb-4">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-            <Radar className="h-5 w-5 text-accent" />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Radar className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-foreground">Étape 1 : Source du projet</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Sélectionnez l'application à libérer de ses dépendances propriétaires
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-xl text-foreground">Sélectionnez votre projet</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Choisissez le dépôt à libérer de ses dépendances propriétaires
-            </CardDescription>
-          </div>
+          {isCompleted && (
+            <Badge className="bg-success/10 text-success border-success/20 gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Complété
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>
