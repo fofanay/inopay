@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Check, Cloud, DollarSign, Server, Zap, Download, Github, ExternalLink, Upload, Loader2, PartyPopper, Eye, EyeOff, Shield, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OnboardingHebergeur } from "./OnboardingHebergeur";
 
 interface DeploymentAssistantProps {
   projectName: string;
@@ -17,6 +18,7 @@ interface DeploymentAssistantProps {
   onGitHubPush: () => void;
   onBack: () => void;
   disabled?: boolean;
+  isSubscribed?: boolean;
 }
 
 type DeploymentOption = "simple" | "budget" | "selfhosted" | null;
@@ -114,8 +116,10 @@ const DeploymentAssistant = ({
   onGitHubPush,
   onBack,
   disabled = false,
+  isSubscribed = false,
 }: DeploymentAssistantProps) => {
   const { toast } = useToast();
+  const [showOnboardingHebergeur, setShowOnboardingHebergeur] = useState(false);
   const [selectedOption, setSelectedOption] = useState<DeploymentOption>(null);
   const [hasAccount, setHasAccount] = useState<boolean | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string>("");
@@ -160,6 +164,7 @@ const DeploymentAssistant = ({
     setDeployResult(null);
     setIsDeploying(false);
     setDeployProgress(0);
+    setShowOnboardingHebergeur(false);
   };
 
   const handleProviderSelect = (providerId: string) => {
@@ -167,12 +172,8 @@ const DeploymentAssistant = ({
     const provider = hostingProviders.find(p => p.id === providerId);
     
     if (provider && selectedOption === "budget") {
-      setFtpCredentials(prev => ({
-        ...prev,
-        host: provider.defaultHost || "",
-        port: provider.defaultPort || 21,
-      }));
-      setStep("ftp-credentials");
+      // Use new OnboardingHebergeur component for budget hosting
+      setShowOnboardingHebergeur(true);
     }
   };
 
@@ -268,6 +269,40 @@ const DeploymentAssistant = ({
   const filteredProviders = hostingProviders.filter(
     (p) => p.category === selectedOption
   );
+
+  // Convert extractedFiles Map to array for OnboardingHebergeur
+  const filesArray: { path: string; content: string }[] = [];
+  if (extractedFiles) {
+    extractedFiles.forEach((content, path) => {
+      filesArray.push({ path, content });
+    });
+  }
+
+  // Show OnboardingHebergeur for budget hosting
+  if (showOnboardingHebergeur && selectedOption === "budget") {
+    const provider = hostingProviders.find(p => p.id === selectedProvider);
+    return (
+      <OnboardingHebergeur
+        providerName={provider?.name || "votre hébergeur"}
+        projectName={projectName}
+        extractedFiles={filesArray}
+        onDeploymentComplete={(url) => {
+          setDeployResult({
+            success: true,
+            provider: provider?.name || "votre hébergeur",
+            filesUploaded: filesArray.length
+          });
+          setStep("success");
+          setShowOnboardingHebergeur(false);
+        }}
+        onBack={() => {
+          setShowOnboardingHebergeur(false);
+          setStep("select-provider");
+        }}
+        isSubscribed={isSubscribed}
+      />
+    );
+  }
 
   // Step: Select deployment option
   if (step === "select-option") {
