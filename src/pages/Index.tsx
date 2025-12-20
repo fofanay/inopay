@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -55,6 +56,41 @@ const Index = () => {
       title: "Déploiement universel",
       description: "Exportez avec Docker, déployez sur n'importe quel hébergeur. Votre code, vos règles.",
     },
+  ];
+
+  const faqs = [
+    {
+      question: "Quelles plateformes IA sont compatibles avec FreedomCode ?",
+      answer: "FreedomCode est compatible avec toutes les principales plateformes de génération de code IA : Lovable, Bolt, v0 by Vercel, Cursor, Replit et bien d'autres. Si votre projet utilise React, Vue, ou tout framework JavaScript moderne, nous pouvons le libérer."
+    },
+    {
+      question: "Mon code original est-il modifié sur GitHub ?",
+      answer: "Non, jamais. FreedomCode crée une copie optimisée de votre projet. Votre code source original reste intact sur GitHub. Vous pouvez continuer à utiliser la plateforme IA tout en ayant une version autonome en parallèle."
+    },
+    {
+      question: "Que signifie « libérer » mon code exactement ?",
+      answer: "Libérer votre code signifie remplacer toutes les dépendances propriétaires (SDK spécifiques, imports verrouillés, configurations cloud) par des alternatives Open Source standards. Le résultat est un projet que vous pouvez déployer sur n'importe quel hébergeur sans abonnement obligatoire."
+    },
+    {
+      question: "Est-ce que je perds des fonctionnalités après la libération ?",
+      answer: "Non. Notre IA remplace chaque composant propriétaire par un équivalent fonctionnel Open Source. Les fonctionnalités restent identiques, seule la dépendance à la plateforme disparaît. Vous gardez 100% des capacités de votre application."
+    },
+    {
+      question: "Combien de temps prend le processus de libération ?",
+      answer: "Le processus complet prend généralement moins de 5 minutes : connexion GitHub (30 sec), analyse du projet (1-2 min), nettoyage IA (1-2 min), et export final (30 sec). Les projets plus complexes peuvent prendre un peu plus de temps."
+    },
+    {
+      question: "Le service est-il vraiment gratuit ?",
+      answer: "Oui, la libération de votre premier projet est entièrement gratuite. Cela inclut l'analyse complète, le nettoyage IA et l'export avec configuration Docker. Pour les équipes avec de nombreux projets, nous proposons des forfaits adaptés."
+    },
+    {
+      question: "Puis-je déployer mon projet libéré sur n'importe quel hébergeur ?",
+      answer: "Absolument. Votre projet exporté inclut une configuration Docker prête à l'emploi. Vous pouvez le déployer sur Vercel, Netlify, Railway, DigitalOcean, AWS, votre propre serveur, ou tout autre hébergeur de votre choix."
+    },
+    {
+      question: "Que se passe-t-il si la libération échoue ou pose problème ?",
+      answer: "Notre équipe technique est disponible pour vous accompagner. Si un composant spécifique pose problème, nous analysons le cas et proposons une solution adaptée. Votre satisfaction et votre autonomie sont notre priorité."
+    }
   ];
 
   return (
@@ -215,6 +251,43 @@ const Index = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 lg:py-32">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-muted text-muted-foreground text-sm font-medium mb-6">
+              <HelpCircle className="h-4 w-4" />
+              Questions fréquentes
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+              Tout ce que vous devez savoir
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Des réponses claires aux questions les plus courantes sur la libération de code
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq, index) => (
+                <AccordionItem 
+                  key={index} 
+                  value={`item-${index}`}
+                  className="border border-border rounded-xl px-6 bg-card card-shadow data-[state=open]:border-primary/30"
+                >
+                  <AccordionTrigger className="text-left font-semibold text-foreground hover:text-primary py-5">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         </div>
       </section>
