@@ -169,17 +169,86 @@ const AdminUsersList = () => {
     );
   }
 
+  // Stats calculations
+  const activeUsers = users.filter(u => u.status === "active" && !u.is_banned).length;
+  const proUsers = users.filter(u => u.plan_type === "pro").length;
+  const bannedUsers = users.filter(u => u.is_banned).length;
+  const avgScore = users.length > 0 
+    ? Math.round(users.reduce((acc, u) => acc + (u.avg_score || 0), 0) / users.length) 
+    : 0;
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Total utilisateurs</p>
+                <p className="text-3xl font-bold text-primary-foreground">{users.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <Users className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-accent to-accent/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-accent-foreground/80">Utilisateurs Pro</p>
+                <p className="text-3xl font-bold text-accent-foreground">{proUsers}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-accent-foreground/20">
+                <CheckCircle2 className="h-6 w-6 text-accent-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Score moyen</p>
+                <p className="text-3xl font-bold text-white">{avgScore}/100</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <Gift className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-destructive/80 to-destructive/60">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-destructive-foreground/80">Bannis</p>
+                <p className="text-3xl font-bold text-destructive-foreground">{bannedUsers}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-destructive-foreground/20">
+                <Ban className="h-6 w-6 text-destructive-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="border-b border-border/50 bg-muted/30">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
                 Liste des Utilisateurs
               </CardTitle>
-              <CardDescription>{users.length} utilisateurs inscrits</CardDescription>
+              <CardDescription className="mt-1">{users.length} utilisateurs inscrits</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -188,106 +257,120 @@ const AdminUsersList = () => {
                   placeholder="Rechercher..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-64 border-border/50"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={fetchUsers}>
+              <Button variant="outline" size="sm" onClick={fetchUsers} className="border-border/50 hover:bg-muted">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Crédits</TableHead>
-                <TableHead>Projets</TableHead>
-                <TableHead>Score Moyen</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((userData) => (
-                <TableRow key={userData.user_id} className={userData.is_banned ? "opacity-50" : ""}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{userData.email}</span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {userData.user_id.slice(0, 8)}...
-                      </span>
-                    </div>
-                    {userData.is_banned && (
-                      <Badge variant="destructive" className="mt-1">Banni</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {userData.plan_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {userData.status === "active" ? (
-                      <Badge className="bg-success/10 text-success gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Actif
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        {userData.status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{userData.credits_remaining}</TableCell>
-                  <TableCell>{userData.project_count}</TableCell>
-                  <TableCell>
-                    <Badge className={`${
-                      userData.avg_score >= 80 
-                        ? "bg-success/10 text-success" 
-                        : userData.avg_score >= 60 
-                          ? "bg-warning/10 text-warning" 
-                          : "bg-muted text-muted-foreground"
-                    }`}>
-                      {userData.avg_score}/100
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedUser(userData);
-                            setShowCreditDialog(true);
-                          }}
-                        >
-                          <Gift className="h-4 w-4 mr-2" />
-                          Créditer exports
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedUser(userData);
-                            setShowBanDialog(true);
-                          }}
-                          className={userData.is_banned ? "text-success" : "text-destructive"}
-                        >
-                          <Ban className="h-4 w-4 mr-2" />
-                          {userData.is_banned ? "Débannir" : "Bannir"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Email</TableHead>
+                  <TableHead className="font-semibold">Plan</TableHead>
+                  <TableHead className="font-semibold">Statut</TableHead>
+                  <TableHead className="font-semibold">Crédits</TableHead>
+                  <TableHead className="font-semibold">Projets</TableHead>
+                  <TableHead className="font-semibold">Score Moyen</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((userData) => (
+                  <TableRow key={userData.user_id} className={`hover:bg-muted/20 ${userData.is_banned ? "opacity-50" : ""}`}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{userData.email}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {userData.user_id.slice(0, 8)}...
+                        </span>
+                      </div>
+                      {userData.is_banned && (
+                        <Badge variant="destructive" className="mt-1">Banni</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline" 
+                        className={`capitalize ${
+                          userData.plan_type === "pro" 
+                            ? "bg-primary/10 text-primary border-primary/20" 
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {userData.plan_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {userData.status === "active" ? (
+                        <Badge className="bg-success/10 text-success border-success/20 gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Actif
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          {userData.status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">{userData.credits_remaining}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">{userData.project_count}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${
+                        userData.avg_score >= 80 
+                          ? "bg-success/10 text-success border-success/20" 
+                          : userData.avg_score >= 60 
+                            ? "bg-warning/10 text-warning border-warning/20" 
+                            : "bg-muted text-muted-foreground"
+                      }`}>
+                        {userData.avg_score}/100
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="border-border/50">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(userData);
+                              setShowCreditDialog(true);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Gift className="h-4 w-4 mr-2 text-primary" />
+                            Créditer exports
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedUser(userData);
+                              setShowBanDialog(true);
+                            }}
+                            className={`cursor-pointer ${userData.is_banned ? "text-success" : "text-destructive"}`}
+                          >
+                            <Ban className="h-4 w-4 mr-2" />
+                            {userData.is_banned ? "Débannir" : "Bannir"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
