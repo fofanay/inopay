@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
+import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/a-propos" element={<About />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/parametres" element={<Settings />} />
+            <Route path="/historique" element={<History />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
