@@ -64,6 +64,153 @@ const NGINX_CONF = `server {
 }
 `;
 
+const VERCEL_WORKFLOW = `name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VERCEL_ORG_ID: \${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: \${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=\${{ secrets.VERCEL_TOKEN }}
+      
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=\${{ secrets.VERCEL_TOKEN }}
+      
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=\${{ secrets.VERCEL_TOKEN }}
+`;
+
+const RAILWAY_WORKFLOW = `name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      
+      - name: Deploy to Railway
+        run: railway up
+        env:
+          RAILWAY_TOKEN: \${{ secrets.RAILWAY_TOKEN }}
+`;
+
+const DOCKER_WORKFLOW = `name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: \${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: \${{ env.REGISTRY }}
+          username: \${{ github.actor }}
+          password: \${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: \${{ env.REGISTRY }}/\${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: \${{ github.event_name != 'pull_request' }}
+          tags: \${{ steps.meta.outputs.tags }}
+          labels: \${{ steps.meta.outputs.labels }}
+`;
+
+const CI_WORKFLOW = `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Type check
+        run: npm run build
+      
+      - name: Lint
+        run: npm run lint --if-present
+`;
+
 const README_CONTENT = `# 🚀 Projet Autonome - Guide d'Installation
 
 Ce projet a été nettoyé et libéré de toute dépendance propriétaire. 
@@ -257,6 +404,12 @@ serve(async (req) => {
 
     // Add README
     zip.file('README_FREEDOM.md', README_CONTENT);
+
+    // Add CI/CD workflows
+    zip.file('.github/workflows/ci.yml', CI_WORKFLOW);
+    zip.file('.github/workflows/deploy-vercel.yml', VERCEL_WORKFLOW);
+    zip.file('.github/workflows/deploy-railway.yml', RAILWAY_WORKFLOW);
+    zip.file('.github/workflows/docker-build.yml', DOCKER_WORKFLOW);
 
     // Generate ZIP buffer
     const zipBuffer = await zip.generateAsync({ 
