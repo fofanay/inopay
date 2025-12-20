@@ -9,12 +9,17 @@ interface SubscriptionInfo {
   subscriptionEnd?: string;
 }
 
+type UserRole = "admin" | "moderator" | "user" | null;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   subscription: SubscriptionInfo;
+  role: UserRole;
+  isAdmin: boolean;
   checkSubscription: () => Promise<void>;
+  checkRole: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -38,6 +43,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     subscribed: false,
     planType: "free",
   });
+  const [role, setRole] = useState<UserRole>(null);
+
+  const checkRole = async () => {
+    if (!user) {
+      setRole(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking role:", error);
+        setRole(null);
+        return;
+      }
+
+      setRole(data?.role as UserRole || null);
+    } catch (error) {
+      console.error("Error checking role:", error);
+      setRole(null);
+    }
+  };
 
   const checkSubscription = async () => {
     if (!session?.access_token) return;
@@ -70,13 +102,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Check subscription after auth state change
+        // Check subscription and role after auth state change
         if (session?.access_token) {
           setTimeout(() => {
             checkSubscription();
           }, 0);
         } else {
           setSubscription({ subscribed: false, planType: "free" });
+          setRole(null);
         }
       }
     );
@@ -96,6 +129,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => authSubscription.unsubscribe();
   }, []);
+
+  // Check role when user changes
+  useEffect(() => {
+    if (user) {
+      checkRole();
+    } else {
+      setRole(null);
+    }
+  }, [user]);
 
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -121,15 +163,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setSubscription({ subscribed: false, planType: "free" });
+    setRole(null);
   };
+
+  const isAdmin = role === "admin";
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       session, 
       loading, 
-      subscription, 
+      subscription,
+      role,
+      isAdmin,
       checkSubscription,
+      checkRole,
       signUp, 
       signIn, 
       signOut 

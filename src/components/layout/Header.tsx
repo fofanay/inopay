@@ -2,14 +2,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Menu, X, Settings, Archive, Crown } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Archive, Crown, Shield } from "lucide-react";
 import { useState } from "react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, subscription, signOut } = useAuth();
+  const { user, subscription, signOut, isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isActive = (path: string) => location.pathname === path;
@@ -91,6 +91,14 @@ const Header = () => {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link to="/admin-dashboard">
+                    <Button variant="outline" size="sm" className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10">
+                      <Shield className="h-4 w-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 {getPlanBadge()}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
@@ -185,6 +193,14 @@ const Header = () => {
                       <User className="h-4 w-4" />
                       <span className="truncate">{user.email}</span>
                     </div>
+                    {isAdmin && (
+                      <Link to="/admin-dashboard" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" size="sm" className="w-full gap-2 border-destructive/50 text-destructive">
+                          <Shield className="h-4 w-4" />
+                          Admin Dashboard
+                        </Button>
+                      </Link>
+                    )}
                     <Link to="/historique" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="outline" size="sm" className="w-full">
                         <Archive className="h-4 w-4 mr-2" />
