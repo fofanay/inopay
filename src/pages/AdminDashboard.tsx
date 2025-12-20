@@ -3,28 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { 
   Users, 
   FileText, 
-  DollarSign, 
   Shield, 
-  Download,
-  Ban,
-  Gift,
-  RefreshCw,
   Loader2,
   BarChart3,
-  Settings,
   LogOut,
-  Home
+  Home,
+  FlaskConical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AdminUsersList from "@/components/admin/AdminUsersList";
 import AdminExportsList from "@/components/admin/AdminExportsList";
 import AdminStats from "@/components/admin/AdminStats";
+import AdminTesters from "@/components/admin/AdminTesters";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -101,6 +94,14 @@ const AdminDashboard = () => {
             <FileText className="h-4 w-4" />
             Exports & Qualité
           </Button>
+          <Button
+            variant={activeTab === "testers" ? "secondary" : "ghost"}
+            className="w-full justify-start gap-2"
+            onClick={() => setActiveTab("testers")}
+          >
+            <FlaskConical className="h-4 w-4" />
+            Testeurs
+          </Button>
         </nav>
 
         <div className="p-4 border-t border-border space-y-2">
@@ -131,17 +132,20 @@ const AdminDashboard = () => {
               {activeTab === "overview" && "Vue d'ensemble"}
               {activeTab === "users" && "Gestion des Utilisateurs"}
               {activeTab === "exports" && "Supervision des Exports"}
+              {activeTab === "testers" && "Comptes Testeurs"}
             </h1>
             <p className="text-muted-foreground mt-1">
               {activeTab === "overview" && "Statistiques globales de la plateforme Inopay"}
               {activeTab === "users" && "Gérez les utilisateurs et leurs accès"}
               {activeTab === "exports" && "Vérifiez la qualité des fichiers nettoyés par l'IA"}
+              {activeTab === "testers" && "Gérez les comptes avec accès Pro gratuit à vie"}
             </p>
           </div>
 
           {activeTab === "overview" && <AdminStats />}
           {activeTab === "users" && <AdminUsersList />}
           {activeTab === "exports" && <AdminExportsList />}
+          {activeTab === "testers" && <AdminTesters />}
         </div>
       </main>
     </div>
