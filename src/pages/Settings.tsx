@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, Github, AlertCircle, Crown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,28 +17,21 @@ interface UserSettings {
   id?: string;
   api_provider: ApiProvider;
   api_key: string;
-  github_token?: string;
 }
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, subscription } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [settings, setSettings] = useState<UserSettings>({
     api_provider: "openai",
     api_key: "",
-    github_token: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingGithub, setSavingGithub] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showGithubToken, setShowGithubToken] = useState(false);
   const [hasExistingKey, setHasExistingKey] = useState(false);
-  const [hasExistingGithubToken, setHasExistingGithubToken] = useState(false);
-
-  const isPro = subscription?.planType === "pro" || subscription?.planType === "enterprise" as any;
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -71,12 +62,8 @@ const Settings = () => {
         id: data.id,
         api_provider: data.api_provider as ApiProvider,
         api_key: "",
-        github_token: "",
       });
       setHasExistingKey(!!data.api_key);
-      // Check if github_token field exists and has a value
-      const dataWithGithub = data as { github_token?: string };
-      setHasExistingGithubToken(!!dataWithGithub.github_token);
     }
     setLoading(false);
   };
@@ -140,91 +127,6 @@ const Settings = () => {
     }
   };
 
-  const handleSaveGithubToken = async () => {
-    if (!user || !isPro) return;
-
-    setSavingGithub(true);
-
-    try {
-      // Save GitHub token to user_settings
-      const updateData: Record<string, string> = {};
-      if (settings.github_token) {
-        updateData.github_token = settings.github_token;
-      }
-
-      let error;
-      if (settings.id) {
-        const result = await supabase
-          .from("user_settings")
-          .update(updateData)
-          .eq("id", settings.id);
-        error = result.error;
-      } else {
-        const result = await supabase
-          .from("user_settings")
-          .insert([{
-            user_id: user.id,
-            api_provider: settings.api_provider,
-            ...updateData,
-          }])
-          .select()
-          .single();
-        error = result.error;
-        if (result.data) {
-          setSettings(prev => ({ ...prev, id: result.data.id }));
-        }
-      }
-
-      if (error) throw error;
-
-      setHasExistingGithubToken(!!settings.github_token || hasExistingGithubToken);
-      setSettings(prev => ({ ...prev, github_token: "" }));
-      toast({
-        title: "Succès",
-        description: "Token GitHub sauvegardé avec succès",
-      });
-    } catch (error) {
-      console.error("Error saving GitHub token:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder le token GitHub",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingGithub(false);
-    }
-  };
-
-  const handleRemoveGithubToken = async () => {
-    if (!user || !settings.id) return;
-
-    setSavingGithub(true);
-
-    try {
-      const { error } = await supabase
-        .from("user_settings")
-        .update({ github_token: null })
-        .eq("id", settings.id);
-
-      if (error) throw error;
-
-      setHasExistingGithubToken(false);
-      toast({
-        title: "Succès",
-        description: "Token GitHub supprimé",
-      });
-    } catch (error) {
-      console.error("Error removing GitHub token:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le token GitHub",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingGithub(false);
-    }
-  };
-
   if (authLoading || loading) {
     return (
       <Layout>
@@ -244,118 +146,9 @@ const Settings = () => {
               Paramètres
             </h1>
             <p className="text-lg text-muted-foreground">
-              Configurez vos clés API et tokens pour une expérience optimale
+              Configurez votre clé API pour activer le nettoyage IA du code
             </p>
           </div>
-
-          {/* GitHub Token Card - Pro Feature */}
-          <Card className={`animate-fade-in mb-6 ${!isPro ? 'opacity-75' : ''}`}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Github className="h-5 w-5" />
-                  Token GitHub personnel
-                </CardTitle>
-                {isPro ? (
-                  <Badge className="bg-primary text-primary-foreground">Pro</Badge>
-                ) : (
-                  <Badge variant="outline">Pro requis</Badge>
-                )}
-              </div>
-              <CardDescription>
-                Connectez votre propre token GitHub pour augmenter les limites API (5000 requêtes/heure)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!isPro ? (
-                <Alert>
-                  <Crown className="h-4 w-4" />
-                  <AlertTitle>Fonctionnalité Pro</AlertTitle>
-                  <AlertDescription>
-                    Cette fonctionnalité est réservée aux utilisateurs Pro. 
-                    Passez à Pro pour connecter votre propre token GitHub et bénéficier de limites API plus élevées.
-                    <div className="mt-3">
-                      <Link to="/pricing">
-                        <Button size="sm">
-                          Voir les plans
-                        </Button>
-                      </Link>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  {/* GitHub Token Input */}
-                  <div className="space-y-3">
-                    <Label htmlFor="github-token">Token d'accès personnel GitHub</Label>
-                    <div className="relative">
-                      <Input
-                        id="github-token"
-                        type={showGithubToken ? "text" : "password"}
-                        placeholder={hasExistingGithubToken ? "••••••••••••••••••••" : "ghp_..."}
-                        value={settings.github_token}
-                        onChange={(e) => setSettings(prev => ({ ...prev, github_token: e.target.value }))}
-                        className="pr-10"
-                        disabled={!isPro}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowGithubToken(!showGithubToken)}
-                      >
-                        {showGithubToken ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                    {hasExistingGithubToken && (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-success">
-                          <CheckCircle2 className="h-4 w-4" />
-                          <span>Un token GitHub est configuré</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={handleRemoveGithubToken}
-                          disabled={savingGithub}
-                        >
-                          Supprimer
-                        </Button>
-                      </div>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Créez un token sur <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">github.com/settings/tokens</a> avec les permissions <code className="bg-muted px-1 rounded">repo</code> (lecture).
-                    </p>
-                  </div>
-
-                  {/* Save GitHub Token Button */}
-                  <Button 
-                    onClick={handleSaveGithubToken} 
-                    disabled={savingGithub || !settings.github_token}
-                    className="w-full"
-                  >
-                    {savingGithub ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Sauvegarder le token GitHub
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
 
           {/* AI API Key Card */}
           <Card className="animate-fade-in">

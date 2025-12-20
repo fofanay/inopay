@@ -1,19 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-interface GitHubFile {
-  name: string;
-  path: string;
-  type: "file" | "dir";
-  sha: string;
-  size: number;
-  download_url: string | null;
-}
 
 interface FileContent {
   path: string;
@@ -23,15 +15,14 @@ interface FileContent {
 interface PlanLimits {
   maxFiles: number;
   maxRepos: number;
-  delayMs: number;
 }
 
 // Plan limits configuration
 const PLAN_LIMITS: Record<string, PlanLimits> = {
-  free: { maxFiles: 100, maxRepos: 3, delayMs: 500 },
-  pack: { maxFiles: 200, maxRepos: 10, delayMs: 300 },
-  pro: { maxFiles: 500, maxRepos: 50, delayMs: 100 },
-  enterprise: { maxFiles: 2000, maxRepos: -1, delayMs: 50 },
+  free: { maxFiles: 100, maxRepos: 3 },
+  pack: { maxFiles: 200, maxRepos: 10 },
+  pro: { maxFiles: 500, maxRepos: 50 },
+  enterprise: { maxFiles: 2000, maxRepos: -1 },
 };
 
 // Priority file patterns (these are always included first)
@@ -48,6 +39,34 @@ const PRIORITY_PATTERNS = [
   /^lib\/.*\.(tsx?|jsx?)$/,
   /^hooks\/.*\.(tsx?|jsx?)$/,
   /^supabase\/.*$/,
+];
+
+// Directories to skip
+const SKIP_DIRS = [
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  ".next",
+  "coverage",
+  ".cache",
+  "__pycache__",
+  ".turbo",
+  ".vercel",
+];
+
+// Text file extensions
+const TEXT_EXTENSIONS = [
+  ".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".scss", ".less",
+  ".html", ".htm", ".md", ".mdx", ".txt", ".yml", ".yaml", ".toml",
+  ".env", ".gitignore", ".prettierrc", ".eslintrc",
+  ".babelrc", ".sh", ".bash", ".zsh", ".svg", ".xml"
+];
+
+const COMMON_TEXT_FILES = [
+  "package.json", "tsconfig.json", "vite.config.ts", "tailwind.config.ts",
+  "postcss.config.js", "README", "LICENSE", "Dockerfile", "Makefile",
+  ".gitignore", ".prettierrc", ".eslintrc"
 ];
 
 const logStep = (step: string, details?: any) => {
@@ -71,169 +90,38 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   return null;
 }
 
-// Delay helper for rate limiting
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Fetch with retry and exponential backoff
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  maxRetries: number = 3,
-  baseDelayMs: number = 1000
-): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      
-      // Check for rate limit
-      if (response.status === 403) {
-        const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
-        const rateLimitReset = response.headers.get('X-RateLimit-Reset');
-        
-        logStep("Rate limit hit", { 
-          remaining: rateLimitRemaining, 
-          reset: rateLimitReset,
-          attempt: attempt + 1 
-        });
-        
-        // If we're rate limited, wait before retrying
-        const waitTime = baseDelayMs * Math.pow(2, attempt);
-        logStep(`Waiting ${waitTime}ms before retry`);
-        await delay(waitTime);
-        continue;
-      }
-      
-      return response;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      logStep(`Fetch attempt ${attempt + 1} failed`, { error: lastError.message });
-      
-      if (attempt < maxRetries - 1) {
-        await delay(baseDelayMs * Math.pow(2, attempt));
-      }
-    }
-  }
-  
-  throw lastError || new Error('Fetch failed after retries');
-}
-
-// Recursively fetch all files from a directory
-async function fetchDirectory(
-  owner: string,
-  repo: string,
-  path: string,
-  token: string,
-  delayMs: number
-): Promise<GitHubFile[]> {
-  await delay(delayMs); // Rate limiting delay
-  
-  const response = await fetchWithRetry(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "FreedomCode-App",
-      },
-    }
-  );
-
-  if (!response.ok) {
-    if (response.status === 403) {
-      logStep(`Rate limited on directory ${path}, returning empty`);
-      return [];
-    }
-    throw new Error(`Failed to fetch directory ${path}: ${response.statusText}`);
-  }
-
-  return await response.json();
-}
-
-// Fetch file content
-async function fetchFileContent(
-  owner: string,
-  repo: string,
-  path: string,
-  token: string,
-  delayMs: number
-): Promise<string> {
-  await delay(delayMs); // Rate limiting delay
-  
-  const response = await fetchWithRetry(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3.raw",
-        "User-Agent": "FreedomCode-App",
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file ${path}: ${response.statusText}`);
-  }
-
-  return await response.text();
-}
-
 // Check if a file path matches priority patterns
 function isPriorityFile(path: string): boolean {
   return PRIORITY_PATTERNS.some(pattern => pattern.test(path));
 }
 
-// Recursively collect all file paths (without fetching content yet)
-async function collectAllFilePaths(
-  owner: string,
-  repo: string,
-  path: string,
-  token: string,
-  delayMs: number,
-  allPaths: GitHubFile[] = []
-): Promise<GitHubFile[]> {
-  try {
-    const items = await fetchDirectory(owner, repo, path, token, delayMs);
+// Check if file should be skipped based on directory
+function shouldSkipPath(path: string): boolean {
+  const parts = path.split('/');
+  return parts.some(part => SKIP_DIRS.includes(part));
+}
 
-    for (const item of items) {
-      // Skip node_modules, .git, and other unnecessary directories
-      if (
-        item.name === "node_modules" ||
-        item.name === ".git" ||
-        item.name === "dist" ||
-        item.name === "build" ||
-        item.name === ".next" ||
-        item.name === "coverage" ||
-        item.name === ".cache" ||
-        item.name === "__pycache__"
-      ) {
-        continue;
-      }
-
-      if (item.type === "dir") {
-        await collectAllFilePaths(owner, repo, item.path, token, delayMs, allPaths);
-      } else if (item.type === "file") {
-        allPaths.push(item);
-      }
-    }
-  } catch (error) {
-    logStep(`Error collecting paths from ${path}`, { error: error instanceof Error ? error.message : String(error) });
-  }
-
-  return allPaths;
+// Check if file is a text file we want to analyze
+function isTextFile(filename: string): boolean {
+  const hasTextExtension = TEXT_EXTENSIONS.some(
+    ext => filename.endsWith(ext) || filename === ext.slice(1)
+  );
+  const isCommonTextFile = COMMON_TEXT_FILES.some(
+    name => filename === name || filename.includes(name)
+  );
+  return hasTextExtension || isCommonTextFile;
 }
 
 // Prioritize and limit files based on plan
-function prioritizeAndLimitFiles(files: GitHubFile[], maxFiles: number): GitHubFile[] {
+function prioritizeAndLimitFiles(files: string[], maxFiles: number): string[] {
   // Separate priority and non-priority files
-  const priorityFiles = files.filter(f => isPriorityFile(f.path));
-  const otherFiles = files.filter(f => !isPriorityFile(f.path));
+  const priorityFiles = files.filter(f => isPriorityFile(f));
+  const otherFiles = files.filter(f => !isPriorityFile(f));
   
-  // Sort priority files by importance (src > app > components > etc.)
+  // Sort priority files by importance
   priorityFiles.sort((a, b) => {
-    const aScore = PRIORITY_PATTERNS.findIndex(p => p.test(a.path));
-    const bScore = PRIORITY_PATTERNS.findIndex(p => p.test(b.path));
+    const aScore = PRIORITY_PATTERNS.findIndex(p => p.test(a));
+    const bScore = PRIORITY_PATTERNS.findIndex(p => p.test(b));
     return aScore - bScore;
   });
   
@@ -248,63 +136,92 @@ function prioritizeAndLimitFiles(files: GitHubFile[], maxFiles: number): GitHubF
   return combined;
 }
 
-// Fetch content for selected files with error handling
-async function fetchFilesContent(
+// Download repo as zipball and extract files
+async function downloadAndExtractRepo(
   owner: string,
   repo: string,
-  files: GitHubFile[],
   token: string,
-  delayMs: number
-): Promise<{ files: FileContent[]; errors: string[]; rateLimited: boolean }> {
-  const result: FileContent[] = [];
-  const errors: string[] = [];
-  let rateLimited = false;
-
-  // Text file extensions
-  const textExtensions = [
-    ".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".scss", ".less",
-    ".html", ".htm", ".md", ".mdx", ".txt", ".yml", ".yaml", ".toml",
-    ".env", ".env.example", ".gitignore", ".prettierrc", ".eslintrc",
-    ".babelrc", "Dockerfile", "Makefile", ".sh", ".bash", ".zsh",
-    ".svg", ".xml"
-  ];
+  maxFiles: number
+): Promise<{ files: FileContent[]; totalFiles: number; rateLimited: boolean }> {
+  logStep("Downloading repository as zipball...");
   
-  const commonTextFiles = [
-    "package.json", "tsconfig.json", "vite.config.ts", "tailwind.config.ts",
-    "postcss.config.js", "README", "LICENSE", "Dockerfile", "Makefile",
-    ".gitignore", ".prettierrc", ".eslintrc"
-  ];
+  // Download zipball (single API request!)
+  const zipResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/zipball`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "FreedomCode-App",
+      },
+    }
+  );
 
-  for (const file of files) {
-    // Check if it's a text file
-    const hasTextExtension = textExtensions.some(
-      ext => file.name.endsWith(ext) || file.name === ext.slice(1)
-    );
-    const isCommonTextFile = commonTextFiles.some(
-      name => file.name === name || file.name.includes(name)
-    );
+  if (!zipResponse.ok) {
+    if (zipResponse.status === 403) {
+      const rateLimitRemaining = zipResponse.headers.get('X-RateLimit-Remaining');
+      logStep("Rate limited", { remaining: rateLimitRemaining });
+      return { files: [], totalFiles: 0, rateLimited: true };
+    }
+    throw new Error(`Failed to download repository: ${zipResponse.statusText}`);
+  }
 
-    if ((hasTextExtension || isCommonTextFile) && file.size < 500000) {
-      try {
-        const content = await fetchFileContent(owner, repo, file.path, token, delayMs);
-        result.push({ path: file.path, content });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        
-        if (errorMsg.includes('403') || errorMsg.includes('rate limit')) {
-          logStep(`Rate limited while fetching ${file.path}`, { filesCollected: result.length });
-          rateLimited = true;
-          // Stop fetching more files when rate limited
-          break;
+  logStep("Zipball downloaded, extracting...");
+  
+  const zipBuffer = await zipResponse.arrayBuffer();
+  const zip = new JSZip();
+  await zip.loadAsync(zipBuffer);
+
+  // Collect all file paths
+  const allFilePaths: string[] = [];
+  
+  zip.forEach((relativePath, file) => {
+    if (!file.dir) {
+      // Remove the root folder prefix (e.g., "owner-repo-sha/")
+      const pathParts = relativePath.split('/');
+      const cleanPath = pathParts.slice(1).join('/');
+      
+      if (cleanPath && !shouldSkipPath(cleanPath) && isTextFile(cleanPath)) {
+        allFilePaths.push(cleanPath);
+      }
+    }
+  });
+
+  logStep(`Found ${allFilePaths.length} text files in repository`);
+
+  // Prioritize and limit files
+  const selectedPaths = prioritizeAndLimitFiles(allFilePaths, maxFiles);
+  logStep(`Selected ${selectedPaths.length} files for analysis`);
+
+  // Extract content for selected files
+  const files: FileContent[] = [];
+  
+  for (const cleanPath of selectedPaths) {
+    // Find the file in the zip (need to add back the root folder)
+    for (const [relativePath, file] of Object.entries(zip.files)) {
+      if (file.dir) continue;
+      
+      const pathParts = relativePath.split('/');
+      const currentCleanPath = pathParts.slice(1).join('/');
+      
+      if (currentCleanPath === cleanPath) {
+        try {
+          const content = await file.async('string');
+          // Skip very large files (> 500KB)
+          if (content.length < 500000) {
+            files.push({ path: cleanPath, content });
+          }
+        } catch (e) {
+          logStep(`Error extracting ${cleanPath}`, { error: e instanceof Error ? e.message : String(e) });
         }
-        
-        errors.push(`${file.path}: ${errorMsg}`);
-        logStep(`Error fetching file ${file.path}`, { error: errorMsg });
+        break;
       }
     }
   }
 
-  return { files: result, errors, rateLimited };
+  logStep(`Successfully extracted ${files.length} files`);
+  
+  return { files, totalFiles: allFilePaths.length, rateLimited: false };
 }
 
 serve(async (req) => {
@@ -385,8 +302,8 @@ serve(async (req) => {
 
     logStep(`Fetching repository: ${parsed.owner}/${parsed.repo}`);
 
-    // Verify repo exists and is accessible
-    const repoResponse = await fetchWithRetry(
+    // Verify repo exists and get info
+    const repoResponse = await fetch(
       `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
       {
         headers: {
@@ -411,37 +328,31 @@ serve(async (req) => {
 
     const repoInfo = await repoResponse.json();
 
-    // Step 1: Collect all file paths
-    logStep("Collecting file paths...");
-    const allFilePaths = await collectAllFilePaths(
-      parsed.owner, 
-      parsed.repo, 
-      "", 
-      GITHUB_TOKEN, 
-      limits.delayMs
-    );
-    logStep(`Found ${allFilePaths.length} total files`);
-
-    // Step 2: Prioritize and limit files based on plan
-    const selectedFiles = prioritizeAndLimitFiles(allFilePaths, limits.maxFiles);
-    logStep(`Selected ${selectedFiles.length} files for analysis (max: ${limits.maxFiles})`);
-
-    // Step 3: Fetch content for selected files
-    const { files, errors, rateLimited } = await fetchFilesContent(
+    // Download and extract repository using zipball API (single request!)
+    const { files, totalFiles, rateLimited } = await downloadAndExtractRepo(
       parsed.owner,
       parsed.repo,
-      selectedFiles,
       GITHUB_TOKEN,
-      limits.delayMs
+      limits.maxFiles
     );
 
-    logStep(`Fetched ${files.length} files`, { 
-      errors: errors.length, 
-      rateLimited,
-      totalAvailable: allFilePaths.length 
+    if (rateLimited) {
+      return new Response(
+        JSON.stringify({ 
+          error: "GitHub API rate limit reached. Please try again later.",
+          rateLimited: true
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep(`Analysis complete`, { 
+      fetched: files.length, 
+      total: totalFiles,
+      planType 
     });
 
-    // Build response with partial analysis info
+    // Build response
     const responseData = {
       success: true,
       repository: {
@@ -452,21 +363,12 @@ serve(async (req) => {
       },
       files,
       fileCount: files.length,
-      totalFilesInRepo: allFilePaths.length,
-      isPartialAnalysis: files.length < allFilePaths.length,
-      partialReason: rateLimited ? "rate_limited" : (files.length < allFilePaths.length ? "plan_limit" : null),
+      totalFilesInRepo: totalFiles,
+      isPartialAnalysis: files.length < totalFiles,
+      partialReason: files.length < totalFiles ? "plan_limit" : null,
       planType,
       planLimit: limits.maxFiles,
-      errors: errors.length > 0 ? errors.slice(0, 5) : undefined, // Only return first 5 errors
     };
-
-    if (responseData.isPartialAnalysis) {
-      logStep("Returning partial analysis", { 
-        fetched: files.length, 
-        total: allFilePaths.length,
-        reason: responseData.partialReason 
-      });
-    }
 
     return new Response(
       JSON.stringify(responseData),
