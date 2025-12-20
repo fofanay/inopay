@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import PostDeploymentAssistant from "./PostDeploymentAssistant";
 interface ProjectExporterProps {
   projectId?: string;
   projectName: string;
@@ -40,6 +40,8 @@ const ProjectExporter = ({
   const [isPrivate, setIsPrivate] = useState(true);
   const [githubRepoUrl, setGithubRepoUrl] = useState<string | null>(null);
   const [envExampleUrl, setEnvExampleUrl] = useState<string | null>(null);
+  const [detectedEnvVars, setDetectedEnvVars] = useState<string[]>([]);
+  const [showAssistant, setShowAssistant] = useState(false);
 
   const cleanFiles = async (session: { access_token: string }) => {
     const cleanedFiles: Record<string, string> = {};
@@ -142,6 +144,7 @@ const ProjectExporter = ({
       setStatus("complete");
       setDownloadUrl(data.downloadUrl);
       setEnvExampleUrl(data.envExampleContent);
+      setDetectedEnvVars(data.detectedEnvVars || []);
 
       toast({
         title: "Archive générée",
@@ -247,7 +250,9 @@ const ProjectExporter = ({
     setDownloadUrl(null);
     setGithubRepoUrl(null);
     setEnvExampleUrl(null);
+    setDetectedEnvVars([]);
     setCleanedFilesCount(0);
+    setShowAssistant(false);
     onClose();
   };
 
@@ -499,6 +504,16 @@ const ProjectExporter = ({
                             <ExternalLink className="ml-auto h-3 w-3" />
                           </Button>
                         </div>
+                        
+                        {/* Configuration Assistant Button */}
+                        <Button 
+                          variant="secondary" 
+                          onClick={() => setShowAssistant(true)} 
+                          className="w-full gap-2 mt-3"
+                        >
+                          <Settings className="h-4 w-4" />
+                          Assistant de configuration
+                        </Button>
                       </div>
                     </>
                   )}
@@ -522,6 +537,15 @@ const ProjectExporter = ({
             </Card>
           )}
         </div>
+
+        {/* Post-deployment assistant modal */}
+        <PostDeploymentAssistant 
+          isOpen={showAssistant}
+          onClose={() => setShowAssistant(false)}
+          githubRepoUrl={githubRepoUrl || undefined}
+          detectedEnvVars={detectedEnvVars}
+          projectName={projectName}
+        />
       </DialogContent>
     </Dialog>
   );
