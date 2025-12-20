@@ -26,3 +26,30 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.admin-list-payments]
+verify_jwt = false
+
+[functions.admin-list-subscriptions]
+verify_jwt = false
+
+[functions.admin-manage-subscription]
+verify_jwt = false
+
+[functions.send-reminder-emails]
+verify_jwt = false
+
+[functions.configure-database]
+verify_jwt = false
+
+[functions.deploy-ftp]
+verify_jwt = false
+
+[functions.check-deployment]
+verify_jwt = false
+
+[functions.admin-list-users]
+verify_jwt = false
+
+[functions.admin-manage-tester]
+verify_jwt = false
