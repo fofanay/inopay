@@ -47,6 +47,7 @@ export interface RealAnalysisResult {
   issues: AnalysisIssue[];
   dependencies: DependencyItem[];
   recommendations: string[];
+  extractedFiles: Map<string, string>;
 }
 
 export type ProgressCallback = (progress: number, message: string) => void;
@@ -288,11 +289,14 @@ export async function analyzeZipFile(
          !zip.files[f].dir
   );
 
+  const extractedFiles = new Map<string, string>();
+
   onProgress(40, `Analyse des fichiers sources (0/${sourceFiles.length})...`);
 
   for (let i = 0; i < sourceFiles.length; i++) {
     const filePath = sourceFiles[i];
     const content = await zip.files[filePath].async("string");
+    extractedFiles.set(filePath, content);
     const fileIssues = analyzeSourceFile(filePath, content);
     issues.push(...fileIssues);
     analyzedFiles++;
@@ -327,5 +331,6 @@ export async function analyzeZipFile(
     issues,
     dependencies,
     recommendations,
+    extractedFiles,
   };
 }

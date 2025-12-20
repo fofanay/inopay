@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { useNavigate } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { analyzeZipFile, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
+import CodeCleaner from "@/components/CodeCleaner";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 
@@ -36,6 +37,9 @@ const Dashboard = () => {
   const [result, setResult] = useState<(RealAnalysisResult & { id?: string }) | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [extractedFiles, setExtractedFiles] = useState<Map<string, string>>(new Map());
+  const [cleanerOpen, setCleanerOpen] = useState(false);
+  const [selectedFileForCleaning, setSelectedFileForCleaning] = useState<{ name: string; content: string } | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -129,6 +133,7 @@ const Dashboard = () => {
 
       setState("complete");
       setResult(analysisResult);
+      setExtractedFiles(analysisResult.extractedFiles);
       await saveAnalysis(projectName, analysisResult);
     } catch (error) {
       console.error("Analysis error:", error);
@@ -164,6 +169,21 @@ const Dashboard = () => {
     setProgressMessage("");
     setFileName("");
     setResult(null);
+    setExtractedFiles(new Map());
+  };
+
+  const handleCleanFile = (filePath: string) => {
+    const content = extractedFiles.get(filePath);
+    if (content) {
+      setSelectedFileForCleaning({ name: filePath, content });
+      setCleanerOpen(true);
+    } else {
+      toast({
+        title: "Fichier non disponible",
+        description: "Le contenu de ce fichier n'est pas disponible pour le nettoyage",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusIcon = (status: DependencyItem["status"]) => {
@@ -440,6 +460,7 @@ const Dashboard = () => {
                           <TableHead>Ligne</TableHead>
                           <TableHead>Pattern</TableHead>
                           <TableHead>Sévérité</TableHead>
+                          <TableHead>Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -456,6 +477,17 @@ const Dashboard = () => {
                             </TableCell>
                             <TableCell>
                               {getSeverityBadge(issue.severity)}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCleanFile(issue.file)}
+                                className="gap-1"
+                              >
+                                <Sparkles className="h-3 w-3" />
+                                Nettoyer
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -543,6 +575,19 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Code Cleaner Modal */}
+      {selectedFileForCleaning && (
+        <CodeCleaner
+          fileName={selectedFileForCleaning.name}
+          originalCode={selectedFileForCleaning.content}
+          isOpen={cleanerOpen}
+          onClose={() => {
+            setCleanerOpen(false);
+            setSelectedFileForCleaning(null);
+          }}
+        />
+      )}
     </Layout>
   );
 };

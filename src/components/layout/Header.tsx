@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Menu, X } from "lucide-react";
+import { LogOut, User, Menu, X, Settings } from "lucide-react";
 import { useState } from "react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
@@ -63,6 +63,11 @@ const Header = () => {
                   <User className="h-4 w-4" />
                   <span className="max-w-[150px] truncate">{user.email}</span>
                 </div>
+                <Link to="/parametres">
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
                 <Button variant="outline" size="sm" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Déconnexion
@@ -135,6 +140,12 @@ const Header = () => {
                       <User className="h-4 w-4" />
                       <span className="truncate">{user.email}</span>
                     </div>
+                    <Link to="/parametres" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Paramètres
+                      </Button>
+                    </Link>
                     <Button variant="outline" size="sm" onClick={handleSignOut}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Déconnexion
