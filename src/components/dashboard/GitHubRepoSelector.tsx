@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw } from "lucide-react";
+import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,13 +101,26 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
     });
   };
 
+  const getLanguageColor = (language: string | null) => {
+    const colors: Record<string, string> = {
+      TypeScript: "bg-blue-500",
+      JavaScript: "bg-yellow-500",
+      Python: "bg-green-500",
+      Go: "bg-cyan-500",
+      Rust: "bg-orange-500",
+    };
+    return colors[language || ""] || "bg-muted-foreground";
+  };
+
   if (loading) {
     return (
-      <Card>
+      <Card className="card-shadow border border-border">
         <CardContent className="py-16">
           <div className="flex flex-col items-center justify-center text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Chargement de vos projets</h3>
+            <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
+              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Chargement de vos projets</h3>
             <p className="text-muted-foreground">
               Nous récupérons la liste de vos dépôts GitHub...
             </p>
@@ -119,16 +132,16 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
 
   if (error) {
     return (
-      <Card>
+      <Card className="card-shadow border border-border status-border-red">
         <CardContent className="py-16">
           <div className="flex flex-col items-center justify-center text-center">
-            <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
               <GitBranch className="h-8 w-8 text-destructive" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Erreur de connexion</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Erreur de connexion</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={fetchRepos} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button onClick={fetchRepos} variant="outline" className="gap-2 rounded-lg">
+              <RefreshCw className="h-4 w-4" />
               Réessayer
             </Button>
           </div>
@@ -138,15 +151,19 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GitBranch className="h-5 w-5 text-primary" />
-          Sélectionnez votre projet
-        </CardTitle>
-        <CardDescription>
-          Choisissez le dépôt que vous souhaitez libérer de ses dépendances propriétaires
-        </CardDescription>
+    <Card className="card-shadow border border-border status-border-blue">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+            <Radar className="h-5 w-5 text-accent" />
+          </div>
+          <div>
+            <CardTitle className="text-xl text-foreground">Sélectionnez votre projet</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Choisissez le dépôt à libérer de ses dépendances propriétaires
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Search bar */}
@@ -156,15 +173,15 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
             placeholder="Rechercher un projet..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-lg border-border bg-background"
           />
         </div>
 
         {/* Repos list */}
-        <ScrollArea className="h-[400px] rounded-md border">
-          <div className="p-4 space-y-3">
+        <ScrollArea className="h-[400px] rounded-lg border border-border bg-muted/30">
+          <div className="p-3 space-y-2">
             {filteredRepos.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground">
                 {repos.length === 0 
                   ? "Aucun dépôt trouvé sur votre compte GitHub"
                   : "Aucun projet ne correspond à votre recherche"
@@ -174,18 +191,19 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
               filteredRepos.map((repo) => (
                 <div
                   key={repo.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-all duration-200 card-hover"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">{repo.name}</h4>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h4 className="font-semibold text-foreground">{repo.name}</h4>
                       {repo.private && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-border text-muted-foreground">
                           Privé
                         </Badge>
                       )}
                       {repo.language && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge className="text-xs bg-secondary text-secondary-foreground border-0">
+                          <span className={`w-2 h-2 rounded-full mr-1.5 ${getLanguageColor(repo.language)}`} />
                           {repo.language}
                         </Badge>
                       )}
@@ -209,7 +227,7 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
                   <Button
                     onClick={() => onSelectRepo(repo)}
                     disabled={isLoading}
-                    className="ml-4 gap-2"
+                    className="ml-4 gap-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground"
                     size="sm"
                   >
                     {isLoading ? (
@@ -225,9 +243,13 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading }: GitHubRepoSelectorProps
           </div>
         </ScrollArea>
 
-        <p className="text-sm text-muted-foreground text-center mt-4">
-          {filteredRepos.length} projet{filteredRepos.length !== 1 ? "s" : ""} disponible{filteredRepos.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+          <span>{filteredRepos.length} projet{filteredRepos.length !== 1 ? "s" : ""} disponible{filteredRepos.length !== 1 ? "s" : ""}</span>
+          <Button variant="ghost" size="sm" onClick={fetchRepos} className="gap-2 text-muted-foreground hover:text-foreground">
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
