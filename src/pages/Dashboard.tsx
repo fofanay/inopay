@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield, Lock, Crown } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield, Lock, Crown, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -20,6 +20,7 @@ import ProjectExporter from "@/components/ProjectExporter";
 import StepperProgress from "@/components/dashboard/StepperProgress";
 import GitHubRepoSelector from "@/components/dashboard/GitHubRepoSelector";
 import GitHubConnectButton from "@/components/dashboard/GitHubConnectButton";
+import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
@@ -819,7 +820,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Step 4: Export Card */}
+              {/* Step 4: Deployment Assistant */}
               <Card className="card-shadow border border-border status-border-green relative">
                 {/* Paywall overlay for export */}
                 {!subscription.subscribed && (
@@ -839,46 +840,35 @@ const Dashboard = () => {
                     </Link>
                   </div>
                 )}
-                <CardHeader className="text-center">
+                <CardHeader className="text-center border-b border-border">
                   <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
                     <Rocket className="h-3 w-3" />
-                    Prêt
+                    Prêt pour le déploiement
                   </Badge>
-                  <CardTitle className="text-xl text-foreground">Étape 4 : Prêt pour le déploiement</CardTitle>
+                  <CardTitle className="text-xl text-foreground">Étape 4 : Assistant de Déploiement Intelligent</CardTitle>
                   <CardDescription className="max-w-md mx-auto">
-                    Votre projet est maintenant 100% autonome et inclut sa configuration Docker.
+                    Choisissez comment et où déployer votre projet libéré
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center pb-8">
-                  <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
+                <CardContent className="pt-6 pb-8">
+                  <DeploymentAssistant
+                    projectName={fileName.replace('.zip', '')}
+                    onDownload={() => setExporterOpen(true)}
+                    onGitHubPush={() => setExporterOpen(true)}
+                    onBack={resetAnalysis}
+                    disabled={!subscription.subscribed}
+                  />
+                  
+                  <div className="text-center mt-6 pt-6 border-t border-border">
                     <Button 
-                      size="lg" 
-                      className="flex-1 rounded-lg shadow-lg hover:shadow-xl transition-shadow gap-2" 
-                      onClick={() => setExporterOpen(true)}
-                      disabled={!subscription.subscribed}
+                      variant="link" 
+                      className="text-muted-foreground hover:text-foreground" 
+                      onClick={resetAnalysis}
                     >
-                      <Download className="h-5 w-5" />
-                      Télécharger le projet libre (.zip)
-                    </Button>
-                    <Button 
-                      size="lg" 
-                      variant="outline" 
-                      className="flex-1 rounded-lg border-border gap-2" 
-                      onClick={() => setExporterOpen(true)}
-                      disabled={!subscription.subscribed}
-                    >
-                      <Github className="h-5 w-5" />
-                      Pousser vers un nouveau repo
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Analyser un autre projet
                     </Button>
                   </div>
-                  <Button 
-                    variant="link" 
-                    className="mt-4 text-muted-foreground hover:text-foreground" 
-                    onClick={resetAnalysis}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Analyser un autre projet
-                  </Button>
                 </CardContent>
               </Card>
             </div>
