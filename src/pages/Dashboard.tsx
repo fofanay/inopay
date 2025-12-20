@@ -853,6 +853,7 @@ const Dashboard = () => {
                 <CardContent className="pt-6 pb-8">
                   <DeploymentAssistant
                     projectName={fileName.replace('.zip', '')}
+                    extractedFiles={extractedFiles}
                     onDownload={() => setExporterOpen(true)}
                     onGitHubPush={() => setExporterOpen(true)}
                     onBack={resetAnalysis}
