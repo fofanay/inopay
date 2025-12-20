@@ -360,7 +360,19 @@ serve(async (req) => {
     }
 
     const repoInfo = await repoResponse.json();
-    logStep("Repository info retrieved", { name: repoInfo.name, size: repoInfo.size });
+    logStep("Repository info retrieved", { name: repoInfo.name, size: repoInfo.size, private: repoInfo.private });
+
+    // SECURITY: Only allow public repositories
+    if (repoInfo.private === true) {
+      logStep("Access denied - private repository", { repo: repoInfo.full_name });
+      return new Response(
+        JSON.stringify({ 
+          error: "Ce dépôt est privé. Pour des raisons de sécurité, seuls les dépôts publics peuvent être analysés.",
+          isPrivate: true
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Download and extract repository using zipball API with zip.js
     const { files, totalFiles, rateLimited } = await downloadAndExtractRepo(
