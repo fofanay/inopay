@@ -25,6 +25,13 @@ const PLAN_LIMITS: Record<string, PlanLimits> = {
   enterprise: { maxFiles: 2000, maxRepos: -1 },
 };
 
+// Maximum repository size in KB (100MB)
+const MAX_REPO_SIZE_KB = 100 * 1024;
+// Warning threshold in KB (50MB)
+const WARN_REPO_SIZE_KB = 50 * 1024;
+// Timeout in milliseconds (50 seconds to leave margin for Edge Function limit)
+const OPERATION_TIMEOUT_MS = 50000;
+
 // Priority file patterns (these are always included first)
 const PRIORITY_PATTERNS = [
   /^package\.json$/,
@@ -112,16 +119,26 @@ function isTextFile(filename: string): boolean {
   return hasTextExtension || isCommonTextFile;
 }
 
+// Create a timeout promise
+function createTimeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`TIMEOUT: L'opération a dépassé ${Math.round(ms / 1000)} secondes. Le dépôt est peut-être trop volumineux.`));
+    }, ms);
+  });
+}
+
 // Download repo as zipball and extract files using zip.js (Deno compatible)
 async function downloadAndExtractRepo(
   owner: string,
   repo: string,
   token: string,
-  maxFiles: number
+  maxFiles: number,
+  abortSignal?: AbortSignal
 ): Promise<{ files: FileContent[]; totalFiles: number; rateLimited: boolean }> {
   logStep("Starting zipball download...");
   
-  // 1. Download zipball
+  // 1. Download zipball with abort signal
   const zipResponse = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/zipball`,
     {
@@ -130,6 +147,7 @@ async function downloadAndExtractRepo(
         Accept: "application/vnd.github.v3+json",
         "User-Agent": "FreedomCode-App",
       },
+      signal: abortSignal,
     }
   );
 
@@ -151,6 +169,12 @@ async function downloadAndExtractRepo(
   try {
     const zipBlob = await zipResponse.blob();
     logStep("Blob created", { size: zipBlob.size });
+    
+    // Check blob size (rough estimate)
+    const blobSizeKB = zipBlob.size / 1024;
+    if (blobSizeKB > MAX_REPO_SIZE_KB) {
+      throw new Error(`TAILLE_EXCESSIVE: Le dépôt compressé fait ${Math.round(blobSizeKB / 1024)}MB, ce qui dépasse la limite de ${MAX_REPO_SIZE_KB / 1024}MB.`);
+    }
     
     zipReader = new ZipReader(new BlobReader(zipBlob));
     logStep("ZipReader created, extracting entries...");
@@ -205,30 +229,39 @@ async function downloadAndExtractRepo(
       limit: maxFiles 
     });
 
-    // 7. Extract text content from each file
+    // 7. Extract text content from each file in batches
     const files: FileContent[] = [];
+    const BATCH_SIZE = 50; // Process 50 files at a time
     
-    for (const { entry, cleanPath } of limitedEntries) {
-      try {
-        if (!entry.getData) {
-          logStep("Entry has no getData method", { path: cleanPath });
-          continue;
+    for (let i = 0; i < limitedEntries.length; i += BATCH_SIZE) {
+      const batch = limitedEntries.slice(i, i + BATCH_SIZE);
+      logStep(`Extracting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(limitedEntries.length / BATCH_SIZE)}`, {
+        from: i,
+        to: Math.min(i + BATCH_SIZE, limitedEntries.length)
+      });
+      
+      for (const { entry, cleanPath } of batch) {
+        try {
+          if (!entry.getData) {
+            logStep("Entry has no getData method", { path: cleanPath });
+            continue;
+          }
+          
+          const writer = new TextWriter();
+          const content = await entry.getData(writer);
+          
+          // Skip very large files (> 300KB for faster processing)
+          if (content && content.length < 300000) {
+            files.push({ path: cleanPath, content });
+          } else if (content && content.length >= 300000) {
+            logStep("File too large, skipping", { path: cleanPath, size: content.length });
+          }
+        } catch (extractError) {
+          logStep("Error extracting file content", { 
+            path: cleanPath, 
+            error: extractError instanceof Error ? extractError.message : String(extractError) 
+          });
         }
-        
-        const writer = new TextWriter();
-        const content = await entry.getData(writer);
-        
-        // Skip very large files (> 500KB)
-        if (content && content.length < 500000) {
-          files.push({ path: cleanPath, content });
-        } else if (content && content.length >= 500000) {
-          logStep("File too large, skipping", { path: cleanPath, size: content.length });
-        }
-      } catch (extractError) {
-        logStep("Error extracting file content", { 
-          path: cleanPath, 
-          error: extractError instanceof Error ? extractError.message : String(extractError) 
-        });
       }
     }
 
@@ -261,6 +294,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
 
   try {
     const GITHUB_TOKEN = Deno.env.get("GITHUB_PERSONAL_ACCESS_TOKEN");
@@ -374,13 +409,58 @@ serve(async (req) => {
       );
     }
 
+    // Check repository size BEFORE downloading
+    const repoSizeKB = repoInfo.size || 0;
+    logStep("Repository size check", { sizeKB: repoSizeKB, maxKB: MAX_REPO_SIZE_KB, warnKB: WARN_REPO_SIZE_KB });
+
+    if (repoSizeKB > MAX_REPO_SIZE_KB) {
+      logStep("Repository too large", { sizeKB: repoSizeKB, maxKB: MAX_REPO_SIZE_KB });
+      return new Response(
+        JSON.stringify({ 
+          error: `TAILLE_EXCESSIVE: Ce dépôt fait ${Math.round(repoSizeKB / 1024)}MB, ce qui dépasse la limite de ${MAX_REPO_SIZE_KB / 1024}MB. Essayez avec un dépôt plus petit.`,
+          repoTooLarge: true,
+          repoSize: repoSizeKB,
+          maxSize: MAX_REPO_SIZE_KB
+        }),
+        { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create abort controller for timeout
+    const abortController = new AbortController();
+    
     // Download and extract repository using zipball API with zip.js
-    const { files, totalFiles, rateLimited } = await downloadAndExtractRepo(
-      parsed.owner,
-      parsed.repo,
-      GITHUB_TOKEN,
-      limits.maxFiles
-    );
+    // Use Promise.race to implement timeout
+    let result: { files: FileContent[]; totalFiles: number; rateLimited: boolean };
+    
+    try {
+      result = await Promise.race([
+        downloadAndExtractRepo(
+          parsed.owner,
+          parsed.repo,
+          GITHUB_TOKEN,
+          limits.maxFiles,
+          abortController.signal
+        ),
+        createTimeout(OPERATION_TIMEOUT_MS)
+      ]);
+    } catch (timeoutError) {
+      abortController.abort();
+      const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
+      logStep("Operation timed out", { elapsedSeconds });
+      
+      const errorMessage = timeoutError instanceof Error ? timeoutError.message : "Timeout";
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          timeout: true,
+          elapsedSeconds
+        }),
+        { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { files, totalFiles, rateLimited } = result;
 
     if (rateLimited) {
       return new Response(
@@ -392,10 +472,12 @@ serve(async (req) => {
       );
     }
 
+    const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
     logStep("Analysis complete", { 
       fetched: files.length, 
       total: totalFiles,
-      planType 
+      planType,
+      elapsedSeconds
     });
 
     // Build response
@@ -406,6 +488,7 @@ serve(async (req) => {
         fullName: repoInfo.full_name,
         description: repoInfo.description,
         defaultBranch: repoInfo.default_branch,
+        size: repoSizeKB,
       },
       files,
       fileCount: files.length,
@@ -414,6 +497,7 @@ serve(async (req) => {
       partialReason: files.length < totalFiles ? "plan_limit" : null,
       planType,
       planLimit: limits.maxFiles,
+      elapsedSeconds,
     };
 
     return new Response(
@@ -421,10 +505,25 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
+    const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
     console.error("Error:", error);
+    
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch repository";
+    
+    // Determine error type for client
+    let errorType = "unknown";
+    if (errorMessage.includes("TIMEOUT")) {
+      errorType = "timeout";
+    } else if (errorMessage.includes("TAILLE_EXCESSIVE")) {
+      errorType = "too_large";
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        errorType,
+        elapsedSeconds
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
