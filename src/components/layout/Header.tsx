@@ -19,7 +19,7 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/95 backdrop-blur-md shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -89,7 +89,7 @@ const Header = () => {
                   </Button>
                 </Link>
                 <Link to="/auth">
-                  <Button size="sm" className="glow-sm">
+                  <Button size="sm" className="rounded-lg shadow-md hover:shadow-lg transition-shadow">
                     Commencer
                   </Button>
                 </Link>
@@ -176,7 +176,7 @@ const Header = () => {
                   </div>
                 ) : (
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full glow-sm">
+                    <Button className="w-full rounded-lg">
                       Connexion / Inscription
                     </Button>
                   </Link>

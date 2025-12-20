@@ -366,11 +366,11 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
+          <div className="text-center mb-10">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
               Libérez votre code
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
               Nous préparons votre code pour un hébergement indépendant
             </p>
           </div>
@@ -446,21 +446,21 @@ const Dashboard = () => {
           {/* Alternative: ZIP Upload */}
           {state === "idle" && importMethod === "zip" && (
             <div className="space-y-6 animate-fade-in">
-              <Card className="border-2 border-dashed hover:border-primary/50 transition-colors">
+              <Card className="card-shadow border border-dashed border-border hover:border-primary/50 transition-colors">
                 <CardContent className="p-0">
                   <div
                     {...getRootProps()}
-                    className={`flex flex-col items-center justify-center py-16 px-8 cursor-pointer transition-colors ${
-                      isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/30"
+                    className={`flex flex-col items-center justify-center py-16 px-8 cursor-pointer transition-all rounded-lg ${
+                      isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/50"
                     }`}
                   >
                     <input {...getInputProps()} />
                     <div className={`flex h-16 w-16 items-center justify-center rounded-2xl mb-6 transition-all ${
-                      isDragActive ? "bg-primary text-primary-foreground glow-primary" : "bg-muted text-muted-foreground"
+                      isDragActive ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
                     }`}>
                       <Upload className="h-8 w-8" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">
+                    <h3 className="text-xl font-semibold mb-2 text-foreground">
                       {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
                     </h3>
                     <p className="text-muted-foreground mb-4">
@@ -490,12 +490,12 @@ const Dashboard = () => {
           {/* Alternative: Direct GitHub URL */}
           {state === "idle" && importMethod === "github-url" && (
             <div className="space-y-6 animate-fade-in">
-              <Card>
+              <Card className="card-shadow border border-border">
                 <CardHeader className="text-center">
-                  <div className="mx-auto h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <div className="mx-auto h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                     <Github className="h-8 w-8 text-foreground" />
                   </div>
-                  <CardTitle>Importer via URL</CardTitle>
+                  <CardTitle className="text-foreground">Importer via URL</CardTitle>
                   <CardDescription>
                     Collez l'URL du dépôt GitHub de votre projet
                   </CardDescription>
@@ -507,8 +507,8 @@ const Dashboard = () => {
                         <TooltipTrigger asChild>
                           <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p>Vous trouverez cette URL dans les paramètres de votre projet Lovable sous l'onglet GitHub.</p>
+                        <TooltipContent className="max-w-xs bg-card border border-border shadow-lg">
+                          <p className="text-foreground">Vous trouverez cette URL dans les paramètres de votre projet Lovable sous l'onglet GitHub.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -519,11 +519,11 @@ const Dashboard = () => {
                       placeholder="https://github.com/username/repository"
                       value={githubUrl}
                       onChange={(e) => setGithubUrl(e.target.value)}
-                      className="w-full"
+                      className="w-full rounded-lg border-border"
                     />
                     <Button 
                       onClick={handleGitHubImport} 
-                      className="w-full gap-2"
+                      className="w-full gap-2 rounded-lg"
                       disabled={!githubUrl.trim()}
                     >
                       <Github className="h-4 w-4" />
@@ -549,10 +549,10 @@ const Dashboard = () => {
 
           {/* History (only show when idle and appropriate) */}
           {state === "idle" && history.length > 0 && (
-            <Card className="animate-fade-in mt-8">
+            <Card className="animate-fade-in mt-8 card-shadow border border-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <History className="h-5 w-5 text-accent" />
                   Historique des analyses
                 </CardTitle>
                 <CardDescription>Vos dernières analyses de projets</CardDescription>
@@ -560,24 +560,24 @@ const Dashboard = () => {
               <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Projet</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Date</TableHead>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Projet</TableHead>
+                      <TableHead className="text-muted-foreground">Score</TableHead>
+                      <TableHead className="text-muted-foreground">Statut</TableHead>
+                      <TableHead className="text-muted-foreground">Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {history.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.project_name}</TableCell>
+                      <TableRow key={item.id} className="border-border hover:bg-muted/50">
+                        <TableCell className="font-medium text-foreground">{item.project_name}</TableCell>
                         <TableCell>
-                          <span className={getScoreColor(item.portability_score)}>
+                          <Badge className={`${item.portability_score >= 80 ? 'bg-success/10 text-success border-success/20' : item.portability_score >= 60 ? 'bg-warning/10 text-warning border-warning/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}>
                             {item.portability_score}/100
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="capitalize">
+                          <Badge variant="outline" className="capitalize border-border text-muted-foreground">
                             {item.status === "analyzed" ? "Analysé" : item.status}
                           </Badge>
                         </TableCell>
@@ -600,25 +600,25 @@ const Dashboard = () => {
 
           {/* Analysis Progress */}
           {(state === "uploading" || state === "analyzing") && (
-            <Card className="animate-fade-in">
+            <Card className="animate-fade-in card-shadow border border-border status-border-blue">
               <CardContent className="py-16 px-8">
                 <div className="flex flex-col items-center text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-6 animate-pulse-glow">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mb-6 animate-pulse-soft">
+                    <Loader2 className="h-8 w-8 text-accent animate-spin" />
                   </div>
                   
                   <div className="flex items-center gap-2 mb-4">
                     <FileArchive className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">{fileName}</span>
+                    <span className="font-medium text-foreground">{fileName}</span>
                   </div>
 
-                  <h3 className="text-xl font-semibold mb-2">
+                  <h3 className="text-xl font-semibold mb-2 text-foreground">
                     {state === "uploading" ? "Extraction en cours..." : "Analyse en cours..."}
                   </h3>
                   <p className="text-muted-foreground mb-6">{progressMessage}</p>
 
                   <div className="w-full max-w-md">
-                    <Progress value={progress} className="h-2" />
+                    <Progress value={progress} className="h-2 bg-muted" />
                     <p className="text-sm text-muted-foreground mt-2">{Math.round(progress)}%</p>
                   </div>
                 </div>
@@ -630,10 +630,10 @@ const Dashboard = () => {
           {state === "complete" && result && (
             <div className="space-y-8 animate-fade-in">
               {/* Score Card */}
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden card-shadow-lg border border-border status-border-green">
                 <div className="grid md:grid-cols-2">
                   {/* Score */}
-                  <div className="flex flex-col items-center justify-center py-12 px-8 bg-gradient-to-br from-primary/10 to-secondary/10">
+                  <div className="flex flex-col items-center justify-center py-12 px-8 bg-muted/50">
                     <div className="relative">
                       <svg className="w-40 h-40 transform -rotate-90">
                         <circle
@@ -643,7 +643,7 @@ const Dashboard = () => {
                           stroke="currentColor"
                           strokeWidth="8"
                           fill="none"
-                          className="text-muted"
+                          className="text-border"
                         />
                         <circle
                           cx="80"
@@ -663,37 +663,37 @@ const Dashboard = () => {
                         <span className="text-muted-foreground">/100</span>
                       </div>
                     </div>
-                    <p className="text-lg font-medium mt-4">Score de Portabilité</p>
+                    <p className="text-lg font-medium mt-4 text-foreground">Score de Portabilité</p>
                     <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
                       {getScoreMessage(result.score)}
                     </p>
                   </div>
 
                   {/* Info */}
-                  <CardContent className="flex flex-col justify-center py-8">
-                    <h3 className="text-2xl font-bold mb-4">Projet analysé</h3>
+                  <CardContent className="flex flex-col justify-center py-8 bg-card">
+                    <h3 className="text-2xl font-bold mb-4 text-foreground">Projet analysé</h3>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <div className="flex justify-between items-center py-2 border-b border-border">
                         <span className="text-muted-foreground">Fichier</span>
-                        <span className="font-medium">{fileName}</span>
+                        <span className="font-medium text-foreground">{fileName}</span>
                       </div>
                       {result.platform && (
-                        <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <div className="flex justify-between items-center py-2 border-b border-border">
                           <span className="text-muted-foreground">Plateforme détectée</span>
-                          <Badge variant="secondary">{result.platform}</Badge>
+                          <Badge className="bg-accent/10 text-accent border-0">{result.platform}</Badge>
                         </div>
                       )}
-                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <div className="flex justify-between items-center py-2 border-b border-border">
                         <span className="text-muted-foreground">Fichiers totaux</span>
-                        <span className="font-medium">{result.totalFiles}</span>
+                        <span className="font-medium text-foreground">{result.totalFiles}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <div className="flex justify-between items-center py-2 border-b border-border">
                         <span className="text-muted-foreground">Fichiers analysés</span>
-                        <span className="font-medium">{result.analyzedFiles}</span>
+                        <span className="font-medium text-foreground">{result.analyzedFiles}</span>
                       </div>
                       <div className="flex justify-between items-center py-2">
                         <span className="text-muted-foreground">Dépendances</span>
-                        <span className="font-medium">{result.dependencies.length}</span>
+                        <span className="font-medium text-foreground">{result.dependencies.length}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -702,9 +702,9 @@ const Dashboard = () => {
 
               {/* Issues Table */}
               {result.issues.length > 0 && (
-                <Card>
+                <Card className="card-shadow border border-border status-border-red">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-foreground">
                       <FileWarning className="h-5 w-5 text-destructive" />
                       Fichiers à risque
                     </CardTitle>
@@ -715,24 +715,24 @@ const Dashboard = () => {
                   <CardContent>
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Fichier</TableHead>
-                          <TableHead>Ligne</TableHead>
-                          <TableHead>Pattern</TableHead>
-                          <TableHead>Sévérité</TableHead>
-                          <TableHead>Action</TableHead>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="text-muted-foreground">Fichier</TableHead>
+                          <TableHead className="text-muted-foreground">Ligne</TableHead>
+                          <TableHead className="text-muted-foreground">Pattern</TableHead>
+                          <TableHead className="text-muted-foreground">Sévérité</TableHead>
+                          <TableHead className="text-muted-foreground">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {result.issues.map((issue, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-mono text-sm max-w-[200px] truncate" title={issue.file}>
+                          <TableRow key={index} className="border-border hover:bg-muted/50">
+                            <TableCell className="font-mono text-sm max-w-[200px] truncate text-foreground" title={issue.file}>
                               {issue.file}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
                               {issue.line || "-"}
                             </TableCell>
-                            <TableCell className="font-mono text-sm">
+                            <TableCell className="font-mono text-sm text-foreground">
                               {issue.pattern}
                             </TableCell>
                             <TableCell>
@@ -743,7 +743,7 @@ const Dashboard = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleCleanFile(issue.file)}
-                                className="gap-1"
+                                className="gap-1 rounded-lg border-border"
                               >
                                 <Sparkles className="h-3 w-3" />
                                 Nettoyer
@@ -822,11 +822,11 @@ const Dashboard = () => {
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" className="glow-sm" onClick={() => setExporterOpen(true)}>
+                <Button size="lg" className="rounded-lg shadow-lg hover:shadow-xl transition-shadow" onClick={() => setExporterOpen(true)}>
                   <Package className="mr-2 h-5 w-5" />
                   Exporter le projet autonome
                 </Button>
-                <Button size="lg" variant="outline" onClick={resetAnalysis}>
+                <Button size="lg" variant="outline" className="rounded-lg border-border" onClick={resetAnalysis}>
                   <RefreshCw className="mr-2 h-5 w-5" />
                   Analyser un autre projet
                 </Button>
