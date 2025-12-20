@@ -35,7 +35,8 @@ import { toast } from "sonner";
 
 interface UserData {
   user_id: string;
-  email?: string;
+  email: string;
+  created_at: string;
   plan_type: string;
   status: string;
   credits_remaining: number;
@@ -58,52 +59,27 @@ const AdminUsersList = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Get all subscriptions (which includes user_ids)
-      const { data: subscriptions, error: subError } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Get session for auth header
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session?.access_token) {
+        throw new Error("No session");
+      }
 
-      if (subError) throw subError;
-
-      // Get project counts and average scores per user
-      const { data: projects, error: projError } = await supabase
-        .from("projects_analysis")
-        .select("user_id, portability_score");
-
-      if (projError) throw projError;
-
-      // Get banned users
-      const { data: bannedUsers, error: banError } = await supabase
-        .from("banned_users")
-        .select("user_id");
-
-      if (banError) throw banError;
-
-      const bannedSet = new Set(bannedUsers?.map(b => b.user_id) || []);
-
-      // Aggregate data
-      const userMap = new Map<string, UserData>();
-
-      subscriptions?.forEach(sub => {
-        const userProjects = projects?.filter(p => p.user_id === sub.user_id) || [];
-        const scores = userProjects.map(p => p.portability_score).filter(s => s !== null);
-        const avgScore = scores.length > 0 
-          ? Math.round(scores.reduce((a, b) => a + (b || 0), 0) / scores.length)
-          : 0;
-
-        userMap.set(sub.user_id, {
-          user_id: sub.user_id,
-          plan_type: sub.plan_type,
-          status: sub.status,
-          credits_remaining: sub.credits_remaining || 0,
-          project_count: userProjects.length,
-          avg_score: avgScore,
-          is_banned: bannedSet.has(sub.user_id),
-        });
+      // Call admin edge function to get all users with emails
+      const response = await supabase.functions.invoke("admin-list-users", {
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
       });
 
-      setUsers(Array.from(userMap.values()));
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.users) {
+        setUsers(response.data.users);
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Erreur lors du chargement des utilisateurs");
@@ -181,7 +157,8 @@ const AdminUsersList = () => {
   };
 
   const filteredUsers = users.filter(u => 
-    u.user_id.toLowerCase().includes(searchQuery.toLowerCase())
+    u.user_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) {
@@ -224,7 +201,7 @@ const AdminUsersList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID Utilisateur</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Crédits</TableHead>
@@ -236,10 +213,15 @@ const AdminUsersList = () => {
             <TableBody>
               {filteredUsers.map((userData) => (
                 <TableRow key={userData.user_id} className={userData.is_banned ? "opacity-50" : ""}>
-                  <TableCell className="font-mono text-sm">
-                    {userData.user_id.slice(0, 8)}...
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{userData.email}</span>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {userData.user_id.slice(0, 8)}...
+                      </span>
+                    </div>
                     {userData.is_banned && (
-                      <Badge variant="destructive" className="ml-2">Banni</Badge>
+                      <Badge variant="destructive" className="mt-1">Banni</Badge>
                     )}
                   </TableCell>
                   <TableCell>

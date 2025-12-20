@@ -54,7 +54,7 @@ interface HistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, subscription } = useAuth();
+  const { user, loading: authLoading, subscription, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [state, setState] = useState<AnalysisState>("idle");
@@ -109,12 +109,16 @@ const Dashboard = () => {
     checkGitHubConnection();
   }, [user]);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or if admin
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+    // Redirect admin to admin dashboard
+    if (!authLoading && user && isAdmin) {
+      navigate("/admin-dashboard");
+    }
+  }, [user, authLoading, isAdmin, navigate]);
 
   // Fetch user's analysis history
   useEffect(() => {
