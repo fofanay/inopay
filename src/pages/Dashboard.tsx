@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { analyzeZipFile, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
 import CodeCleaner from "@/components/CodeCleaner";
-
+import ProjectExporter from "@/components/ProjectExporter";
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 
 interface HistoryItem {
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [extractedFiles, setExtractedFiles] = useState<Map<string, string>>(new Map());
   const [cleanerOpen, setCleanerOpen] = useState(false);
   const [selectedFileForCleaning, setSelectedFileForCleaning] = useState<{ name: string; content: string } | null>(null);
+  const [exporterOpen, setExporterOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -562,9 +563,9 @@ const Dashboard = () => {
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" className="glow-sm">
-                  <Download className="mr-2 h-5 w-5" />
-                  Télécharger le rapport PDF
+                <Button size="lg" className="glow-sm" onClick={() => setExporterOpen(true)}>
+                  <Package className="mr-2 h-5 w-5" />
+                  Exporter le projet autonome
                 </Button>
                 <Button size="lg" variant="outline" onClick={resetAnalysis}>
                   <RefreshCw className="mr-2 h-5 w-5" />
@@ -586,6 +587,18 @@ const Dashboard = () => {
             setCleanerOpen(false);
             setSelectedFileForCleaning(null);
           }}
+        />
+      )}
+
+      {/* Project Exporter Modal */}
+      {result && (
+        <ProjectExporter
+          projectId={result.id}
+          projectName={fileName.replace('.zip', '')}
+          extractedFiles={extractedFiles}
+          isOpen={exporterOpen}
+          onClose={() => setExporterOpen(false)}
+          onComplete={fetchHistory}
         />
       )}
     </Layout>
