@@ -53,6 +53,65 @@ serve(async (req) => {
       });
     }
 
+    // Detect environment variables in files and generate .env.example
+    const detectEnvVariables = (filesObj: Record<string, string>): Set<string> => {
+      const envVars = new Set<string>();
+      const patterns = [
+        /import\.meta\.env\.(\w+)/g,
+        /process\.env\.(\w+)/g,
+        /Deno\.env\.get\(['"](\w+)['"]\)/g,
+      ];
+
+      for (const content of Object.values(filesObj)) {
+        for (const pattern of patterns) {
+          let match;
+          const regex = new RegExp(pattern.source, pattern.flags);
+          while ((match = regex.exec(content as string)) !== null) {
+            if (match[1] && !match[1].startsWith('NODE_')) {
+              envVars.add(match[1]);
+            }
+          }
+        }
+      }
+      return envVars;
+    };
+
+    const generateEnvExample = (envVars: Set<string>): string => {
+      const lines = [
+        '# ============================================',
+        '# Variables d\'environnement du projet',
+        '# ============================================',
+        '# Copiez ce fichier vers .env et remplissez les valeurs',
+        '# cp .env.example .env',
+        '',
+      ];
+
+      const varDescriptions: Record<string, string> = {
+        'VITE_SUPABASE_URL': 'URL de votre projet Supabase',
+        'VITE_SUPABASE_ANON_KEY': 'Clé anonyme Supabase',
+        'VITE_SUPABASE_PUBLISHABLE_KEY': 'Clé publique Supabase',
+        'VITE_API_URL': 'URL de votre API backend',
+        'VITE_STRIPE_PUBLISHABLE_KEY': 'Clé publique Stripe',
+        'STRIPE_SECRET_KEY': 'Clé secrète Stripe',
+        'DATABASE_URL': 'URL de connexion à la base de données',
+      };
+
+      for (const envVar of Array.from(envVars).sort()) {
+        const description = varDescriptions[envVar] || 'À configurer';
+        lines.push(`# ${description}`);
+        lines.push(`${envVar}=`);
+        lines.push('');
+      }
+
+      return lines.join('\n');
+    };
+
+    const detectedEnvVars = detectEnvVariables(files as Record<string, string>);
+    const envExampleContent = generateEnvExample(detectedEnvVars);
+    
+    // Add .env.example to files
+    const filesWithEnv = { ...files, '.env.example': envExampleContent };
+
     console.log(`Creating GitHub repo: ${repoName}`);
 
     // Step 1: Create the repository
@@ -128,10 +187,10 @@ serve(async (req) => {
     const refData = await refResponse.json();
     const baseSha = refData.object.sha;
 
-    // Step 3: Create blobs for each file
+    // Step 3: Create blobs for each file (including .env.example)
     const fileBlobs: { path: string; sha: string; mode: string; type: string }[] = [];
 
-    for (const [filePath, content] of Object.entries(files)) {
+    for (const [filePath, content] of Object.entries(filesWithEnv)) {
       const blobResponse = await fetch(
         `https://api.github.com/repos/${repoFullName}/git/blobs`,
         {
