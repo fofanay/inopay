@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
 import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield, Lock, Crown, Cloud } from "lucide-react";
+import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -72,8 +73,19 @@ const Dashboard = () => {
   const [isImportingRepo, setIsImportingRepo] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
   const [dbConfigComplete, setDbConfigComplete] = useState(false);
+  const [sovereignExportOpen, setSovereignExportOpen] = useState(false);
 
-  // Calculate current step for stepper
+  // Keyboard shortcut for Sovereign Export (Ctrl+Shift+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "S") {
+        e.preventDefault();
+        setSovereignExportOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const getCurrentStep = () => {
     if (!isGitHubConnected && importMethod === "github-oauth") return 1;
     if (state === "idle" && isGitHubConnected) return 2;
@@ -957,6 +969,12 @@ const Dashboard = () => {
           onComplete={fetchHistory}
         />
       )}
+
+      {/* Sovereign Export Modal (Ctrl+Shift+S) */}
+      <SovereignExport
+        isOpen={sovereignExportOpen}
+        onClose={() => setSovereignExportOpen(false)}
+      />
     </Layout>
   );
 };
