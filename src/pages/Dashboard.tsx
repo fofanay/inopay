@@ -19,6 +19,7 @@ import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult, DependencyItem, 
 import CodeCleaner from "@/components/CodeCleaner";
 import ProjectExporter from "@/components/ProjectExporter";
 import StepperProgress from "@/components/dashboard/StepperProgress";
+import AnalysisProgressSteps, { AnalysisStep } from "@/components/dashboard/AnalysisProgressSteps";
 import GitHubRepoSelector from "@/components/dashboard/GitHubRepoSelector";
 import GitHubConnectButton from "@/components/dashboard/GitHubConnectButton";
 import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   const [state, setState] = useState<AnalysisState>("idle");
+  const [analysisStep, setAnalysisStep] = useState<AnalysisStep>("connecting");
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [fileName, setFileName] = useState("");
@@ -223,10 +225,19 @@ const Dashboard = () => {
     
     setState("uploading");
     setProgress(0);
+    setAnalysisStep("connecting");
     setProgressMessage("Connexion au dépôt GitHub...");
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Step 1: Connecting
+      setProgress(5);
+      
+      // Step 2: Downloading
+      setAnalysisStep("downloading");
+      setProgressMessage("Téléchargement du dépôt en cours...");
+      setProgress(10);
       
       const response = await supabase.functions.invoke("fetch-github-repo", {
         body: { url },
@@ -245,26 +256,25 @@ const Dashboard = () => {
         throw new Error("Aucun fichier trouvé dans le dépôt");
       }
 
-      setFileName(repository.name);
+      // Step 3: Extracting
+      setAnalysisStep("extracting");
+      setProgressMessage(`Extraction de ${files.length} fichiers...`);
       setProgress(25);
+      setFileName(repository.name);
       
       // Show partial analysis message if applicable
       if (isPartialAnalysis) {
-        const reasonMessage = partialReason === "rate_limited" 
-          ? "Limite API GitHub atteinte" 
-          : `Limite du plan ${planType} atteinte`;
-        setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length}/${totalFilesInRepo} fichiers - ${reasonMessage})`);
-        
         toast({
           title: "Analyse partielle",
           description: `${files.length} fichiers sur ${totalFilesInRepo} analysés (limite: ${planLimit} fichiers). ${partialReason === "plan_limit" ? "Passez à un plan supérieur pour analyser plus de fichiers." : ""}`,
           variant: "default",
         });
-      } else {
-        setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length} fichiers)`);
       }
       
+      // Step 4: Analyzing
       setState("analyzing");
+      setAnalysisStep("analyzing");
+      setProgressMessage("Détection des dépendances propriétaires...");
 
       const analysisResult = await analyzeFromGitHub(files, repository.name, (progress, message) => {
         setProgress(25 + (progress * 0.75));
@@ -324,6 +334,7 @@ const Dashboard = () => {
 
   const resetAnalysis = () => {
     setState("idle");
+    setAnalysisStep("connecting");
     setProgress(0);
     setProgressMessage("");
     setFileName("");
@@ -608,32 +619,18 @@ const Dashboard = () => {
                     <Badge className="mx-auto mb-4 bg-info/10 text-info border-info/20">
                       En cours
                     </Badge>
-                    <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
+                    <CardTitle className="text-xl text-foreground">Analyse de portabilité</CardTitle>
                     <CardDescription className="max-w-md mx-auto">
-                      Nous scannons votre code pour identifier les dépendances propriétaires et les verrous technologiques.
+                      Nous scannons votre code pour identifier les dépendances propriétaires.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="py-12 px-8">
-                    <div className="flex flex-col items-center text-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mb-6 animate-pulse-soft">
-                        <Loader2 className="h-8 w-8 text-accent animate-spin" />
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-4">
-                        <FileArchive className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium text-foreground">{fileName}</span>
-                      </div>
-
-                      <h3 className="text-lg font-semibold mb-2 text-foreground">
-                        Analyse de la structure en cours...
-                      </h3>
-                      <p className="text-muted-foreground mb-6">{progressMessage}</p>
-
-                      <div className="w-full max-w-md">
-                        <Progress value={progress} className="h-2 bg-muted" />
-                        <p className="text-sm text-muted-foreground mt-2">Score de liberté actuel : {Math.round(progress)}%</p>
-                      </div>
-                    </div>
+                  <CardContent className="py-8 px-8">
+                    <AnalysisProgressSteps
+                      currentStep={analysisStep}
+                      progress={progress}
+                      progressMessage={progressMessage}
+                      fileName={fileName}
+                    />
                   </CardContent>
                 </Card>
               )}
