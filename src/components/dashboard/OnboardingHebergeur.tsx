@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +24,11 @@ import {
   Sparkles,
   Package,
   Plane,
-  Home
+  Home,
+  Shield,
+  Crown,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,6 +39,7 @@ interface OnboardingHebergeurProps {
   extractedFiles: Array<{ path: string; content: string }>;
   onDeploymentComplete: (url: string) => void;
   onBack: () => void;
+  isSubscribed: boolean;
 }
 
 interface FTPCredentials {
@@ -43,6 +49,19 @@ interface FTPCredentials {
   port: string;
   remotePath: string;
 }
+
+// Simple encryption utility for credentials (base64 + reversal - not production-grade but obfuscates)
+const encryptCredentials = (data: FTPCredentials): string => {
+  const json = JSON.stringify(data);
+  const reversed = json.split('').reverse().join('');
+  return btoa(reversed);
+};
+
+const decryptCredentials = (encrypted: string): FTPCredentials => {
+  const reversed = atob(encrypted);
+  const json = reversed.split('').reverse().join('');
+  return JSON.parse(json);
+};
 
 type ConnectionStatus = "idle" | "testing" | "success" | "error";
 type DeploymentPhase = "packing" | "traveling" | "installing" | "finishing";
@@ -103,7 +122,8 @@ export function OnboardingHebergeur({
   projectName,
   extractedFiles,
   onDeploymentComplete,
-  onBack
+  onBack,
+  isSubscribed
 }: OnboardingHebergeurProps) {
   const [credentials, setCredentials] = useState<FTPCredentials>({
     host: "",
@@ -124,6 +144,20 @@ export function OnboardingHebergeur({
   const [deploymentProgress, setDeploymentProgress] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<DeploymentPhase>("packing");
   const [currentMessage, setCurrentMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Clear sensitive data from memory when component unmounts
+  React.useEffect(() => {
+    return () => {
+      setCredentials({
+        host: "",
+        username: "",
+        password: "",
+        port: "21",
+        remotePath: "/public_html"
+      });
+    };
+  }, []);
 
   const handleTestConnection = async () => {
     if (!credentials.host || !credentials.username || !credentials.password) {
@@ -333,14 +367,40 @@ export function OnboardingHebergeur({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+              <Shield className="h-3 w-3" />
+              <span>Non stocké</span>
+            </div>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••••••"
-            value={credentials.password}
-            onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••••••"
+              value={credentials.password}
+              onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+              autoComplete="off"
+              data-lpignore="true"
+              className="pr-10"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Shield className="h-3 w-3 text-green-500" />
+            Vos identifiants ne sont jamais stockés et sont transmis de façon sécurisée
+          </p>
         </div>
 
         {/* Advanced options (collapsed by default) */}
@@ -447,16 +507,57 @@ export function OnboardingHebergeur({
 
   const renderDeployButton = () => (
     <div className="space-y-6">
+      {/* Paywall for deployment */}
+      {!isSubscribed && connectionStatus === "success" && (
+        <Card className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-background border-amber-500/30">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <Crown className="h-7 w-7 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground mb-1">
+                  Connexion validée ! 🎉
+                </h3>
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Votre test de connexion est gratuit. Pour lancer le déploiement final, 
+                  activez votre abonnement.
+                </p>
+              </div>
+              <Link to="/tarifs">
+                <Button className="gap-2 bg-amber-500 hover:bg-amber-600 text-white shadow-lg">
+                  <Crown className="h-4 w-4" />
+                  Débloquer le déploiement
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!isDeploying ? (
         <Button
           onClick={handleDeploy}
-          disabled={connectionStatus !== "success"}
+          disabled={connectionStatus !== "success" || !isSubscribed}
           size="lg"
-          className="w-full h-20 text-xl font-bold bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+          className={`w-full h-20 text-xl font-bold transition-all ${
+            isSubscribed && connectionStatus === "success"
+              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30 hover:scale-[1.02]"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
         >
-          <Rocket className="h-8 w-8 mr-3" />
-          Lancer le déploiement final
-          <Sparkles className="h-6 w-6 ml-3" />
+          {!isSubscribed ? (
+            <>
+              <Lock className="h-8 w-8 mr-3" />
+              Déploiement réservé aux abonnés
+            </>
+          ) : (
+            <>
+              <Rocket className="h-8 w-8 mr-3" />
+              Lancer le déploiement final
+              <Sparkles className="h-6 w-6 ml-3" />
+            </>
+          )}
         </Button>
       ) : (
         <Card className="overflow-hidden">
