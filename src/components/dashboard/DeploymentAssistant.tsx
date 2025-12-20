@@ -537,7 +537,7 @@ const DeploymentAssistant = ({
       );
     }
 
-    // For selfhosted - show instructions
+    // For selfhosted - show Coolify guided setup
     return (
       <div className="space-y-6">
         <Button
@@ -553,62 +553,157 @@ const DeploymentAssistant = ({
         <div className="text-center mb-6">
           <Badge className="mb-3 bg-accent/10 text-accent border-accent/20 gap-1">
             <Server className="h-3 w-3" />
-            Auto-hébergement
+            Auto-hébergement Pro
           </Badge>
           <h3 className="text-2xl font-bold text-foreground mb-2">
-            Déployez avec Docker
+            Déployez comme un pro avec Coolify
           </h3>
-          <p className="text-muted-foreground">
-            Votre projet inclut déjà les fichiers Docker nécessaires
+          <p className="text-muted-foreground max-w-lg mx-auto">
+            Nous recommandons <strong>Coolify</strong> pour gérer vos applications sur votre serveur. 
+            C'est un Heroku/Vercel auto-hébergé, gratuit et open source.
           </p>
         </div>
 
-        <Card className="card-shadow">
-          <CardContent className="p-6">
-            <div className="space-y-4">
+        {/* Coolify recommendation card */}
+        <Card className="card-shadow border-accent/30 max-w-2xl mx-auto">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                <span className="text-2xl">🚀</span>
+              </div>
+              <div>
+                <CardTitle className="text-lg">Coolify - PaaS auto-hébergé</CardTitle>
+                <CardDescription>Gérez vos apps comme Vercel, sur votre propre serveur</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Step 1: GitHub push */}
+            <div className="space-y-3">
               <div className="flex items-start gap-4">
                 <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-sm flex-shrink-0">
                   1
                 </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Téléchargez votre projet</h4>
-                  <p className="text-sm text-muted-foreground">Inclut Dockerfile et docker-compose.yml</p>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground mb-1">
+                    Envoyez votre code sur GitHub
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    FreedomCode pousse votre projet nettoyé sur un nouveau repo GitHub.
+                  </p>
+                  <Button onClick={onGitHubPush} disabled={disabled} className="gap-2">
+                    <Github className="h-4 w-4" />
+                    Créer le repo GitHub
+                  </Button>
                 </div>
               </div>
+            </div>
+
+            {/* Step 2: Install Coolify */}
+            <div className="space-y-3">
               <div className="flex items-start gap-4">
                 <div className="h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-sm flex-shrink-0">
                   2
                 </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Uploadez sur votre serveur</h4>
-                  <p className="text-sm text-muted-foreground">Via SCP, SFTP ou Git clone</p>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground mb-1">
+                    Installez Coolify sur votre serveur
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Connectez-vous à votre VPS en SSH et collez cette commande magique :
+                  </p>
+                  <div className="relative">
+                    <code className="block px-4 py-3 bg-foreground text-background rounded-lg text-sm font-mono overflow-x-auto">
+                      curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 gap-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText("curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash");
+                        toast({
+                          title: "Copié !",
+                          description: "Collez cette commande dans votre terminal SSH",
+                        });
+                      }}
+                    >
+                      <Check className="h-3 w-3" />
+                      Copier
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Installation automatique en ~2 minutes (Docker, Traefik, SSL inclus)
+                  </p>
                 </div>
               </div>
+            </div>
+
+            {/* Step 3: Import from GitHub */}
+            <div className="space-y-3">
               <div className="flex items-start gap-4">
                 <div className="h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-sm flex-shrink-0">
                   3
                 </div>
-                <div>
-                  <h4 className="font-semibold text-foreground">Lancez avec Docker</h4>
-                  <code className="block mt-2 px-3 py-2 bg-muted rounded text-sm font-mono">
-                    docker compose up -d
-                  </code>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground mb-1">
+                    Importez votre projet dans Coolify
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Votre code nettoyé est déjà sur GitHub. Dans Coolify :
+                  </p>
+                  <ol className="text-sm text-muted-foreground space-y-2 ml-4 list-decimal">
+                    <li>Accédez à <strong>http://votre-ip:8000</strong></li>
+                    <li>Créez un compte administrateur</li>
+                    <li>Cliquez sur <strong>"New Resource"</strong> → <strong>"Public Repository"</strong></li>
+                    <li>Collez l'URL de votre repo GitHub</li>
+                    <li>Cliquez sur <strong>"Deploy"</strong> - c'est tout !</li>
+                  </ol>
                 </div>
               </div>
             </div>
-            
-            <div className="mt-6 pt-6 border-t border-border flex gap-3">
-              <Button onClick={onDownload} disabled={disabled} className="gap-2 flex-1">
-                <Download className="h-4 w-4" />
-                Télécharger (.zip)
-              </Button>
-              <Button variant="outline" onClick={onGitHubPush} disabled={disabled} className="gap-2 flex-1">
-                <Github className="h-4 w-4" />
-                Push GitHub
-              </Button>
+
+            {/* VPS providers */}
+            <div className="pt-4 border-t border-border">
+              <p className="text-sm text-muted-foreground mb-3">
+                💡 <strong>Pas encore de serveur ?</strong> Voici nos recommandations :
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { name: "Hetzner", url: "https://hetzner.cloud", price: "~4€/mois", logo: "🖥️" },
+                  { name: "DigitalOcean", url: "https://digitalocean.com", price: "~5$/mois", logo: "🌊" },
+                  { name: "Vultr", url: "https://vultr.com", price: "~5$/mois", logo: "🔥" },
+                  { name: "Scaleway", url: "https://scaleway.com", price: "~4€/mois", logo: "🔶" },
+                ].map((vps) => (
+                  <a
+                    key={vps.name}
+                    href={vps.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:border-accent/50 hover:bg-muted/50 transition-all text-sm"
+                  >
+                    <span>{vps.logo}</span>
+                    <span className="font-medium">{vps.name}</span>
+                    <span className="text-muted-foreground">{vps.price}</span>
+                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Alternative: Manual Docker */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-2">
+            Préférez une installation manuelle ?
+          </p>
+          <Button variant="link" onClick={onDownload} className="text-muted-foreground gap-2">
+            <Download className="h-4 w-4" />
+            Télécharger le projet avec Dockerfile
+          </Button>
+        </div>
       </div>
     );
   }
