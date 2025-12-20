@@ -71,13 +71,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const checkSubscription = async () => {
-    if (!session?.access_token) return;
+  const checkSubscription = async (accessToken?: string) => {
+    const tokenToUse = accessToken || session?.access_token;
+    if (!tokenToUse) {
+      console.log("[AUTH] checkSubscription: No token available");
+      return;
+    }
+
+    console.log("[AUTH] checkSubscription: Calling with token");
 
     try {
       const response = await supabase.functions.invoke("check-subscription", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${tokenToUse}`,
         },
       });
 
@@ -105,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Check subscription and role after auth state change
         if (session?.access_token) {
           setTimeout(() => {
-            checkSubscription();
+            checkSubscription(session.access_token);
           }, 0);
         } else {
           setSubscription({ subscribed: false, planType: "free" });
@@ -122,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.access_token) {
         setTimeout(() => {
-          checkSubscription();
+          checkSubscription(session.access_token);
         }, 0);
       }
     });
