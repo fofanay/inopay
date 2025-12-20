@@ -67,7 +67,7 @@ const Dashboard = () => {
   const [selectedFileForCleaning, setSelectedFileForCleaning] = useState<{ name: string; content: string } | null>(null);
   const [exporterOpen, setExporterOpen] = useState(false);
   const [githubUrl, setGithubUrl] = useState("");
-  const [importMethod, setImportMethod] = useState<ImportMethod>("github-oauth");
+  const [importMethod, setImportMethod] = useState<ImportMethod>("github-url");
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
   const [isImportingRepo, setIsImportingRepo] = useState(false);
@@ -395,25 +395,20 @@ const Dashboard = () => {
           {/* Stepper Progress */}
           <StepperProgress currentStep={getCurrentStep()} />
 
-          {/* Step 1: GitHub Connection (when not connected and using OAuth method) */}
-          {state === "idle" && !isGitHubConnected && importMethod === "github-oauth" && (
+          {/* Step 1: GitHub URL Input (Primary method) */}
+          {state === "idle" && importMethod === "github-url" && (
             <div className="space-y-6 animate-fade-in">
-              <GitHubConnectButton onSwitchToUrl={() => setImportMethod("github-url")} />
-              
-              <div className="text-center flex flex-col gap-2">
-                <Button 
-                  variant="link" 
-                  onClick={() => setImportMethod("zip")}
-                  className="text-muted-foreground hover:text-foreground gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Ou uploader un fichier .zip
-                </Button>
-              </div>
+              <GitHubConnectButton 
+                onSwitchToZip={() => setImportMethod("zip")}
+                onGitHubImport={handleGitHubImport}
+                githubUrl={githubUrl}
+                onGithubUrlChange={setGithubUrl}
+                isLoading={state !== "idle"}
+              />
             </div>
           )}
 
-          {/* Step 2: Repo Selection (when connected via GitHub) */}
+          {/* Step 2: Repo Selection (when connected via GitHub OAuth - future feature) */}
           {state === "idle" && isGitHubConnected && importMethod === "github-oauth" && (
             <div className="space-y-6 animate-fade-in">
               <GitHubRepoSelector 
@@ -424,11 +419,10 @@ const Dashboard = () => {
               <div className="text-center">
                 <Button 
                   variant="link" 
-                  onClick={() => setImportMethod("zip")}
+                  onClick={() => setImportMethod("github-url")}
                   className="text-muted-foreground hover:text-foreground gap-2"
                 >
-                  <Upload className="h-4 w-4" />
-                  Ou uploader un fichier .zip
+                  Retour à l'import par URL
                 </Button>
               </div>
             </div>
@@ -464,83 +458,15 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <div className="text-center flex flex-wrap justify-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setImportMethod("github-oauth")}
-                  className="gap-2"
-                >
-                  <Github className="h-4 w-4" />
-                  Connexion GitHub OAuth
-                </Button>
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  onClick={() => setImportMethod("github-url")}
-                  className="gap-2 text-muted-foreground"
-                >
-                  Entrer une URL GitHub
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Alternative: Direct GitHub URL */}
-          {state === "idle" && importMethod === "github-url" && (
-            <div className="space-y-6 animate-fade-in">
-              <Card className="card-shadow border border-border">
-                <CardHeader className="text-center">
-                  <div className="mx-auto h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                    <Github className="h-8 w-8 text-foreground" />
-                  </div>
-                  <CardTitle className="text-foreground">Importer via URL</CardTitle>
-                  <CardDescription>
-                    Collez l'URL du dépôt GitHub de votre projet
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs bg-card border border-border shadow-lg">
-                          <p className="text-foreground">Vous trouverez cette URL dans les paramètres de votre projet Lovable sous l'onglet GitHub.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="w-full max-w-lg space-y-4">
-                    <Input
-                      type="url"
-                      placeholder="https://github.com/username/repository"
-                      value={githubUrl}
-                      onChange={(e) => setGithubUrl(e.target.value)}
-                      className="w-full rounded-lg border-border"
-                    />
-                    <Button 
-                      onClick={handleGitHubImport} 
-                      className="w-full gap-2 rounded-lg"
-                      disabled={!githubUrl.trim()}
-                    >
-                      <Github className="h-4 w-4" />
-                      Libérer ce projet
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
               <div className="text-center">
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => setImportMethod("github-oauth")}
+                  onClick={() => setImportMethod("github-url")}
                   className="gap-2"
                 >
                   <Github className="h-4 w-4" />
-                  Retour à la connexion GitHub
+                  Retour à l'import par URL
                 </Button>
               </div>
             </div>
