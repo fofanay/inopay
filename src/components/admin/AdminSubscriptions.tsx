@@ -210,59 +210,86 @@ const AdminSubscriptions = () => {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Abonnements actifs</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              {stats?.active || 0}
-            </CardTitle>
-          </CardHeader>
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-success to-success/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-success-foreground/80">Abonnements actifs</p>
+                <p className="text-3xl font-bold text-success-foreground">{stats?.active || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-success-foreground/20">
+                <CheckCircle className="h-6 w-6 text-success-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>En essai</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-500" />
-              {stats?.trialing || 0}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-accent to-accent/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-accent-foreground/80">En essai</p>
+                <p className="text-3xl font-bold text-accent-foreground">{stats?.trialing || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-accent-foreground/20">
+                <Clock className="h-6 w-6 text-accent-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Annulés</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              {stats?.canceled || 0}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-destructive/80 to-destructive/60">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-destructive-foreground/80">Annulés</p>
+                <p className="text-3xl font-bold text-destructive-foreground">{stats?.canceled || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-destructive-foreground/20">
+                <XCircle className="h-6 w-6 text-destructive-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>MRR estimé</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              {stats ? formatAmount(stats.mrr, "eur") : "0 €"}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">MRR estimé</p>
+                <p className="text-2xl font-bold text-white">
+                  {stats ? formatAmount(stats.mrr, "eur") : "0 €"}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="subscriptions">
-        <TabsList>
-          <TabsTrigger value="subscriptions">Abonnements</TabsTrigger>
-          <TabsTrigger value="coupons">Coupons</TabsTrigger>
+        <TabsList className="bg-muted/50 border border-border/50">
+          <TabsTrigger value="subscriptions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Abonnements</TabsTrigger>
+          <TabsTrigger value="coupons" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Coupons</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subscriptions" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="card-hover border-0 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
               <div>
-                <CardTitle>Abonnements Stripe</CardTitle>
-                <CardDescription>{filteredSubs.length} abonnements</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  Abonnements Stripe
+                </CardTitle>
+                <CardDescription className="mt-1">{filteredSubs.length} abonnements</CardDescription>
               </div>
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 border-border/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -273,127 +300,148 @@ const AdminSubscriptions = () => {
                     <SelectItem value="past_due">Impayés</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="sm" onClick={fetchSubscriptions}>
+                <Button variant="outline" size="sm" onClick={fetchSubscriptions} className="border-border/50 hover:bg-muted">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Actualiser
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Fin période</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSubs.map((sub) => (
-                    <TableRow key={sub.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{sub.customer_name || "N/A"}</p>
-                          <p className="text-sm text-muted-foreground">{sub.customer_email || "N/A"}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{sub.plan_name}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatAmount(sub.amount, sub.currency)}/{sub.interval === "month" ? "mois" : "an"}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(sub.status, sub.cancel_at_period_end)}</TableCell>
-                      <TableCell>{formatDate(sub.current_period_end)}</TableCell>
-                      <TableCell>
-                        {sub.status === "active" && !sub.cancel_at_period_end && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActionDialog({ open: true, sub, action: "cancel_at_period_end" })}
-                          >
-                            Annuler à échéance
-                          </Button>
-                        )}
-                        {sub.status === "active" && sub.cancel_at_period_end && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActionDialog({ open: true, sub, action: "reactivate_subscription" })}
-                          >
-                            Réactiver
-                          </Button>
-                        )}
-                      </TableCell>
+            <CardContent className="pt-6">
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead className="font-semibold">Client</TableHead>
+                      <TableHead className="font-semibold">Plan</TableHead>
+                      <TableHead className="font-semibold">Montant</TableHead>
+                      <TableHead className="font-semibold">Statut</TableHead>
+                      <TableHead className="font-semibold">Fin période</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSubs.map((sub) => (
+                      <TableRow key={sub.id} className="hover:bg-muted/20">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{sub.customer_name || "N/A"}</p>
+                            <p className="text-sm text-muted-foreground">{sub.customer_email || "N/A"}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{sub.plan_name}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatAmount(sub.amount, sub.currency)}/{sub.interval === "month" ? "mois" : "an"}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(sub.status, sub.cancel_at_period_end)}</TableCell>
+                        <TableCell>{formatDate(sub.current_period_end)}</TableCell>
+                        <TableCell>
+                          {sub.status === "active" && !sub.cancel_at_period_end && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setActionDialog({ open: true, sub, action: "cancel_at_period_end" })}
+                              className="border-border/50 hover:bg-muted"
+                            >
+                              Annuler à échéance
+                            </Button>
+                          )}
+                          {sub.status === "active" && sub.cancel_at_period_end && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setActionDialog({ open: true, sub, action: "reactivate_subscription" })}
+                              className="border-primary/50 text-primary hover:bg-primary/10"
+                            >
+                              Réactiver
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="coupons" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="card-hover border-0 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
               <div>
-                <CardTitle>Codes Promo</CardTitle>
-                <CardDescription>{coupons.length} coupons</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Percent className="h-5 w-5 text-primary" />
+                  </div>
+                  Codes Promo
+                </CardTitle>
+                <CardDescription className="mt-1">{coupons.length} coupons</CardDescription>
               </div>
-              <Button onClick={() => setCouponDialog(true)}>
+              <Button onClick={() => setCouponDialog(true)} className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau coupon
               </Button>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Réduction</TableHead>
-                    <TableHead>Durée</TableHead>
-                    <TableHead>Utilisations</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {coupons.map((coupon) => (
-                    <TableRow key={coupon.id}>
-                      <TableCell className="font-mono text-sm">{coupon.id}</TableCell>
-                      <TableCell>{coupon.name || "-"}</TableCell>
-                      <TableCell>
-                        {coupon.percent_off 
-                          ? `${coupon.percent_off}%` 
-                          : coupon.amount_off 
-                            ? formatAmount(coupon.amount_off, coupon.currency || "eur")
-                            : "-"
-                        }
-                      </TableCell>
-                      <TableCell>{coupon.duration}</TableCell>
-                      <TableCell>{coupon.times_redeemed}</TableCell>
-                      <TableCell>
-                        <Badge variant={coupon.valid ? "default" : "destructive"}>
-                          {coupon.valid ? "Actif" : "Expiré"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCoupon(coupon.id)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+            <CardContent className="pt-6">
+              <div className="rounded-lg border border-border/50 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead className="font-semibold">ID</TableHead>
+                      <TableHead className="font-semibold">Nom</TableHead>
+                      <TableHead className="font-semibold">Réduction</TableHead>
+                      <TableHead className="font-semibold">Durée</TableHead>
+                      <TableHead className="font-semibold">Utilisations</TableHead>
+                      <TableHead className="font-semibold">Statut</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {coupons.map((coupon) => (
+                      <TableRow key={coupon.id} className="hover:bg-muted/20">
+                        <TableCell className="font-mono text-sm">{coupon.id}</TableCell>
+                        <TableCell className="font-medium">{coupon.name || "-"}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-success/10 text-success border-success/20">
+                            {coupon.percent_off 
+                              ? `${coupon.percent_off}%` 
+                              : coupon.amount_off 
+                                ? formatAmount(coupon.amount_off, coupon.currency || "eur")
+                                : "-"
+                            }
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{coupon.duration}</TableCell>
+                        <TableCell>
+                          <span className="font-medium">{coupon.times_redeemed}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            className={coupon.valid 
+                              ? "bg-success/10 text-success border-success/20" 
+                              : "bg-destructive/10 text-destructive border-destructive/20"
+                            }
+                          >
+                            {coupon.valid ? "Actif" : "Expiré"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteCoupon(coupon.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -151,52 +151,82 @@ const AdminPayments = () => {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Solde disponible</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Euro className="h-5 w-5 text-primary" />
-              {balance?.available?.[0] ? formatAmount(balance.available[0].amount, balance.available[0].currency) : "0 €"}
-            </CardTitle>
-          </CardHeader>
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Solde disponible</p>
+                <p className="text-2xl font-bold text-primary-foreground">
+                  {balance?.available?.[0] ? formatAmount(balance.available[0].amount, balance.available[0].currency) : "0 €"}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <Euro className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Revenus ce mois</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-500" />
-              {stats ? formatAmount(stats.monthly_revenue, "eur") : "0 €"}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-success to-success/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-success-foreground/80">Revenus ce mois</p>
+                <p className="text-2xl font-bold text-success-foreground">
+                  {stats ? formatAmount(stats.monthly_revenue, "eur") : "0 €"}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-success-foreground/20">
+                <TrendingUp className="h-6 w-6 text-success-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Paiements réussis</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-blue-500" />
-              {stats?.successful_payments || 0}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Paiements réussis</p>
+                <p className="text-2xl font-bold text-white">{stats?.successful_payments || 0}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <CreditCard className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total remboursements</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <RotateCcw className="h-5 w-5 text-orange-500" />
-              {stats ? formatAmount(stats.total_refunds, "eur") : "0 €"}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-warning to-warning/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-warning-foreground/80">Total remboursements</p>
+                <p className="text-2xl font-bold text-warning-foreground">
+                  {stats ? formatAmount(stats.total_refunds, "eur") : "0 €"}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-warning-foreground/20">
+                <RotateCcw className="h-6 w-6 text-warning-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Évolution des revenus</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+              Évolution des revenus
+            </CardTitle>
             <CardDescription>30 derniers paiements réussis</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
@@ -232,63 +262,71 @@ const AdminPayments = () => {
       )}
 
       {/* Payments Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
           <div>
-            <CardTitle>Historique des paiements</CardTitle>
-            <CardDescription>{payments.length} paiements</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              Historique des paiements
+            </CardTitle>
+            <CardDescription className="mt-1">{payments.length} paiements</CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchPayments}>
+          <Button variant="outline" size="sm" onClick={fetchPayments} className="border-border/50 hover:bg-muted">
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-mono text-sm">
-                    {formatDate(payment.created)}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{payment.customer_name || "N/A"}</p>
-                      <p className="text-sm text-muted-foreground">{payment.customer_email || "N/A"}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatAmount(payment.amount, payment.currency)}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                  <TableCell>
-                    {payment.status === "succeeded" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setRefundDialog({ open: true, payment });
-                          setRefundAmount("");
-                        }}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Rembourser
-                      </Button>
-                    )}
-                  </TableCell>
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="font-semibold">Client</TableHead>
+                  <TableHead className="font-semibold">Montant</TableHead>
+                  <TableHead className="font-semibold">Statut</TableHead>
+                  <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {payments.map((payment) => (
+                  <TableRow key={payment.id} className="hover:bg-muted/20">
+                    <TableCell className="font-mono text-sm">
+                      {formatDate(payment.created)}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{payment.customer_name || "N/A"}</p>
+                        <p className="text-sm text-muted-foreground">{payment.customer_email || "N/A"}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatAmount(payment.amount, payment.currency)}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                    <TableCell>
+                      {payment.status === "succeeded" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setRefundDialog({ open: true, payment });
+                            setRefundAmount("");
+                          }}
+                          className="border-border/50 hover:bg-muted"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Rembourser
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

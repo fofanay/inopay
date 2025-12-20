@@ -155,7 +155,7 @@ const AdminAnalytics = () => {
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 border-border/50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -165,7 +165,7 @@ const AdminAnalytics = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" onClick={fetchAnalytics}>
+        <Button variant="outline" onClick={fetchAnalytics} className="border-border/50 hover:bg-muted">
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualiser
         </Button>
@@ -173,44 +173,63 @@ const AdminAnalytics = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Nouveaux abonnements</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              {totalSignups}
-            </CardTitle>
-          </CardHeader>
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Nouveaux abonnements</p>
+                <p className="text-3xl font-bold text-primary-foreground">{totalSignups}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <Users className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Exports analysés</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <FileText className="h-5 w-5 text-green-500" />
-              {totalExports}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-success to-success/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-success-foreground/80">Exports analysés</p>
+                <p className="text-3xl font-bold text-success-foreground">{totalExports}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-success-foreground/20">
+                <FileText className="h-6 w-6 text-success-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Déploiements</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              {totalDeployments}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Déploiements</p>
+                <p className="text-3xl font-bold text-white">{totalDeployments}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Signups Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Nouveaux abonnements</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              Nouveaux abonnements
+            </CardTitle>
             <CardDescription>Évolution sur la période</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.signups}>
@@ -246,12 +265,17 @@ const AdminAnalytics = () => {
         </Card>
 
         {/* Exports Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Exports analysés</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-success/10">
+                <FileText className="h-5 w-5 text-success" />
+              </div>
+              Exports analysés
+            </CardTitle>
             <CardDescription>Projets traités par jour</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.exports}>
@@ -268,7 +292,7 @@ const AdminAnalytics = () => {
                   />
                   <Bar 
                     dataKey="count" 
-                    fill="#10b981" 
+                    fill="hsl(var(--success))" 
                     radius={[4, 4, 0, 0]}
                     name="Exports"
                   />
@@ -282,12 +306,17 @@ const AdminAnalytics = () => {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Deployments Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Déploiements</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-accent/10">
+                <TrendingUp className="h-5 w-5 text-accent" />
+              </div>
+              Déploiements
+            </CardTitle>
             <CardDescription>Par jour</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.deployments}>
@@ -305,7 +334,7 @@ const AdminAnalytics = () => {
                   <Line 
                     type="monotone" 
                     dataKey="count" 
-                    stroke="#3b82f6" 
+                    stroke="hsl(var(--accent))" 
                     strokeWidth={2}
                     dot={false}
                     name="Déploiements"
@@ -317,12 +346,17 @@ const AdminAnalytics = () => {
         </Card>
 
         {/* Plan Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Répartition par plan</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              Répartition par plan
+            </CardTitle>
             <CardDescription>Abonnements actifs</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -349,12 +383,17 @@ const AdminAnalytics = () => {
         </Card>
 
         {/* Provider Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Hébergeurs utilisés</CardTitle>
+        <Card className="card-hover border-0 shadow-md">
+          <CardHeader className="border-b border-border/50 bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-warning/10">
+                <FileText className="h-5 w-5 text-warning" />
+              </div>
+              Hébergeurs utilisés
+            </CardTitle>
             <CardDescription>Déploiements par provider</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
