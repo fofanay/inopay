@@ -48,7 +48,7 @@ const Pricing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const { currency, setCurrency, isLoading: currencyLoading, detectedCountry } = useCurrencyDetection();
+  const { currency, setCurrency } = useCurrencyDetection();
 
   const handleCheckout = async (plan: "pack" | "pro") => {
     if (!user) {
@@ -125,7 +125,6 @@ const Pricing = () => {
         "Support prioritaire",
         `Jusqu'à ${PLAN_LIMITS.pro.maxFiles} fichiers analysés`,
         `${PLAN_LIMITS.pro.maxRepos} dépôts GitHub`,
-        "Token GitHub personnel supporté",
       ],
       buttonText: "Devenir Pro",
       buttonVariant: "default" as const,
@@ -332,43 +331,8 @@ const Pricing = () => {
                     <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Github className="h-4 w-4 text-muted-foreground" />
-                        Token GitHub personnel
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
-            </Card>
-
-            {/* GitHub Token Info */}
-            <Card className="mt-8 border-primary/20 bg-primary/5">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Github className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Token GitHub personnel</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Les utilisateurs Pro peuvent connecter leur propre token GitHub pour augmenter les limites API. 
-                      Avec votre token personnel, vous bénéficiez de 5000 requêtes/heure au lieu de la limite partagée.
-                    </p>
-                    <Link to="/settings">
-                      <Button variant="outline" size="sm">
-                        Configurer dans les paramètres
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
             </Card>
           </div>
 
