@@ -288,79 +288,132 @@ const AdminEmailCMS = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Templates actifs</p>
+                <p className="text-3xl font-bold text-primary-foreground">
+                  {templates.filter(t => t.is_active).length}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <Mail className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-accent to-accent/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-accent-foreground/80">Total templates</p>
+                <p className="text-3xl font-bold text-accent-foreground">{templates.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-accent-foreground/20">
+                <Copy className="h-6 w-6 text-accent-foreground" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Catégories</p>
+                <p className="text-3xl font-bold text-white">
+                  {new Set(templates.map(t => t.category)).size}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <Eye className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
               Templates d'emails
             </CardTitle>
-            <CardDescription>{templates.length} templates configurés</CardDescription>
+            <CardDescription className="mt-1">{templates.length} templates configurés</CardDescription>
           </div>
           <div className="flex gap-2">
             {templates.length === 0 && (
-              <Button variant="outline" onClick={handleImportDefaults} disabled={saving}>
+              <Button variant="outline" onClick={handleImportDefaults} disabled={saving} className="border-border/50 hover:bg-muted">
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Importer templates par défaut
               </Button>
             )}
-            <Button onClick={() => openEditDialog()}>
+            <Button onClick={() => openEditDialog()} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Nouveau template
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Sujet</TableHead>
-                <TableHead>Catégorie</TableHead>
-                <TableHead>Variables</TableHead>
-                <TableHead>Actif</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell className="font-medium">{template.name}</TableCell>
-                  <TableCell className="max-w-xs truncate">{template.subject}</TableCell>
-                  <TableCell>{getCategoryBadge(template.category)}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {(template.variables as unknown as string[])?.slice(0, 3).map((v: string) => (
-                        <Badge key={v} variant="secondary" className="text-xs">{`{{${v}}}`}</Badge>
-                      ))}
-                      {(template.variables as unknown as string[])?.length > 3 && (
-                        <Badge variant="secondary" className="text-xs">+{(template.variables as unknown as string[]).length - 3}</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={template.is_active}
-                      onCheckedChange={() => toggleActive(template.id, template.is_active)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => previewTemplate(template)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(template)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Nom</TableHead>
+                  <TableHead className="font-semibold">Sujet</TableHead>
+                  <TableHead className="font-semibold">Catégorie</TableHead>
+                  <TableHead className="font-semibold">Variables</TableHead>
+                  <TableHead className="font-semibold">Actif</TableHead>
+                  <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {templates.map((template) => (
+                  <TableRow key={template.id} className="hover:bg-muted/20">
+                    <TableCell className="font-medium">{template.name}</TableCell>
+                    <TableCell className="max-w-xs truncate">{template.subject}</TableCell>
+                    <TableCell>{getCategoryBadge(template.category)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(template.variables as unknown as string[])?.slice(0, 3).map((v: string) => (
+                          <Badge key={v} variant="secondary" className="text-xs bg-muted">{`{{${v}}}`}</Badge>
+                        ))}
+                        {(template.variables as unknown as string[])?.length > 3 && (
+                          <Badge variant="secondary" className="text-xs bg-muted">+{(template.variables as unknown as string[]).length - 3}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={template.is_active}
+                        onCheckedChange={() => toggleActive(template.id, template.is_active)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => previewTemplate(template)} className="hover:bg-muted">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(template)} className="hover:bg-muted">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

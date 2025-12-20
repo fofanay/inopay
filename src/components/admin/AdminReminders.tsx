@@ -237,169 +237,222 @@ const AdminReminders = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Campagnes actives</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Bell className="h-5 w-5 text-primary" />
-              {campaigns.filter(c => c.status === "active").length}
-            </CardTitle>
-          </CardHeader>
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-primary to-primary/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-foreground/80">Campagnes actives</p>
+                <p className="text-3xl font-bold text-primary-foreground">
+                  {campaigns.filter(c => c.status === "active").length}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-primary-foreground/20">
+                <Bell className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Emails envoyés (total)</CardDescription>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Send className="h-5 w-5 text-green-500" />
-              {logs.length}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md bg-gradient-to-br from-success to-success/80">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-success-foreground/80">Emails envoyés</p>
+                <p className="text-3xl font-bold text-success-foreground">{logs.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-success-foreground/20">
+                <Send className="h-6 w-6 text-success-foreground" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Dernière exécution</CardDescription>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-500" />
-              {campaigns[0]?.last_run ? formatDate(campaigns[0].last_run) : "Jamais"}
-            </CardTitle>
-          </CardHeader>
+        
+        <Card className="card-hover border-0 shadow-md gradient-inopay">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/80">Dernière exécution</p>
+                <p className="text-lg font-bold text-white truncate">
+                  {campaigns[0]?.last_run ? formatDate(campaigns[0].last_run) : "Jamais"}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/20">
+                <Clock className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
       {/* Campaigns */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
           <div>
-            <CardTitle>Campagnes de relance</CardTitle>
-            <CardDescription>Configurez vos emails automatiques</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Bell className="h-5 w-5 text-primary" />
+              </div>
+              Campagnes de relance
+            </CardTitle>
+            <CardDescription className="mt-1">Configurez vos emails automatiques</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={runCampaigns} disabled={saving}>
+            <Button variant="outline" onClick={runCampaigns} disabled={saving} className="border-border/50 hover:bg-muted">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
               Exécuter maintenant
             </Button>
-            <Button onClick={() => setCampaignDialog(true)}>
+            <Button onClick={() => setCampaignDialog(true)} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle campagne
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Template</TableHead>
-                <TableHead>Déclencheur</TableHead>
-                <TableHead>Délai</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Dernière exécution</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {campaigns.map((campaign) => (
-                <TableRow key={campaign.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{campaign.email_templates?.name || "N/A"}</p>
-                      <p className="text-sm text-muted-foreground truncate max-w-xs">
-                        {campaign.email_templates?.subject}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getTriggerLabel(campaign.trigger_type)}</TableCell>
-                  <TableCell>
-                    {campaign.trigger_days !== null ? `J-${campaign.trigger_days}` : "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={campaign.status === "active" ? "default" : "secondary"}>
-                      {campaign.status === "active" ? "Actif" : "Pausé"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {campaign.last_run ? formatDate(campaign.last_run) : "Jamais"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTestEmailDialog({ open: true, campaignId: campaign.id })}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleCampaignStatus(campaign.id, campaign.status)}
-                      >
-                        {campaign.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteCampaign(campaign.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Template</TableHead>
+                  <TableHead className="font-semibold">Déclencheur</TableHead>
+                  <TableHead className="font-semibold">Délai</TableHead>
+                  <TableHead className="font-semibold">Statut</TableHead>
+                  <TableHead className="font-semibold">Dernière exécution</TableHead>
+                  <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-              {campaigns.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Aucune campagne configurée
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {campaigns.map((campaign) => (
+                  <TableRow key={campaign.id} className="hover:bg-muted/20">
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{campaign.email_templates?.name || "N/A"}</p>
+                        <p className="text-sm text-muted-foreground truncate max-w-xs">
+                          {campaign.email_templates?.subject}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="bg-accent/10 text-accent border-accent/20">
+                        {getTriggerLabel(campaign.trigger_type)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">
+                        {campaign.trigger_days !== null ? `J-${campaign.trigger_days}` : "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={campaign.status === "active" 
+                        ? "bg-success/10 text-success border-success/20" 
+                        : "bg-muted text-muted-foreground"
+                      }>
+                        {campaign.status === "active" ? "Actif" : "Pausé"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {campaign.last_run ? formatDate(campaign.last_run) : "Jamais"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTestEmailDialog({ open: true, campaignId: campaign.id })}
+                          className="hover:bg-muted"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleCampaignStatus(campaign.id, campaign.status)}
+                          className="hover:bg-muted"
+                        >
+                          {campaign.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteCampaign(campaign.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {campaigns.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Bell className="h-8 w-8 opacity-50" />
+                        <span>Aucune campagne configurée</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Logs */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Historique des envois</CardTitle>
+      <Card className="card-hover border-0 shadow-md">
+        <CardHeader className="border-b border-border/50 bg-muted/30">
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <div className="p-2 rounded-lg bg-success/10">
+              <Send className="h-5 w-5 text-success" />
+            </div>
+            Historique des envois
+          </CardTitle>
           <CardDescription>50 derniers emails envoyés</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Destinataire</TableHead>
-                <TableHead>Sujet</TableHead>
-                <TableHead>Statut</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="font-mono text-sm">
-                    {formatDate(log.sent_at)}
-                  </TableCell>
-                  <TableCell>{log.user_email}</TableCell>
-                  <TableCell className="max-w-xs truncate">{log.subject}</TableCell>
-                  <TableCell>
-                    <Badge variant={log.status === "sent" ? "default" : "destructive"}>
-                      {log.status}
-                    </Badge>
-                  </TableCell>
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-border/50 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="font-semibold">Destinataire</TableHead>
+                  <TableHead className="font-semibold">Sujet</TableHead>
+                  <TableHead className="font-semibold">Statut</TableHead>
                 </TableRow>
-              ))}
-              {logs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Aucun email envoyé
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log) => (
+                  <TableRow key={log.id} className="hover:bg-muted/20">
+                    <TableCell className="font-mono text-sm">
+                      {formatDate(log.sent_at)}
+                    </TableCell>
+                    <TableCell className="font-medium">{log.user_email}</TableCell>
+                    <TableCell className="max-w-xs truncate">{log.subject}</TableCell>
+                    <TableCell>
+                      <Badge className={log.status === "sent" 
+                        ? "bg-success/10 text-success border-success/20" 
+                        : "bg-destructive/10 text-destructive border-destructive/20"
+                      }>
+                        {log.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {logs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Send className="h-8 w-8 opacity-50" />
+                        <span>Aucun email envoyé</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
