@@ -2,3 +2,6 @@ project_id = "izqveyvcebolrqpqlmho"
 
 [functions.clean-code]
 verify_jwt = false
+
+[functions.generate-archive]
+verify_jwt = false
