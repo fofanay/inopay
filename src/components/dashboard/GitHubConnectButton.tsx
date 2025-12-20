@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Github, Loader2, ArrowRight, Plug, Shield, Zap } from "lucide-react";
+import { Github, Loader2, ArrowRight, Plug, Shield, Zap, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface GitHubConnectButtonProps {
   onConnected?: () => void;
+  isCompleted?: boolean;
 }
 
-const GitHubConnectButton = ({ onConnected }: GitHubConnectButtonProps) => {
+const GitHubConnectButton = ({ onConnected, isCompleted }: GitHubConnectButtonProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -42,12 +44,20 @@ const GitHubConnectButton = ({ onConnected }: GitHubConnectButtonProps) => {
   return (
     <Card className="card-shadow border border-border status-border-blue overflow-hidden">
       <CardHeader className="text-center pb-4">
+        <div className="flex justify-center mb-4">
+          {isCompleted && (
+            <Badge className="bg-success/10 text-success border-success/20 gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Complété
+            </Badge>
+          )}
+        </div>
         <div className="mx-auto h-20 w-20 rounded-2xl bg-gradient-to-br from-info/20 to-info/5 flex items-center justify-center mb-4 border border-info/20">
           <Plug className="h-10 w-10 text-info" />
         </div>
-        <CardTitle className="text-2xl text-foreground">Connectez votre GitHub</CardTitle>
+        <CardTitle className="text-2xl text-foreground">Étape 1 : Source du projet</CardTitle>
         <CardDescription className="text-base max-w-md mx-auto text-muted-foreground">
-          Accédez à vos projets en un clic et libérez-les de toute dépendance propriétaire
+          Connectez votre compte GitHub pour lister vos applications créées par IA ou uploadez manuellement votre archive ZIP.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center pb-8">
@@ -62,7 +72,7 @@ const GitHubConnectButton = ({ onConnected }: GitHubConnectButtonProps) => {
           ) : (
             <Github className="h-6 w-6" />
           )}
-          Se connecter avec GitHub
+          Continuer avec GitHub
           <ArrowRight className="h-5 w-5" />
         </Button>
         
