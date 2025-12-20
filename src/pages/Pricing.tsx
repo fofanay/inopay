@@ -66,8 +66,8 @@ const Pricing = () => {
       id: "pack",
       name: "Pack Liberté",
       description: "Parfait pour un projet unique",
-      price: "19€",
-      period: "par export",
+      price: "29 $",
+      period: "CAD / export",
       badge: null,
       features: [
         "1 export de projet complet",
@@ -83,8 +83,8 @@ const Pricing = () => {
       id: "pro",
       name: "Pro Illimité",
       description: "Pour les créateurs prolifiques",
-      price: "39€",
-      period: "/mois",
+      price: "59 $",
+      period: "CAD / mois",
       badge: "Populaire",
       features: [
         "Exports illimités",
