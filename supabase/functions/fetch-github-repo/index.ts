@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import JSZip from "https://esm.sh/jszip@3.10.1";
+import { BlobReader, ZipReader, TextWriter } from "https://deno.land/x/zipjs@v2.7.45/index.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,7 +69,7 @@ const COMMON_TEXT_FILES = [
   ".gitignore", ".prettierrc", ".eslintrc"
 ];
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[FETCH-GITHUB-REPO] ${step}${detailsStr}`);
 };
@@ -112,40 +112,16 @@ function isTextFile(filename: string): boolean {
   return hasTextExtension || isCommonTextFile;
 }
 
-// Prioritize and limit files based on plan
-function prioritizeAndLimitFiles(files: string[], maxFiles: number): string[] {
-  // Separate priority and non-priority files
-  const priorityFiles = files.filter(f => isPriorityFile(f));
-  const otherFiles = files.filter(f => !isPriorityFile(f));
-  
-  // Sort priority files by importance
-  priorityFiles.sort((a, b) => {
-    const aScore = PRIORITY_PATTERNS.findIndex(p => p.test(a));
-    const bScore = PRIORITY_PATTERNS.findIndex(p => p.test(b));
-    return aScore - bScore;
-  });
-  
-  // Combine and limit
-  const combined = [...priorityFiles, ...otherFiles];
-  
-  if (maxFiles > 0 && combined.length > maxFiles) {
-    logStep(`Limiting files from ${combined.length} to ${maxFiles}`);
-    return combined.slice(0, maxFiles);
-  }
-  
-  return combined;
-}
-
-// Download repo as zipball and extract files
+// Download repo as zipball and extract files using zip.js (Deno compatible)
 async function downloadAndExtractRepo(
   owner: string,
   repo: string,
   token: string,
   maxFiles: number
 ): Promise<{ files: FileContent[]; totalFiles: number; rateLimited: boolean }> {
-  logStep("Downloading repository as zipball...");
+  logStep("Starting zipball download...");
   
-  // Download zipball (single API request!)
+  // 1. Download zipball
   const zipResponse = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/zipball`,
     {
@@ -166,62 +142,119 @@ async function downloadAndExtractRepo(
     throw new Error(`Failed to download repository: ${zipResponse.statusText}`);
   }
 
-  logStep("Zipball downloaded, extracting...");
-  
-  const zipBuffer = await zipResponse.arrayBuffer();
-  const zip = new JSZip();
-  await zip.loadAsync(zipBuffer);
+  const contentLength = zipResponse.headers.get('content-length');
+  logStep("Zipball downloaded successfully", { size: contentLength });
 
-  // Collect all file paths
-  const allFilePaths: string[] = [];
+  // 2. Create a ZipReader from the blob
+  let zipReader: ZipReader<Blob> | null = null;
   
-  zip.forEach((relativePath, file) => {
-    if (!file.dir) {
+  try {
+    const zipBlob = await zipResponse.blob();
+    logStep("Blob created", { size: zipBlob.size });
+    
+    zipReader = new ZipReader(new BlobReader(zipBlob));
+    logStep("ZipReader created, extracting entries...");
+    
+    // 3. Get all entries
+    const entries = await zipReader.getEntries();
+    logStep("Entries retrieved", { count: entries.length });
+
+    // 4. Filter text files to analyze
+    const textEntries: Array<{ entry: typeof entries[0]; cleanPath: string }> = [];
+    
+    for (const entry of entries) {
+      if (entry.directory) continue;
+      
       // Remove the root folder prefix (e.g., "owner-repo-sha/")
-      const pathParts = relativePath.split('/');
+      const pathParts = entry.filename.split('/');
       const cleanPath = pathParts.slice(1).join('/');
       
       if (cleanPath && !shouldSkipPath(cleanPath) && isTextFile(cleanPath)) {
-        allFilePaths.push(cleanPath);
+        textEntries.push({ entry, cleanPath });
       }
     }
-  });
 
-  logStep(`Found ${allFilePaths.length} text files in repository`);
+    logStep("Text files filtered", { count: textEntries.length });
 
-  // Prioritize and limit files
-  const selectedPaths = prioritizeAndLimitFiles(allFilePaths, maxFiles);
-  logStep(`Selected ${selectedPaths.length} files for analysis`);
-
-  // Extract content for selected files
-  const files: FileContent[] = [];
-  
-  for (const cleanPath of selectedPaths) {
-    // Find the file in the zip (need to add back the root folder)
-    for (const [relativePath, file] of Object.entries(zip.files)) {
-      if (file.dir) continue;
+    // 5. Sort by priority
+    textEntries.sort((a, b) => {
+      const aIsPriority = isPriorityFile(a.cleanPath);
+      const bIsPriority = isPriorityFile(b.cleanPath);
+      if (aIsPriority && !bIsPriority) return -1;
+      if (!aIsPriority && bIsPriority) return 1;
       
-      const pathParts = relativePath.split('/');
-      const currentCleanPath = pathParts.slice(1).join('/');
+      // Within priority files, sort by pattern order
+      if (aIsPriority && bIsPriority) {
+        const aScore = PRIORITY_PATTERNS.findIndex(p => p.test(a.cleanPath));
+        const bScore = PRIORITY_PATTERNS.findIndex(p => p.test(b.cleanPath));
+        return aScore - bScore;
+      }
       
-      if (currentCleanPath === cleanPath) {
-        try {
-          const content = await file.async('string');
-          // Skip very large files (> 500KB)
-          if (content.length < 500000) {
-            files.push({ path: cleanPath, content });
-          }
-        } catch (e) {
-          logStep(`Error extracting ${cleanPath}`, { error: e instanceof Error ? e.message : String(e) });
+      return 0;
+    });
+
+    // 6. Limit files based on plan
+    const totalFiles = textEntries.length;
+    const limitedEntries = maxFiles > 0 
+      ? textEntries.slice(0, maxFiles) 
+      : textEntries;
+
+    logStep("Files selected for extraction", { 
+      selected: limitedEntries.length, 
+      total: totalFiles,
+      limit: maxFiles 
+    });
+
+    // 7. Extract text content from each file
+    const files: FileContent[] = [];
+    
+    for (const { entry, cleanPath } of limitedEntries) {
+      try {
+        if (!entry.getData) {
+          logStep("Entry has no getData method", { path: cleanPath });
+          continue;
         }
-        break;
+        
+        const writer = new TextWriter();
+        const content = await entry.getData(writer);
+        
+        // Skip very large files (> 500KB)
+        if (content && content.length < 500000) {
+          files.push({ path: cleanPath, content });
+        } else if (content && content.length >= 500000) {
+          logStep("File too large, skipping", { path: cleanPath, size: content.length });
+        }
+      } catch (extractError) {
+        logStep("Error extracting file content", { 
+          path: cleanPath, 
+          error: extractError instanceof Error ? extractError.message : String(extractError) 
+        });
+      }
+    }
+
+    logStep("Extraction complete", { extracted: files.length });
+    
+    return { files, totalFiles, rateLimited: false };
+    
+  } catch (error) {
+    logStep("Critical error during extraction", { 
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    throw error;
+  } finally {
+    // 8. Close the reader
+    if (zipReader) {
+      try {
+        await zipReader.close();
+        logStep("ZipReader closed");
+      } catch (closeError) {
+        logStep("Error closing ZipReader", { 
+          error: closeError instanceof Error ? closeError.message : String(closeError) 
+        });
       }
     }
   }
-
-  logStep(`Successfully extracted ${files.length} files`);
-  
-  return { files, totalFiles: allFilePaths.length, rateLimited: false };
 }
 
 serve(async (req) => {
@@ -300,7 +333,7 @@ serve(async (req) => {
       );
     }
 
-    logStep(`Fetching repository: ${parsed.owner}/${parsed.repo}`);
+    logStep("Fetching repository", { owner: parsed.owner, repo: parsed.repo });
 
     // Verify repo exists and get info
     const repoResponse = await fetch(
@@ -327,8 +360,9 @@ serve(async (req) => {
     }
 
     const repoInfo = await repoResponse.json();
+    logStep("Repository info retrieved", { name: repoInfo.name, size: repoInfo.size });
 
-    // Download and extract repository using zipball API (single request!)
+    // Download and extract repository using zipball API with zip.js
     const { files, totalFiles, rateLimited } = await downloadAndExtractRepo(
       parsed.owner,
       parsed.repo,
@@ -346,7 +380,7 @@ serve(async (req) => {
       );
     }
 
-    logStep(`Analysis complete`, { 
+    logStep("Analysis complete", { 
       fetched: files.length, 
       total: totalFiles,
       planType 
