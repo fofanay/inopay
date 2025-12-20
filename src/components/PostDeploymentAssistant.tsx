@@ -11,7 +11,8 @@ import {
   Server,
   Check,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import DeploymentValidator from "./DeploymentValidator";
 
 interface EnvVariable {
   name: string;
@@ -209,6 +211,7 @@ const PostDeploymentAssistant = ({
     docker: []
   });
   const [expandedVars, setExpandedVars] = useState<string[]>([]);
+  const [showValidator, setShowValidator] = useState(false);
 
   const envVariables: EnvVariable[] = detectedEnvVars.map(name => ({
     name,
@@ -455,6 +458,13 @@ const PostDeploymentAssistant = ({
               Fermer
             </Button>
             <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => setShowValidator(true)}
+              >
+                <Globe className="h-4 w-4 mr-2" />
+                Vérifier le déploiement
+              </Button>
               {githubRepoUrl && (
                 <Button 
                   variant="outline"
@@ -484,6 +494,13 @@ const PostDeploymentAssistant = ({
             </div>
           </div>
         </div>
+
+        {/* Deployment validator modal */}
+        <DeploymentValidator 
+          isOpen={showValidator}
+          onClose={() => setShowValidator(false)}
+          projectName={projectName}
+        />
       </DialogContent>
     </Dialog>
   );
