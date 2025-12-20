@@ -22,6 +22,7 @@ import GitHubRepoSelector from "@/components/dashboard/GitHubRepoSelector";
 import GitHubConnectButton from "@/components/dashboard/GitHubConnectButton";
 import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
 import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssistant";
+import { DeploymentHistory } from "@/components/dashboard/DeploymentHistory";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
@@ -924,6 +925,9 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Deployment History */}
+              <DeploymentHistory />
             </div>
           )}
         </div>
