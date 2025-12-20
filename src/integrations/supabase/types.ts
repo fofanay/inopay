@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      deployment_history: {
+        Row: {
+          created_at: string
+          deployed_url: string | null
+          deployment_type: string
+          files_uploaded: number | null
+          host: string | null
+          id: string
+          project_name: string
+          provider: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deployed_url?: string | null
+          deployment_type?: string
+          files_uploaded?: number | null
+          host?: string | null
+          id?: string
+          project_name: string
+          provider: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deployed_url?: string | null
+          deployment_type?: string
+          files_uploaded?: number | null
+          host?: string | null
+          id?: string
+          project_name?: string
+          provider?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects_analysis: {
         Row: {
           created_at: string

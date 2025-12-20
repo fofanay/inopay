@@ -31,7 +31,9 @@ import {
   EyeOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { saveDeploymentToHistory } from "./DeploymentHistory";
 
 interface OnboardingHebergeurProps {
   providerName: string;
@@ -125,6 +127,7 @@ export function OnboardingHebergeur({
   onBack,
   isSubscribed
 }: OnboardingHebergeurProps) {
+  const { user } = useAuth();
   const [credentials, setCredentials] = useState<FTPCredentials>({
     host: "",
     username: "",
@@ -228,6 +231,16 @@ export function OnboardingHebergeur({
       setCurrentMessage("🎉 Votre site est en ligne !");
       
       const deployedUrl = `https://${credentials.host.replace("ftp.", "")}`;
+      
+      // Save to deployment history
+      if (user) {
+        await saveDeploymentToHistory(user.id, projectName, providerName, {
+          host: credentials.host,
+          filesUploaded: extractedFiles.length,
+          deploymentType: "ftp",
+          deployedUrl,
+        });
+      }
       
       setTimeout(() => {
         onDeploymentComplete(deployedUrl);
