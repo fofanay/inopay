@@ -239,7 +239,7 @@ const Dashboard = () => {
         throw new Error(response.error.message || "Erreur lors de la récupération du dépôt");
       }
 
-      const { repository, files } = response.data;
+      const { repository, files, totalFilesInRepo, isPartialAnalysis, partialReason, planType, planLimit } = response.data;
       
       if (!files || files.length === 0) {
         throw new Error("Aucun fichier trouvé dans le dépôt");
@@ -247,13 +247,36 @@ const Dashboard = () => {
 
       setFileName(repository.name);
       setProgress(25);
-      setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length} fichiers)`);
+      
+      // Show partial analysis message if applicable
+      if (isPartialAnalysis) {
+        const reasonMessage = partialReason === "rate_limited" 
+          ? "Limite API GitHub atteinte" 
+          : `Limite du plan ${planType} atteinte`;
+        setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length}/${totalFilesInRepo} fichiers - ${reasonMessage})`);
+        
+        toast({
+          title: "Analyse partielle",
+          description: `${files.length} fichiers sur ${totalFilesInRepo} analysés (limite: ${planLimit} fichiers). ${partialReason === "plan_limit" ? "Passez à un plan supérieur pour analyser plus de fichiers." : ""}`,
+          variant: "default",
+        });
+      } else {
+        setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length} fichiers)`);
+      }
+      
       setState("analyzing");
 
       const analysisResult = await analyzeFromGitHub(files, repository.name, (progress, message) => {
         setProgress(25 + (progress * 0.75));
         setProgressMessage(message);
       });
+
+      // Add partial analysis info to result
+      if (isPartialAnalysis) {
+        analysisResult.recommendations.unshift(
+          `⚠️ Analyse partielle: ${files.length}/${totalFilesInRepo} fichiers analysés (limite ${planType}: ${planLimit} fichiers)`
+        );
+      }
 
       setState("complete");
       setResult(analysisResult);
