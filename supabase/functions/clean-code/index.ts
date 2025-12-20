@@ -24,50 +24,70 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Non autorisé' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Priority: Project secrets > User settings
+    const anthropicProjectKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const openaiProjectKey = Deno.env.get('OPENAI_API_KEY');
+
+    let apiKey: string | null = null;
+    let apiProvider: string = 'anthropic';
+
+    // Use project-level secrets first
+    if (anthropicProjectKey) {
+      apiKey = anthropicProjectKey;
+      apiProvider = 'anthropic';
+      console.log('Using project-level Anthropic API key');
+    } else if (openaiProjectKey) {
+      apiKey = openaiProjectKey;
+      apiProvider = 'openai';
+      console.log('Using project-level OpenAI API key');
+    } else {
+      // Fallback to user settings
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Non autorisé' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: authHeader } }
       });
-    }
 
-    // Create Supabase client to get user settings
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Utilisateur non authentifié' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    // Get user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Utilisateur non authentifié' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      const { data: settings, error: settingsError } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    // Get user settings
-    const { data: settings, error: settingsError } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+      if (settingsError) {
+        console.error('Settings error:', settingsError);
+        return new Response(JSON.stringify({ error: 'Erreur lors de la récupération des paramètres' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    if (settingsError) {
-      console.error('Settings error:', settingsError);
-      return new Response(JSON.stringify({ error: 'Erreur lors de la récupération des paramètres' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+      if (!settings?.api_key) {
+        return new Response(JSON.stringify({ error: 'Clé API non configurée. Veuillez configurer votre clé API dans les paramètres ou ajouter ANTHROPIC_API_KEY/OPENAI_API_KEY dans les secrets du projet.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    if (!settings?.api_key) {
-      return new Response(JSON.stringify({ error: 'Clé API non configurée. Veuillez configurer votre clé API dans les paramètres.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      apiKey = settings.api_key;
+      apiProvider = settings.api_provider;
+      console.log('Using user settings API key');
     }
 
     const { code, fileName } = await req.json();
@@ -82,12 +102,12 @@ serve(async (req) => {
     let response;
     let cleanedCode: string;
 
-    if (settings.api_provider === 'anthropic') {
+    if (apiProvider === 'anthropic') {
       // Call Anthropic API
       response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'x-api-key': settings.api_key,
+          'x-api-key': apiKey!,
           'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json',
         },
@@ -120,7 +140,7 @@ serve(async (req) => {
       response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${settings.api_key}`,
+          'Authorization': `Bearer ${apiKey!}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
