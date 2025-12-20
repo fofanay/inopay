@@ -9,8 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-
-type Currency = "CAD" | "USD" | "EUR";
+import { useCurrencyDetection, type Currency } from "@/hooks/useCurrencyDetection";
 
 // Stripe Price IDs par devise
 const STRIPE_PRICES = {
@@ -40,7 +39,7 @@ const Pricing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<Currency>("CAD");
+  const { currency, setCurrency, isLoading: currencyLoading, detectedCountry } = useCurrencyDetection();
 
   const handleCheckout = async (plan: "pack" | "pro") => {
     if (!user) {
