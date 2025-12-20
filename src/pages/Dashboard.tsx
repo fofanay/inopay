@@ -21,6 +21,7 @@ import StepperProgress from "@/components/dashboard/StepperProgress";
 import GitHubRepoSelector from "@/components/dashboard/GitHubRepoSelector";
 import GitHubConnectButton from "@/components/dashboard/GitHubConnectButton";
 import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
+import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssistant";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
@@ -68,6 +69,8 @@ const Dashboard = () => {
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
   const [isImportingRepo, setIsImportingRepo] = useState(false);
+  const [showDbConfig, setShowDbConfig] = useState(false);
+  const [dbConfigComplete, setDbConfigComplete] = useState(false);
 
   // Calculate current step for stepper
   const getCurrentStep = () => {
@@ -819,6 +822,54 @@ const Dashboard = () => {
                   </Table>
                 </CardContent>
               </Card>
+
+              {/* Step 3.5: Database Configuration */}
+              {!dbConfigComplete && (
+                <Card className="card-shadow border border-border status-border-blue relative">
+                  {!subscription.subscribed && (
+                    <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
+                      <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
+                        <Lock className="h-8 w-8 text-accent" />
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">Configuration avancée</h3>
+                      <p className="text-muted-foreground text-center mb-6 max-w-md">
+                        Configurez votre base de données avec un abonnement.
+                      </p>
+                      <Link to="/tarifs">
+                        <Button className="gap-2 rounded-lg shadow-lg">
+                          <Crown className="h-4 w-4" />
+                          Voir les tarifs
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                  <CardHeader className="text-center border-b border-border">
+                    <Badge className="mx-auto mb-2 bg-accent/10 text-accent border-accent/20 gap-1">
+                      <Cloud className="h-3 w-3" />
+                      Configuration Base de Données
+                    </Badge>
+                    <CardTitle className="text-xl text-foreground">Étape 3.5 : Assistant Base de Données</CardTitle>
+                    <CardDescription className="max-w-md mx-auto">
+                      Configurez votre base de données pour votre nouvel hébergeur
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 pb-8">
+                    <DatabaseConfigAssistant
+                      projectName={fileName.replace('.zip', '')}
+                      extractedFiles={extractedFiles}
+                      onConfigComplete={(config) => {
+                        setDbConfigComplete(true);
+                        toast({
+                          title: "Configuration terminée",
+                          description: config.type === "keep" ? "Base de données actuelle conservée" : "Nouvelle base de données configurée",
+                        });
+                      }}
+                      onSkip={() => setDbConfigComplete(true)}
+                      disabled={!subscription.subscribed}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Step 4: Deployment Assistant */}
               <Card className="card-shadow border border-border status-border-green relative">
