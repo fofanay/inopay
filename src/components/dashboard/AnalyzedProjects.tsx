@@ -8,31 +8,34 @@ import {
   RefreshCw,
   Rocket,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Json } from "@/integrations/supabase/types";
 
-interface AnalyzedProject {
+export interface AnalyzedProject {
   id: string;
   project_name: string;
   file_name: string | null;
   portability_score: number | null;
   status: string;
   created_at: string;
-  detected_issues: any;
-  recommendations: any;
+  detected_issues: Json;
+  recommendations: Json;
 }
 
 interface AnalyzedProjectsProps {
   onSelectProject?: (project: AnalyzedProject) => void;
   onRefresh?: () => void;
+  loadingProjectId?: string | null;
 }
 
-export function AnalyzedProjects({ onSelectProject, onRefresh }: AnalyzedProjectsProps) {
+export function AnalyzedProjects({ onSelectProject, onRefresh, loadingProjectId }: AnalyzedProjectsProps) {
   const { user } = useAuth();
   const [projects, setProjects] = useState<AnalyzedProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,15 +181,20 @@ export function AnalyzedProjects({ onSelectProject, onRefresh }: AnalyzedProject
                   })}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-1">
                     {onSelectProject && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onSelectProject(project)}
+                        disabled={loadingProjectId === project.id}
                         className="h-8 gap-1 text-primary hover:text-primary hover:bg-primary/10"
                       >
-                        <Rocket className="h-4 w-4" />
+                        {loadingProjectId === project.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Rocket className="h-4 w-4" />
+                        )}
                         Déployer
                       </Button>
                     )}
@@ -194,7 +202,7 @@ export function AnalyzedProjects({ onSelectProject, onRefresh }: AnalyzedProject
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDelete(project.id)}
-                      disabled={deleting === project.id}
+                      disabled={deleting === project.id || loadingProjectId === project.id}
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                     >
                       {deleting === project.id ? (
