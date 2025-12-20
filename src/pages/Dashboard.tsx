@@ -909,6 +909,7 @@ const Dashboard = () => {
                     onGitHubPush={() => setExporterOpen(true)}
                     onBack={resetAnalysis}
                     disabled={!subscription.subscribed}
+                    isSubscribed={subscription.subscribed}
                   />
                   
                   <div className="text-center mt-6 pt-6 border-t border-border">
