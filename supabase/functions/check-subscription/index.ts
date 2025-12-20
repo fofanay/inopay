@@ -66,12 +66,17 @@ serve(async (req) => {
     );
     
     if (isUnlimitedTester || (localSub && localSub.plan_type === "pro" && localSub.status === "active")) {
-      logStep("User has Pro access (tester or active subscription)", { isUnlimitedTester });
+      const planLimits = isUnlimitedTester 
+        ? { maxFiles: 2000, maxRepos: -1 } // Enterprise limits for testers
+        : { maxFiles: 500, maxRepos: 50 }; // Pro limits
+      
+      logStep("User has Pro access (tester or active subscription)", { isUnlimitedTester, planLimits });
       return new Response(JSON.stringify({ 
         subscribed: true,
-        plan_type: "pro",
+        plan_type: isUnlimitedTester ? "enterprise" : "pro",
         credits_remaining: localSub.credits_remaining,
         subscription_end: localSub.current_period_end,
+        limits: planLimits,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -87,13 +92,18 @@ serve(async (req) => {
           subscribed: true,
           plan_type: localSub.plan_type || "pack",
           credits_remaining: localSub.credits_remaining,
+          limits: { maxFiles: 200, maxRepos: 10 },
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
       }
       
-      return new Response(JSON.stringify({ subscribed: false, plan_type: "free" }), {
+      return new Response(JSON.stringify({ 
+        subscribed: false, 
+        plan_type: "free",
+        limits: { maxFiles: 100, maxRepos: 3 },
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -131,6 +141,7 @@ serve(async (req) => {
         subscribed: true,
         plan_type: "pro",
         subscription_end: subscriptionEnd,
+        limits: { maxFiles: 500, maxRepos: 50 },
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -143,6 +154,7 @@ serve(async (req) => {
         subscribed: true,
         plan_type: localSub.plan_type || "pack",
         credits_remaining: localSub.credits_remaining,
+        limits: { maxFiles: 200, maxRepos: 10 },
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -150,7 +162,11 @@ serve(async (req) => {
     }
 
     logStep("No active subscription or credits found");
-    return new Response(JSON.stringify({ subscribed: false, plan_type: "free" }), {
+    return new Response(JSON.stringify({ 
+      subscribed: false, 
+      plan_type: "free",
+      limits: { maxFiles: 100, maxRepos: 3 },
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
