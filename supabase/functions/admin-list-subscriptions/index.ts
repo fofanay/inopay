@@ -54,11 +54,11 @@ serve(async (req: Request) => {
     const status = url.searchParams.get("status") || "all";
     const starting_after = url.searchParams.get("starting_after") || undefined;
 
-    // Get subscriptions
+    // Get subscriptions - only expand customer to stay within Stripe's 4-level limit
     const subscriptionsParams: Stripe.SubscriptionListParams = {
       limit,
       starting_after,
-      expand: ["data.customer", "data.items.data.price.product"],
+      expand: ["data.customer"],
     };
 
     if (status !== "all") {
