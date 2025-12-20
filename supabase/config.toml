@@ -11,3 +11,18 @@ verify_jwt = false
 
 [functions.cleanup-storage]
 verify_jwt = false
+
+[functions.fetch-github-repo]
+verify_jwt = false
+
+[functions.list-github-repos]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
