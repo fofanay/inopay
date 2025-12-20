@@ -398,9 +398,9 @@ const Dashboard = () => {
           {/* Step 1: GitHub Connection (when not connected and using OAuth method) */}
           {state === "idle" && !isGitHubConnected && importMethod === "github-oauth" && (
             <div className="space-y-6 animate-fade-in">
-              <GitHubConnectButton />
+              <GitHubConnectButton onSwitchToUrl={() => setImportMethod("github-url")} />
               
-              <div className="text-center">
+              <div className="text-center flex flex-col gap-2">
                 <Button 
                   variant="link" 
                   onClick={() => setImportMethod("zip")}
@@ -464,7 +464,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <div className="text-center">
+              <div className="text-center flex flex-wrap justify-center gap-4">
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -472,7 +472,15 @@ const Dashboard = () => {
                   className="gap-2"
                 >
                   <Github className="h-4 w-4" />
-                  Retour à la connexion GitHub
+                  Connexion GitHub OAuth
+                </Button>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  onClick={() => setImportMethod("github-url")}
+                  className="gap-2 text-muted-foreground"
+                >
+                  Entrer une URL GitHub
                 </Button>
               </div>
             </div>
