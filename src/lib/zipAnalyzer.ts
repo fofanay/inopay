@@ -334,3 +334,105 @@ export async function analyzeZipFile(
     extractedFiles,
   };
 }
+
+interface GitHubFile {
+  path: string;
+  content: string;
+}
+
+// Fonction d'analyse à partir de fichiers GitHub
+export async function analyzeFromGitHub(
+  files: GitHubFile[],
+  repoName: string,
+  onProgress: ProgressCallback
+): Promise<RealAnalysisResult> {
+  const issues: AnalysisIssue[] = [];
+  const dependencies: DependencyItem[] = [];
+  const totalFiles = files.length;
+  let analyzedFiles = 0;
+
+  onProgress(10, `Analyse du dépôt ${repoName}...`);
+
+  // Créer une Map des fichiers extraits
+  const extractedFiles = new Map<string, string>();
+  for (const file of files) {
+    extractedFiles.set(file.path, file.content);
+  }
+
+  // Chercher et analyser package.json
+  onProgress(20, "Recherche du package.json...");
+  
+  const packageJsonFile = files.find(f => 
+    f.path === "package.json" || f.path.endsWith("/package.json")
+  );
+  
+  if (packageJsonFile) {
+    const pkgDeps = analyzePackageJson(packageJsonFile.content);
+    dependencies.push(...pkgDeps);
+    onProgress(30, `package.json analysé (${pkgDeps.length} dépendances)`);
+  }
+
+  // Vérifier les fichiers de configuration propriétaires
+  onProgress(35, "Recherche des fichiers de configuration...");
+  
+  for (const file of files) {
+    const fileName = file.path.split("/").pop() || "";
+    for (const pattern of PROPRIETARY_PATTERNS.files) {
+      if (fileName.includes(pattern)) {
+        issues.push({
+          file: file.path,
+          pattern: fileName,
+          severity: "critical",
+          description: `Fichier de configuration propriétaire`,
+        });
+      }
+    }
+  }
+
+  // Analyser les fichiers sources
+  const sourceFiles = files.filter(
+    f => f.path.endsWith(".tsx") || f.path.endsWith(".ts") || 
+         f.path.endsWith(".jsx") || f.path.endsWith(".js")
+  );
+
+  onProgress(40, `Analyse des fichiers sources (0/${sourceFiles.length})...`);
+
+  for (let i = 0; i < sourceFiles.length; i++) {
+    const file = sourceFiles[i];
+    const fileIssues = analyzeSourceFile(file.path, file.content);
+    issues.push(...fileIssues);
+    analyzedFiles++;
+
+    // Mise à jour de la progression
+    const progress = 40 + Math.floor((i / sourceFiles.length) * 50);
+    if (i % 5 === 0 || i === sourceFiles.length - 1) {
+      onProgress(progress, `Analyse des fichiers sources (${i + 1}/${sourceFiles.length})...`);
+    }
+  }
+
+  onProgress(92, "Calcul du score de portabilité...");
+
+  // Calculer le score
+  const score = calculateScore(issues, dependencies, totalFiles);
+
+  onProgress(96, "Génération des recommandations...");
+
+  // Générer les recommandations
+  const recommendations = generateRecommendations(issues, dependencies);
+
+  // Détecter la plateforme
+  const platform = detectPlatform(issues, dependencies);
+
+  onProgress(100, "Analyse terminée !");
+
+  return {
+    score,
+    platform,
+    totalFiles,
+    analyzedFiles,
+    issues,
+    dependencies,
+    recommendations,
+    extractedFiles,
+  };
+}

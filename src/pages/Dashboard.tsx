@@ -1,17 +1,20 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package } from "lucide-react";
+import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeZipFile, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
+import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
 import CodeCleaner from "@/components/CodeCleaner";
 import ProjectExporter from "@/components/ProjectExporter";
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
@@ -41,6 +44,8 @@ const Dashboard = () => {
   const [cleanerOpen, setCleanerOpen] = useState(false);
   const [selectedFileForCleaning, setSelectedFileForCleaning] = useState<{ name: string; content: string } | null>(null);
   const [exporterOpen, setExporterOpen] = useState(false);
+  const [githubUrl, setGithubUrl] = useState("");
+  const [importMethod, setImportMethod] = useState<"zip" | "github">("zip");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -147,6 +152,70 @@ const Dashboard = () => {
     }
   }, [user, fileName, toast]);
 
+  const runGitHubAnalysis = useCallback(async (url: string) => {
+    if (!user) return;
+    
+    setState("uploading");
+    setProgress(0);
+    setProgressMessage("Connexion au dépôt GitHub...");
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("fetch-github-repo", {
+        body: { url },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erreur lors de la récupération du dépôt");
+      }
+
+      const { repository, files } = response.data;
+      
+      if (!files || files.length === 0) {
+        throw new Error("Aucun fichier trouvé dans le dépôt");
+      }
+
+      setFileName(repository.name);
+      setProgress(25);
+      setProgressMessage(`Dépôt récupéré: ${repository.fullName} (${files.length} fichiers)`);
+      setState("analyzing");
+
+      const analysisResult = await analyzeFromGitHub(files, repository.name, (progress, message) => {
+        setProgress(25 + (progress * 0.75));
+        setProgressMessage(message);
+      });
+
+      setState("complete");
+      setResult(analysisResult);
+      setExtractedFiles(analysisResult.extractedFiles);
+      await saveAnalysis(repository.name, analysisResult);
+    } catch (error) {
+      console.error("GitHub analysis error:", error);
+      toast({
+        title: "Erreur d'importation",
+        description: error instanceof Error ? error.message : "Impossible de récupérer le dépôt GitHub",
+        variant: "destructive",
+      });
+      setState("idle");
+    }
+  }, [user, toast]);
+
+  const handleGitHubImport = () => {
+    if (!githubUrl.trim()) {
+      toast({
+        title: "URL requise",
+        description: "Veuillez entrer l'URL de votre dépôt GitHub",
+        variant: "destructive",
+      });
+      return;
+    }
+    runGitHubAnalysis(githubUrl);
+  };
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
@@ -171,6 +240,7 @@ const Dashboard = () => {
     setFileName("");
     setResult(null);
     setExtractedFiles(new Map());
+    setGithubUrl("");
   };
 
   const handleCleanFile = (filePath: string) => {
@@ -256,33 +326,91 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* Upload Zone */}
+          {/* Import Zone */}
           {state === "idle" && (
             <>
-              <Card className="border-dashed border-2 hover:border-primary/50 transition-colors animate-fade-in mb-8">
-                <CardContent className="p-0">
-                  <div
-                    {...getRootProps()}
-                    className={`flex flex-col items-center justify-center py-20 px-8 cursor-pointer transition-colors ${
-                      isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/30"
-                    }`}
-                  >
-                    <input {...getInputProps()} />
-                    <div className={`flex h-20 w-20 items-center justify-center rounded-2xl mb-6 transition-all ${
-                      isDragActive ? "bg-primary text-primary-foreground glow-primary" : "bg-muted text-muted-foreground"
-                    }`}>
-                      <Upload className="h-10 w-10" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2">
-                      {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      ou cliquez pour sélectionner un fichier
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Format accepté : .zip (max 50MB)
-                    </p>
-                  </div>
+              <Card className="animate-fade-in mb-8">
+                <CardContent className="p-6">
+                  <Tabs value={importMethod} onValueChange={(v) => setImportMethod(v as "zip" | "github")} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="zip" className="gap-2">
+                        <Upload className="h-4 w-4" />
+                        Fichier ZIP
+                      </TabsTrigger>
+                      <TabsTrigger value="github" className="gap-2">
+                        <Github className="h-4 w-4" />
+                        Dépôt GitHub
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="zip" className="mt-0">
+                      <div
+                        {...getRootProps()}
+                        className={`flex flex-col items-center justify-center py-16 px-8 cursor-pointer transition-colors rounded-lg border-2 border-dashed ${
+                          isDragActive ? "bg-primary/10 border-primary" : "bg-card hover:bg-muted/30 border-border"
+                        }`}
+                      >
+                        <input {...getInputProps()} />
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-2xl mb-6 transition-all ${
+                          isDragActive ? "bg-primary text-primary-foreground glow-primary" : "bg-muted text-muted-foreground"
+                        }`}>
+                          <Upload className="h-8 w-8" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">
+                          {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          ou cliquez pour sélectionner un fichier
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Format accepté : .zip (max 50MB)
+                        </p>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="github" className="mt-0">
+                      <div className="flex flex-col items-center py-8 px-8">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-6">
+                          <Github className="h-8 w-8" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">
+                          Importer depuis GitHub
+                        </h3>
+                        <div className="flex items-center gap-2 mb-4">
+                          <p className="text-muted-foreground">
+                            Collez l'URL du dépôt GitHub de votre projet
+                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>Vous trouverez cette URL dans les paramètres de votre projet Lovable sous l'onglet GitHub.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="w-full max-w-lg space-y-4">
+                          <Input
+                            type="url"
+                            placeholder="https://github.com/username/repository"
+                            value={githubUrl}
+                            onChange={(e) => setGithubUrl(e.target.value)}
+                            className="w-full"
+                          />
+                          <Button 
+                            onClick={handleGitHubImport} 
+                            className="w-full gap-2"
+                            disabled={!githubUrl.trim()}
+                          >
+                            <Github className="h-4 w-4" />
+                            Analyser le dépôt
+                          </Button>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
 
