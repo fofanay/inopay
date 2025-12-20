@@ -2,8 +2,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Menu, X, Settings, Archive, Crown, Unlock } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Archive, Crown } from "lucide-react";
 import { useState } from "react";
+import inopayLogo from "@/assets/inopay-logo.png";
 
 const Header = () => {
   const location = useLocation();
@@ -47,10 +48,7 @@ const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Unlock className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-lg font-bold text-foreground">FreedomCode</span>
+            <img src={inopayLogo} alt="Inopay" className="h-10 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}

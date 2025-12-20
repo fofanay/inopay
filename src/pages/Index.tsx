@@ -60,12 +60,12 @@ const Index = () => {
 
   const faqs = [
     {
-      question: "Quelles plateformes IA sont compatibles avec FreedomCode ?",
-      answer: "FreedomCode est compatible avec toutes les principales plateformes de génération de code IA : Lovable, Bolt, v0 by Vercel, Cursor, Replit et bien d'autres. Si votre projet utilise React, Vue, ou tout framework JavaScript moderne, nous pouvons le libérer."
+      question: "Quelles plateformes IA sont compatibles avec Inopay ?",
+      answer: "Inopay est compatible avec toutes les principales plateformes de génération de code IA : Lovable, Bolt, v0 by Vercel, Cursor, Replit et bien d'autres. Si votre projet utilise React, Vue, ou tout framework JavaScript moderne, nous pouvons le libérer."
     },
     {
       question: "Mon code original est-il modifié sur GitHub ?",
-      answer: "Non, jamais. FreedomCode crée une copie optimisée de votre projet. Votre code source original reste intact sur GitHub. Vous pouvez continuer à utiliser la plateforme IA tout en ayant une version autonome en parallèle."
+      answer: "Non, jamais. Inopay crée une copie optimisée de votre projet. Votre code source original reste intact sur GitHub. Vous pouvez continuer à utiliser la plateforme IA tout en ayant une version autonome en parallèle."
     },
     {
       question: "Que signifie « libérer » mon code exactement ?",
@@ -300,7 +300,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Pourquoi choisir FreedomCode ?
+              Pourquoi choisir Inopay ?
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Une solution conçue pour les entrepreneurs qui veulent garder le contrôle

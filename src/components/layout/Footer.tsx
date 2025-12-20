@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Github, Twitter, Mail, Unlock } from "lucide-react";
+import { Github, Twitter, Mail } from "lucide-react";
+import inopayLogo from "@/assets/inopay-logo.png";
 
 const Footer = () => {
   return (
@@ -9,10 +10,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Unlock className="h-5 w-5 text-primary" />
-              </div>
-              <span className="text-xl font-bold text-foreground">FreedomCode</span>
+              <img src={inopayLogo} alt="Inopay" className="h-12 w-auto" />
             </Link>
             <p className="text-sm text-muted-foreground max-w-md mb-4">
               Transformez vos projets IA en applications 100% autonomes. 
@@ -80,10 +78,10 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} FreedomCode. Tous droits réservés.
+              © {new Date().getFullYear()} Inopay. Tous droits réservés.
             </p>
             <p className="text-sm font-medium text-foreground">
-              FreedomCode : Le pont vers votre autonomie technologique
+              Inopay : Le pont vers votre autonomie technologique
             </p>
           </div>
         </div>
