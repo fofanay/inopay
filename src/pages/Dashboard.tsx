@@ -77,6 +77,7 @@ const Dashboard = () => {
   const [dbConfigComplete, setDbConfigComplete] = useState(false);
   const [sovereignExportOpen, setSovereignExportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>("import");
+  const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
 
   // Keyboard shortcut for Sovereign Export (Ctrl+Shift+S)
   useEffect(() => {
@@ -302,6 +303,79 @@ const Dashboard = () => {
     setResult(null);
     setExtractedFiles(new Map());
     setGithubUrl("");
+    setDbConfigComplete(false);
+  };
+
+  // Load a project from history for deployment
+  const loadProjectForDeployment = async (project: {
+    id: string;
+    project_name: string;
+    file_name: string | null;
+    portability_score: number | null;
+    detected_issues: any;
+    recommendations: any;
+  }) => {
+    setLoadingProjectId(project.id);
+    
+    try {
+      // Parse the detected issues to extract issues and dependencies
+      const detectedIssues = Array.isArray(project.detected_issues) ? project.detected_issues : [];
+      const recommendations = Array.isArray(project.recommendations) ? project.recommendations : [];
+      
+      // Separate issues from dependencies based on structure
+      const issues: AnalysisIssue[] = detectedIssues
+        .filter((item: any) => item.pattern || item.file)
+        .map((item: any) => ({
+          file: item.file || item.note?.split(':')[0] || 'unknown',
+          line: item.line,
+          pattern: item.pattern || item.name || 'unknown',
+          severity: item.status === 'incompatible' ? 'critical' as const : 
+                   item.status === 'warning' ? 'warning' as const : 'info' as const,
+          description: item.note || item.description || '',
+        }));
+
+      const dependencies: DependencyItem[] = detectedIssues
+        .filter((item: any) => item.type && !item.pattern)
+        .map((item: any) => ({
+          name: item.name || 'unknown',
+          type: item.type || 'dependency',
+          status: (item.status as DependencyItem['status']) || 'compatible',
+          note: item.note || '',
+        }));
+
+      // Create the result object
+      const loadedResult: RealAnalysisResult & { id: string } = {
+        id: project.id,
+        score: project.portability_score || 0,
+        platform: null,
+        totalFiles: 0,
+        analyzedFiles: 0,
+        issues,
+        dependencies,
+        recommendations: recommendations.map((r: any) => typeof r === 'string' ? r : r.message || ''),
+        extractedFiles: new Map(),
+      };
+
+      setFileName(project.file_name || project.project_name);
+      setResult(loadedResult);
+      setState("complete");
+      setActiveTab("import");
+      setDbConfigComplete(true); // Skip DB config for reloaded projects
+      
+      toast({
+        title: "Projet chargé",
+        description: `${project.project_name} est prêt pour le déploiement`,
+      });
+    } catch (error) {
+      console.error("Error loading project:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger le projet",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingProjectId(null);
+    }
   };
 
   const handleCleanFile = (filePath: string) => {
@@ -852,15 +926,18 @@ const Dashboard = () => {
 
             {/* Tab 2: Analyzed Projects */}
             <TabsContent value="projects" className="space-y-6">
+              <Card className="bg-muted/30 border-dashed mb-4">
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Sélectionnez un projet pour accéder directement aux options de déploiement
+                  </p>
+                </CardContent>
+              </Card>
               <AnalyzedProjects 
-                onSelectProject={(project) => {
-                  // When a user selects a project, switch to import tab to show deployment options
-                  toast({
-                    title: "Projet sélectionné",
-                    description: `${project.project_name} - Score: ${project.portability_score}/100. Réimportez le projet pour accéder aux options de déploiement.`,
-                  });
-                }}
+                onSelectProject={loadProjectForDeployment}
                 onRefresh={fetchHistory}
+                loadingProjectId={loadingProjectId}
               />
             </TabsContent>
 
