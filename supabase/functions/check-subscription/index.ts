@@ -44,20 +44,48 @@ serve(async (req) => {
     // Check for existing customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
+    // Check local subscription table first (for testers and pack users)
+    const { data: localSub } = await supabaseClient
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    logStep("Local subscription check", { 
+      found: !!localSub, 
+      plan_type: localSub?.plan_type,
+      status: localSub?.status,
+      credits_remaining: localSub?.credits_remaining,
+      free_credits: localSub?.free_credits
+    });
+
+    // Check if user is a tester (unlimited credits) or has active pro subscription locally
+    const isUnlimitedTester = localSub && (
+      (localSub.credits_remaining && localSub.credits_remaining >= 999999) ||
+      (localSub.free_credits && localSub.free_credits >= 999999)
+    );
+    
+    if (isUnlimitedTester || (localSub && localSub.plan_type === "pro" && localSub.status === "active")) {
+      logStep("User has Pro access (tester or active subscription)", { isUnlimitedTester });
+      return new Response(JSON.stringify({ 
+        subscribed: true,
+        plan_type: "pro",
+        credits_remaining: localSub.credits_remaining,
+        subscription_end: localSub.current_period_end,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     if (customers.data.length === 0) {
-      logStep("No customer found, checking local subscription");
+      logStep("No Stripe customer found");
       
-      // Check local subscription table for pack credits
-      const { data: localSub } = await supabaseClient
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
+      // Check for pack credits
       if (localSub && localSub.credits_remaining > 0) {
         return new Response(JSON.stringify({ 
           subscribed: true,
-          plan_type: "pack",
+          plan_type: localSub.plan_type || "pack",
           credits_remaining: localSub.credits_remaining,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -109,17 +137,11 @@ serve(async (req) => {
       });
     }
 
-    // Check for pack credits in local table
-    const { data: localSub } = await supabaseClient
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
+    // Check for pack credits (using already fetched localSub)
     if (localSub && localSub.credits_remaining > 0) {
       return new Response(JSON.stringify({ 
         subscribed: true,
-        plan_type: "pack",
+        plan_type: localSub.plan_type || "pack",
         credits_remaining: localSub.credits_remaining,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
