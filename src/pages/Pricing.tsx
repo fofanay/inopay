@@ -1,18 +1,38 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2 } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
-// Stripe Price IDs
+type Currency = "CAD" | "USD" | "EUR";
+
+// Stripe Price IDs par devise
 const STRIPE_PRICES = {
-  pack: "price_1SgSlkBYLQpzPb0ynIeiT8Sg",
-  pro: "price_1SgSm5BYLQpzPb0yq4oeLe5l",
+  CAD: {
+    pack: "price_1SgW6QBYLQpzPb0yYfYxAJi9",
+    pro: "price_1SgW77BYLQpzPb0yxdMiBRH7",
+  },
+  USD: {
+    pack: "price_1SgW8wBYLQpzPb0yGCJTwpfm",
+    pro: "price_1SgW9BBYLQpzPb0yiSXKXl15",
+  },
+  EUR: {
+    pack: "price_1SgSlkBYLQpzPb0ynIeiT8Sg",
+    pro: "price_1SgSm5BYLQpzPb0yq4oeLe5l",
+  },
+};
+
+// Prix affichés par devise
+const PRICES = {
+  CAD: { pack: "29 $", pro: "59 $", symbol: "CAD" },
+  USD: { pack: "21 $", pro: "43 $", symbol: "USD" },
+  EUR: { pack: "19 €", pro: "39 €", symbol: "EUR" },
 };
 
 const Pricing = () => {
@@ -20,6 +40,7 @@ const Pricing = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<Currency>("CAD");
 
   const handleCheckout = async (plan: "pack" | "pro") => {
     if (!user) {
@@ -34,7 +55,7 @@ const Pricing = () => {
       
       const response = await supabase.functions.invoke("create-checkout", {
         body: {
-          priceId: STRIPE_PRICES[plan],
+          priceId: STRIPE_PRICES[currency][plan],
           mode: plan === "pro" ? "subscription" : "payment",
         },
         headers: {
@@ -66,8 +87,8 @@ const Pricing = () => {
       id: "pack",
       name: "Pack Liberté",
       description: "Parfait pour un projet unique",
-      price: "29 $",
-      period: "CAD / export",
+      price: PRICES[currency].pack,
+      period: `${PRICES[currency].symbol} / export`,
       badge: null,
       features: [
         "1 export de projet complet",
@@ -83,8 +104,8 @@ const Pricing = () => {
       id: "pro",
       name: "Pro Illimité",
       description: "Pour les créateurs prolifiques",
-      price: "59 $",
-      period: "CAD / mois",
+      price: PRICES[currency].pro,
+      period: `${PRICES[currency].symbol} / mois`,
       badge: "Populaire",
       features: [
         "Exports illimités",
@@ -113,9 +134,24 @@ const Pricing = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
               Choisissez votre liberté
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               Le scan et l'analyse sont gratuits. Payez uniquement pour libérer votre code.
             </p>
+            
+            {/* Currency Selector */}
+            <div className="flex items-center justify-center gap-3">
+              <Globe className="h-5 w-5 text-muted-foreground" />
+              <Select value={currency} onValueChange={(value: Currency) => setCurrency(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Devise" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CAD">🇨🇦 CAD</SelectItem>
+                  <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                  <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Pricing Cards */}
