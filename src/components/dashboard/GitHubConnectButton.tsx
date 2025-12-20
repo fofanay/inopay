@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Github, Loader2, ArrowRight, Plug, Shield, Zap, CheckCircle2 } from "lucide-react";
+import { Github, Loader2, ArrowRight, Plug, Shield, Zap, CheckCircle2, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 interface GitHubConnectButtonProps {
   onConnected?: () => void;
   isCompleted?: boolean;
+  onSwitchToUrl?: () => void;
 }
 
-const GitHubConnectButton = ({ onConnected, isCompleted }: GitHubConnectButtonProps) => {
+const GitHubConnectButton = ({ onConnected, isCompleted, onSwitchToUrl }: GitHubConnectButtonProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -30,14 +31,25 @@ const GitHubConnectButton = ({ onConnected, isCompleted }: GitHubConnectButtonPr
       if (error) {
         throw error;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("GitHub auth error:", err);
+      
+      // Check if OAuth provider is not configured
+      const isProviderNotConfigured = err?.message?.includes("provider") || err?.code === "provider_not_enabled";
+      
       toast({
         title: "Erreur de connexion",
-        description: "Impossible de se connecter à GitHub. Veuillez réessayer.",
+        description: isProviderNotConfigured 
+          ? "La connexion GitHub OAuth n'est pas configurée. Utilisez l'option URL manuelle."
+          : "Impossible de se connecter à GitHub. Veuillez réessayer ou utiliser l'URL manuelle.",
         variant: "destructive",
       });
       setLoading(false);
+      
+      // Auto-switch to URL method if OAuth is not configured
+      if (isProviderNotConfigured && onSwitchToUrl) {
+        setTimeout(() => onSwitchToUrl(), 2000);
+      }
     }
   };
 
@@ -96,6 +108,20 @@ const GitHubConnectButton = ({ onConnected, isCompleted }: GitHubConnectButtonPr
             <span className="text-sm text-muted-foreground">Import instantané</span>
           </div>
         </div>
+
+        {/* Alternative : URL manuelle */}
+        {onSwitchToUrl && (
+          <div className="mt-6 pt-6 border-t border-border">
+            <Button
+              variant="ghost"
+              onClick={onSwitchToUrl}
+              className="text-muted-foreground hover:text-foreground gap-2"
+            >
+              <Link className="h-4 w-4" />
+              Entrer l'URL GitHub manuellement
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
