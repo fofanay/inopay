@@ -13,7 +13,8 @@ import {
   CalendarCheck,
   Mail,
   Bell,
-  Settings
+  Settings,
+  LineChart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,8 @@ import AdminPayments from "@/components/admin/AdminPayments";
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
 import AdminEmailCMS from "@/components/admin/AdminEmailCMS";
 import AdminReminders from "@/components/admin/AdminReminders";
+import AdminAnalytics from "@/components/admin/AdminAnalytics";
+import AdminSettings from "@/components/admin/AdminSettings";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -68,10 +71,12 @@ const AdminDashboard = () => {
     { id: "users", label: "Utilisateurs", icon: Users },
     { id: "payments", label: "Paiements", icon: CreditCard },
     { id: "subscriptions", label: "Abonnements", icon: CalendarCheck },
+    { id: "analytics", label: "Analytics", icon: LineChart },
     { id: "emails", label: "Emails (CMS)", icon: Mail },
     { id: "reminders", label: "Relances", icon: Bell },
     { id: "exports", label: "Exports & Qualité", icon: FileText },
     { id: "testers", label: "Testeurs", icon: FlaskConical },
+    { id: "settings", label: "Paramètres", icon: Settings },
   ];
 
   const getPageTitle = () => {
@@ -85,10 +90,12 @@ const AdminDashboard = () => {
       case "users": return "Gérez les utilisateurs et leurs accès";
       case "payments": return "Revenus, paiements et remboursements Stripe";
       case "subscriptions": return "Abonnements actifs, coupons et MRR";
+      case "analytics": return "Graphiques et métriques avancées";
       case "emails": return "Templates d'emails personnalisables";
       case "reminders": return "Campagnes d'emails automatiques";
       case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
       case "testers": return "Gérez les comptes avec accès Pro gratuit à vie";
+      case "settings": return "Configuration globale de l'application";
       default: return "";
     }
   };
@@ -153,10 +160,12 @@ const AdminDashboard = () => {
           {activeTab === "users" && <AdminUsersList />}
           {activeTab === "payments" && <AdminPayments />}
           {activeTab === "subscriptions" && <AdminSubscriptions />}
+          {activeTab === "analytics" && <AdminAnalytics />}
           {activeTab === "emails" && <AdminEmailCMS />}
           {activeTab === "reminders" && <AdminReminders />}
           {activeTab === "exports" && <AdminExportsList />}
           {activeTab === "testers" && <AdminTesters />}
+          {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
     </div>
