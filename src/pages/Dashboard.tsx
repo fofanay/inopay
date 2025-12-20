@@ -220,13 +220,28 @@ const Dashboard = () => {
     }
   }, [user, fileName, toast]);
 
-  const runGitHubAnalysis = useCallback(async (url: string) => {
+  const runGitHubAnalysis = useCallback(async (url: string, isRetry = false) => {
     if (!user) return;
     
     setState("uploading");
     setProgress(0);
     setAnalysisStep("connecting");
-    setProgressMessage("Connexion au dépôt GitHub...");
+    setProgressMessage(isRetry ? "Nouvelle tentative de connexion..." : "Connexion au dépôt GitHub...");
+
+    // Track elapsed time for user feedback
+    const startTime = Date.now();
+    const updateElapsedTime = setInterval(() => {
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      if (elapsed > 10 && state !== "complete") {
+        setProgressMessage(prev => {
+          // Only update if we're still downloading
+          if (prev.includes("Téléchargement") || prev.includes("cours")) {
+            return `Téléchargement en cours... (${elapsed}s)`;
+          }
+          return prev;
+        });
+      }
+    }, 1000);
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -246,8 +261,29 @@ const Dashboard = () => {
         },
       });
 
+      clearInterval(updateElapsedTime);
+
       if (response.error) {
         throw new Error(response.error.message || "Erreur lors de la récupération du dépôt");
+      }
+
+      // Handle specific error types from the edge function
+      if (response.data?.error) {
+        const errorData = response.data;
+        
+        if (errorData.timeout) {
+          throw new Error(`⏱️ Timeout: L'opération a pris trop de temps (${errorData.elapsedSeconds}s). Le dépôt est peut-être trop volumineux. Essayez avec un dépôt plus petit.`);
+        }
+        
+        if (errorData.repoTooLarge) {
+          throw new Error(`📦 Dépôt trop volumineux: ${Math.round(errorData.repoSize / 1024)}MB (limite: ${Math.round(errorData.maxSize / 1024)}MB). Essayez avec un dépôt plus petit.`);
+        }
+        
+        if (errorData.rateLimited) {
+          throw new Error("⚠️ Limite d'API GitHub atteinte. Veuillez réessayer dans quelques minutes.");
+        }
+        
+        throw new Error(errorData.error);
       }
 
       const { repository, files, totalFilesInRepo, isPartialAnalysis, partialReason, planType, planLimit } = response.data;
@@ -293,15 +329,32 @@ const Dashboard = () => {
       setExtractedFiles(analysisResult.extractedFiles);
       await saveAnalysis(repository.name, analysisResult);
     } catch (error) {
+      clearInterval(updateElapsedTime);
       console.error("GitHub analysis error:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : "Impossible de récupérer le dépôt GitHub";
+      const isTimeout = errorMessage.includes("Timeout") || errorMessage.includes("timeout");
+      const isTooLarge = errorMessage.includes("volumineux") || errorMessage.includes("trop");
+      
       toast({
-        title: "Erreur d'importation",
-        description: error instanceof Error ? error.message : "Impossible de récupérer le dépôt GitHub",
+        title: isTimeout ? "Délai dépassé" : isTooLarge ? "Dépôt trop volumineux" : "Erreur d'importation",
+        description: errorMessage,
         variant: "destructive",
+        action: isTimeout ? (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => runGitHubAnalysis(url, true)}
+            className="ml-2"
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Réessayer
+          </Button>
+        ) : undefined,
       });
       setState("idle");
     }
-  }, [user, toast]);
+  }, [user, toast, state]);
 
   const handleGitHubImport = () => {
     if (!githubUrl.trim()) {
