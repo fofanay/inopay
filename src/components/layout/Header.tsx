@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Menu, X, Settings } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Archive } from "lucide-react";
 import { useState } from "react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
@@ -44,6 +44,14 @@ const Header = () => {
               }`}
             >
               Dashboard
+            </Link>
+            <Link 
+              to="/historique" 
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActive("/historique") ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              Historique
             </Link>
             <Link 
               to="/a-propos" 
@@ -125,6 +133,15 @@ const Header = () => {
                 Dashboard
               </Link>
               <Link 
+                to="/historique" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActive("/historique") ? "text-primary" : "text-muted-foreground"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Historique
+              </Link>
+              <Link 
                 to="/a-propos" 
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   isActive("/a-propos") ? "text-primary" : "text-muted-foreground"
@@ -140,6 +157,12 @@ const Header = () => {
                       <User className="h-4 w-4" />
                       <span className="truncate">{user.email}</span>
                     </div>
+                    <Link to="/historique" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Archive className="h-4 w-4 mr-2" />
+                        Historique
+                      </Button>
+                    </Link>
                     <Link to="/parametres" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="outline" size="sm" className="w-full">
                         <Settings className="h-4 w-4 mr-2" />
