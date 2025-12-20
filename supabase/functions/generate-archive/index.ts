@@ -388,6 +388,74 @@ serve(async (req) => {
 
     console.log(`Generating archive for project ${projectId} with ${Object.keys(cleanedFiles).length} files`);
 
+    // Detect environment variables in files
+    const detectEnvVariables = (files: Record<string, string>): Set<string> => {
+      const envVars = new Set<string>();
+      const patterns = [
+        /import\.meta\.env\.(\w+)/g,
+        /process\.env\.(\w+)/g,
+        /Deno\.env\.get\(['"](\w+)['"]\)/g,
+      ];
+
+      for (const content of Object.values(files)) {
+        for (const pattern of patterns) {
+          let match;
+          const regex = new RegExp(pattern.source, pattern.flags);
+          while ((match = regex.exec(content as string)) !== null) {
+            if (match[1] && !match[1].startsWith('NODE_')) {
+              envVars.add(match[1]);
+            }
+          }
+        }
+      }
+      return envVars;
+    };
+
+    // Generate .env.example content
+    const generateEnvExample = (envVars: Set<string>): string => {
+      const lines = [
+        '# ============================================',
+        '# Variables d\'environnement du projet',
+        '# ============================================',
+        '# Copiez ce fichier vers .env et remplissez les valeurs',
+        '# cp .env.example .env',
+        '',
+      ];
+
+      const varDescriptions: Record<string, string> = {
+        'VITE_SUPABASE_URL': 'URL de votre projet Supabase (ex: https://xxx.supabase.co)',
+        'VITE_SUPABASE_ANON_KEY': 'Clé anonyme Supabase (trouvable dans Settings > API)',
+        'VITE_SUPABASE_PUBLISHABLE_KEY': 'Clé publique Supabase',
+        'VITE_API_URL': 'URL de votre API backend',
+        'VITE_STRIPE_PUBLISHABLE_KEY': 'Clé publique Stripe (pk_live_xxx ou pk_test_xxx)',
+        'STRIPE_SECRET_KEY': 'Clé secrète Stripe (sk_live_xxx ou sk_test_xxx)',
+        'GITHUB_PERSONAL_ACCESS_TOKEN': 'Token GitHub avec permissions repo',
+        'DATABASE_URL': 'URL de connexion à la base de données',
+        'SUPABASE_URL': 'URL Supabase pour les edge functions',
+        'SUPABASE_ANON_KEY': 'Clé anonyme pour les edge functions',
+        'SUPABASE_SERVICE_ROLE_KEY': 'Clé service role (backend uniquement)',
+      };
+
+      for (const envVar of Array.from(envVars).sort()) {
+        const description = varDescriptions[envVar] || 'À configurer';
+        lines.push(`# ${description}`);
+        lines.push(`${envVar}=`);
+        lines.push('');
+      }
+
+      lines.push('# ============================================');
+      lines.push('# Généré automatiquement par InoPay Cleaner');
+      lines.push('# ============================================');
+
+      return lines.join('\n');
+    };
+
+    // Detect env vars and generate .env.example
+    const detectedEnvVars = detectEnvVariables(cleanedFiles as Record<string, string>);
+    const envExampleContent = generateEnvExample(detectedEnvVars);
+
+    console.log(`Detected ${detectedEnvVars.size} environment variables`);
+
     // Create ZIP archive
     const zip = new JSZip();
 
@@ -395,6 +463,9 @@ serve(async (req) => {
     for (const [filePath, content] of Object.entries(cleanedFiles)) {
       zip.file(filePath, content as string);
     }
+
+    // Add .env.example
+    zip.file('.env.example', envExampleContent);
 
     // Add Dockerfile
     zip.file('Dockerfile', DOCKERFILE_CONTENT);
@@ -470,7 +541,9 @@ serve(async (req) => {
       success: true,
       downloadUrl: signedUrlData.signedUrl,
       fileName,
-      path: storagePath
+      path: storagePath,
+      envExampleContent,
+      detectedEnvVars: Array.from(detectedEnvVars)
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

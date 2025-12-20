@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +39,7 @@ const ProjectExporter = ({
   const [repoDescription, setRepoDescription] = useState("Projet exporté depuis InoPay Cleaner - 100% autonome");
   const [isPrivate, setIsPrivate] = useState(true);
   const [githubRepoUrl, setGithubRepoUrl] = useState<string | null>(null);
+  const [envExampleUrl, setEnvExampleUrl] = useState<string | null>(null);
 
   const cleanFiles = async (session: { access_token: string }) => {
     const cleanedFiles: Record<string, string> = {};
@@ -92,6 +93,7 @@ const ProjectExporter = ({
     setProgress(0);
     setStatus("cleaning");
     setDownloadUrl(null);
+    setEnvExampleUrl(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -139,6 +141,7 @@ const ProjectExporter = ({
       setProgress(100);
       setStatus("complete");
       setDownloadUrl(data.downloadUrl);
+      setEnvExampleUrl(data.envExampleContent);
 
       toast({
         title: "Archive générée",
@@ -243,6 +246,7 @@ const ProjectExporter = ({
     setProgress(0);
     setDownloadUrl(null);
     setGithubRepoUrl(null);
+    setEnvExampleUrl(null);
     setCleanedFilesCount(0);
     onClose();
   };
@@ -262,6 +266,38 @@ const ProjectExporter = ({
       default:
         return "Prêt à exporter";
     }
+  };
+
+  const downloadEnvExample = () => {
+    if (!envExampleUrl) return;
+    const blob = new Blob([envExampleUrl], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.env.example';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Téléchargé",
+      description: "Le fichier .env.example a été téléchargé",
+    });
+  };
+
+  const getVercelDeployUrl = () => {
+    if (!githubRepoUrl) return null;
+    return `https://vercel.com/new/clone?repository-url=${encodeURIComponent(githubRepoUrl)}`;
+  };
+
+  const getNetlifyDeployUrl = () => {
+    if (!githubRepoUrl) return null;
+    return `https://app.netlify.com/start/deploy?repository=${encodeURIComponent(githubRepoUrl)}`;
+  };
+
+  const getRailwayDeployUrl = () => {
+    if (!githubRepoUrl) return null;
+    return `https://railway.app/template?code=${encodeURIComponent(githubRepoUrl)}`;
   };
 
   return (
@@ -315,7 +351,7 @@ const ProjectExporter = ({
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                        README_FREEDOM.md avec instructions
+                        Fichier .env.example généré automatiquement
                       </li>
                     </ul>
                     <Button onClick={handleExportZip} className="w-full glow-sm" size="lg">
@@ -406,6 +442,12 @@ const ProjectExporter = ({
                           Télécharger l'archive
                         </a>
                       </Button>
+                      {envExampleUrl && (
+                        <Button variant="outline" onClick={downloadEnvExample} className="w-full gap-2" size="lg">
+                          <Download className="h-4 w-4" />
+                          Télécharger .env.example
+                        </Button>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Le lien expire dans 1 heure
                       </p>
@@ -413,26 +455,53 @@ const ProjectExporter = ({
                   )}
                   
                   {githubRepoUrl && (
-                    <Button asChild className="w-full" size="lg">
-                      <a href={githubRepoUrl} target="_blank" rel="noopener noreferrer">
-                        <Github className="mr-2 h-5 w-5" />
-                        Ouvrir le dépôt GitHub
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
+                    <>
+                      <Button asChild className="w-full" size="lg">
+                        <a href={githubRepoUrl} target="_blank" rel="noopener noreferrer">
+                          <Github className="mr-2 h-5 w-5" />
+                          Ouvrir le dépôt GitHub
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                      </Button>
+                      
+                      {/* One-click deployment buttons */}
+                      <div className="mt-6 p-4 rounded-lg bg-muted/50 text-left">
+                        <h4 className="font-semibold flex items-center gap-2 mb-3">
+                          <Rocket className="h-4 w-4 text-primary" />
+                          Déploiement en 1 clic
+                        </h4>
+                        <div className="space-y-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => window.open(getVercelDeployUrl()!, '_blank')} 
+                            className="w-full gap-2 justify-start"
+                          >
+                            <Zap className="h-4 w-4 text-black" />
+                            Déployer sur Vercel
+                            <ExternalLink className="ml-auto h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => window.open(getNetlifyDeployUrl()!, '_blank')} 
+                            className="w-full gap-2 justify-start"
+                          >
+                            <Cloud className="h-4 w-4 text-teal-500" />
+                            Déployer sur Netlify
+                            <ExternalLink className="ml-auto h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => window.open(getRailwayDeployUrl()!, '_blank')} 
+                            className="w-full gap-2 justify-start"
+                          >
+                            <Rocket className="h-4 w-4 text-purple-500" />
+                            Déployer sur Railway
+                            <ExternalLink className="ml-auto h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
                   )}
-                </div>
-
-                <div className="mt-6 p-4 rounded-lg bg-muted/50 text-left">
-                  <h4 className="font-semibold flex items-center gap-2 mb-2">
-                    <Rocket className="h-4 w-4 text-primary" />
-                    Prochaines étapes
-                  </h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Configurez vos variables d'environnement</li>
-                    <li>• Déployez avec Docker, Vercel ou Railway</li>
-                    <li>• Activez les workflows CI/CD sur GitHub</li>
-                  </ul>
                 </div>
               </CardContent>
             </Card>
