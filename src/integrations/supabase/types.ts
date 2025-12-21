@@ -411,6 +411,44 @@ export type Database = {
         }
         Relationships: []
       }
+      health_check_logs: {
+        Row: {
+          checked_at: string
+          deployment_id: string | null
+          error_message: string | null
+          http_status: number | null
+          id: string
+          response_time_ms: number | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          deployment_id?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          response_time_ms?: number | null
+          status: string
+        }
+        Update: {
+          checked_at?: string
+          deployment_id?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_check_logs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "server_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects_analysis: {
         Row: {
           created_at: string
@@ -450,44 +488,110 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          deployment_id: string | null
+          details: Json | null
+          id: string
+          server_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          deployment_id?: string | null
+          details?: Json | null
+          id?: string
+          server_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          deployment_id?: string | null
+          details?: Json | null
+          id?: string
+          server_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_audit_logs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "server_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_audit_logs_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "user_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_deployments: {
         Row: {
+          auto_restart_count: number | null
+          consecutive_failures: number | null
           coolify_app_uuid: string | null
           created_at: string
           deployed_url: string | null
           domain: string | null
           error_message: string | null
           github_repo_url: string | null
+          health_status: string | null
           id: string
+          last_health_check: string | null
+          last_restart_at: string | null
           project_name: string
+          secrets_cleaned: boolean | null
+          secrets_cleaned_at: string | null
           server_id: string
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_restart_count?: number | null
+          consecutive_failures?: number | null
           coolify_app_uuid?: string | null
           created_at?: string
           deployed_url?: string | null
           domain?: string | null
           error_message?: string | null
           github_repo_url?: string | null
+          health_status?: string | null
           id?: string
+          last_health_check?: string | null
+          last_restart_at?: string | null
           project_name: string
+          secrets_cleaned?: boolean | null
+          secrets_cleaned_at?: string | null
           server_id: string
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_restart_count?: number | null
+          consecutive_failures?: number | null
           coolify_app_uuid?: string | null
           created_at?: string
           deployed_url?: string | null
           domain?: string | null
           error_message?: string | null
           github_repo_url?: string | null
+          health_status?: string | null
           id?: string
+          last_health_check?: string | null
+          last_restart_at?: string | null
           project_name?: string
+          secrets_cleaned?: boolean | null
+          secrets_cleaned_at?: string | null
           server_id?: string
           status?: string
           updated_at?: string

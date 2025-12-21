@@ -377,11 +377,46 @@ CMD ["nginx", "-g", "daemon off;"]
           status: 'deployed',
           coolify_app_uuid: appData.uuid,
           deployed_url: deployedUrl,
-          domain: finalDomain
+          domain: finalDomain,
+          health_status: 'unknown',
+          last_health_check: null
         })
         .eq('id', deployment.id);
 
       console.log(`[deploy-direct] Deployment complete: ${deployedUrl}`);
+
+      // Déclencher le nettoyage Zero-Knowledge après 30 secondes
+      const cleanupTask = async () => {
+        console.log('[deploy-direct] Waiting 30s before cleanup...');
+        await new Promise(resolve => setTimeout(resolve, 30000));
+        
+        console.log('[deploy-direct] Triggering Zero-Knowledge cleanup...');
+        try {
+          const cleanupResponse = await fetch(
+            `${supabaseUrl}/functions/v1/cleanup-secrets`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                server_id: server.id,
+                deployment_id: deployment.id,
+                verify_health: true,
+              }),
+            }
+          );
+          
+          const cleanupResult = await cleanupResponse.json();
+          console.log('[deploy-direct] Cleanup result:', cleanupResult);
+        } catch (cleanupError) {
+          console.error('[deploy-direct] Cleanup failed:', cleanupError);
+        }
+      };
+
+      // Lancer la tâche de nettoyage en background (sans bloquer la réponse)
+      cleanupTask();
 
       return new Response(
         JSON.stringify({
@@ -393,7 +428,8 @@ CMD ["nginx", "-g", "daemon off;"]
             deployed_url: deployedUrl,
             domain: finalDomain
           },
-          message: 'Deployment started successfully. Your site will be available in a few minutes.'
+          message: 'Deployment started successfully. Your site will be available in a few minutes.',
+          cleanup_scheduled: true
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
