@@ -48,7 +48,9 @@ interface UserServer {
 }
 
 export function VPSOnboarding() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // Start at step 0 now
+  const [hasExistingVPS, setHasExistingVPS] = useState<boolean | null>(null);
+  const [showCreationGuide, setShowCreationGuide] = useState(false);
   const [provider, setProvider] = useState('hetzner');
   const [serverName, setServerName] = useState('');
   const [ipAddress, setIpAddress] = useState('');
@@ -164,6 +166,74 @@ export function VPSOnboarding() {
     });
   };
 
+  // New Step 0: Ask if user has existing VPS
+  const renderStep0 = () => (
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <h3 className="text-lg font-semibold">Avez-vous déjà un serveur VPS ?</h3>
+        <p className="text-sm text-muted-foreground">
+          Un VPS (Virtual Private Server) est un serveur virtuel que vous louez chez un hébergeur
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card 
+          className={`cursor-pointer transition-all hover:border-primary/50 ${
+            hasExistingVPS === true ? 'border-primary ring-2 ring-primary/20' : ''
+          }`}
+          onClick={() => {
+            setHasExistingVPS(true);
+            setStep(1);
+          }}
+        >
+          <CardContent className="pt-6 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mx-auto">
+              <Check className="w-6 h-6 text-success" />
+            </div>
+            <h4 className="font-medium">Oui, j'ai un VPS</h4>
+            <p className="text-sm text-muted-foreground">
+              J'ai déjà un serveur Ubuntu avec son adresse IP
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`cursor-pointer transition-all hover:border-primary/50 ${
+            hasExistingVPS === false ? 'border-primary ring-2 ring-primary/20' : ''
+          }`}
+          onClick={() => {
+            setHasExistingVPS(false);
+            setShowCreationGuide(true);
+            setStep(1);
+          }}
+        >
+          <CardContent className="pt-6 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+              <Server className="w-6 h-6 text-primary" />
+            </div>
+            <h4 className="font-medium">Non, je dois en créer un</h4>
+            <p className="text-sm text-muted-foreground">
+              Guidez-moi pour créer mon premier VPS (~5 min)
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+        <h4 className="font-medium flex items-center gap-2">
+          <Zap className="w-4 h-4 text-yellow-500" />
+          Pourquoi un VPS ?
+        </h4>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>• <strong>Contrôle total</strong> : Vous êtes propriétaire de votre infrastructure</li>
+          <li>• <strong>Économique</strong> : À partir de 5€/mois pour des déploiements illimités</li>
+          <li>• <strong>Performance</strong> : Ressources dédiées pour vos applications</li>
+          <li>• <strong>Souveraineté</strong> : Vos données restent sur votre serveur</li>
+        </ul>
+      </div>
+    </div>
+  );
+
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -190,24 +260,32 @@ export function VPSOnboarding() {
       </RadioGroup>
 
       <div className="flex items-center justify-between pt-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const selectedProvider = VPS_PROVIDERS.find(p => p.id === provider);
-            if (selectedProvider) {
-              window.open(selectedProvider.signupUrl, '_blank');
-            }
-          }}
-        >
-          <ExternalLink className="w-4 h-4 mr-2" />
-          Créer un compte {VPS_PROVIDERS.find(p => p.id === provider)?.name}
+        <Button variant="outline" size="sm" onClick={() => setStep(0)}>
+          Retour
         </Button>
 
-        <Button onClick={() => setStep(2)}>
-          Continuer
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
+        <div className="flex gap-2">
+          {showCreationGuide && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const selectedProvider = VPS_PROVIDERS.find(p => p.id === provider);
+                if (selectedProvider) {
+                  window.open(selectedProvider.signupUrl, '_blank');
+                }
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Créer un compte {VPS_PROVIDERS.find(p => p.id === provider)?.name}
+            </Button>
+          )}
+
+          <Button onClick={() => setStep(2)}>
+            Continuer
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -427,6 +505,9 @@ export function VPSOnboarding() {
     </div>
   );
 
+  // Calculate total steps based on flow
+  const totalSteps = 5; // 0, 1, 2, 3, 4
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -443,28 +524,31 @@ export function VPSOnboarding() {
         </div>
         
         {/* Progress indicator */}
-        <div className="flex items-center gap-2 pt-4">
-          {[1, 2, 3, 4].map((s) => (
-            <div key={s} className="flex items-center gap-2 flex-1">
-              <div 
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                  s < step 
-                    ? 'bg-primary text-primary-foreground' 
-                    : s === step 
+        {step > 0 && (
+          <div className="flex items-center gap-2 pt-4">
+            {[1, 2, 3, 4].map((s) => (
+              <div key={s} className="flex items-center gap-2 flex-1">
+                <div 
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    s < step 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {s < step ? <Check className="w-4 h-4" /> : s}
+                      : s === step 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {s < step ? <Check className="w-4 h-4" /> : s}
+                </div>
+                {s < 4 && (
+                  <div className={`flex-1 h-0.5 ${s < step ? 'bg-primary' : 'bg-muted'}`} />
+                )}
               </div>
-              {s < 4 && (
-                <div className={`flex-1 h-0.5 ${s < step ? 'bg-primary' : 'bg-muted'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
+        {step === 0 && renderStep0()}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}

@@ -52,11 +52,13 @@ import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
+import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
+import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration";
+type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice";
 
 interface GitHubRepo {
   id: number;
@@ -565,7 +567,8 @@ const Dashboard = () => {
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
     { id: "import", label: "Importer", icon: Upload },
     { id: "projects", label: "Mes Projets", icon: Package },
-    { id: "deployments", label: "Déploiements", icon: Rocket },
+    { id: "deploy-choice", label: "Déployer", icon: Cloud },
+    { id: "deployments", label: "Historique", icon: History },
     { id: "servers", label: "Mes Serveurs", icon: Server },
     { id: "migration", label: "Migration Wizard", icon: Sparkles },
     { id: "services", label: "Mes Services", icon: Crown },
@@ -581,6 +584,7 @@ const Dashboard = () => {
       case "overview": return "Statistiques de vos projets et actions rapides";
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "projects": return "Gérez et déployez vos projets analysés";
+      case "deploy-choice": return "Choisissez votre méthode de déploiement";
       case "deployments": return "Historique de vos déploiements";
       case "servers": return "Gérez vos serveurs VPS et Coolify";
       case "migration": return "Convertissez votre projet Supabase en stack autonome";
@@ -1132,6 +1136,30 @@ const Dashboard = () => {
                   loadingProjectId={loadingProjectId}
                 />
               </div>
+            )}
+
+            {/* Tab: Deploy Choice */}
+            {activeTab === "deploy-choice" && (
+              <DeploymentChoice 
+                onSelect={(option: DeploymentOption) => {
+                  if (option === 'zip') {
+                    setActiveTab('import');
+                    toast({
+                      title: "Export ZIP",
+                      description: "Importez d'abord votre projet pour générer l'archive nettoyée",
+                    });
+                  } else if (option === 'ftp') {
+                    // Show FTP onboarding
+                    toast({
+                      title: "Hébergement FTP",
+                      description: "Importez votre projet puis utilisez l'assistant de déploiement FTP",
+                    });
+                    setActiveTab('import');
+                  } else if (option === 'vps') {
+                    setActiveTab('servers');
+                  }
+                }}
+              />
             )}
 
             {/* Tab: Deployments */}
