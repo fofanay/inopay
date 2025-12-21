@@ -177,6 +177,28 @@
     background: linear-gradient(90deg, hsl(210 54% 28%) 0%, hsl(145 63% 49%) 100%);
   }
 
+  /* Glassmorphism Widget Styles */
+  .glass-widget {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+  }
+
+  .neon-glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
   /* Badge style arrondi */
   .badge-outline-navy {
     border: 2px solid hsl(210 54% 28%);
