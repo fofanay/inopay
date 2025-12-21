@@ -1,7 +1,29 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
-import { Upload, FileArchive, Loader2, CheckCircle2, AlertTriangle, XCircle, Download, RefreshCw, History, FileWarning, Sparkles, Settings, Package, Github, HelpCircle, Rocket, Shield, Lock, Crown, Cloud, FolderOpen } from "lucide-react";
+import { 
+  Upload, 
+  Loader2, 
+  CheckCircle2, 
+  AlertTriangle, 
+  XCircle, 
+  RefreshCw, 
+  FileWarning, 
+  Sparkles, 
+  Settings, 
+  Package, 
+  Github, 
+  Rocket, 
+  Shield, 
+  Lock, 
+  Crown, 
+  Cloud, 
+  FolderOpen,
+  BarChart3,
+  LogOut,
+  Home,
+  History
+} from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +32,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -26,10 +46,12 @@ import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
 import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssistant";
 import { DeploymentHistory } from "@/components/dashboard/DeploymentHistory";
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
+import UserStats from "@/components/dashboard/UserStats";
+import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "import" | "projects" | "deployments";
+type DashboardTab = "overview" | "import" | "projects" | "deployments";
 
 interface GitHubRepo {
   id: number;
@@ -55,7 +77,7 @@ interface HistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, subscription, isAdmin } = useAuth();
+  const { user, loading: authLoading, subscription, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   
   const [state, setState] = useState<AnalysisState>("idle");
@@ -78,7 +100,7 @@ const Dashboard = () => {
   const [showDbConfig, setShowDbConfig] = useState(false);
   const [dbConfigComplete, setDbConfigComplete] = useState(false);
   const [sovereignExportOpen, setSovereignExportOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("import");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
 
   // Keyboard shortcut for Sovereign Export (Ctrl+Shift+S)
@@ -92,6 +114,7 @@ const Dashboard = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
   const getCurrentStep = () => {
     if (!isGitHubConnected && importMethod === "github-oauth") return 1;
     if (state === "idle" && isGitHubConnected) return 2;
@@ -150,7 +173,6 @@ const Dashboard = () => {
   const saveAnalysis = async (projectName: string, analysisResult: RealAnalysisResult) => {
     if (!user) return;
 
-    // Convertir les issues en format compatible avec detected_issues
     const detectedIssues = [
       ...analysisResult.issues.map(issue => ({
         name: issue.pattern,
@@ -228,13 +250,11 @@ const Dashboard = () => {
     setAnalysisStep("connecting");
     setProgressMessage(isRetry ? "Nouvelle tentative de connexion..." : "Connexion au dépôt GitHub...");
 
-    // Track elapsed time for user feedback
     const startTime = Date.now();
     const updateElapsedTime = setInterval(() => {
       const elapsed = Math.round((Date.now() - startTime) / 1000);
       if (elapsed > 10 && state !== "complete") {
         setProgressMessage(prev => {
-          // Only update if we're still downloading
           if (prev.includes("Téléchargement") || prev.includes("cours")) {
             return `Téléchargement en cours... (${elapsed}s)`;
           }
@@ -246,10 +266,7 @@ const Dashboard = () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
-      // Step 1: Connecting
       setProgress(5);
-      
-      // Step 2: Downloading
       setAnalysisStep("downloading");
       setProgressMessage("Téléchargement du dépôt en cours...");
       setProgress(10);
@@ -267,7 +284,6 @@ const Dashboard = () => {
         throw new Error(response.error.message || "Erreur lors de la récupération du dépôt");
       }
 
-      // Handle specific error types from the edge function
       if (response.data?.error) {
         const errorData = response.data;
         
@@ -292,13 +308,11 @@ const Dashboard = () => {
         throw new Error("Aucun fichier trouvé dans le dépôt");
       }
 
-      // Step 3: Extracting
       setAnalysisStep("extracting");
       setProgressMessage(`Extraction de ${files.length} fichiers...`);
       setProgress(25);
       setFileName(repository.name);
       
-      // Show partial analysis message if applicable
       if (isPartialAnalysis) {
         toast({
           title: "Analyse partielle",
@@ -307,7 +321,6 @@ const Dashboard = () => {
         });
       }
       
-      // Step 4: Analyzing
       setState("analyzing");
       setAnalysisStep("analyzing");
       setProgressMessage("Détection des dépendances propriétaires...");
@@ -317,7 +330,6 @@ const Dashboard = () => {
         setProgressMessage(message);
       });
 
-      // Add partial analysis info to result
       if (isPartialAnalysis) {
         analysisResult.recommendations.unshift(
           `⚠️ Analyse partielle: ${files.length}/${totalFilesInRepo} fichiers analysés (limite ${planType}: ${planLimit} fichiers)`
@@ -397,7 +409,6 @@ const Dashboard = () => {
     setDbConfigComplete(false);
   };
 
-  // Load a project from history for deployment
   const loadProjectForDeployment = async (project: {
     id: string;
     project_name: string;
@@ -409,11 +420,9 @@ const Dashboard = () => {
     setLoadingProjectId(project.id);
     
     try {
-      // Parse the detected issues to extract issues and dependencies
       const detectedIssues = Array.isArray(project.detected_issues) ? project.detected_issues : [];
       const recommendations = Array.isArray(project.recommendations) ? project.recommendations : [];
       
-      // Separate issues from dependencies based on structure
       const issues: AnalysisIssue[] = detectedIssues
         .filter((item: any) => item.pattern || item.file)
         .map((item: any) => ({
@@ -434,7 +443,6 @@ const Dashboard = () => {
           note: item.note || '',
         }));
 
-      // Create the result object
       const loadedResult: RealAnalysisResult & { id: string } = {
         id: project.id,
         score: project.portability_score || 0,
@@ -451,7 +459,7 @@ const Dashboard = () => {
       setResult(loadedResult);
       setState("complete");
       setActiveTab("import");
-      setDbConfigComplete(true); // Skip DB config for reloaded projects
+      setDbConfigComplete(true);
       
       toast({
         title: "Projet chargé",
@@ -528,17 +536,19 @@ const Dashboard = () => {
     return "Migration complexe requise";
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
   if (authLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
-  // Handler for selecting a repo from the list
   const handleRepoSelect = async (repo: GitHubRepo) => {
     setSelectedRepo(repo);
     setIsImportingRepo(true);
@@ -546,307 +556,426 @@ const Dashboard = () => {
     setIsImportingRepo(false);
   };
 
+  const menuItems = [
+    { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
+    { id: "import", label: "Importer", icon: Upload },
+    { id: "projects", label: "Mes Projets", icon: Package },
+    { id: "deployments", label: "Déploiements", icon: Rocket },
+  ];
+
+  const getPageTitle = () => {
+    const item = menuItems.find(m => m.id === activeTab);
+    return item?.label || "Dashboard";
+  };
+
+  const getPageDescription = () => {
+    switch (activeTab) {
+      case "overview": return "Statistiques de vos projets et actions rapides";
+      case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
+      case "projects": return "Gérez et déployez vos projets analysés";
+      case "deployments": return "Historique de vos déploiements";
+      default: return "";
+    }
+  };
+
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Libérez votre code
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Transformez vos applications générées par IA en projets 100% autonomes et portables
-            </p>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <aside className="w-72 bg-secondary flex flex-col">
+        {/* Logo Header */}
+        <div className="p-6 border-b border-secondary/50">
+          <div className="flex items-center justify-center mb-3">
+            <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
           </div>
+          <div className="text-center">
+            <Badge className={`${
+              subscription.subscribed 
+                ? "bg-primary/20 text-primary-foreground border-primary/30" 
+                : "bg-muted/20 text-secondary-foreground/70 border-muted/30"
+            }`}>
+              {subscription.subscribed ? (subscription.planType === "pro" ? "Pro" : "Pack Liberté") : "Gratuit"}
+            </Badge>
+          </div>
+        </div>
 
-          {/* Main Tabs */}
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DashboardTab)} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="import" className="gap-2">
-                <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Importer</span>
-              </TabsTrigger>
-              <TabsTrigger value="projects" className="gap-2">
-                <Package className="h-4 w-4" />
-                <span className="hidden sm:inline">Projets</span>
-              </TabsTrigger>
-              <TabsTrigger value="deployments" className="gap-2">
-                <Rocket className="h-4 w-4" />
-                <span className="hidden sm:inline">Déploiements</span>
-              </TabsTrigger>
-            </TabsList>
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <Button
+              key={item.id}
+              variant="ghost"
+              className={`w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 ${
+                activeTab === item.id 
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
+                  : ""
+              }`}
+              onClick={() => setActiveTab(item.id as DashboardTab)}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Button>
+          ))}
+        </nav>
 
-            {/* Tab 1: Import */}
-            <TabsContent value="import" className="space-y-6">
-              {/* Stepper Progress */}
-              <StepperProgress currentStep={getCurrentStep()} />
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-secondary/50 space-y-2">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10"
+            onClick={() => navigate("/settings")}
+          >
+            <Settings className="h-4 w-4" />
+            Paramètres
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10"
+            onClick={() => navigate("/")}
+          >
+            <Home className="h-4 w-4" />
+            Accueil
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4" />
+            Déconnexion
+          </Button>
+        </div>
+      </aside>
 
-              {/* Step 1: GitHub URL Input (Primary method) */}
-              {state === "idle" && importMethod === "github-url" && (
-                <div className="space-y-6 animate-fade-in">
-                  <GitHubConnectButton 
-                    onSwitchToZip={() => setImportMethod("zip")}
-                    onGitHubImport={handleGitHubImport}
-                    githubUrl={githubUrl}
-                    onGithubUrlChange={setGithubUrl}
-                    isLoading={state !== "idle"}
-                  />
-                </div>
-              )}
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        {/* Top Header */}
+        <header className="bg-card border-b border-border px-8 py-6">
+          <h1 className="text-2xl font-bold text-foreground">{getPageTitle()}</h1>
+          <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
+        </header>
 
-              {/* Step 2: Repo Selection (when connected via GitHub OAuth - future feature) */}
-              {state === "idle" && isGitHubConnected && importMethod === "github-oauth" && (
-                <div className="space-y-6 animate-fade-in">
-                  <GitHubRepoSelector 
-                    onSelectRepo={handleRepoSelect}
-                    isLoading={isImportingRepo}
-                  />
-                  
-                  <div className="text-center">
-                    <Button 
-                      variant="link" 
-                      onClick={() => setImportMethod("github-url")}
-                      className="text-muted-foreground hover:text-foreground gap-2"
-                    >
-                      Retour à l'import par URL
-                    </Button>
-                  </div>
-                </div>
-              )}
+        {/* Content Area */}
+        <div className="p-8">
+          <div className="max-w-6xl mx-auto">
+            
+            {/* Tab: Overview */}
+            {activeTab === "overview" && (
+              <UserStats onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
+            )}
 
-              {/* Alternative: ZIP Upload */}
-              {state === "idle" && importMethod === "zip" && (
-                <div className="space-y-6 animate-fade-in">
-                  <Card className="card-shadow border border-dashed border-border hover:border-primary/50 transition-colors">
-                    <CardContent className="p-0">
-                      <div
-                        {...getRootProps()}
-                        className={`flex flex-col items-center justify-center py-16 px-8 cursor-pointer transition-all rounded-lg ${
-                          isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/50"
-                        }`}
-                      >
-                        <input {...getInputProps()} />
-                        <div className={`flex h-16 w-16 items-center justify-center rounded-2xl mb-6 transition-all ${
-                          isDragActive ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
-                        }`}>
-                          <Upload className="h-8 w-8" />
-                        </div>
-                        <h3 className="text-xl font-semibold mb-2 text-foreground">
-                          {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
-                        </h3>
-                        <p className="text-muted-foreground mb-4">
-                          ou cliquez pour sélectionner un fichier
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Format accepté : .zip (max 50MB)
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Tab: Import */}
+            {activeTab === "import" && (
+              <div className="space-y-6">
+                {/* Stepper Progress */}
+                <StepperProgress currentStep={getCurrentStep()} />
 
-                  <div className="text-center">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setImportMethod("github-url")}
-                      className="gap-2"
-                    >
-                      <Github className="h-4 w-4" />
-                      Retour à l'import par URL
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {state === "idle" && loadingHistory && (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              )}
-
-              {/* Analysis Progress */}
-              {(state === "uploading" || state === "analyzing") && (
-                <Card className="animate-fade-in card-shadow border border-border status-border-blue">
-                  <CardHeader className="text-center pb-2">
-                    <Badge className="mx-auto mb-4 bg-info/10 text-info border-info/20">
-                      En cours
-                    </Badge>
-                    <CardTitle className="text-xl text-foreground">Analyse de portabilité</CardTitle>
-                    <CardDescription className="max-w-md mx-auto">
-                      Nous scannons votre code pour identifier les dépendances propriétaires.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="py-8 px-8">
-                    <AnalysisProgressSteps
-                      currentStep={analysisStep}
-                      progress={progress}
-                      progressMessage={progressMessage}
-                      fileName={fileName}
+                {/* Step 1: GitHub URL Input */}
+                {state === "idle" && importMethod === "github-url" && (
+                  <div className="space-y-6 animate-fade-in">
+                    <GitHubConnectButton 
+                      onSwitchToZip={() => setImportMethod("zip")}
+                      onGitHubImport={handleGitHubImport}
+                      githubUrl={githubUrl}
+                      onGithubUrlChange={setGithubUrl}
+                      isLoading={state !== "idle"}
                     />
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                )}
 
-              {/* Results */}
-              {state === "complete" && result && (
-                <div className="space-y-8 animate-fade-in">
-                  {/* Score Card */}
-                  <Card className="overflow-hidden card-shadow-lg border border-border status-border-green">
-                    <CardHeader className="text-center pb-2 bg-muted/30">
-                      <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Complété
-                      </Badge>
-                      <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
-                      <CardDescription>
-                        Scan terminé – voici le diagnostic de votre projet
-                      </CardDescription>
-                    </CardHeader>
-                    <div className="grid md:grid-cols-2">
-                      {/* Score */}
-                      <div className="flex flex-col items-center justify-center py-12 px-8 bg-muted/50">
-                        <div className="relative">
-                          <svg className="w-40 h-40 transform -rotate-90">
-                            <circle
-                              cx="80"
-                              cy="80"
-                              r="70"
-                              stroke="currentColor"
-                              strokeWidth="8"
-                              fill="none"
-                              className="text-border"
-                            />
-                            <circle
-                              cx="80"
-                              cy="80"
-                              r="70"
-                              stroke="currentColor"
-                              strokeWidth="8"
-                              fill="none"
-                              strokeDasharray={`${2 * Math.PI * 70 * (result.score / 100)} ${2 * Math.PI * 70}`}
-                              className="text-primary transition-all duration-1000"
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className={`text-5xl font-bold ${getScoreColor(result.score)}`}>
-                              {result.score}
-                            </span>
-                            <span className="text-muted-foreground">/100</span>
-                          </div>
-                        </div>
-                        <p className="text-lg font-medium mt-4 text-foreground">Score de liberté</p>
-                        <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
-                          {getScoreMessage(result.score)}
-                        </p>
-                      </div>
+                {/* Step 2: Repo Selection (GitHub OAuth) */}
+                {state === "idle" && isGitHubConnected && importMethod === "github-oauth" && (
+                  <div className="space-y-6 animate-fade-in">
+                    <GitHubRepoSelector 
+                      onSelectRepo={handleRepoSelect}
+                      isLoading={isImportingRepo}
+                    />
+                    
+                    <div className="text-center">
+                      <Button 
+                        variant="link" 
+                        onClick={() => setImportMethod("github-url")}
+                        className="text-muted-foreground hover:text-foreground gap-2"
+                      >
+                        Retour à l'import par URL
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-                      {/* Info */}
-                      <CardContent className="flex flex-col justify-center py-8 bg-card">
-                        <h3 className="text-2xl font-bold mb-4 text-foreground">Projet analysé</h3>
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center py-2 border-b border-border">
-                            <span className="text-muted-foreground">Fichier</span>
-                            <span className="font-medium text-foreground">{fileName}</span>
+                {/* Alternative: ZIP Upload */}
+                {state === "idle" && importMethod === "zip" && (
+                  <div className="space-y-6 animate-fade-in">
+                    <Card className="card-shadow border border-dashed border-border hover:border-primary/50 transition-colors">
+                      <CardContent className="p-0">
+                        <div
+                          {...getRootProps()}
+                          className={`flex flex-col items-center justify-center py-16 px-8 cursor-pointer transition-all rounded-lg ${
+                            isDragActive ? "bg-primary/10" : "bg-card hover:bg-muted/50"
+                          }`}
+                        >
+                          <input {...getInputProps()} />
+                          <div className={`flex h-16 w-16 items-center justify-center rounded-2xl mb-6 transition-all ${
+                            isDragActive ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"
+                          }`}>
+                            <Upload className="h-8 w-8" />
                           </div>
-                          {result.platform && (
-                            <div className="flex justify-between items-center py-2 border-b border-border">
-                              <span className="text-muted-foreground">Plateforme détectée</span>
-                              <Badge className="bg-accent/10 text-accent border-0">{result.platform}</Badge>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center py-2 border-b border-border">
-                            <span className="text-muted-foreground">Fichiers totaux</span>
-                            <span className="font-medium text-foreground">{result.totalFiles}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-border">
-                            <span className="text-muted-foreground">Fichiers analysés</span>
-                            <span className="font-medium text-foreground">{result.analyzedFiles}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <span className="text-muted-foreground">Dépendances</span>
-                            <span className="font-medium text-foreground">{result.dependencies.length}</span>
-                          </div>
+                          <h3 className="text-xl font-semibold mb-2 text-foreground">
+                            {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
+                          </h3>
+                          <p className="text-muted-foreground mb-4">
+                            ou cliquez pour sélectionner un fichier
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Format accepté : .zip (max 50MB)
+                          </p>
                         </div>
                       </CardContent>
-                    </div>
-                  </Card>
+                    </Card>
 
-                  {/* Issues Table */}
-                  {result.issues.length > 0 && (
-                    <Card className="card-shadow border border-border status-border-yellow relative">
-                      {!subscription.subscribed && (
-                        <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
-                          <div className="h-16 w-16 rounded-2xl bg-warning/10 flex items-center justify-center mb-4">
-                            <Lock className="h-8 w-8 text-warning" />
+                    <div className="text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setImportMethod("github-url")}
+                        className="gap-2"
+                      >
+                        <Github className="h-4 w-4" />
+                        Retour à l'import par URL
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {state === "idle" && loadingHistory && (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+
+                {/* Analysis Progress */}
+                {(state === "uploading" || state === "analyzing") && (
+                  <Card className="animate-fade-in card-shadow border border-border status-border-blue">
+                    <CardHeader className="text-center pb-2">
+                      <Badge className="mx-auto mb-4 bg-info/10 text-info border-info/20">
+                        En cours
+                      </Badge>
+                      <CardTitle className="text-xl text-foreground">Analyse de portabilité</CardTitle>
+                      <CardDescription className="max-w-md mx-auto">
+                        Nous scannons votre code pour identifier les dépendances propriétaires.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="py-8 px-8">
+                      <AnalysisProgressSteps
+                        currentStep={analysisStep}
+                        progress={progress}
+                        progressMessage={progressMessage}
+                        fileName={fileName}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Results */}
+                {state === "complete" && result && (
+                  <div className="space-y-8 animate-fade-in">
+                    {/* Score Card */}
+                    <Card className="overflow-hidden card-shadow-lg border border-border status-border-green">
+                      <CardHeader className="text-center pb-2 bg-muted/30">
+                        <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Complété
+                        </Badge>
+                        <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
+                        <CardDescription>
+                          Scan terminé – voici le diagnostic de votre projet
+                        </CardDescription>
+                      </CardHeader>
+                      <div className="grid md:grid-cols-2">
+                        {/* Score */}
+                        <div className="flex flex-col items-center justify-center py-12 px-8 bg-muted/50">
+                          <div className="relative">
+                            <svg className="w-40 h-40 transform -rotate-90">
+                              <circle
+                                cx="80"
+                                cy="80"
+                                r="70"
+                                stroke="currentColor"
+                                strokeWidth="8"
+                                fill="none"
+                                className="text-border"
+                              />
+                              <circle
+                                cx="80"
+                                cy="80"
+                                r="70"
+                                stroke="currentColor"
+                                strokeWidth="8"
+                                fill="none"
+                                strokeDasharray={`${2 * Math.PI * 70 * (result.score / 100)} ${2 * Math.PI * 70}`}
+                                className="text-primary transition-all duration-1000"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className={`text-5xl font-bold ${getScoreColor(result.score)}`}>
+                                {result.score}
+                              </span>
+                              <span className="text-muted-foreground">/100</span>
+                            </div>
                           </div>
-                          <h3 className="text-xl font-bold text-foreground mb-2">Fonctionnalité Premium</h3>
-                          <p className="text-muted-foreground text-center mb-6 max-w-md">
-                            Le nettoyage IA nécessite un abonnement. Débloquez cette fonctionnalité pour libérer votre code.
+                          <p className="text-lg font-medium mt-4 text-foreground">Score de liberté</p>
+                          <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
+                            {getScoreMessage(result.score)}
                           </p>
-                          <Link to="/tarifs">
-                            <Button className="gap-2 rounded-lg shadow-lg">
-                              <Crown className="h-4 w-4" />
-                              Voir les tarifs
-                            </Button>
-                          </Link>
                         </div>
-                      )}
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="flex items-center gap-2 text-foreground">
-                              <Sparkles className="h-5 w-5 text-warning" />
-                              Étape 3 : Nettoyage Intelligent
-                            </CardTitle>
-                            <CardDescription className="mt-1">
-                              Notre IA remplace les composants verrouillés par des standards Open Source universels.
-                            </CardDescription>
+
+                        {/* Info */}
+                        <CardContent className="flex flex-col justify-center py-8 bg-card">
+                          <h3 className="text-2xl font-bold mb-4 text-foreground">Projet analysé</h3>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center py-2 border-b border-border">
+                              <span className="text-muted-foreground">Fichier</span>
+                              <span className="font-medium text-foreground">{fileName}</span>
+                            </div>
+                            {result.platform && (
+                              <div className="flex justify-between items-center py-2 border-b border-border">
+                                <span className="text-muted-foreground">Plateforme détectée</span>
+                                <Badge className="bg-accent/10 text-accent border-0">{result.platform}</Badge>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center py-2 border-b border-border">
+                              <span className="text-muted-foreground">Fichiers totaux</span>
+                              <span className="font-medium text-foreground">{result.totalFiles}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-border">
+                              <span className="text-muted-foreground">Fichiers analysés</span>
+                              <span className="font-medium text-foreground">{result.analyzedFiles}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2">
+                              <span className="text-muted-foreground">Dépendances</span>
+                              <span className="font-medium text-foreground">{result.dependencies.length}</span>
+                            </div>
                           </div>
-                        </div>
+                        </CardContent>
+                      </div>
+                    </Card>
+
+                    {/* Issues Table */}
+                    {result.issues.length > 0 && (
+                      <Card className="card-shadow border border-border status-border-yellow relative">
+                        {!subscription.subscribed && (
+                          <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
+                            <div className="h-16 w-16 rounded-2xl bg-warning/10 flex items-center justify-center mb-4">
+                              <Lock className="h-8 w-8 text-warning" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">Fonctionnalité Premium</h3>
+                            <p className="text-muted-foreground text-center mb-6 max-w-md">
+                              Le nettoyage IA nécessite un abonnement. Débloquez cette fonctionnalité pour libérer votre code.
+                            </p>
+                            <Link to="/tarifs">
+                              <Button className="gap-2 rounded-lg shadow-lg">
+                                <Crown className="h-4 w-4" />
+                                Voir les tarifs
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="flex items-center gap-2 text-foreground">
+                                <Sparkles className="h-5 w-5 text-warning" />
+                                Étape 3 : Nettoyage Intelligent
+                              </CardTitle>
+                              <CardDescription className="mt-1">
+                                Notre IA remplace les composants verrouillés par des standards Open Source universels.
+                              </CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
+                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Shield className="h-4 w-4 text-success" />
+                              Votre code original reste inchangé sur GitHub, nous créons une version optimisée.
+                            </p>
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-border hover:bg-transparent">
+                                <TableHead className="text-muted-foreground">Fichier</TableHead>
+                                <TableHead className="text-muted-foreground">Ligne</TableHead>
+                                <TableHead className="text-muted-foreground">Pattern</TableHead>
+                                <TableHead className="text-muted-foreground">Sévérité</TableHead>
+                                <TableHead className="text-muted-foreground">Action</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {result.issues.map((issue, index) => (
+                                <TableRow key={index} className="border-border hover:bg-muted/50">
+                                  <TableCell className="font-mono text-sm max-w-[200px] truncate text-foreground" title={issue.file}>
+                                    {issue.file}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground">
+                                    {issue.line || "-"}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-sm text-foreground">
+                                    {issue.pattern}
+                                  </TableCell>
+                                  <TableCell>
+                                    {getSeverityBadge(issue.severity)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleCleanFile(issue.file)}
+                                      className="gap-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 border-0"
+                                      disabled={!subscription.subscribed}
+                                    >
+                                      <Sparkles className="h-3 w-3" />
+                                      Démarrer la libération
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Dependencies Table */}
+                    <Card className="border-0 shadow-md">
+                      <CardHeader>
+                        <CardTitle>Analyse des dépendances</CardTitle>
+                        <CardDescription>
+                          {result.dependencies.length} dépendances analysées
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
-                          <p className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-success" />
-                            Votre code original reste inchangé sur GitHub, nous créons une version optimisée.
-                          </p>
-                        </div>
                         <Table>
                           <TableHeader>
-                            <TableRow className="border-border hover:bg-transparent">
-                              <TableHead className="text-muted-foreground">Fichier</TableHead>
-                              <TableHead className="text-muted-foreground">Ligne</TableHead>
-                              <TableHead className="text-muted-foreground">Pattern</TableHead>
-                              <TableHead className="text-muted-foreground">Sévérité</TableHead>
-                              <TableHead className="text-muted-foreground">Action</TableHead>
+                            <TableRow>
+                              <TableHead>Package</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>Note</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {result.issues.map((issue, index) => (
-                              <TableRow key={index} className="border-border hover:bg-muted/50">
-                                <TableCell className="font-mono text-sm max-w-[200px] truncate text-foreground" title={issue.file}>
-                                  {issue.file}
-                                </TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {issue.line || "-"}
-                                </TableCell>
-                                <TableCell className="font-mono text-sm text-foreground">
-                                  {issue.pattern}
+                            {result.dependencies.map((dep, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="font-mono text-sm">{dep.name}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{dep.type}</Badge>
                                 </TableCell>
                                 <TableCell>
-                                  {getSeverityBadge(issue.severity)}
+                                  <div className="flex items-center gap-2">
+                                    {getStatusIcon(dep.status)}
+                                    {getStatusBadge(dep.status)}
+                                  </div>
                                 </TableCell>
-                                <TableCell>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleCleanFile(issue.file)}
-                                    className="gap-1 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 border-0"
-                                    disabled={!subscription.subscribed}
-                                  >
-                                    <Sparkles className="h-3 w-3" />
-                                    Démarrer la libération
-                                  </Button>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {dep.note}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -854,60 +983,65 @@ const Dashboard = () => {
                         </Table>
                       </CardContent>
                     </Card>
-                  )}
 
-                  {/* Dependencies Table */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Analyse des dépendances</CardTitle>
-                      <CardDescription>
-                        {result.dependencies.length} dépendances analysées
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Package</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead>Note</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {result.dependencies.map((dep, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-mono text-sm">{dep.name}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{dep.type}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  {getStatusIcon(dep.status)}
-                                  {getStatusBadge(dep.status)}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {dep.note}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
+                    {/* Database Configuration */}
+                    {!dbConfigComplete && (
+                      <Card className="card-shadow border border-border status-border-blue relative">
+                        {!subscription.subscribed && (
+                          <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
+                            <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
+                              <Lock className="h-8 w-8 text-accent" />
+                            </div>
+                            <h3 className="text-xl font-bold text-foreground mb-2">Configuration avancée</h3>
+                            <p className="text-muted-foreground text-center mb-6 max-w-md">
+                              Configurez votre base de données avec un abonnement.
+                            </p>
+                            <Link to="/tarifs">
+                              <Button className="gap-2 rounded-lg shadow-lg">
+                                <Crown className="h-4 w-4" />
+                                Voir les tarifs
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                        <CardHeader className="text-center border-b border-border">
+                          <Badge className="mx-auto mb-2 bg-accent/10 text-accent border-accent/20 gap-1">
+                            <Cloud className="h-3 w-3" />
+                            Configuration Base de Données
+                          </Badge>
+                          <CardTitle className="text-xl text-foreground">Étape 3.5 : Assistant Base de Données</CardTitle>
+                          <CardDescription className="max-w-md mx-auto">
+                            Configurez votre base de données pour votre nouvel hébergeur
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-8">
+                          <DatabaseConfigAssistant
+                            projectName={fileName.replace('.zip', '')}
+                            extractedFiles={extractedFiles}
+                            onConfigComplete={(config) => {
+                              setDbConfigComplete(true);
+                              toast({
+                                title: "Configuration terminée",
+                                description: config.type === "keep" ? "Base de données actuelle conservée" : "Nouvelle base de données configurée",
+                              });
+                            }}
+                            onSkip={() => setDbConfigComplete(true)}
+                            disabled={!subscription.subscribed}
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
 
-                  {/* Database Configuration */}
-                  {!dbConfigComplete && (
-                    <Card className="card-shadow border border-border status-border-blue relative">
+                    {/* Deployment Assistant */}
+                    <Card className="card-shadow border border-border status-border-green relative">
                       {!subscription.subscribed && (
                         <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
-                          <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-                            <Lock className="h-8 w-8 text-accent" />
+                          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                            <Lock className="h-8 w-8 text-primary" />
                           </div>
-                          <h3 className="text-xl font-bold text-foreground mb-2">Configuration avancée</h3>
+                          <h3 className="text-xl font-bold text-foreground mb-2">Débloquez l'export</h3>
                           <p className="text-muted-foreground text-center mb-6 max-w-md">
-                            Configurez votre base de données avec un abonnement.
+                            Téléchargez votre projet 100% autonome avec un abonnement Pro ou un Pack Liberté.
                           </p>
                           <Link to="/tarifs">
                             <Button className="gap-2 rounded-lg shadow-lg">
@@ -918,113 +1052,71 @@ const Dashboard = () => {
                         </div>
                       )}
                       <CardHeader className="text-center border-b border-border">
-                        <Badge className="mx-auto mb-2 bg-accent/10 text-accent border-accent/20 gap-1">
-                          <Cloud className="h-3 w-3" />
-                          Configuration Base de Données
+                        <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
+                          <Rocket className="h-3 w-3" />
+                          Prêt pour le déploiement
                         </Badge>
-                        <CardTitle className="text-xl text-foreground">Étape 3.5 : Assistant Base de Données</CardTitle>
+                        <CardTitle className="text-xl text-foreground">Étape 4 : Assistant de Déploiement Intelligent</CardTitle>
                         <CardDescription className="max-w-md mx-auto">
-                          Configurez votre base de données pour votre nouvel hébergeur
+                          Choisissez comment et où déployer votre projet libéré
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-6 pb-8">
-                        <DatabaseConfigAssistant
+                        <DeploymentAssistant
                           projectName={fileName.replace('.zip', '')}
                           extractedFiles={extractedFiles}
-                          onConfigComplete={(config) => {
-                            setDbConfigComplete(true);
-                            toast({
-                              title: "Configuration terminée",
-                              description: config.type === "keep" ? "Base de données actuelle conservée" : "Nouvelle base de données configurée",
-                            });
-                          }}
-                          onSkip={() => setDbConfigComplete(true)}
+                          onDownload={() => setExporterOpen(true)}
+                          onGitHubPush={() => setExporterOpen(true)}
+                          onBack={resetAnalysis}
                           disabled={!subscription.subscribed}
+                          isSubscribed={subscription.subscribed}
                         />
+                        
+                        <div className="text-center mt-6 pt-6 border-t border-border">
+                          <Button 
+                            variant="link" 
+                            className="text-muted-foreground hover:text-foreground" 
+                            onClick={resetAnalysis}
+                          >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Analyser un autre projet
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
-                  )}
+                  </div>
+                )}
+              </div>
+            )}
 
-                  {/* Deployment Assistant */}
-                  <Card className="card-shadow border border-border status-border-green relative">
-                    {!subscription.subscribed && (
-                      <div className="absolute inset-0 bg-card/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-8">
-                        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                          <Lock className="h-8 w-8 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-bold text-foreground mb-2">Débloquez l'export</h3>
-                        <p className="text-muted-foreground text-center mb-6 max-w-md">
-                          Téléchargez votre projet 100% autonome avec un abonnement Pro ou un Pack Liberté.
-                        </p>
-                        <Link to="/tarifs">
-                          <Button className="gap-2 rounded-lg shadow-lg">
-                            <Crown className="h-4 w-4" />
-                            Voir les tarifs
-                          </Button>
-                        </Link>
-                      </div>
-                    )}
-                    <CardHeader className="text-center border-b border-border">
-                      <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
-                        <Rocket className="h-3 w-3" />
-                        Prêt pour le déploiement
-                      </Badge>
-                      <CardTitle className="text-xl text-foreground">Étape 4 : Assistant de Déploiement Intelligent</CardTitle>
-                      <CardDescription className="max-w-md mx-auto">
-                        Choisissez comment et où déployer votre projet libéré
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6 pb-8">
-                      <DeploymentAssistant
-                        projectName={fileName.replace('.zip', '')}
-                        extractedFiles={extractedFiles}
-                        onDownload={() => setExporterOpen(true)}
-                        onGitHubPush={() => setExporterOpen(true)}
-                        onBack={resetAnalysis}
-                        disabled={!subscription.subscribed}
-                        isSubscribed={subscription.subscribed}
-                      />
-                      
-                      <div className="text-center mt-6 pt-6 border-t border-border">
-                        <Button 
-                          variant="link" 
-                          className="text-muted-foreground hover:text-foreground" 
-                          onClick={resetAnalysis}
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Analyser un autre projet
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </TabsContent>
+            {/* Tab: Projects */}
+            {activeTab === "projects" && (
+              <div className="space-y-6">
+                <Card className="bg-muted/30 border-dashed mb-4 border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      Sélectionnez un projet pour accéder directement aux options de déploiement
+                    </p>
+                  </CardContent>
+                </Card>
+                <AnalyzedProjects 
+                  onSelectProject={loadProjectForDeployment}
+                  onRefresh={fetchHistory}
+                  loadingProjectId={loadingProjectId}
+                />
+              </div>
+            )}
 
-            {/* Tab 2: Analyzed Projects */}
-            <TabsContent value="projects" className="space-y-6">
-              <Card className="bg-muted/30 border-dashed mb-4">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <FolderOpen className="h-4 w-4" />
-                    Sélectionnez un projet pour accéder directement aux options de déploiement
-                  </p>
-                </CardContent>
-              </Card>
-              <AnalyzedProjects 
-                onSelectProject={loadProjectForDeployment}
-                onRefresh={fetchHistory}
-                loadingProjectId={loadingProjectId}
-              />
-            </TabsContent>
-
-            {/* Tab 3: Deployment History */}
-            <TabsContent value="deployments" className="space-y-6">
-              <DeploymentHistory />
-            </TabsContent>
-          </Tabs>
+            {/* Tab: Deployments */}
+            {activeTab === "deployments" && (
+              <div className="space-y-6">
+                <DeploymentHistory />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* Code Cleaner Modal */}
       {selectedFileForCleaning && (
@@ -1056,7 +1148,7 @@ const Dashboard = () => {
         isOpen={sovereignExportOpen}
         onClose={() => setSovereignExportOpen(false)}
       />
-    </Layout>
+    </div>
   );
 };
 
