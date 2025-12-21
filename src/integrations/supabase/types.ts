@@ -450,6 +450,59 @@ export type Database = {
         }
         Relationships: []
       }
+      server_deployments: {
+        Row: {
+          coolify_app_uuid: string | null
+          created_at: string
+          deployed_url: string | null
+          domain: string | null
+          error_message: string | null
+          github_repo_url: string | null
+          id: string
+          project_name: string
+          server_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coolify_app_uuid?: string | null
+          created_at?: string
+          deployed_url?: string | null
+          domain?: string | null
+          error_message?: string | null
+          github_repo_url?: string | null
+          id?: string
+          project_name: string
+          server_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coolify_app_uuid?: string | null
+          created_at?: string
+          deployed_url?: string | null
+          domain?: string | null
+          error_message?: string | null
+          github_repo_url?: string | null
+          id?: string
+          project_name?: string
+          server_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_deployments_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "user_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -512,6 +565,51 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_servers: {
+        Row: {
+          coolify_token: string | null
+          coolify_url: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string
+          name: string
+          provider: string | null
+          setup_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coolify_token?: string | null
+          coolify_url?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address: string
+          name: string
+          provider?: string | null
+          setup_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coolify_token?: string | null
+          coolify_url?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string
+          name?: string
+          provider?: string | null
+          setup_id?: string | null
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

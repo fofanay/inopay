@@ -56,3 +56,18 @@ verify_jwt = false
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.setup-vps]
+verify_jwt = false
+
+[functions.serve-setup-script]
+verify_jwt = false
+
+[functions.setup-callback]
+verify_jwt = false
+
+[functions.deploy-coolify]
+verify_jwt = false
+
+[functions.check-server-status]
+verify_jwt = false
