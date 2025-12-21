@@ -6,10 +6,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Dockerfile for Vite/React apps
-const generateDockerfile = () => `
+// Generate environment variables for the deployed app
+interface EnvVars {
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_ANON_KEY?: string;
+  DATABASE_URL?: string;
+  JWT_SECRET?: string;
+}
+
+// Dockerfile for Vite/React apps with environment injection
+const generateDockerfile = (envVars: EnvVars = {}) => {
+  const envLines = Object.entries(envVars)
+    .filter(([_, value]) => value)
+    .map(([key, value]) => `ENV ${key}="${value}"`)
+    .join('\n');
+
+  return `
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Environment variables for build
+${envLines}
+
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 COPY . .
@@ -21,6 +39,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 `;
+};
 
 // Nginx config for SPA
 const generateNginxConf = () => `
@@ -43,6 +62,26 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 }
 `;
+
+// Generate .env file content
+const generateEnvFile = (server: any): string => {
+  const lines: string[] = [];
+  
+  if (server.db_url) {
+    lines.push(`DATABASE_URL=${server.db_url}`);
+  }
+  if (server.jwt_secret) {
+    lines.push(`JWT_SECRET=${server.jwt_secret}`);
+  }
+  if (server.anon_key) {
+    lines.push(`VITE_SUPABASE_ANON_KEY=${server.anon_key}`);
+  }
+  if (server.ip_address) {
+    lines.push(`VITE_SUPABASE_URL=http://${server.ip_address}:5432`);
+  }
+  
+  return lines.join('\n');
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -139,14 +178,34 @@ serve(async (req) => {
 
     console.log(`[deploy-direct] Deployment record created: ${deployment.id}`);
 
-    // Add Dockerfile and nginx.conf to files if not present
+    // Build environment variables from server database config
+    const envVars: EnvVars = {};
+    if (server.db_url) {
+      envVars.DATABASE_URL = server.db_url;
+    }
+    if (server.jwt_secret) {
+      envVars.JWT_SECRET = server.jwt_secret;
+    }
+    if (server.anon_key) {
+      envVars.VITE_SUPABASE_ANON_KEY = server.anon_key;
+    }
+    if (server.ip_address) {
+      envVars.VITE_SUPABASE_URL = `http://${server.ip_address}:5432`;
+    }
+
+    // Add Dockerfile, nginx.conf and .env to files
     const deployFiles = { ...files };
     if (!deployFiles['Dockerfile']) {
-      deployFiles['Dockerfile'] = generateDockerfile();
+      deployFiles['Dockerfile'] = generateDockerfile(envVars);
     }
     if (!deployFiles['nginx.conf']) {
       deployFiles['nginx.conf'] = generateNginxConf();
     }
+    if (!deployFiles['.env'] && Object.keys(envVars).length > 0) {
+      deployFiles['.env'] = generateEnvFile(server);
+    }
+
+    console.log(`[deploy-direct] Environment variables configured: ${Object.keys(envVars).join(', ')}`);
 
     // Call Coolify API
     const coolifyHeaders = {
