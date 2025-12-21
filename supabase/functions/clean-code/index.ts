@@ -7,16 +7,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `Tu es un expert DevOps. Réécris ce code pour supprimer toute dépendance propriétaire Lovable. Remplace les hooks spécifiques par du React standard et Tailwind. Assure-toi que le code tourne avec npm install et npm run dev sans outils tiers.
+const SYSTEM_PROMPT = `Tu es un expert DevOps et architecte cloud. Réécris ce code pour supprimer toute dépendance propriétaire Lovable ET optimiser les coûts en remplaçant les services cloud payants par des alternatives Open Source auto-hébergées.
 
-Règles spécifiques:
+## RÈGLES DE NETTOYAGE PROPRIÉTAIRE:
 - Remplace @lovable/ et @gptengineer/ imports par des alternatives open-source
 - Remplace use-mobile par un hook personnalisé utilisant window.matchMedia
 - Remplace use-toast par react-hot-toast ou sonner
 - Supprime les fichiers de configuration .lovable, .gptengineer
 - Garde les alias @/ mais documente comment les configurer dans vite.config.ts
+
+## RÈGLES D'OPTIMISATION DES COÛTS (Services Cloud → Open Source):
+1. **OpenAI → Ollama**:
+   - Remplace "import OpenAI from 'openai'" par un client HTTP vers Ollama
+   - Remplace les appels openai.chat.completions.create par fetch vers http://OLLAMA_URL/api/chat
+   - Utilise la variable d'environnement OLLAMA_BASE_URL
+
+2. **Pinecone → PGVector**:
+   - Remplace "@pinecone-database/pinecone" par "pg" avec requêtes SQL pgvector
+   - Adapte les requêtes de similarité: SELECT * FROM items ORDER BY embedding <=> $1 LIMIT 10
+
+3. **Clerk → Supabase Auth**:
+   - Remplace "@clerk/react" par "@supabase/supabase-js"
+   - useUser() → supabase.auth.getUser()
+   - SignIn/SignUp → composants personnalisés avec supabase.auth.signInWithPassword
+
+4. **Auth0 → PocketBase ou Supabase Auth**:
+   - Remplace "@auth0/auth0-react" par le SDK PocketBase ou Supabase
+   - useAuth0() → pb.authStore ou supabase.auth
+
+5. **Algolia → Meilisearch**:
+   - Remplace "algoliasearch" par "meilisearch"
+   - L'API est très similaire, adapter le client: new MeiliSearch({ host: MEILISEARCH_URL })
+
+6. **Pusher → Soketi**:
+   - Garde "pusher-js" mais change les options de connexion
+   - { wsHost: 'soketi', wsPort: 6001, forceTLS: false }
+
+7. **SendGrid/Resend → Nodemailer SMTP**:
+   - Remplace les SDK email par nodemailer avec config SMTP
+   - transporter.sendMail({ from, to, subject, html })
+
+8. **Cloudinary → MinIO + Sharp**:
+   - Remplace les uploads Cloudinary par AWS SDK S3 pointant vers MinIO
+   - Utilise Sharp pour les transformations d'images côté serveur
+
+## RÈGLES GÉNÉRALES:
 - Conserve la structure et la logique du code original
-- Retourne UNIQUEMENT le code nettoyé, sans explication`;
+- Ajoute des commentaires // INOPAY: expliquant les changements de services
+- Utilise des variables d'environnement pour les URLs des services self-hosted
+- Retourne UNIQUEMENT le code nettoyé et optimisé, sans explication`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
