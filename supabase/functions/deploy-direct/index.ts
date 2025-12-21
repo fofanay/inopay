@@ -1,12 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<unknown>) => void;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Generate environment variables for the deployed app - CORRECTED interface
+// Generate environment variables for the deployed app
 interface EnvVars {
   DATABASE_URL?: string;
   JWT_SECRET?: string;
@@ -63,7 +68,7 @@ server {
 }
 `;
 
-// Generate .env file content - CORRECTED: Remove invalid VITE_SUPABASE_URL
+// Generate .env file content - SECURED: no raw secrets exposed
 const generateEnvFile = (server: any): string => {
   const lines: string[] = [];
   
@@ -82,7 +87,7 @@ const generateEnvFile = (server: any): string => {
     lines.push(`VITE_ANON_KEY=${server.anon_key}`);
   }
   
-  // API base URL - use proper HTTP endpoint, NOT PostgreSQL port
+  // API base URL - use proper HTTP endpoint
   if (server.ip_address) {
     lines.push(`VITE_API_URL=http://${server.ip_address}:3000`);
   }
@@ -90,17 +95,86 @@ const generateEnvFile = (server: any): string => {
   return lines.join('\n');
 };
 
+// Mask secret for logging (show only last 4 chars)
+const maskSecret = (value: string | null): string => {
+  if (!value) return '***';
+  if (value.length <= 4) return '***';
+  return `***${value.slice(-4)}`;
+};
+
+// Cleanup function with retry logic
+async function cleanupWithRetry(
+  supabaseUrl: string,
+  supabaseServiceKey: string,
+  serverId: string,
+  deploymentId: string,
+  maxRetries: number = 3
+): Promise<void> {
+  console.log(`[deploy-direct] Starting cleanup for server ${serverId}, deployment ${deploymentId}`);
+  
+  // Wait for deployment to stabilize (30 seconds)
+  await new Promise(resolve => setTimeout(resolve, 30000));
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[deploy-direct] Cleanup attempt ${attempt}/${maxRetries}`);
+      
+      const cleanupResponse = await fetch(
+        `${supabaseUrl}/functions/v1/cleanup-secrets`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            server_id: serverId,
+            deployment_id: deploymentId,
+            verify_health: true,
+          }),
+        }
+      );
+      
+      const cleanupResult = await cleanupResponse.json();
+      console.log(`[deploy-direct] Cleanup result:`, cleanupResult);
+      
+      if (cleanupResult.success) {
+        console.log(`[deploy-direct] Cleanup successful on attempt ${attempt}`);
+        return;
+      }
+      
+      // If health check failed, wait and retry
+      if (cleanupResult.reason === 'health_check_failed' || cleanupResult.reason === 'health_check_error') {
+        console.log(`[deploy-direct] Health check not ready, waiting before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 15000 * attempt));
+      }
+    } catch (cleanupError) {
+      console.error(`[deploy-direct] Cleanup attempt ${attempt} failed:`, cleanupError);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 10000 * attempt));
+      }
+    }
+  }
+  
+  console.error(`[deploy-direct] Cleanup failed after ${maxRetries} attempts`);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Variables for cleanup in finally block
+  let serverId: string | null = null;
+  let deploymentId: string | null = null;
+  let shouldCleanup = false;
+
+  try {
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -129,6 +203,7 @@ serve(async (req) => {
       );
     }
 
+    serverId = server_id;
     console.log(`[deploy-direct] Starting deployment for project: ${project_name}`);
     console.log(`[deploy-direct] Files count: ${Object.keys(files).length}`);
 
@@ -161,6 +236,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log without secrets (SECURITY: masked values)
+    console.log(`[deploy-direct] Server config: IP=${server.ip_address}, DB=${server.db_name}, Token=${maskSecret(server.coolify_token)}`);
 
     // Check for existing deployments to determine deploy vs redeploy
     const { data: existingDeployments } = await supabase
@@ -221,6 +299,9 @@ serve(async (req) => {
       );
     }
 
+    deploymentId = deployment.id;
+    shouldCleanup = true; // Flag for cleanup in finally
+
     // Link the credit to this deployment
     if (creditData.purchase_id) {
       await supabase
@@ -231,7 +312,7 @@ serve(async (req) => {
 
     console.log(`[deploy-direct] Deployment record created: ${deployment.id}`);
 
-    // Build environment variables from server database config - CORRECTED
+    // Build environment variables from server database config
     const envVars: EnvVars = {};
     if (server.db_url) {
       envVars.DATABASE_URL = server.db_url;
@@ -239,8 +320,6 @@ serve(async (req) => {
     if (server.jwt_secret) {
       envVars.JWT_SECRET = server.jwt_secret;
     }
-    // Note: VITE_SUPABASE_URL removed - requires proper Supabase stack (PostgREST + GoTrue)
-    // If needed, user should deploy a full Supabase instance or use direct API
 
     // Add Dockerfile, nginx.conf and .env to files
     const deployFiles = { ...files };
@@ -263,102 +342,86 @@ serve(async (req) => {
       'Accept': 'application/json'
     };
 
-    try {
-      // Update status
-      await supabase
-        .from('server_deployments')
-        .update({ status: 'deploying' })
-        .eq('id', deployment.id);
+    // Update status
+    await supabase
+      .from('server_deployments')
+      .update({ status: 'deploying' })
+      .eq('id', deployment.id);
 
-      // Step 1: Create a project in Coolify
-      console.log('[deploy-direct] Creating Coolify project...');
-      const projectResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
-        method: 'POST',
-        headers: coolifyHeaders,
-        body: JSON.stringify({
-          name: project_name,
-          description: `Deployed via Inopay Direct Deploy`
-        })
-      });
-
-      if (!projectResponse.ok) {
-        const errorText = await projectResponse.text();
-        console.error('[deploy-direct] Coolify project creation failed:', errorText);
-        throw new Error(`Failed to create Coolify project: ${errorText}`);
-      }
-
-      const projectData = await projectResponse.json();
-      console.log('[deploy-direct] Coolify project created:', projectData.uuid);
-
-      // Step 2: Create a Dockerfile-based application (no GitHub required!)
-      console.log('[deploy-direct] Creating Dockerfile application...');
-      
-      // Prepare the final domain
-      const finalDomain = domain || `${project_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.${server.ip_address}.nip.io`;
-      
-      const appPayload = {
-        project_uuid: projectData.uuid,
-        server_uuid: '0', // Local server (Coolify itself)
-        environment_name: 'production',
-        dockerfile: deployFiles['Dockerfile'],
+    // Step 1: Create a project in Coolify
+    console.log('[deploy-direct] Creating Coolify project...');
+    const projectResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
+      method: 'POST',
+      headers: coolifyHeaders,
+      body: JSON.stringify({
         name: project_name,
-        description: 'Deployed via Inopay',
-        domains: `https://${finalDomain}`,
-        ports_exposes: '80',
-        instant_deploy: false
-      };
+        description: `Deployed via Inopay Direct Deploy`
+      })
+    });
 
-      console.log('[deploy-direct] App payload:', JSON.stringify(appPayload, null, 2));
+    if (!projectResponse.ok) {
+      const errorText = await projectResponse.text();
+      console.error('[deploy-direct] Coolify project creation failed:', errorText);
+      throw new Error(`Failed to create Coolify project: ${errorText}`);
+    }
 
-      const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/dockerfile`, {
-        method: 'POST',
-        headers: coolifyHeaders,
-        body: JSON.stringify(appPayload)
-      });
+    const projectData = await projectResponse.json();
+    console.log('[deploy-direct] Coolify project created:', projectData.uuid);
 
-      if (!appResponse.ok) {
-        const errorText = await appResponse.text();
-        console.error('[deploy-direct] Coolify app creation failed:', errorText);
-        throw new Error(`Failed to create Coolify application: ${errorText}`);
-      }
+    // Step 2: Create a Dockerfile-based application (no GitHub required!)
+    console.log('[deploy-direct] Creating Dockerfile application...');
+    
+    // Prepare the final domain
+    const finalDomain = domain || `${project_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.${server.ip_address}.nip.io`;
+    
+    const appPayload = {
+      project_uuid: projectData.uuid,
+      server_uuid: '0', // Local server (Coolify itself)
+      environment_name: 'production',
+      dockerfile: deployFiles['Dockerfile'],
+      name: project_name,
+      description: 'Deployed via Inopay',
+      domains: `https://${finalDomain}`,
+      ports_exposes: '80',
+      instant_deploy: false
+    };
 
-      const appData = await appResponse.json();
-      console.log('[deploy-direct] Coolify application created:', appData.uuid);
+    console.log('[deploy-direct] App payload domains:', appPayload.domains);
 
-      // Step 3: Upload source files using base64 encoding
-      // Create a tarball-like structure in base64
-      const filesList = Object.entries(deployFiles).map(([path, content]) => ({
-        path,
-        content: btoa(unescape(encodeURIComponent(content as string)))
-      }));
+    const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/dockerfile`, {
+      method: 'POST',
+      headers: coolifyHeaders,
+      body: JSON.stringify(appPayload)
+    });
 
-      console.log('[deploy-direct] Uploading source files...');
+    if (!appResponse.ok) {
+      const errorText = await appResponse.text();
+      console.error('[deploy-direct] Coolify app creation failed:', errorText);
+      throw new Error(`Failed to create Coolify application: ${errorText}`);
+    }
+
+    const appData = await appResponse.json();
+    console.log('[deploy-direct] Coolify application created:', appData.uuid);
+
+    // Step 3: Upload source files using base64 encoding
+    const filesList = Object.entries(deployFiles).map(([path, content]) => ({
+      path,
+      content: btoa(unescape(encodeURIComponent(content as string)))
+    }));
+
+    console.log('[deploy-direct] Uploading source files...');
+    
+    const uploadResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}/files`, {
+      method: 'POST',
+      headers: coolifyHeaders,
+      body: JSON.stringify({ files: filesList })
+    });
+
+    // If file upload API doesn't exist, use alternative method
+    if (!uploadResponse.ok) {
+      console.log('[deploy-direct] Direct file upload not available, using dockerfile inline method');
       
-      // Use Coolify's file upload API if available, or store in deployment config
-      const uploadResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}/files`, {
-        method: 'POST',
-        headers: coolifyHeaders,
-        body: JSON.stringify({ files: filesList })
-      });
-
-      // If file upload API doesn't exist, use alternative method
-      if (!uploadResponse.ok) {
-        console.log('[deploy-direct] Direct file upload not available, using dockerfile inline method');
-        
-        // Update the Dockerfile to include files inline via echo commands
-        const inlineFiles = Object.entries(deployFiles)
-          .filter(([path]) => path !== 'Dockerfile' && path !== 'nginx.conf')
-          .slice(0, 50) // Limit to 50 files for inline method
-          .map(([path, content]) => {
-            const escapedContent = (content as string)
-              .replace(/\\/g, '\\\\')
-              .replace(/'/g, "'\"'\"'")
-              .replace(/\n/g, '\\n');
-            return `RUN mkdir -p $(dirname "${path}") && echo '${escapedContent}' > "${path}"`;
-          })
-          .join('\n');
-
-        const enhancedDockerfile = `
+      const enhancedDockerfile = `
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -391,124 +454,109 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 `;
 
-        // Update the application with enhanced Dockerfile
-        await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}`, {
-          method: 'PATCH',
-          headers: coolifyHeaders,
-          body: JSON.stringify({
-            dockerfile: enhancedDockerfile
-          })
-        });
-      }
-
-      // Step 4: Trigger deployment
-      console.log('[deploy-direct] Triggering deployment...');
-      const deployResponse = await fetch(`${server.coolify_url}/api/v1/deploy?uuid=${appData.uuid}`, {
-        method: 'GET',
-        headers: coolifyHeaders
+      // Update the application with enhanced Dockerfile
+      await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}`, {
+        method: 'PATCH',
+        headers: coolifyHeaders,
+        body: JSON.stringify({
+          dockerfile: enhancedDockerfile
+        })
       });
+    }
 
-      if (!deployResponse.ok) {
-        const errorText = await deployResponse.text();
-        console.error('[deploy-direct] Coolify deploy failed:', errorText);
-        throw new Error(`Failed to trigger deployment: ${errorText}`);
-      }
+    // Step 4: Trigger deployment
+    console.log('[deploy-direct] Triggering deployment...');
+    const deployResponse = await fetch(`${server.coolify_url}/api/v1/deploy?uuid=${appData.uuid}`, {
+      method: 'GET',
+      headers: coolifyHeaders
+    });
 
-      const deployData = await deployResponse.json();
-      console.log('[deploy-direct] Deployment triggered:', deployData);
+    if (!deployResponse.ok) {
+      const errorText = await deployResponse.text();
+      console.error('[deploy-direct] Coolify deploy failed:', errorText);
+      throw new Error(`Failed to trigger deployment: ${errorText}`);
+    }
 
-      // Update deployment record
-      const deployedUrl = `https://${finalDomain}`;
+    const deployData = await deployResponse.json();
+    console.log('[deploy-direct] Deployment triggered:', deployData);
 
-      await supabase
-        .from('server_deployments')
-        .update({
+    // Update deployment record
+    const deployedUrl = `https://${finalDomain}`;
+
+    await supabase
+      .from('server_deployments')
+      .update({
+        status: 'deployed',
+        coolify_app_uuid: appData.uuid,
+        deployed_url: deployedUrl,
+        domain: finalDomain,
+        health_status: 'unknown',
+        last_health_check: null
+      })
+      .eq('id', deployment.id);
+
+    console.log(`[deploy-direct] Deployment complete: ${deployedUrl}`);
+
+    // Use EdgeRuntime.waitUntil for guaranteed background cleanup (SECURITY FIX)
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(
+        cleanupWithRetry(supabaseUrl, supabaseServiceKey, server.id, deployment.id)
+      );
+      console.log('[deploy-direct] Cleanup scheduled via EdgeRuntime.waitUntil');
+    } else {
+      // Fallback for environments without EdgeRuntime
+      cleanupWithRetry(supabaseUrl, supabaseServiceKey, server.id, deployment.id);
+      console.log('[deploy-direct] Cleanup scheduled via fallback');
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        deployment: {
+          id: deployment.id,
           status: 'deployed',
           coolify_app_uuid: appData.uuid,
           deployed_url: deployedUrl,
-          domain: finalDomain,
-          health_status: 'unknown',
-          last_health_check: null
-        })
-        .eq('id', deployment.id);
+          domain: finalDomain
+        },
+        message: 'Deployment started successfully. Your site will be available in a few minutes.',
+        cleanup_scheduled: true
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
-      console.log(`[deploy-direct] Deployment complete: ${deployedUrl}`);
-
-      // Déclencher le nettoyage Zero-Knowledge après 30 secondes
-      const cleanupTask = async () => {
-        console.log('[deploy-direct] Waiting 30s before cleanup...');
-        await new Promise(resolve => setTimeout(resolve, 30000));
-        
-        console.log('[deploy-direct] Triggering Zero-Knowledge cleanup...');
-        try {
-          const cleanupResponse = await fetch(
-            `${supabaseUrl}/functions/v1/cleanup-secrets`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                server_id: server.id,
-                deployment_id: deployment.id,
-                verify_health: true,
-              }),
-            }
-          );
-          
-          const cleanupResult = await cleanupResponse.json();
-          console.log('[deploy-direct] Cleanup result:', cleanupResult);
-        } catch (cleanupError) {
-          console.error('[deploy-direct] Cleanup failed:', cleanupError);
-        }
-      };
-
-      // Lancer la tâche de nettoyage en background (sans bloquer la réponse)
-      cleanupTask();
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          deployment: {
-            id: deployment.id,
-            status: 'deployed',
-            coolify_app_uuid: appData.uuid,
-            deployed_url: deployedUrl,
-            domain: finalDomain
-          },
-          message: 'Deployment started successfully. Your site will be available in a few minutes.',
-          cleanup_scheduled: true
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-
-    } catch (coolifyError: unknown) {
-      console.error('[deploy-direct] Coolify API error:', coolifyError);
-      const errorMessage = coolifyError instanceof Error ? coolifyError.message : 'Unknown error';
-      
-      // Update deployment as failed
+  } catch (error: unknown) {
+    console.error('[deploy-direct] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Update deployment as failed if we have a deployment ID
+    if (deploymentId) {
       await supabase
         .from('server_deployments')
         .update({
           status: 'failed',
           error_message: errorMessage
         })
-        .eq('id', deployment.id);
-
-      return new Response(
-        JSON.stringify({ 
-          error: 'Deployment failed', 
-          details: errorMessage 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        .eq('id', deploymentId);
     }
 
-  } catch (error: unknown) {
-    console.error('[deploy-direct] Error:', error);
+    // SECURITY: Always trigger cleanup on error to avoid secret leakage
+    if (shouldCleanup && serverId && deploymentId) {
+      console.log('[deploy-direct] Triggering cleanup due to error');
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        EdgeRuntime.waitUntil(
+          cleanupWithRetry(supabaseUrl, supabaseServiceKey, serverId, deploymentId)
+        );
+      } else {
+        cleanupWithRetry(supabaseUrl, supabaseServiceKey, serverId, deploymentId);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: 'Deployment failed', 
+        details: errorMessage 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

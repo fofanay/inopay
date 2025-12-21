@@ -39,7 +39,7 @@ serve(async (req) => {
       );
     }
 
-    const { credit_type, deployment_id } = await req.json();
+    const { credit_type, deployment_id, project_id } = await req.json();
 
     if (!credit_type) {
       return new Response(
@@ -48,17 +48,37 @@ serve(async (req) => {
       );
     }
 
-    logStep('Processing credit request', { userId: user.id, credit_type, deployment_id });
+    logStep('Processing credit request', { userId: user.id, credit_type, deployment_id, project_id });
 
-    // Check if user is an unlimited tester
+    // Check if user is an unlimited tester (via user_roles)
     const { data: testerRole } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .eq('role', 'tester')
+      .eq('role', 'admin') // Admins also have unlimited credits
       .maybeSingle();
 
     if (testerRole) {
+      logStep('User is admin - credit granted');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          credit_source: 'admin',
+          message: 'Crédit illimité (administrateur)'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check for unlimited tester in subscriptions table
+    const { data: testerSub } = await supabase
+      .from('subscriptions')
+      .select('id, credits_remaining, free_credits')
+      .eq('user_id', user.id)
+      .or('credits_remaining.gte.999999,free_credits.gte.999999')
+      .maybeSingle();
+
+    if (testerSub) {
       logStep('User is unlimited tester - credit granted');
       return new Response(
         JSON.stringify({
@@ -70,29 +90,57 @@ serve(async (req) => {
       );
     }
 
-    // Check for available purchase credit
-    const { data: purchase, error: purchaseError } = await supabase
-      .from('user_purchases')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('service_type', credit_type)
-      .eq('status', 'completed')
-      .eq('used', false)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    // PHASE 3: Check for available purchase credit (exact match OR fallback)
+    // First try exact match, then try related types
+    const creditTypes = credit_type === 'redeploy' 
+      ? ['redeploy', 'deploy'] // redeploy can use deploy credit as fallback
+      : [credit_type];
+
+    let purchase = null;
+    for (const searchType of creditTypes) {
+      const { data } = await supabase
+        .from('user_purchases')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('service_type', searchType)
+        .eq('status', 'completed')
+        .eq('used', false)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        purchase = data;
+        logStep(`Found credit via ${searchType}`, { purchaseId: data.id });
+        break;
+      }
+    }
 
     if (purchase) {
-      logStep('Found available purchase credit', { purchaseId: purchase.id });
+      logStep('Found available purchase credit', { purchaseId: purchase.id, serviceType: purchase.service_type });
 
-      // Mark as used
+      // Mark as used and link to deployment/project
+      const updateData: Record<string, unknown> = {
+        used: true,
+        used_at: new Date().toISOString(),
+      };
+      
+      if (deployment_id) {
+        updateData.deployment_id = deployment_id;
+      }
+      
+      // Store project_id in metadata if provided
+      if (project_id) {
+        updateData.metadata = {
+          ...(purchase.metadata || {}),
+          project_id,
+          used_for: credit_type
+        };
+      }
+
       const { error: updateError } = await supabase
         .from('user_purchases')
-        .update({
-          used: true,
-          used_at: new Date().toISOString(),
-          deployment_id: deployment_id || null
-        })
+        .update(updateData)
         .eq('id', purchase.id);
 
       if (updateError) {
@@ -105,7 +153,13 @@ serve(async (req) => {
           success: true,
           credit_source: 'purchase',
           purchase_id: purchase.id,
-          message: `Crédit ${credit_type} consommé`
+          original_type: purchase.service_type,
+          used_for: credit_type,
+          message: `Crédit ${credit_type} consommé`,
+          // PHASE 3: Return enterprise limits for deploy purchases
+          limits_granted: purchase.service_type === 'deploy' || purchase.service_type === 'redeploy'
+            ? { maxFiles: 10000, maxRepos: -1 }
+            : null
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -114,7 +168,7 @@ serve(async (req) => {
     // Check legacy credits (subscriptions table)
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('id, credits_remaining, free_credits')
+      .select('id, credits_remaining, free_credits, plan_type')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -155,6 +209,7 @@ serve(async (req) => {
             success: true,
             credit_source: 'legacy',
             subscription_id: subscription.id,
+            remaining: newFreeCredits + newCreditsRemaining,
             message: 'Crédit legacy consommé'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
