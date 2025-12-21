@@ -1,87 +1,195 @@
 import { Link } from "react-router-dom";
-import { Github, Twitter, Mail } from "lucide-react";
+import { Github, Twitter, Mail, Phone, MapPin, Clock, ArrowRight, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import inopayLogo from "@/assets/inopay-logo.png";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const Footer = () => {
+  const [email, setEmail] = useState("");
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      toast.success("Merci ! Vous êtes inscrit à notre newsletter.");
+      setEmail("");
+    }
+  };
+
   return (
-    <footer className="border-t border-border bg-card">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          {/* Brand */}
-          <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src={inopayLogo} alt="Inopay" className="h-12 w-auto" />
+    <footer className="bg-accent text-white">
+      {/* Main Footer Content */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+          {/* Column 1 - Brand & About */}
+          <div className="lg:col-span-1">
+            <Link to="/" className="flex items-center gap-2 mb-6">
+              <img src={inopayLogo} alt="Inopay" className="h-12 w-auto brightness-0 invert" />
             </Link>
-            <p className="text-sm text-muted-foreground max-w-md mb-4">
+            <p className="text-white/70 text-sm leading-relaxed mb-6">
               Du code IA à la production en 10 minutes. Nettoyage automatique, 
               déploiement VPS, SSL et monitoring 24/7 inclus.
             </p>
-            <p className="text-sm font-medium text-primary">
-              Inopay : De l'IA à la Production en 10 minutes.
-            </p>
-          </div>
-
-          {/* Links */}
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">Navigation</h4>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Accueil
-                </Link>
-              </li>
-              <li>
-                <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link to="/historique" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Historique
-                </Link>
-              </li>
-              <li>
-                <Link to="/a-propos" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  À propos
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Social */}
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">Contact</h4>
+            {/* Social icons */}
             <div className="flex gap-3">
               <a 
-                href="#" 
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
-              >
-                <Github className="h-4 w-4" />
-              </a>
-              <a 
-                href="#" 
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+                href="https://twitter.com" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 hover:bg-primary hover:text-white hover:border-primary transition-all"
               >
                 <Twitter className="h-4 w-4" />
               </a>
               <a 
-                href="#" 
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+                href="https://github.com" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 hover:bg-primary hover:text-white hover:border-primary transition-all"
+              >
+                <Github className="h-4 w-4" />
+              </a>
+              <a 
+                href="mailto:contact@inopay.io"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 hover:bg-primary hover:text-white hover:border-primary transition-all"
               >
                 <Mail className="h-4 w-4" />
               </a>
             </div>
           </div>
-        </div>
 
-        {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-border">
+          {/* Column 2 - Quick Links */}
+          <div>
+            <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
+              <ArrowRight className="h-4 w-4 text-primary" />
+              Liens Rapides
+            </h4>
+            <ul className="space-y-3">
+              <li>
+                <Link to="/" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                  Accueil
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                  Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/economies" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                  Économies
+                </Link>
+              </li>
+              <li>
+                <Link to="/tarifs" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                  Tarifs
+                </Link>
+              </li>
+              <li>
+                <Link to="/historique" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                  Historique
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 3 - Contact Info */}
+          <div>
+            <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              Contact
+            </h4>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">Notre mission</p>
+                  <p className="text-white/70 text-sm">Libérer votre code IA</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Mail className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">Email</p>
+                  <a href="mailto:support@inopay.io" className="text-white/70 text-sm hover:text-primary transition-colors">
+                    support@inopay.io
+                  </a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Clock className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-white font-medium">Support</p>
+                  <p className="text-white/70 text-sm">24/7 disponible</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4 - Newsletter */}
+          <div>
+            <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" />
+              Newsletter
+            </h4>
+            <p className="text-white/70 text-sm mb-4">
+              Recevez les dernières actualités et conseils pour libérer votre code IA.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="space-y-3">
+              <Input
+                type="email"
+                placeholder="Votre email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary focus:ring-primary"
+                required
+              />
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-semibold"
+              >
+                S'inscrire
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </form>
+            <p className="text-white/50 text-xs mt-3">
+              En vous inscrivant, vous acceptez notre politique de confidentialité.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-white/10">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-white/60 text-sm">
               © {new Date().getFullYear()} Inopay. Tous droits réservés.
             </p>
-            <p className="text-sm font-medium text-foreground">
-              Inopay : De l'IA à la Production en 10 minutes
+            <div className="flex items-center gap-6">
+              <Link to="/mentions-legales" className="text-white/60 text-sm hover:text-primary transition-colors">
+                Mentions légales
+              </Link>
+              <Link to="/confidentialite" className="text-white/60 text-sm hover:text-primary transition-colors">
+                Confidentialité
+              </Link>
+              <Link to="/cgu" className="text-white/60 text-sm hover:text-primary transition-colors">
+                CGU
+              </Link>
+            </div>
+            <p className="text-white/60 text-sm font-medium">
+              De l'IA à la Production en 10 minutes
             </p>
           </div>
         </div>
