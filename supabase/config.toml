@@ -74,3 +74,9 @@ verify_jwt = false
 
 [functions.deploy-direct]
 verify_jwt = false
+
+[functions.setup-database]
+verify_jwt = false
+
+[functions.migrate-schema]
+verify_jwt = false

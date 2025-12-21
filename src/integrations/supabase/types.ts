@@ -571,42 +571,72 @@ export type Database = {
       }
       user_servers: {
         Row: {
+          anon_key: string | null
           coolify_token: string | null
           coolify_url: string | null
           created_at: string
+          db_host: string | null
+          db_name: string | null
+          db_password: string | null
+          db_port: number | null
+          db_status: string | null
+          db_url: string | null
+          db_user: string | null
           error_message: string | null
           id: string
           ip_address: string
+          jwt_secret: string | null
           name: string
           provider: string | null
+          service_role_key: string | null
           setup_id: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          anon_key?: string | null
           coolify_token?: string | null
           coolify_url?: string | null
           created_at?: string
+          db_host?: string | null
+          db_name?: string | null
+          db_password?: string | null
+          db_port?: number | null
+          db_status?: string | null
+          db_url?: string | null
+          db_user?: string | null
           error_message?: string | null
           id?: string
           ip_address: string
+          jwt_secret?: string | null
           name: string
           provider?: string | null
+          service_role_key?: string | null
           setup_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          anon_key?: string | null
           coolify_token?: string | null
           coolify_url?: string | null
           created_at?: string
+          db_host?: string | null
+          db_name?: string | null
+          db_password?: string | null
+          db_port?: number | null
+          db_status?: string | null
+          db_url?: string | null
+          db_user?: string | null
           error_message?: string | null
           id?: string
           ip_address?: string
+          jwt_secret?: string | null
           name?: string
           provider?: string | null
+          service_role_key?: string | null
           setup_id?: string | null
           status?: string
           updated_at?: string

@@ -1,0 +1,12 @@
+-- Add database configuration columns to user_servers table
+ALTER TABLE public.user_servers 
+ADD COLUMN IF NOT EXISTS db_host TEXT,
+ADD COLUMN IF NOT EXISTS db_port INTEGER DEFAULT 5432,
+ADD COLUMN IF NOT EXISTS db_name TEXT,
+ADD COLUMN IF NOT EXISTS db_user TEXT,
+ADD COLUMN IF NOT EXISTS db_password TEXT,
+ADD COLUMN IF NOT EXISTS db_url TEXT,
+ADD COLUMN IF NOT EXISTS jwt_secret TEXT,
+ADD COLUMN IF NOT EXISTS anon_key TEXT,
+ADD COLUMN IF NOT EXISTS service_role_key TEXT,
+ADD COLUMN IF NOT EXISTS db_status TEXT DEFAULT 'pending';
