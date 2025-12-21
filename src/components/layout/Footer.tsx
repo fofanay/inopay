@@ -218,22 +218,19 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-white/60 text-sm">
-              © {new Date().getFullYear()} Inopay. Tous droits réservés.
+              © 2025 Inovaq Canada Inc. Fait avec passion au Québec. 🍁
             </p>
             <div className="flex items-center gap-6">
-              <Link to="/mentions-legales" className="text-white/60 text-sm hover:text-primary transition-colors">
-                Mentions légales
+              <Link to="/legal/terms" className="text-white/60 text-sm hover:text-primary transition-colors">
+                Conditions de Service
               </Link>
-              <Link to="/confidentialite" className="text-white/60 text-sm hover:text-primary transition-colors">
+              <Link to="/legal/privacy" className="text-white/60 text-sm hover:text-primary transition-colors">
                 Confidentialité
               </Link>
-              <Link to="/cgu" className="text-white/60 text-sm hover:text-primary transition-colors">
-                CGU
+              <Link to="/legal/imprint" className="text-white/60 text-sm hover:text-primary transition-colors">
+                Mentions légales
               </Link>
             </div>
-            <p className="text-white/60 text-sm font-medium">
-              De l'IA à la Production en 10 minutes
-            </p>
           </div>
         </div>
       </div>
