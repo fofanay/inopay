@@ -198,6 +198,9 @@ const ProjectExporter = ({
       setProgress(60);
       setStatus("github");
 
+      // Récupérer le token GitHub de l'utilisateur (provider_token)
+      const githubToken = session.provider_token;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-to-github`,
         {
@@ -210,7 +213,8 @@ const ProjectExporter = ({
             repoName: repoName.trim(),
             description: repoDescription,
             isPrivate,
-            files: cleanedFiles 
+            files: cleanedFiles,
+            github_token: githubToken // Envoyer le token utilisateur
           }),
         }
       );
