@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// SECURITY: Mask secrets for logging (show only last 4 chars)
+const maskSecret = (value: string | null): string => {
+  if (!value) return '[empty]';
+  if (value.length <= 4) return '***';
+  return `***${value.slice(-4)}`;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -46,7 +53,7 @@ serve(async (req) => {
       .single();
 
     if (findError || !server) {
-      console.error('Server not found for setup_id:', setup_id);
+      console.error('[setup-callback] Server not found for setup_id:', setup_id);
       return new Response(
         JSON.stringify({ error: 'Server not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,7 +74,9 @@ serve(async (req) => {
     const updateData: Record<string, unknown> = {
       status: status === 'ready' ? 'ready' : 'error',
       coolify_url: coolifyUrl,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // SECURITY: Clear setup_id immediately after successful callback
+      setup_id: null
     };
 
     // Save Coolify token if provided
@@ -98,14 +107,18 @@ serve(async (req) => {
       updateData.error_message = 'Installation failed';
     }
 
-    console.log(`[setup-callback] Updating server ${server.id} with:`, {
+    // SECURITY: Log without exposing secrets
+    console.log(`[setup-callback] Updating server ${server.id}:`, {
       status: updateData.status,
       coolify_url: coolifyUrl,
       db_host: updateData.db_host,
       db_port: updateData.db_port,
       db_name: updateData.db_name,
       db_status: updateData.db_status,
-      has_password: !!db_password
+      has_password: !!db_password,
+      password_masked: maskSecret(db_password || null),
+      token_masked: maskSecret(coolify_token || null),
+      setup_id_cleared: true
     });
 
     const { error: updateError } = await supabase
@@ -114,26 +127,43 @@ serve(async (req) => {
       .eq('id', server.id);
 
     if (updateError) {
-      console.error('Update error:', updateError);
+      console.error('[setup-callback] Update error:', updateError);
       return new Response(
         JSON.stringify({ error: 'Failed to update server status' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Server ${server.id} updated: status=${status}, coolify_url=${coolifyUrl}`);
+    // Create security audit log (SECURITY: no secrets in audit)
+    await supabase
+      .from('security_audit_logs')
+      .insert({
+        user_id: server.user_id,
+        server_id: server.id,
+        action: 'server_setup_complete',
+        details: {
+          ip_address: server_ip || server.ip_address,
+          coolify_configured: !!coolifyUrl,
+          database_configured: !!db_password,
+          setup_id_cleared: true,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    console.log(`[setup-callback] Server ${server.id} updated successfully, setup_id cleared`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
         message: 'Server configuration updated',
-        coolify_url: coolifyUrl
+        coolify_url: coolifyUrl,
+        setup_id_cleared: true
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
-    console.error('Error in setup-callback:', error);
+    console.error('[setup-callback] Error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

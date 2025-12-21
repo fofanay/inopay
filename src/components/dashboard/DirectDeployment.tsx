@@ -493,29 +493,37 @@ export function DirectDeployment({
 
   // Idle state - show form
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader className="text-center pb-2">
+        <div className="flex justify-center gap-2 mb-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+            ⚡ Ultra-Rapide
+          </Badge>
+          <Badge variant="outline" className="text-muted-foreground">
+            Sans GitHub
+          </Badge>
+        </div>
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-3">
           <Rocket className="h-7 w-7 text-primary" />
         </div>
-        <CardTitle className="text-lg">Déployer sur votre VPS</CardTitle>
+        <CardTitle className="text-lg">Déploiement Ultra-Rapide</CardTitle>
         <CardDescription>
-          Déploiement direct avec PostgreSQL automatique
+          Direct vers votre VPS • Sans GitHub • PostgreSQL auto
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <ul className="space-y-2 text-sm text-muted-foreground mb-4">
           <li className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+            <span><strong>Zero GitHub</strong> - Transfert direct mémoire → VPS</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
             PostgreSQL auto-configuré
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            Secrets générés automatiquement
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-            Migration du schéma automatique
+            Secrets Zero-Knowledge (auto-supprimés)
           </li>
           <li className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
