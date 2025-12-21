@@ -382,13 +382,23 @@ serve(async (req) => {
       });
     }
 
-    const { projectId, projectName, cleanedFiles } = await req.json();
+    const { projectId, projectName, cleanedFiles, supabaseFiles } = await req.json();
 
     if (!projectId || !cleanedFiles || Object.keys(cleanedFiles).length === 0) {
       return new Response(JSON.stringify({ error: 'Données de projet invalides' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Extract supabase files if provided separately, or detect from cleanedFiles
+    const supabaseFolderFiles: Record<string, string> = supabaseFiles || {};
+    
+    // Also detect supabase files from cleanedFiles if not provided separately
+    for (const [path, content] of Object.entries(cleanedFiles)) {
+      if (path.startsWith('supabase/') && !supabaseFolderFiles[path]) {
+        supabaseFolderFiles[path] = content as string;
+      }
     }
 
     console.log(`Generating archive for project ${projectId} with ${Object.keys(cleanedFiles).length} files`);
@@ -619,6 +629,61 @@ serve(async (req) => {
     zip.file('.github/workflows/deploy-vercel.yml', VERCEL_WORKFLOW);
     zip.file('.github/workflows/deploy-railway.yml', RAILWAY_WORKFLOW);
     zip.file('.github/workflows/docker-build.yml', DOCKER_WORKFLOW);
+
+    // Add supabase folder if files exist
+    const supabaseFileCount = Object.keys(supabaseFolderFiles).length;
+    if (supabaseFileCount > 0) {
+      console.log(`Including ${supabaseFileCount} supabase files in archive`);
+      for (const [filePath, content] of Object.entries(supabaseFolderFiles)) {
+        zip.file(filePath, content as string);
+      }
+      
+      // Add supabase README
+      const supabaseReadme = `# 📁 Dossier Supabase
+
+Ce dossier contient la configuration complète de votre backend Supabase.
+
+## 📂 Structure
+
+\`\`\`
+supabase/
+├── config.toml          # Configuration du projet
+├── functions/            # Edge Functions Deno
+│   └── */index.ts       # Code de chaque fonction
+└── migrations/          # Migrations SQL
+    └── *.sql            # Scripts de création de tables
+\`\`\`
+
+## 🚀 Utilisation avec Supabase CLI
+
+### Installation
+\`\`\`bash
+npm install -g supabase
+\`\`\`
+
+### Déploiement sur un nouveau projet
+\`\`\`bash
+# Lier à votre projet
+supabase link --project-ref YOUR_PROJECT_ID
+
+# Déployer les migrations
+supabase db push
+
+# Déployer les fonctions
+supabase functions deploy
+\`\`\`
+
+## 🔄 Conversion vers Express
+
+Les Edge Functions peuvent être converties en routes Express avec Inopay.
+Utilisez le **Migration Wizard** pour une conversion automatique.
+
+---
+
+**Généré par Inopay** - Votre backend souverain
+`;
+      zip.file('supabase/README.md', supabaseReadme);
+    }
 
     // Generate ZIP buffer
     const zipBuffer = await zip.generateAsync({ 
