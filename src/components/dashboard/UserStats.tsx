@@ -175,31 +175,31 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
-              <div className="relative">
-                <svg className="w-28 h-28 transform -rotate-90">
+              <div className="relative w-32 h-32 flex items-center justify-center">
+                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
                   <circle
-                    cx="56"
-                    cy="56"
-                    r="48"
+                    cx="60"
+                    cy="60"
+                    r="50"
                     stroke="currentColor"
-                    strokeWidth="8"
+                    strokeWidth="10"
                     fill="none"
                     className="text-muted/20"
                   />
                   <circle
-                    cx="56"
-                    cy="56"
-                    r="48"
+                    cx="60"
+                    cy="60"
+                    r="50"
                     stroke="currentColor"
-                    strokeWidth="8"
+                    strokeWidth="10"
                     fill="none"
-                    strokeDasharray={`${(stats?.averageScore || 0) * 3.01} 301`}
+                    strokeDasharray={`${(stats?.averageScore || 0) * 3.14} 314`}
                     className="text-primary transition-all duration-500"
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-foreground">{stats?.averageScore || 0}</span>
+                  <span className="text-3xl font-bold text-primary">{stats?.averageScore || 0}%</span>
                 </div>
               </div>
               <div className="flex flex-col gap-3">
