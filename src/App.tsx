@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
 import Pricing from "./pages/Pricing";
+import Economies from "./pages/Economies";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/parametres" element={<Settings />} />
             <Route path="/historique" element={<History />} />
             <Route path="/tarifs" element={<Pricing />} />
+            <Route path="/economies" element={<Economies />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

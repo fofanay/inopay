@@ -9,9 +9,10 @@ import {
   ChevronUp,
   Download,
   Sparkles,
-  ArrowRight,
   Calculator,
-  Zap
+  Zap,
+  Wand2,
+  ArrowRight
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,14 +27,17 @@ import {
   generateDockerComposeAlternatives,
   generateEnvTemplate
 } from "@/lib/costOptimization";
+import AutoMigrationButton from "./AutoMigrationButton";
 
 interface CostSavingsReportProps {
   costAnalysis: CostAnalysisResult;
   onMigrate?: (services: CostlyServiceDetection[]) => void;
   projectName?: string;
+  extractedFiles?: Map<string, string>;
+  onMigrationComplete?: (migratedFiles: Map<string, string>) => void;
 }
 
-const CostSavingsReport = ({ costAnalysis, onMigrate, projectName }: CostSavingsReportProps) => {
+const CostSavingsReport = ({ costAnalysis, onMigrate, projectName, extractedFiles, onMigrationComplete }: CostSavingsReportProps) => {
   const [expandedServices, setExpandedServices] = useState<Set<string>>(new Set());
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
     new Set(costAnalysis.detectedServices.map(s => s.service.id))

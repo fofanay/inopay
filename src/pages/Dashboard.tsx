@@ -36,7 +36,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
-import { CostlyServiceDetection } from "@/lib/costOptimization";
 import CodeCleaner from "@/components/CodeCleaner";
 import CostSavingsReport from "@/components/dashboard/CostSavingsReport";
 import ProjectExporter from "@/components/ProjectExporter";
@@ -953,12 +952,12 @@ const Dashboard = () => {
                       <CostSavingsReport 
                         costAnalysis={result.costAnalysis}
                         projectName={fileName.replace('.zip', '')}
-                        onMigrate={(services: CostlyServiceDetection[]) => {
+                        extractedFiles={extractedFiles}
+                        onMigrationComplete={(migratedFiles) => {
                           toast({
-                            title: "Migration automatique",
-                            description: `${services.length} service(s) sélectionné(s) pour la migration Open Source`,
+                            title: "Migration terminée",
+                            description: `${migratedFiles.size} fichiers migrés vers Open Source`,
                           });
-                          // TODO: Trigger clean-code with cost optimization
                         }}
                       />
                     )}
