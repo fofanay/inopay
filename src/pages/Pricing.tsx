@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock, Activity, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,51 +12,80 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useCurrencyDetection, type Currency } from "@/hooks/useCurrencyDetection";
 
-// Stripe Price IDs par devise
+// Stripe Price IDs par devise - Nouveaux prix à l'acte
 const STRIPE_PRICES = {
   CAD: {
-    pack: "price_1SgW6QBYLQpzPb0yYfYxAJi9",
-    pro: "price_1SgW77BYLQpzPb0yxdMiBRH7",
+    deploy: "price_1Sgr7NBYLQpzPb0ym7lV0WLF",       // 99 CAD
+    redeploy: "price_1Sgr89BYLQpzPb0yTaGeD7uk",    // 49 CAD
+    monitoring: "price_1Sgr8iBYLQpzPb0yo15IvGVU",  // 19 CAD/mois
+    server: "price_1Sgr9zBYLQpzPb0yZJS7N412",      // 79 CAD
   },
   USD: {
-    pack: "price_1SgW8wBYLQpzPb0yGCJTwpfm",
-    pro: "price_1SgW9BBYLQpzPb0yiSXKXl15",
+    deploy: "price_1Sgr7ZBYLQpzPb0yh5SJNTJE",      // 75 USD
+    redeploy: "price_1Sgr8LBYLQpzPb0yX0NHl6PS",    // 39 USD
+    monitoring: "price_1Sgr8rBYLQpzPb0yReXWuS1J",  // 15 USD/mois
+    server: "price_1SgrAsBYLQpzPb0ybNWYjt2p",      // 59 USD
   },
   EUR: {
-    pack: "price_1SgSlkBYLQpzPb0ynIeiT8Sg",
-    pro: "price_1SgSm5BYLQpzPb0yq4oeLe5l",
+    deploy: "price_1Sgr7jBYLQpzPb0yGr6Sx9uC",      // 69 EUR
+    redeploy: "price_1Sgr8VBYLQpzPb0y3MKtI4Gh",    // 35 EUR
+    monitoring: "price_1Sgr9VBYLQpzPb0yX1LCrf4N",  // 13 EUR/mois
+    server: "price_1SgrC6BYLQpzPb0yvYbly0EL",      // 55 EUR
   },
 };
 
 // Prix affichés par devise
 const PRICES = {
-  CAD: { pack: "29 $", pro: "59 $", symbol: "CAD" },
-  USD: { pack: "21 $", pro: "43 $", symbol: "USD" },
-  EUR: { pack: "19 €", pro: "39 €", symbol: "EUR" },
+  CAD: { 
+    deploy: "99 $", 
+    redeploy: "49 $", 
+    monitoring: "19 $",
+    server: "79 $",
+    symbol: "CAD" 
+  },
+  USD: { 
+    deploy: "75 $", 
+    redeploy: "39 $", 
+    monitoring: "15 $",
+    server: "59 $",
+    symbol: "USD" 
+  },
+  EUR: { 
+    deploy: "69 €", 
+    redeploy: "35 €", 
+    monitoring: "13 €",
+    server: "55 €",
+    symbol: "EUR" 
+  },
 };
+
+type ServiceType = "deploy" | "redeploy" | "monitoring" | "server";
 
 const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [loadingService, setLoadingService] = useState<string | null>(null);
   const { currency, setCurrency } = useCurrencyDetection();
 
-  const handleCheckout = async (plan: "pack" | "pro") => {
+  const handleCheckout = async (serviceType: ServiceType) => {
     if (!user) {
       navigate("/auth");
       return;
     }
 
-    setLoadingPlan(plan);
+    setLoadingService(serviceType);
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
+      const isSubscription = serviceType === "monitoring";
+      
       const response = await supabase.functions.invoke("create-checkout", {
         body: {
-          priceId: STRIPE_PRICES[currency][plan],
-          mode: plan === "pro" ? "subscription" : "payment",
+          priceId: STRIPE_PRICES[currency][serviceType],
+          mode: isSubscription ? "subscription" : "payment",
+          serviceType,
         },
         headers: {
           Authorization: `Bearer ${sessionData.session?.access_token}`,
@@ -78,51 +107,83 @@ const Pricing = () => {
         variant: "destructive",
       });
     } finally {
-      setLoadingPlan(null);
+      setLoadingService(null);
     }
   };
 
-  const plans = [
+  const services = [
     {
-      id: "pack",
-      name: "Pack Liberté",
-      description: "Un déploiement VPS complet",
-      price: PRICES[currency].pack,
+      id: "deploy" as ServiceType,
+      name: "Déploiement VPS",
+      description: "Configuration complète de votre serveur",
+      price: PRICES[currency].deploy,
       period: `${PRICES[currency].symbol} / déploiement`,
-      badge: null,
+      icon: Rocket,
+      badge: "Principal",
+      popular: true,
       features: [
-        "1 déploiement VPS complet",
-        "Nettoyage IA du code",
         "Docker + Coolify installés",
-        "SSL Let's Encrypt inclus",
         "PostgreSQL configuré",
-        "Monitoring 7 jours",
-        "Support par email",
+        "SSL Let's Encrypt inclus",
+        "Monitoring 7 jours inclus",
+        "Auto-restart activé",
+        "Nettoyage IA du code",
       ],
       buttonText: "Déployer maintenant",
-      buttonVariant: "outline" as const,
-      popular: false,
     },
     {
-      id: "pro",
-      name: "Pro Illimité",
-      description: "Pour les créateurs prolifiques",
-      price: PRICES[currency].pro,
-      period: `${PRICES[currency].symbol} / mois`,
-      badge: "Populaire",
+      id: "redeploy" as ServiceType,
+      name: "Re-déploiement",
+      description: "Mise à jour d'une app existante",
+      price: PRICES[currency].redeploy,
+      period: `${PRICES[currency].symbol} / mise à jour`,
+      icon: RefreshCw,
+      badge: null,
+      popular: false,
       features: [
-        "Déploiements VPS illimités",
-        "Nettoyage IA prioritaire",
-        "Docker + Coolify installés",
-        "SSL Let's Encrypt inclus",
-        "PostgreSQL configuré",
-        "Monitoring permanent 24/7",
-        "Auto-restart prioritaire",
-        "Support dédié",
+        "Mise à jour du code source",
+        "Rebuild automatique",
+        "Zero-downtime deployment",
+        "Rollback si erreur",
+        "Logs de déploiement",
       ],
-      buttonText: "Devenir Pro",
-      buttonVariant: "default" as const,
-      popular: true,
+      buttonText: "Mettre à jour",
+    },
+    {
+      id: "monitoring" as ServiceType,
+      name: "Extension Monitoring",
+      description: "Surveillance continue après 7 jours",
+      price: PRICES[currency].monitoring,
+      period: `${PRICES[currency].symbol} / mois / app`,
+      icon: Activity,
+      badge: "Récurrent",
+      popular: false,
+      features: [
+        "Monitoring 24/7 permanent",
+        "Auto-restart prioritaire",
+        "Alertes en temps réel",
+        "Historique des pannes",
+        "Support prioritaire",
+      ],
+      buttonText: "Étendre le monitoring",
+    },
+    {
+      id: "server" as ServiceType,
+      name: "Serveur Supplémentaire",
+      description: "Ajoutez un VPS à votre compte",
+      price: PRICES[currency].server,
+      period: `${PRICES[currency].symbol} / serveur`,
+      icon: Plus,
+      badge: null,
+      popular: false,
+      features: [
+        "Configuration complète",
+        "Docker + Coolify",
+        "PostgreSQL optionnel",
+        "SSL automatique",
+        "Monitoring 7 jours",
+      ],
+      buttonText: "Ajouter un serveur",
     },
   ];
 
@@ -134,13 +195,13 @@ const Pricing = () => {
           <div className="text-center mb-16">
             <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
               <Crown className="h-3 w-3 mr-1" />
-              Tarification simple
+              Modèle à l'acte
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
-              Du code à la production
+              Payez uniquement ce que vous utilisez
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Analyse gratuite. Payez uniquement pour déployer sur votre VPS.
+              Analyse gratuite. Aucun abonnement obligatoire. Tarification transparente.
             </p>
             
             {/* Currency Selector */}
@@ -159,87 +220,137 @@ const Pricing = () => {
             </div>
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {plans.map((plan) => (
+          {/* Service Cards Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {services.map((service) => (
               <Card 
-                key={plan.id}
+                key={service.id}
                 className={`relative card-shadow border-2 transition-all duration-300 ${
-                  plan.popular 
-                    ? "border-primary bg-card scale-105 md:scale-110" 
+                  service.popular 
+                    ? "border-primary bg-card scale-105" 
                     : "border-border bg-card hover:border-primary/50"
                 }`}
               >
-                {plan.badge && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground px-4 py-1">
-                      {plan.badge}
+                {service.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className={`px-3 py-1 ${service.popular ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                      {service.badge}
                     </Badge>
                   </div>
                 )}
                 
                 <CardHeader className="text-center pt-8 pb-4">
-                  <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                    {plan.popular ? (
-                      <Zap className="h-7 w-7 text-primary" />
-                    ) : (
-                      <Rocket className="h-7 w-7 text-primary" />
-                    )}
+                  <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                    <service.icon className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="text-2xl text-foreground">{plan.name}</CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {plan.description}
+                  <CardTitle className="text-xl text-foreground">{service.name}</CardTitle>
+                  <CardDescription className="text-muted-foreground text-sm">
+                    {service.description}
                   </CardDescription>
                 </CardHeader>
 
-                <CardContent className="pb-8">
+                <CardContent className="pb-6">
                   {/* Price */}
-                  <div className="text-center mb-8">
-                    <span className="text-5xl font-bold text-foreground">{plan.price}</span>
-                    <span className="text-muted-foreground ml-1">{plan.period}</span>
+                  <div className="text-center mb-6">
+                    <span className="text-4xl font-bold text-foreground">{service.price}</span>
+                    <p className="text-sm text-muted-foreground mt-1">{service.period}</p>
                   </div>
 
                   {/* Features */}
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-3">
-                        <div className="h-5 w-5 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-                          <Check className="h-3 w-3 text-success" />
+                  <ul className="space-y-3 mb-6">
+                    {service.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <div className="h-4 w-4 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Check className="h-2.5 w-2.5 text-success" />
                         </div>
-                        <span className="text-foreground">{feature}</span>
+                        <span className="text-sm text-foreground">{feature}</span>
                       </li>
                     ))}
                   </ul>
 
                   {/* CTA Button */}
                   <Button
-                    variant={plan.buttonVariant}
-                    size="lg"
-                    className={`w-full rounded-xl ${
-                      plan.popular ? "shadow-lg hover:shadow-xl" : ""
-                    }`}
-                    onClick={() => handleCheckout(plan.id as "pack" | "pro")}
-                    disabled={loadingPlan !== null}
+                    variant={service.popular ? "default" : "outline"}
+                    size="sm"
+                    className="w-full rounded-xl"
+                    onClick={() => handleCheckout(service.id)}
+                    disabled={loadingService !== null}
                   >
-                    {loadingPlan === plan.id ? (
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    {loadingService === service.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : null}
-                    {plan.buttonText}
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    {service.buttonText}
+                    <ArrowRight className="h-3 w-3 ml-2" />
                   </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Comparison Table */}
-          <div className="mt-24 max-w-5xl mx-auto">
-            <div className="text-center mb-12">
+          {/* Value Comparison */}
+          <div className="mt-20 max-w-4xl mx-auto">
+            <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-4 text-foreground">
-                Comparaison détaillée
+                Pourquoi ces prix ?
               </h2>
               <p className="text-muted-foreground">
-                Toutes les fonctionnalités incluses par plan
+                Comparez avec les alternatives du marché
+              </p>
+            </div>
+
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[200px]">Solution</TableHead>
+                    <TableHead className="text-center">Prix</TableHead>
+                    <TableHead className="text-center">Ownership</TableHead>
+                    <TableHead className="text-center">Temps</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow className="bg-primary/5">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-primary" />
+                        <span className="font-semibold text-primary">Inopay</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-primary">{PRICES[currency].deploy}</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center text-success font-medium">~10 min</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">DevOps Freelance</TableCell>
+                    <TableCell className="text-center text-muted-foreground">150-300 $/h</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center text-muted-foreground">4-8 heures</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Heroku / Railway</TableCell>
+                    <TableCell className="text-center text-muted-foreground">20-50 $/mois</TableCell>
+                    <TableCell className="text-center text-destructive">Non</TableCell>
+                    <TableCell className="text-center text-muted-foreground">Variable</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Configuration manuelle</TableCell>
+                    <TableCell className="text-center text-muted-foreground">Votre temps</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center text-muted-foreground">1-2 jours</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+
+          {/* Features Table */}
+          <div className="mt-20 max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold mb-4 text-foreground">
+                Ce qui est inclus
+              </h2>
+              <p className="text-muted-foreground">
+                Toutes nos fonctionnalités principales
               </p>
             </div>
 
@@ -248,25 +359,9 @@ const Pricing = () => {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-[200px]">Fonctionnalité</TableHead>
-                    <TableHead className="text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="font-semibold">Gratuit</span>
-                        <span className="text-xs text-muted-foreground">0 €</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="font-semibold">Pack Liberté</span>
-                        <span className="text-xs text-muted-foreground">{PRICES[currency].pack}</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center bg-primary/5">
-                      <div className="flex flex-col items-center gap-1">
-                        <Badge className="bg-primary text-primary-foreground text-xs">Populaire</Badge>
-                        <span className="font-semibold">Pro</span>
-                        <span className="text-xs text-muted-foreground">{PRICES[currency].pro}/mois</span>
-                      </div>
-                    </TableHead>
+                    <TableHead className="text-center">Gratuit</TableHead>
+                    <TableHead className="text-center bg-primary/5">Déploiement</TableHead>
+                    <TableHead className="text-center">+ Monitoring</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,30 +373,30 @@ const Pricing = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
-                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Server className="h-4 w-4 text-muted-foreground" />
-                        Déploiement VPS
+                        Docker + Coolify
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center">1 déploiement</TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">Illimité</TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Database className="h-4 w-4 text-muted-foreground" />
-                        PostgreSQL configuré
+                        PostgreSQL
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
@@ -311,19 +406,19 @@ const Pricing = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                        <Activity className="h-4 w-4 text-muted-foreground" />
                         Monitoring
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center">7 jours</TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">Permanent 24/7</TableCell>
+                    <TableCell className="text-center bg-primary/5">7 jours</TableCell>
+                    <TableCell className="text-center font-semibold">Permanent 24/7</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
@@ -333,8 +428,8 @@ const Pricing = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">Prioritaire</TableCell>
+                    <TableCell className="text-center bg-primary/5">7 jours</TableCell>
+                    <TableCell className="text-center font-semibold">Permanent</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
@@ -344,8 +439,8 @@ const Pricing = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
-                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
