@@ -22,7 +22,8 @@ import {
   BarChart3,
   LogOut,
   Home,
-  History
+  History,
+  Server
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -47,13 +48,14 @@ import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
 import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssistant";
 import { DeploymentHistory } from "@/components/dashboard/DeploymentHistory";
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
-import UserStats from "@/components/dashboard/UserStats";
+import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
+import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services";
+type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers";
 
 interface GitHubRepo {
   id: number;
@@ -563,6 +565,7 @@ const Dashboard = () => {
     { id: "import", label: "Importer", icon: Upload },
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deployments", label: "Déploiements", icon: Rocket },
+    { id: "servers", label: "Mes Serveurs", icon: Server },
     { id: "services", label: "Mes Services", icon: Crown },
   ];
 
@@ -577,6 +580,7 @@ const Dashboard = () => {
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "projects": return "Gérez et déployez vos projets analysés";
       case "deployments": return "Historique de vos déploiements";
+      case "servers": return "Gérez vos serveurs VPS et Coolify";
       case "services": return "Vos crédits et abonnements actifs";
       default: return "";
     }
@@ -664,7 +668,7 @@ const Dashboard = () => {
             
             {/* Tab: Overview */}
             {activeTab === "overview" && (
-              <UserStats onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
+              <EnhancedOverview onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
             )}
 
             {/* Tab: Import */}
@@ -1132,6 +1136,11 @@ const Dashboard = () => {
               <div className="space-y-6">
                 <DeploymentHistory />
               </div>
+            )}
+
+            {/* Tab: Servers */}
+            {activeTab === "servers" && (
+              <ServerManagement />
             )}
 
             {/* Tab: Services */}
