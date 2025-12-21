@@ -1,19 +1,52 @@
 import { Link } from "react-router-dom";
-import { Github, Twitter, Mail, Phone, MapPin, Clock, ArrowRight, Send } from "lucide-react";
+import { Github, Twitter, Mail, Phone, MapPin, Clock, ArrowRight, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import inopayLogo from "@/assets/inopay-logo.png";
 import { useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      toast.success("Merci ! Vous êtes inscrit à notre newsletter.");
+    if (!email || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      // Insert email into newsletter_subscribers table
+      const { error: insertError } = await supabase
+        .from('newsletter_subscribers')
+        .insert({ email, source: 'footer' });
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          toast.info("Vous êtes déjà inscrit à notre newsletter !");
+        } else {
+          throw insertError;
+        }
+      } else {
+        // Send welcome email via edge function
+        const { error: emailError } = await supabase.functions.invoke('send-newsletter-welcome', {
+          body: { email }
+        });
+
+        if (emailError) {
+          console.error('Error sending welcome email:', emailError);
+          // Still show success since subscription worked
+        }
+
+        toast.success("Merci ! Vous êtes inscrit à notre newsletter.");
+      }
       setEmail("");
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -158,9 +191,19 @@ const Footer = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-semibold"
+                disabled={isLoading}
               >
-                S'inscrire
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Inscription...
+                  </>
+                ) : (
+                  <>
+                    S'inscrire
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
             <p className="text-white/50 text-xs mt-3">
