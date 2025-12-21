@@ -760,6 +760,118 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_configurations: {
+        Row: {
+          allowed_branches: string[] | null
+          created_at: string | null
+          deployment_id: string
+          github_repo_url: string
+          github_webhook_secret: string
+          id: string
+          last_sync_at: string | null
+          last_sync_commit: string | null
+          last_sync_error: string | null
+          last_sync_status: string | null
+          sync_count: number | null
+          sync_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed_branches?: string[] | null
+          created_at?: string | null
+          deployment_id: string
+          github_repo_url: string
+          github_webhook_secret: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_commit?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          sync_count?: number | null
+          sync_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed_branches?: string[] | null
+          created_at?: string | null
+          deployment_id?: string
+          github_repo_url?: string
+          github_webhook_secret?: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_commit?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          sync_count?: number | null
+          sync_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_configurations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "server_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_history: {
+        Row: {
+          commit_message: string | null
+          commit_sha: string
+          completed_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          files_changed: string[] | null
+          files_cleaned: string[] | null
+          id: string
+          started_at: string | null
+          status: string | null
+          sync_config_id: string
+          user_id: string
+        }
+        Insert: {
+          commit_message?: string | null
+          commit_sha: string
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          files_changed?: string[] | null
+          files_cleaned?: string[] | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          sync_config_id: string
+          user_id: string
+        }
+        Update: {
+          commit_message?: string | null
+          commit_sha?: string
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          files_changed?: string[] | null
+          files_cleaned?: string[] | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          sync_config_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_history_sync_config_id_fkey"
+            columns: ["sync_config_id"]
+            isOneToOne: false
+            referencedRelation: "sync_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_notifications: {
         Row: {
           action_url: string | null
