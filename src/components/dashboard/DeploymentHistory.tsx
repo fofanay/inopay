@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SecurityBadge } from "@/components/ui/security-badge";
 import { 
   Rocket, 
   ExternalLink, 
@@ -11,7 +12,8 @@ import {
   Trash2,
   RefreshCw,
   History,
-  Globe
+  Globe,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -104,6 +106,13 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
         return <Badge variant="outline" className="gap-1"><Server className="h-3 w-3" />FTP</Badge>;
       case "github":
         return <Badge variant="outline" className="gap-1"><Globe className="h-3 w-3" />GitHub</Badge>;
+      case "direct":
+        return (
+          <Badge variant="outline" className="gap-1 bg-primary/10 border-primary/30 text-primary">
+            <Zap className="h-3 w-3" />
+            Ultra-Rapide
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -179,6 +188,10 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
                     {deployment.project_name}
                   </span>
                   <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  {/* Security badge for direct deployments */}
+                  {deployment.deployment_type === "direct" && (
+                    <SecurityBadge type="ultra-rapide" size="default" />
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                   <span>{deployment.provider}</span>
