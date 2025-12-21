@@ -12,7 +12,9 @@ import {
   Check,
   ArrowRight,
   HelpCircle,
-  Globe
+  Globe,
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,22 +107,44 @@ const PLATFORM_GUIDES = {
     steps: [
       {
         title: 'Importer le projet',
-        description: 'Cliquez sur "Import Project" et sélectionnez votre dépôt GitHub',
+        description: 'Cliquez sur "Add New..." → "Project" et sélectionnez votre dépôt GitHub',
         action: 'Aller sur Vercel',
         url: 'https://vercel.com/new'
       },
       {
-        title: 'Configurer les variables',
+        title: 'Configuration automatique',
+        description: 'Le fichier vercel.json est déjà configuré pour résoudre les conflits de dépendances',
+        details: 'Pas de configuration manuelle requise !'
+      },
+      {
+        title: 'Ajouter les variables d\'environnement',
         description: 'Dans "Environment Variables", ajoutez chaque variable détectée',
-        details: 'Vercel > Project Settings > Environment Variables'
+        details: 'Project Settings → Environment Variables'
       },
       {
         title: 'Déployer',
-        description: 'Cliquez sur "Deploy" pour lancer le déploiement',
-        details: 'Le build se lance automatiquement à chaque push'
+        description: 'Cliquez sur "Deploy" - le build utilisera automatiquement --legacy-peer-deps',
+        details: 'Le redéploiement est automatique à chaque push'
       }
     ],
-    envInstructions: 'Project Settings → Environment Variables → Add New'
+    envInstructions: 'Project Settings → Environment Variables → Add New',
+    commonIssues: [
+      {
+        error: 'ERESOLVE unable to resolve dependency tree',
+        solution: 'Ce problème est déjà résolu ! Le vercel.json inclus force npm à utiliser --legacy-peer-deps. Relancez simplement le déploiement.',
+        autoFixed: true
+      },
+      {
+        error: 'react-leaflet requires react@^19',
+        solution: 'Les dépendances incompatibles ont été automatiquement corrigées lors de l\'export. react-leaflet est maintenant en version ^4.2.1 compatible avec React 18.',
+        autoFixed: true
+      },
+      {
+        error: 'Build failed - Module not found',
+        solution: 'Vérifiez que toutes les variables d\'environnement sont configurées dans Vercel (Settings → Environment Variables).',
+        autoFixed: false
+      }
+    ]
   },
   netlify: {
     name: 'Netlify',
@@ -134,17 +158,29 @@ const PLATFORM_GUIDES = {
         url: 'https://app.netlify.com/start'
       },
       {
-        title: 'Configurer les variables',
-        description: 'Dans Site Settings, ajoutez les variables d\'environnement',
-        details: 'Site Settings > Environment Variables > Add a variable'
+        title: 'Configuration automatique',
+        description: 'Le fichier netlify.toml configure automatiquement le build avec --legacy-peer-deps',
+        details: 'Aucune configuration manuelle requise'
       },
       {
-        title: 'Redéployer',
-        description: 'Déclenchez un redéploiement pour appliquer les changements',
-        details: 'Deploys > Trigger deploy > Deploy site'
+        title: 'Ajouter les variables d\'environnement',
+        description: 'Dans Site Settings, ajoutez les variables d\'environnement',
+        details: 'Site Settings > Environment Variables > Add a variable'
       }
     ],
-    envInstructions: 'Site Settings → Environment Variables → Add a variable'
+    envInstructions: 'Site Settings → Environment Variables → Add a variable',
+    commonIssues: [
+      {
+        error: 'ERESOLVE unable to resolve dependency tree',
+        solution: 'Le netlify.toml inclus dans votre projet utilise --legacy-peer-deps automatiquement. Relancez le déploiement.',
+        autoFixed: true
+      },
+      {
+        error: 'Page not found on refresh',
+        solution: 'Les redirects SPA sont déjà configurés dans netlify.toml. Si le problème persiste, vérifiez que le fichier est bien présent.',
+        autoFixed: true
+      }
+    ]
   },
   railway: {
     name: 'Railway',
@@ -448,6 +484,56 @@ const PostDeploymentAssistant = ({
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Common issues section */}
+                {(p as any).commonIssues && (p as any).commonIssues.length > 0 && (
+                  <Card className="border-warning/30 bg-warning/5">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                        <CardTitle className="text-base">Problèmes courants et solutions</CardTitle>
+                      </div>
+                      <CardDescription>
+                        Votre projet est pré-configuré pour éviter ces erreurs
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {((p as any).commonIssues as Array<{error: string; solution: string; autoFixed: boolean}>).map((issue, index) => (
+                        <div 
+                          key={index}
+                          className={`p-3 rounded-lg border ${
+                            issue.autoFixed 
+                              ? 'border-success/30 bg-success/5' 
+                              : 'border-warning/30 bg-warning/5'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {issue.autoFixed ? (
+                              <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+                                  {issue.error}
+                                </code>
+                                {issue.autoFixed && (
+                                  <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/10">
+                                    Résolu automatiquement
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1.5">
+                                {issue.solution}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             ))}
           </Tabs>

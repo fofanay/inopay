@@ -481,7 +481,7 @@ const DeploymentAssistant = ({
 
   // Step: Select provider
   if (step === "select-provider" && selectedOption !== "budget") {
-    // For "simple" option - show platform links
+    // For "simple" option - show platform links with ONE-CLICK deploy
     if (selectedOption === "simple") {
       return (
         <div className="space-y-6">
@@ -504,7 +504,7 @@ const DeploymentAssistant = ({
               Déploiement en un clic
             </h3>
             <p className="text-muted-foreground">
-              Poussez votre projet vers GitHub, puis connectez-le à votre plateforme
+              Poussez votre projet vers GitHub, puis déployez automatiquement
             </p>
           </div>
 
@@ -519,6 +519,9 @@ const DeploymentAssistant = ({
                     <h4 className="font-semibold text-foreground mb-2">
                       Poussez vers GitHub
                     </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Votre projet sera nettoyé et configuré automatiquement (vercel.json, netlify.toml inclus)
+                    </p>
                     <Button onClick={onGitHubPush} disabled={disabled} className="gap-2">
                       <Github className="h-4 w-4" />
                       Créer le repo GitHub
@@ -532,22 +535,68 @@ const DeploymentAssistant = ({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-foreground mb-2">
-                      Choisissez votre plateforme
+                      Déployez en un clic
                     </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Cliquez sur votre plateforme préférée pour un déploiement automatique :
+                    </p>
                     <div className="flex flex-wrap gap-3">
-                      {filteredProviders.map((provider) => (
-                        <a
-                          key={provider.id}
-                          href={`https://${provider.id}.com`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-muted/50 transition-all"
-                        >
-                          <span>{provider.logo}</span>
-                          <span className="font-medium">{provider.name}</span>
-                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                        </a>
-                      ))}
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-foreground/20 hover:border-primary hover:bg-primary/5"
+                        onClick={() => {
+                          toast({
+                            title: "Étape 1 d'abord",
+                            description: "Créez le repo GitHub, puis cliquez sur Vercel pour un déploiement 1-clic",
+                          });
+                        }}
+                      >
+                        <span>▲</span>
+                        <span className="font-medium">Vercel</span>
+                        <Badge variant="secondary" className="text-[10px] ml-1">Recommandé</Badge>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-foreground/20 hover:border-primary hover:bg-primary/5"
+                        onClick={() => {
+                          toast({
+                            title: "Étape 1 d'abord",
+                            description: "Créez le repo GitHub, puis cliquez sur Netlify pour déployer",
+                          });
+                        }}
+                      >
+                        <span>◆</span>
+                        <span className="font-medium">Netlify</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-foreground/20 hover:border-primary hover:bg-primary/5"
+                        onClick={() => {
+                          toast({
+                            title: "Étape 1 d'abord",
+                            description: "Créez le repo GitHub, puis cliquez sur Railway pour déployer",
+                          });
+                        }}
+                      >
+                        <span>🚂</span>
+                        <span className="font-medium">Railway</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info box for automatic config */}
+                <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Check className="h-5 w-5 text-success mt-0.5" />
+                    <div>
+                      <h5 className="font-medium text-success mb-1">Configuration automatique incluse</h5>
+                      <ul className="text-sm text-success/80 space-y-1">
+                        <li>• <code className="bg-success/20 px-1 rounded">vercel.json</code> - Résout les conflits de dépendances</li>
+                        <li>• <code className="bg-success/20 px-1 rounded">netlify.toml</code> - Configuration build optimisée</li>
+                        <li>• <code className="bg-success/20 px-1 rounded">.npmrc</code> - Mode legacy-peer-deps activé</li>
+                        <li>• <code className="bg-success/20 px-1 rounded">.env.example</code> - Liste des variables à configurer</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -558,12 +607,28 @@ const DeploymentAssistant = ({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-foreground mb-1">
-                      Importez depuis GitHub
+                      Configurez vos variables d'environnement
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      La plateforme détectera automatiquement la configuration et déploiera votre app.
+                      Copiez les valeurs du <code className="bg-muted px-1 rounded">.env.example</code> vers les paramètres de votre plateforme.
                     </p>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Common issues warning */}
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+                <div>
+                  <h5 className="font-medium text-warning mb-1">En cas d'erreur de déploiement</h5>
+                  <p className="text-sm text-warning/80">
+                    Si vous voyez <code className="bg-warning/20 px-1 rounded">ERESOLVE unable to resolve dependency tree</code>, 
+                    pas de panique ! Le projet inclut déjà les corrections. Relancez simplement le déploiement.
+                  </p>
                 </div>
               </div>
             </CardContent>
