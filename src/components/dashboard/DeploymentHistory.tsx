@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ import {
   RefreshCw,
   History,
   Globe,
-  Zap
+  Zap,
+  FileText
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -215,6 +217,18 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
 
               {/* Actions */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Liberation Report Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-8 px-2 gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                >
+                  <Link to={`/rapport-liberation/${deployment.id}`}>
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden md:inline text-xs">Rapport</span>
+                  </Link>
+                </Button>
                 {deployment.deployed_url && (
                   <Button
                     variant="ghost"
@@ -257,10 +271,24 @@ export async function saveDeploymentToHistory(
     filesUploaded?: number;
     deploymentType?: string;
     deployedUrl?: string;
+    serverIp?: string;
+    coolifyUrl?: string;
+    costAnalysis?: {
+      oldMonthlyCost: number;
+      newMonthlyCost: number;
+      hostingSavings: number;
+      apiSavings: number;
+      totalSavings: number;
+    };
+    servicesReplaced?: Array<{ from: string; to: string; savings: number }>;
+    cleanedDependencies?: string[];
+    portabilityScoreBefore?: number;
+    portabilityScoreAfter?: number;
+    hostingType?: string;
   } = {}
 ) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("deployment_history")
       .insert({
         user_id: userId,
@@ -271,10 +299,20 @@ export async function saveDeploymentToHistory(
         deployment_type: options.deploymentType || "ftp",
         status: "success",
         deployed_url: options.deployedUrl,
-      });
+        server_ip: options.serverIp,
+        coolify_url: options.coolifyUrl,
+        cost_analysis: options.costAnalysis,
+        services_replaced: options.servicesReplaced,
+        cleaned_dependencies: options.cleanedDependencies,
+        portability_score_before: options.portabilityScoreBefore,
+        portability_score_after: options.portabilityScoreAfter || 100,
+        hosting_type: options.hostingType || "vps",
+      })
+      .select()
+      .single();
 
     if (error) throw error;
-    return { success: true };
+    return { success: true, deploymentId: data?.id };
   } catch (error) {
     console.error("Error saving deployment history:", error);
     return { success: false, error };
