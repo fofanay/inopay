@@ -50,7 +50,7 @@ const Footer = () => {
                 <Github className="h-4 w-4" />
               </a>
               <a 
-                href="mailto:contact@inopay.io"
+                href="mailto:contact@getinopay.com"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 hover:bg-primary hover:text-white hover:border-primary transition-all"
               >
                 <Mail className="h-4 w-4" />
@@ -120,8 +120,8 @@ const Footer = () => {
                 </div>
                 <div>
                   <p className="text-white font-medium">Email</p>
-                  <a href="mailto:support@inopay.io" className="text-white/70 text-sm hover:text-primary transition-colors">
-                    support@inopay.io
+                  <a href="mailto:contact@getinopay.com" className="text-white/70 text-sm hover:text-primary transition-colors">
+                    contact@getinopay.com
                   </a>
                 </div>
               </li>
