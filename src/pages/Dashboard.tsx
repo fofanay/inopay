@@ -23,7 +23,8 @@ import {
   LogOut,
   Home,
   History,
-  Server
+  Server,
+  Zap
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -54,11 +55,12 @@ import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
+import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice";
+type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
 
 interface GitHubRepo {
   id: number;
@@ -568,6 +570,7 @@ const Dashboard = () => {
     { id: "import", label: "Importer", icon: Upload },
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deploy-choice", label: "Déployer", icon: Cloud },
+    { id: "sync-mirror", label: "Sync Mirror", icon: Zap },
     { id: "deployments", label: "Historique", icon: History },
     { id: "servers", label: "Mes Serveurs", icon: Server },
     { id: "migration", label: "Migration Wizard", icon: Sparkles },
@@ -585,6 +588,7 @@ const Dashboard = () => {
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "projects": return "Gérez et déployez vos projets analysés";
       case "deploy-choice": return "Choisissez votre méthode de déploiement";
+      case "sync-mirror": return "Synchronisation automatique entre Lovable et votre serveur";
       case "deployments": return "Historique de vos déploiements";
       case "servers": return "Gérez vos serveurs VPS et Coolify";
       case "migration": return "Convertissez votre projet Supabase en stack autonome";

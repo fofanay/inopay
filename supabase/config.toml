@@ -113,3 +113,12 @@ verify_jwt = false
 
 [functions.provision-hetzner-vps]
 verify_jwt = false
+
+[functions.github-sync-webhook]
+verify_jwt = false
+
+[functions.diff-clean]
+verify_jwt = false
+
+[functions.rolling-update]
+verify_jwt = false
