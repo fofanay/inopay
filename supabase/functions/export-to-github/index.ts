@@ -12,16 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
-    if (!githubToken) {
-      return new Response(JSON.stringify({ 
-        error: 'Token GitHub non configuré. Veuillez ajouter GITHUB_PERSONAL_ACCESS_TOKEN dans les secrets du projet.' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Non autorisé' }), {
@@ -44,7 +34,25 @@ serve(async (req) => {
       });
     }
 
-    const { repoName, description, files, isPrivate = true } = await req.json();
+    const { repoName, description, files, isPrivate = true, github_token } = await req.json();
+
+    // Prioriser le token utilisateur, sinon fallback au token serveur
+    const userGithubToken = github_token || null;
+    const serverGithubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
+    const githubToken = userGithubToken || serverGithubToken;
+    const usingUserToken = !!userGithubToken;
+
+    console.log(`[EXPORT-TO-GITHUB] Using ${usingUserToken ? "user" : "server"} token for user ${user.email}`);
+
+    if (!githubToken) {
+      return new Response(JSON.stringify({ 
+        error: 'Token GitHub non disponible. Veuillez vous connecter avec GitHub pour exporter vers votre compte.',
+        needsGitHubAuth: true
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!repoName || !files || Object.keys(files).length === 0) {
       return new Response(JSON.stringify({ error: 'Nom du repo et fichiers requis' }), {
