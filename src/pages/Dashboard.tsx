@@ -47,11 +47,12 @@ import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssist
 import { DeploymentHistory } from "@/components/dashboard/DeploymentHistory";
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
 import UserStats from "@/components/dashboard/UserStats";
+import UserPurchases from "@/components/dashboard/UserPurchases";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments";
+type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services";
 
 interface GitHubRepo {
   id: number;
@@ -561,6 +562,7 @@ const Dashboard = () => {
     { id: "import", label: "Importer", icon: Upload },
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deployments", label: "Déploiements", icon: Rocket },
+    { id: "services", label: "Mes Services", icon: Crown },
   ];
 
   const getPageTitle = () => {
@@ -574,6 +576,7 @@ const Dashboard = () => {
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "projects": return "Gérez et déployez vos projets analysés";
       case "deployments": return "Historique de vos déploiements";
+      case "services": return "Vos crédits et abonnements actifs";
       default: return "";
     }
   };
@@ -1113,6 +1116,11 @@ const Dashboard = () => {
               <div className="space-y-6">
                 <DeploymentHistory />
               </div>
+            )}
+
+            {/* Tab: Services */}
+            {activeTab === "services" && (
+              <UserPurchases />
             )}
           </div>
         </div>
