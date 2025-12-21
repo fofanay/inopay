@@ -12,6 +12,14 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Service type mapping
+const SERVICE_PRICES: Record<string, { type: string; amount: number; currency: string; isSubscription: boolean }> = {
+  "price_1RbLNGP6LGH3d3nX8yDjVVnk": { type: "deploy", amount: 9900, currency: "cad", isSubscription: false },
+  "price_1RbLMbP6LGH3d3nXwvVDl91W": { type: "redeploy", amount: 4900, currency: "cad", isSubscription: false },
+  "price_1RbLMIP6LGH3d3nXAUjSuwuO": { type: "monitoring", amount: 1900, currency: "cad", isSubscription: true },
+  "price_1RbLLsP6LGH3d3nXrM2cWmil": { type: "server", amount: 7900, currency: "cad", isSubscription: false },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,10 +40,6 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     const body = await req.text();
-    const signature = req.headers.get("stripe-signature");
-    
-    // For now, we'll process without signature verification
-    // In production, you should verify the webhook signature
     const event = JSON.parse(body);
 
     logStep("Event received", { type: event.type });
@@ -46,7 +50,7 @@ serve(async (req) => {
         logStep("Checkout session completed", { sessionId: session.id, mode: session.mode });
 
         const userId = session.metadata?.user_id;
-        const planType = session.metadata?.plan_type;
+        const serviceType = session.metadata?.service_type;
         const customerId = session.customer;
 
         if (!userId) {
@@ -54,20 +58,102 @@ serve(async (req) => {
           break;
         }
 
+        // Get the line items to determine the price
+        let priceId: string | null = null;
+        try {
+          const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+          if (lineItems.data.length > 0) {
+            priceId = lineItems.data[0].price?.id || null;
+          }
+        } catch (e) {
+          logStep("Could not fetch line items", { error: e });
+        }
+
+        // Determine service info
+        const serviceInfo = priceId && SERVICE_PRICES[priceId] 
+          ? SERVICE_PRICES[priceId] 
+          : { type: serviceType || "unknown", amount: session.amount_total || 0, currency: session.currency || "cad", isSubscription: session.mode === "subscription" };
+
+        logStep("Service info determined", { serviceInfo, priceId });
+
         if (session.mode === "subscription") {
-          // Pro subscription
+          // Monitoring subscription
+          const subscriptionId = session.subscription as string;
+          let subscriptionEnd: string | null = null;
+          
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+          } catch (e) {
+            logStep("Could not fetch subscription details", { error: e });
+          }
+
+          // Create purchase record for subscription
+          const { error: purchaseError } = await supabaseClient
+            .from("user_purchases")
+            .insert({
+              user_id: userId,
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: session.payment_intent,
+              service_type: serviceInfo.type,
+              amount: serviceInfo.amount,
+              currency: serviceInfo.currency,
+              status: "completed",
+              is_subscription: true,
+              subscription_status: "active",
+              subscription_ends_at: subscriptionEnd,
+              metadata: { 
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                price_id: priceId
+              }
+            });
+
+          if (purchaseError) {
+            logStep("Error creating purchase record", { error: purchaseError });
+          } else {
+            logStep("Subscription purchase recorded", { userId, serviceType: serviceInfo.type });
+          }
+
+          // Also update old subscriptions table for backwards compatibility
           await supabaseClient
             .from("subscriptions")
             .upsert({
               user_id: userId,
               stripe_customer_id: customerId,
-              stripe_subscription_id: session.subscription,
-              plan_type: "pro",
+              stripe_subscription_id: subscriptionId,
+              plan_type: "monitoring",
               status: "active",
+              current_period_end: subscriptionEnd,
             }, { onConflict: "user_id" });
-          logStep("Pro subscription activated", { userId });
+
         } else {
-          // Pack purchase - add 1 credit
+          // One-time payment (deploy, redeploy, server)
+          const { error: purchaseError } = await supabaseClient
+            .from("user_purchases")
+            .insert({
+              user_id: userId,
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: session.payment_intent,
+              service_type: serviceInfo.type,
+              amount: serviceInfo.amount,
+              currency: serviceInfo.currency,
+              status: "completed",
+              is_subscription: false,
+              used: false,
+              metadata: { 
+                stripe_customer_id: customerId,
+                price_id: priceId
+              }
+            });
+
+          if (purchaseError) {
+            logStep("Error creating purchase record", { error: purchaseError });
+          } else {
+            logStep("One-time purchase recorded", { userId, serviceType: serviceInfo.type });
+          }
+
+          // Also update old subscriptions table for backwards compatibility (add credit)
           const { data: existingSub } = await supabaseClient
             .from("subscriptions")
             .select("credits_remaining")
@@ -85,7 +171,6 @@ serve(async (req) => {
               status: "active",
               credits_remaining: currentCredits + 1,
             }, { onConflict: "user_id" });
-          logStep("Pack credit added", { userId, newCredits: currentCredits + 1 });
         }
         break;
       }
@@ -93,9 +178,32 @@ serve(async (req) => {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
-        const customerId = subscription.customer;
+        const customerId = subscription.customer as string;
 
-        // Find user by stripe customer id
+        logStep("Subscription update event", { status: subscription.status, customerId });
+
+        // Update user_purchases subscription status
+        const subscriptionStatus = subscription.status === "active" ? "active" : 
+                                   subscription.status === "canceled" ? "canceled" : "expired";
+        const subscriptionEnd = subscription.current_period_end 
+          ? new Date(subscription.current_period_end * 1000).toISOString()
+          : null;
+
+        // Find and update the purchase record
+        const { error: updateError } = await supabaseClient
+          .from("user_purchases")
+          .update({
+            subscription_status: subscriptionStatus,
+            subscription_ends_at: subscriptionEnd,
+          })
+          .eq("is_subscription", true)
+          .contains("metadata", { stripe_subscription_id: subscription.id });
+
+        if (updateError) {
+          logStep("Error updating purchase subscription status", { error: updateError });
+        }
+
+        // Also update old subscriptions table for backwards compatibility
         const { data: userSub } = await supabaseClient
           .from("subscriptions")
           .select("user_id")
@@ -110,13 +218,31 @@ serve(async (req) => {
             .from("subscriptions")
             .update({
               status,
-              current_period_end: subscription.current_period_end 
-                ? new Date(subscription.current_period_end * 1000).toISOString()
-                : null,
+              current_period_end: subscriptionEnd,
             })
             .eq("user_id", userSub.user_id);
           
-          logStep("Subscription updated", { userId: userSub.user_id, status });
+          logStep("Subscription updated in legacy table", { userId: userSub.user_id, status });
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object;
+        const paymentIntentId = charge.payment_intent;
+
+        logStep("Refund received", { paymentIntentId });
+
+        // Update purchase status to refunded
+        const { error: updateError } = await supabaseClient
+          .from("user_purchases")
+          .update({ status: "refunded" })
+          .eq("stripe_payment_intent_id", paymentIntentId);
+
+        if (updateError) {
+          logStep("Error updating purchase to refunded", { error: updateError });
+        } else {
+          logStep("Purchase marked as refunded");
         }
         break;
       }

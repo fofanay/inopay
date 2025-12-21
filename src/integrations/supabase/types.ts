@@ -742,6 +742,84 @@ export type Database = {
         }
         Relationships: []
       }
+      user_purchases: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string
+          deployment_id: string | null
+          id: string
+          is_subscription: boolean | null
+          metadata: Json | null
+          server_id: string | null
+          service_type: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          subscription_ends_at: string | null
+          subscription_status: string | null
+          updated_at: string | null
+          used: boolean | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string
+          deployment_id?: string | null
+          id?: string
+          is_subscription?: boolean | null
+          metadata?: Json | null
+          server_id?: string | null
+          service_type: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_status?: string | null
+          updated_at?: string | null
+          used?: boolean | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          deployment_id?: string | null
+          id?: string
+          is_subscription?: boolean | null
+          metadata?: Json | null
+          server_id?: string | null
+          service_type?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_status?: string | null
+          updated_at?: string | null
+          used?: boolean | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_purchases_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "server_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_purchases_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "user_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
