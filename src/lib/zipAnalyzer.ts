@@ -39,6 +39,9 @@ export interface DependencyItem {
   note: string;
 }
 
+// Import cost analysis
+import { analyzeCostlyServices, CostAnalysisResult } from "./costOptimization";
+
 export interface RealAnalysisResult {
   score: number;
   platform: string | null;
@@ -48,6 +51,7 @@ export interface RealAnalysisResult {
   dependencies: DependencyItem[];
   recommendations: string[];
   extractedFiles: Map<string, string>;
+  costAnalysis?: CostAnalysisResult;
 }
 
 export type ProgressCallback = (progress: number, message: string) => void;
@@ -313,13 +317,20 @@ export async function analyzeZipFile(
   // Calculer le score
   const score = calculateScore(issues, dependencies, totalFiles);
 
-  onProgress(96, "Génération des recommandations...");
+  onProgress(94, "Génération des recommandations...");
 
   // Générer les recommandations
   const recommendations = generateRecommendations(issues, dependencies);
 
   // Détecter la plateforme
   const platform = detectPlatform(issues, dependencies);
+
+  onProgress(97, "Analyse des coûts...");
+
+  // Analyser les services coûteux
+  const pkgJsonForCost = files.find(f => f.endsWith("package.json") && !f.includes("node_modules"));
+  const pkgContentForCost = pkgJsonForCost ? await zip.files[pkgJsonForCost].async("string") : undefined;
+  const costAnalysis = analyzeCostlyServices(extractedFiles, pkgContentForCost);
 
   onProgress(100, "Analyse terminée !");
 
@@ -332,6 +343,7 @@ export async function analyzeZipFile(
     dependencies,
     recommendations,
     extractedFiles,
+    costAnalysis,
   };
 }
 
@@ -415,13 +427,19 @@ export async function analyzeFromGitHub(
   // Calculer le score
   const score = calculateScore(issues, dependencies, totalFiles);
 
-  onProgress(96, "Génération des recommandations...");
+  onProgress(94, "Génération des recommandations...");
 
   // Générer les recommandations
   const recommendations = generateRecommendations(issues, dependencies);
 
   // Détecter la plateforme
   const platform = detectPlatform(issues, dependencies);
+
+  onProgress(97, "Analyse des coûts...");
+
+  // Analyser les services coûteux
+  const pkgForCost = files.find(f => f.path === "package.json" || f.path.endsWith("/package.json"));
+  const costAnalysis = analyzeCostlyServices(extractedFiles, pkgForCost?.content);
 
   onProgress(100, "Analyse terminée !");
 
@@ -434,5 +452,6 @@ export async function analyzeFromGitHub(
     dependencies,
     recommendations,
     extractedFiles,
+    costAnalysis,
   };
 }
