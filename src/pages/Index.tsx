@@ -5,9 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useParallax, useMouseParallax } from "@/hooks/useParallax";
 
 const Index = () => {
   const { user } = useAuth();
+  const scrollOffset = useParallax(0.3);
+  const mousePosition = useMouseParallax(15);
 
   const platforms = [
     { name: "Lovable", icon: "💜" },
@@ -76,17 +79,45 @@ const Index = () => {
 
   return (
     <Layout>
-      {/* Hero Section - Style Mexlife avec couleurs Inopay */}
+      {/* Hero Section - Style Mexlife avec couleurs Inopay + Parallax */}
       <section className="relative overflow-hidden pt-8 pb-20 lg:pt-12 lg:pb-28">
-        {/* Background avec dégradé subtil */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
+        {/* Background avec dégradé subtil + parallax */}
+        <div 
+          className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5"
+          style={{ transform: `translateY(${scrollOffset * 0.5}px)` }}
+        />
+        
+        {/* Floating shapes avec parallax */}
+        <div 
+          className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl -z-10"
+          style={{ 
+            transform: `translate(${mousePosition.x * 0.5}px, ${mousePosition.y * 0.5 - scrollOffset * 0.2}px)` 
+          }}
+        />
+        <div 
+          className="absolute bottom-20 right-10 w-96 h-96 bg-accent/5 rounded-full blur-3xl -z-10"
+          style={{ 
+            transform: `translate(${-mousePosition.x * 0.3}px, ${-mousePosition.y * 0.3 + scrollOffset * 0.1}px)` 
+          }}
+        />
         
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left Column - Visual Mockup (inversé style Mexlife) */}
-            <div className="relative order-2 lg:order-1 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+            {/* Left Column - Visual Mockup (inversé style Mexlife) avec parallax */}
+            <div 
+              className="relative order-2 lg:order-1 animate-fade-in-up" 
+              style={{ 
+                animationDelay: "0.25s",
+                transform: `translateY(${-scrollOffset * 0.1}px)`
+              }}
+            >
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-2xl opacity-60" />
+                <div 
+                  className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-2xl opacity-60"
+                  style={{ 
+                    transform: `translate(${mousePosition.x * 0.3}px, ${mousePosition.y * 0.3}px)` 
+                  }}
+                />
                 
                 <div className="relative rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
@@ -172,25 +203,47 @@ const Index = () => {
                   </div>
                 </div>
 
-                <div className="absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2 animate-bounce" style={{ animationDuration: "3s" }}>
+                {/* Floating badges avec parallax mouse */}
+                <div 
+                  className="absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2"
+                  style={{ 
+                    transform: `translate(${mousePosition.x * 0.8}px, ${mousePosition.y * 0.8}px)`,
+                    transition: 'transform 0.1s ease-out'
+                  }}
+                >
                   <Shield className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Zero-Knowledge</span>
                 </div>
                 
-                <div className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "0.5s" }}>
+                <div 
+                  className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2"
+                  style={{ 
+                    transform: `translate(${mousePosition.x * -0.5}px, ${mousePosition.y * -0.5}px)`,
+                    transition: 'transform 0.15s ease-out'
+                  }}
+                >
                   <Terminal className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Zéro Terminal</span>
                 </div>
                 
-                <div className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "1s" }}>
+                <div 
+                  className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2"
+                  style={{ 
+                    transform: `translate(${mousePosition.x * 0.6}px, ${mousePosition.y * -0.6}px)`,
+                    transition: 'transform 0.12s ease-out'
+                  }}
+                >
                   <Zap className="h-4 w-4" />
                   <span className="text-sm font-medium">Vibe-to-Prod</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column - Content (style Mexlife) */}
-            <div className="max-w-xl order-1 lg:order-2">
+            {/* Right Column - Content (style Mexlife) avec parallax scroll */}
+            <div 
+              className="max-w-xl order-1 lg:order-2"
+              style={{ transform: `translateY(${scrollOffset * 0.05}px)` }}
+            >
               {/* Badge arrondi style Mexlife */}
               <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-accent text-accent text-sm font-semibold uppercase tracking-wide mb-8 animate-fade-in">
                 <Palette className="h-4 w-4" />
