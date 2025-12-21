@@ -172,3 +172,183 @@
     color: hsl(210 54% 28%);
   }
 }
+
+/* Print Styles for Liberation Report */
+@media print {
+  /* Reset page margins */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  header,
+  footer,
+  nav,
+  button,
+  .sticky {
+    display: none !important;
+  }
+
+  /* Reset background colors for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Liberation Report specific styles */
+  #liberation-report {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+
+  /* Force colors to print */
+  .text-primary {
+    color: hsl(145 63% 42%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .text-success {
+    color: hsl(145 63% 35%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .text-destructive {
+    color: hsl(0 70% 50%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .text-warning {
+    color: hsl(38 80% 45%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Card styles for print */
+  .card,
+  [class*="Card"] {
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 12px !important;
+  }
+
+  /* Background colors for print */
+  .bg-success\/5,
+  .bg-success\/10 {
+    background-color: hsl(145 63% 95%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .bg-primary\/5,
+  .bg-primary\/10 {
+    background-color: hsl(145 63% 95%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .bg-warning\/5,
+  .bg-warning\/10 {
+    background-color: hsl(38 92% 95%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* QR Code section */
+  .qr-code-container {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Progress bars for print */
+  .bg-destructive {
+    background-color: hsl(0 70% 50%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .bg-success {
+    background-color: hsl(145 63% 42%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* SVG circles for portability score */
+  svg circle.text-success {
+    stroke: hsl(145 63% 42%) !important;
+  }
+
+  svg circle.text-destructive {
+    stroke: hsl(0 70% 50%) !important;
+  }
+
+  svg circle.text-muted {
+    stroke: #e5e7eb !important;
+  }
+
+  /* Badges for print */
+  .badge,
+  [class*="Badge"] {
+    border: 1px solid currentColor !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Links */
+  a {
+    color: hsl(210 54% 40%) !important;
+    text-decoration: underline !important;
+  }
+
+  /* Footer */
+  #liberation-report > div:last-child {
+    page-break-before: avoid;
+    margin-top: 20px !important;
+    padding-top: 15px !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+
+  /* Typography adjustments */
+  h1 {
+    font-size: 24px !important;
+  }
+
+  h2, h3 {
+    font-size: 16px !important;
+  }
+
+  p, span, li {
+    font-size: 12px !important;
+  }
+
+  /* Reduce spacing */
+  .mb-6 {
+    margin-bottom: 12px !important;
+  }
+
+  .mb-8 {
+    margin-bottom: 16px !important;
+  }
+
+  .mb-10 {
+    margin-bottom: 20px !important;
+  }
+
+  .p-8 {
+    padding: 16px !important;
+  }
+
+  .gap-6 {
+    gap: 12px !important;
+  }
+}

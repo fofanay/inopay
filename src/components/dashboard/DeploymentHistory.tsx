@@ -261,7 +261,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
   );
 }
 
-// Helper function to save a deployment to history
+// Helper function to save a deployment to history and send liberation report email
 export async function saveDeploymentToHistory(
   userId: string,
   projectName: string,
@@ -285,6 +285,7 @@ export async function saveDeploymentToHistory(
     portabilityScoreBefore?: number;
     portabilityScoreAfter?: number;
     hostingType?: string;
+    sendEmailReport?: boolean;
   } = {}
 ) {
   try {
@@ -312,7 +313,24 @@ export async function saveDeploymentToHistory(
       .single();
 
     if (error) throw error;
-    return { success: true, deploymentId: data?.id };
+
+    const deploymentId = data?.id;
+
+    // Send Liberation Report email automatically
+    if (deploymentId && options.sendEmailReport !== false) {
+      try {
+        console.log("Sending liberation report email for deployment:", deploymentId);
+        await supabase.functions.invoke("send-liberation-report", {
+          body: { deploymentId }
+        });
+        console.log("Liberation report email sent successfully");
+      } catch (emailError) {
+        console.error("Failed to send liberation report email:", emailError);
+        // Don't fail the deployment save if email fails
+      }
+    }
+
+    return { success: true, deploymentId };
   } catch (error) {
     console.error("Error saving deployment history:", error);
     return { success: false, error };
