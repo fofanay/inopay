@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { HetznerAutoProvision } from './HetznerAutoProvision';
 import { 
   Server, 
   Copy, 
@@ -16,7 +17,8 @@ import {
   ChevronRight,
   Terminal,
   Shield,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 
 interface VPSProvider {
@@ -51,6 +53,7 @@ export function VPSOnboarding() {
   const [step, setStep] = useState(0); // Start at step 0 now
   const [hasExistingVPS, setHasExistingVPS] = useState<boolean | null>(null);
   const [showCreationGuide, setShowCreationGuide] = useState(false);
+  const [showAutoProvision, setShowAutoProvision] = useState(false);
   const [provider, setProvider] = useState('hetzner');
   const [serverName, setServerName] = useState('');
   const [ipAddress, setIpAddress] = useState('');
@@ -170,19 +173,21 @@ export function VPSOnboarding() {
   const renderStep0 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Avez-vous déjà un serveur VPS ?</h3>
+        <h3 className="text-lg font-semibold">Comment souhaitez-vous configurer votre VPS ?</h3>
         <p className="text-sm text-muted-foreground">
-          Un VPS (Virtual Private Server) est un serveur virtuel que vous louez chez un hébergeur
+          Choisissez l'option qui correspond le mieux à votre situation
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
+        {/* Option: Existing VPS */}
         <Card 
           className={`cursor-pointer transition-all hover:border-primary/50 ${
             hasExistingVPS === true ? 'border-primary ring-2 ring-primary/20' : ''
           }`}
           onClick={() => {
             setHasExistingVPS(true);
+            setShowAutoProvision(false);
             setStep(1);
           }}
         >
@@ -190,30 +195,56 @@ export function VPSOnboarding() {
             <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mx-auto">
               <Check className="w-6 h-6 text-success" />
             </div>
-            <h4 className="font-medium">Oui, j'ai un VPS</h4>
+            <h4 className="font-medium">J'ai déjà un VPS</h4>
             <p className="text-sm text-muted-foreground">
-              J'ai déjà un serveur Ubuntu avec son adresse IP
+              J'ai un serveur Ubuntu avec son adresse IP
             </p>
           </CardContent>
         </Card>
 
+        {/* Option: Auto Provision with Hetzner */}
         <Card 
-          className={`cursor-pointer transition-all hover:border-primary/50 ${
-            hasExistingVPS === false ? 'border-primary ring-2 ring-primary/20' : ''
-          }`}
+          className="cursor-pointer transition-all hover:border-primary/50 border-primary/30 relative"
           onClick={() => {
             setHasExistingVPS(false);
+            setShowAutoProvision(true);
+            setProvider('hetzner');
+          }}
+        >
+          <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+            <Badge className="bg-primary text-primary-foreground text-xs">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Recommandé
+            </Badge>
+          </div>
+          <CardContent className="pt-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+              <Zap className="w-6 h-6 text-primary" />
+            </div>
+            <h4 className="font-medium">Création automatique</h4>
+            <p className="text-sm text-muted-foreground">
+              Créer un VPS Hetzner en 2 clics (~5€/mois)
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Option: Manual Guide */}
+        <Card 
+          className="cursor-pointer transition-all hover:border-primary/50"
+          onClick={() => {
+            setHasExistingVPS(false);
+            setShowAutoProvision(false);
             setShowCreationGuide(true);
             setStep(1);
           }}
         >
           <CardContent className="pt-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
-              <Server className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto">
+              <Server className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h4 className="font-medium">Non, je dois en créer un</h4>
+            <h4 className="font-medium">Guide manuel</h4>
             <p className="text-sm text-muted-foreground">
-              Guidez-moi pour créer mon premier VPS (~5 min)
+              Je préfère créer mon VPS manuellement
             </p>
           </CardContent>
         </Card>
@@ -221,7 +252,7 @@ export function VPSOnboarding() {
 
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         <h4 className="font-medium flex items-center gap-2">
-          <Zap className="w-4 h-4 text-yellow-500" />
+          <Shield className="w-4 h-4 text-primary" />
           Pourquoi un VPS ?
         </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
@@ -505,8 +536,47 @@ export function VPSOnboarding() {
     </div>
   );
 
-  // Calculate total steps based on flow
-  const totalSteps = 5; // 0, 1, 2, 3, 4
+  // Handle auto provision success
+  const handleAutoProvisionSuccess = (serverData: {
+    id: string;
+    name: string;
+    ip_address: string;
+    credentials: { root_password: string; ssh_command: string };
+    installCommand: string;
+  }) => {
+    setServerName(serverData.name);
+    setIpAddress(serverData.ip_address);
+    setInstallCommand(serverData.installCommand);
+    setCurrentServer({
+      id: serverData.id,
+      name: serverData.name,
+      ip_address: serverData.ip_address,
+      provider: 'hetzner',
+      status: 'provisioning',
+      coolify_url: null,
+      setup_id: '',
+      created_at: new Date().toISOString(),
+    });
+    setShowAutoProvision(false);
+    setStep(3); // Go directly to installation step
+  };
+
+  // If showing auto provision, render that instead
+  if (showAutoProvision) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <HetznerAutoProvision 
+            onSuccess={handleAutoProvisionSuccess}
+            onBack={() => {
+              setShowAutoProvision(false);
+              setStep(0);
+            }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -524,7 +594,7 @@ export function VPSOnboarding() {
         </div>
         
         {/* Progress indicator */}
-        {step > 0 && (
+        {step > 0 && !showAutoProvision && (
           <div className="flex items-center gap-2 pt-4">
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center gap-2 flex-1">
