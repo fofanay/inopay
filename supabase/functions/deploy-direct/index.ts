@@ -6,12 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Generate environment variables for the deployed app
+// Generate environment variables for the deployed app - CORRECTED interface
 interface EnvVars {
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
   DATABASE_URL?: string;
   JWT_SECRET?: string;
+  VITE_API_URL?: string;
+  VITE_ANON_KEY?: string;
 }
 
 // Dockerfile for Vite/React apps with environment injection
@@ -63,21 +63,28 @@ server {
 }
 `;
 
-// Generate .env file content
+// Generate .env file content - CORRECTED: Remove invalid VITE_SUPABASE_URL
 const generateEnvFile = (server: any): string => {
   const lines: string[] = [];
   
+  // Database connection URL (for backend/ORM)
   if (server.db_url) {
     lines.push(`DATABASE_URL=${server.db_url}`);
   }
+  
+  // JWT secret for token verification
   if (server.jwt_secret) {
     lines.push(`JWT_SECRET=${server.jwt_secret}`);
   }
+  
+  // API keys for frontend (if using custom auth)
   if (server.anon_key) {
-    lines.push(`VITE_SUPABASE_ANON_KEY=${server.anon_key}`);
+    lines.push(`VITE_ANON_KEY=${server.anon_key}`);
   }
+  
+  // API base URL - use proper HTTP endpoint, NOT PostgreSQL port
   if (server.ip_address) {
-    lines.push(`VITE_SUPABASE_URL=http://${server.ip_address}:5432`);
+    lines.push(`VITE_API_URL=http://${server.ip_address}:3000`);
   }
   
   return lines.join('\n');
@@ -178,7 +185,7 @@ serve(async (req) => {
 
     console.log(`[deploy-direct] Deployment record created: ${deployment.id}`);
 
-    // Build environment variables from server database config
+    // Build environment variables from server database config - CORRECTED
     const envVars: EnvVars = {};
     if (server.db_url) {
       envVars.DATABASE_URL = server.db_url;
@@ -186,12 +193,8 @@ serve(async (req) => {
     if (server.jwt_secret) {
       envVars.JWT_SECRET = server.jwt_secret;
     }
-    if (server.anon_key) {
-      envVars.VITE_SUPABASE_ANON_KEY = server.anon_key;
-    }
-    if (server.ip_address) {
-      envVars.VITE_SUPABASE_URL = `http://${server.ip_address}:5432`;
-    }
+    // Note: VITE_SUPABASE_URL removed - requires proper Supabase stack (PostgREST + GoTrue)
+    // If needed, user should deploy a full Supabase instance or use direct API
 
     // Add Dockerfile, nginx.conf and .env to files
     const deployFiles = { ...files };

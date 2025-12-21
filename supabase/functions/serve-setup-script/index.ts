@@ -146,20 +146,42 @@ echo -e "\${YELLOW}📡 Étape 6/6 : Configuration du callback Inopay...\${NC}"
 # Get PostgreSQL credentials from container env
 DB_PASSWORD_ACTUAL=$(docker inspect inopay-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | grep POSTGRES_PASSWORD | cut -d= -f2)
 
-# Send callback to Inopay with DB credentials
-CALLBACK_RESPONSE=$(curl -s -X POST "${callbackUrl}" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "setup_id": "${setupId}",
-    "server_ip": "'"$SERVER_IP"'",
-    "coolify_port": 8000,
-    "status": "ready",
-    "db_host": "'"$SERVER_IP"'",
-    "db_port": 5432,
-    "db_name": "inopay_production",
-    "db_user": "inopay_user",
-    "db_password": "'"$DB_PASSWORD_ACTUAL"'"
-  }')
+# Send callback to Inopay with DB credentials - WITH RETRY (3 attempts)
+echo -e "\${BLUE}Envoi des informations à Inopay...\${NC}"
+CALLBACK_SUCCESS=false
+for attempt in 1 2 3; do
+  echo -e "\${BLUE}  Tentative $attempt/3...\${NC}"
+  
+  CALLBACK_RESPONSE=$(curl -s -w "\\n%{http_code}" -X POST "${callbackUrl}" \\
+    -H "Content-Type: application/json" \\
+    -d '{
+      "setup_id": "${setupId}",
+      "server_ip": "'"$SERVER_IP"'",
+      "coolify_port": 8000,
+      "status": "ready",
+      "db_host": "'"$SERVER_IP"'",
+      "db_port": 5432,
+      "db_name": "inopay_production",
+      "db_user": "inopay_user",
+      "db_password": "'"$DB_PASSWORD_ACTUAL"'"
+    }')
+  
+  HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
+  
+  if [ "$HTTP_CODE" = "200" ]; then
+    CALLBACK_SUCCESS=true
+    echo -e "\${GREEN}  ✓ Callback réussi\${NC}"
+    break
+  else
+    echo -e "\${YELLOW}  ⚠ Échec (HTTP $HTTP_CODE), nouvelle tentative dans $((attempt * 5))s...\${NC}"
+    sleep $((attempt * 5))
+  fi
+done
+
+if [ "$CALLBACK_SUCCESS" = false ]; then
+  echo -e "\${RED}❌ Impossible de contacter Inopay après 3 tentatives.\${NC}"
+  echo -e "\${YELLOW}   Veuillez vérifier votre connexion et réessayer.\${NC}"
+fi
 
 echo ""
 echo -e "\${GREEN}╔════════════════════════════════════════════════════════════╗"
