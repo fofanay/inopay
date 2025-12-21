@@ -122,7 +122,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       
       - name: Build
         run: npm run build
@@ -202,13 +202,18 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       
       - name: Type check
         run: npm run build
       
       - name: Lint
         run: npm run lint --if-present
+`;
+
+const NPMRC_CONTENT = `# Configuration npm pour gérer les conflits de dépendances
+legacy-peer-deps=true
+engine-strict=false
 `;
 
 const README_CONTENT = `# 🚀 Projet Autonome - Guide d'Installation
@@ -388,6 +393,62 @@ serve(async (req) => {
 
     console.log(`Generating archive for project ${projectId} with ${Object.keys(cleanedFiles).length} files`);
 
+    // Clean package.json to fix known dependency conflicts
+    const cleanPackageJson = (filesObj: Record<string, string>): Record<string, string> => {
+      if (!filesObj['package.json']) return filesObj;
+      
+      try {
+        const pkg = JSON.parse(filesObj['package.json']);
+        
+        // Known dependency fixes for React 18 compatibility
+        const dependencyFixes: Record<string, string> = {
+          'react-leaflet': '^4.2.1',
+          '@react-leaflet/core': '^2.1.0',
+          'react-markdown': '^8.0.7',
+          '@mdx-js/react': '^2.3.0',
+        };
+        
+        // Apply fixes to dependencies
+        let modified = false;
+        for (const [dep, version] of Object.entries(dependencyFixes)) {
+          if (pkg.dependencies?.[dep]) {
+            const currentVersion = pkg.dependencies[dep];
+            // Only fix if it's a major version that's incompatible
+            if (currentVersion.includes('5.') || currentVersion.includes('6.') || currentVersion.includes('^5') || currentVersion.includes('^6')) {
+              pkg.dependencies[dep] = version;
+              modified = true;
+              console.log(`Fixed dependency: ${dep} ${currentVersion} -> ${version}`);
+            }
+          }
+        }
+        
+        // Add overrides for npm 8.3+ to force compatible versions
+        if (pkg.dependencies?.['react-leaflet'] || pkg.dependencies?.['@react-leaflet/core']) {
+          pkg.overrides = pkg.overrides || {};
+          pkg.overrides['react-leaflet'] = {
+            'react': '$react',
+            'react-dom': '$react-dom'
+          };
+          modified = true;
+        }
+        
+        // Ensure engines field for Node.js version
+        if (!pkg.engines) {
+          pkg.engines = { node: '>=18.0.0' };
+          modified = true;
+        }
+        
+        if (modified) {
+          filesObj['package.json'] = JSON.stringify(pkg, null, 2);
+          console.log('package.json cleaned successfully');
+        }
+      } catch (e) {
+        console.error('Error cleaning package.json:', e);
+      }
+      
+      return filesObj;
+    };
+
     // Detect environment variables in files
     const detectEnvVariables = (files: Record<string, string>): Set<string> => {
       const envVars = new Set<string>();
@@ -450,8 +511,11 @@ serve(async (req) => {
       return lines.join('\n');
     };
 
+    // Clean package.json first
+    const cleanedFilesObj = cleanPackageJson({ ...cleanedFiles } as Record<string, string>);
+
     // Detect env vars and generate .env.example
-    const detectedEnvVars = detectEnvVariables(cleanedFiles as Record<string, string>);
+    const detectedEnvVars = detectEnvVariables(cleanedFilesObj);
     const envExampleContent = generateEnvExample(detectedEnvVars);
 
     console.log(`Detected ${detectedEnvVars.size} environment variables`);
@@ -459,13 +523,16 @@ serve(async (req) => {
     // Create ZIP archive
     const zip = new JSZip();
 
-    // Add cleaned files
-    for (const [filePath, content] of Object.entries(cleanedFiles)) {
+    // Add cleaned files (with fixed package.json)
+    for (const [filePath, content] of Object.entries(cleanedFilesObj)) {
       zip.file(filePath, content as string);
     }
 
     // Add .env.example
     zip.file('.env.example', envExampleContent);
+
+    // Add .npmrc for handling peer dependency conflicts
+    zip.file('.npmrc', NPMRC_CONTENT);
 
     // Add Dockerfile
     zip.file('Dockerfile', DOCKERFILE_CONTENT);
