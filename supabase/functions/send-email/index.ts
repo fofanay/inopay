@@ -69,7 +69,7 @@ serve(async (req) => {
 
     const resend = new Resend(resendApiKey);
     const result = await resend.emails.send({
-      from: "Inopay <onboarding@resend.dev>",
+      from: "Inopay <contact@getinopay.com>",
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
