@@ -13,7 +13,12 @@ import {
   Mail,
   Bell,
   Settings,
-  LineChart
+  LineChart,
+  Server,
+  Activity,
+  Shield,
+  Wrench,
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +34,11 @@ import AdminEmailCMS from "@/components/admin/AdminEmailCMS";
 import AdminReminders from "@/components/admin/AdminReminders";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminServerFleet from "@/components/admin/AdminServerFleet";
+import AdminActivityMonitor from "@/components/admin/AdminActivityMonitor";
+import AdminSecurityAudit from "@/components/admin/AdminSecurityAudit";
+import AdminKPIs from "@/components/admin/AdminKPIs";
+import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -68,6 +78,11 @@ const AdminDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
+    { id: "fleet", label: "Flotte Serveurs", icon: Server },
+    { id: "monitoring", label: "Monitoring", icon: Activity },
+    { id: "kpis", label: "KPIs Business", icon: TrendingUp },
+    { id: "security", label: "Sécurité", icon: Shield },
+    { id: "support", label: "Support Admin", icon: Wrench },
     { id: "users", label: "Utilisateurs", icon: Users },
     { id: "payments", label: "Paiements", icon: CreditCard },
     { id: "subscriptions", label: "Abonnements", icon: CalendarCheck },
@@ -87,6 +102,11 @@ const AdminDashboard = () => {
   const getPageDescription = () => {
     switch (activeTab) {
       case "overview": return "Statistiques globales de la plateforme Inopay";
+      case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
+      case "monitoring": return "Journal d'activité et alertes en temps réel";
+      case "kpis": return "Revenus, taux de succès et métriques business";
+      case "security": return "Audit Zero-Knowledge et vérification des secrets";
+      case "support": return "Outils d'intervention et notifications utilisateurs";
       case "users": return "Gérez les utilisateurs et leurs accès";
       case "payments": return "Revenus, paiements et remboursements Stripe";
       case "subscriptions": return "Abonnements actifs, coupons et MRR";
@@ -168,6 +188,11 @@ const AdminDashboard = () => {
         <div className="p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === "overview" && <AdminStats />}
+            {activeTab === "fleet" && <AdminServerFleet />}
+            {activeTab === "monitoring" && <AdminActivityMonitor />}
+            {activeTab === "kpis" && <AdminKPIs />}
+            {activeTab === "security" && <AdminSecurityAudit />}
+            {activeTab === "support" && <AdminSupportTools />}
             {activeTab === "users" && <AdminUsersList />}
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "subscriptions" && <AdminSubscriptions />}

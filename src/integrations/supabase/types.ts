@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          deployment_id: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          server_id: string | null
+          status: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          deployment_id?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          server_id?: string | null
+          status?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          deployment_id?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          server_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_logs_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "server_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_activity_logs_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "user_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banned_users: {
         Row: {
           banned_at: string
@@ -648,6 +702,42 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          read_at?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          read_at?: string | null
+          title?: string
+          type?: string
           user_id?: string
         }
         Relationships: []
