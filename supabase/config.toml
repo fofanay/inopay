@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.check-server-status]
 verify_jwt = false
+
+[functions.deploy-direct]
+verify_jwt = false
