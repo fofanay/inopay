@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.rolling-update]
 verify_jwt = false
+
+[functions.widget-auth]
+verify_jwt = false

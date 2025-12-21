@@ -774,8 +774,12 @@ export type Database = {
           last_sync_status: string | null
           sync_count: number | null
           sync_enabled: boolean | null
+          time_saved_minutes: number | null
           updated_at: string | null
           user_id: string
+          widget_token: string | null
+          widget_token_created_at: string | null
+          zen_mode: boolean | null
         }
         Insert: {
           allowed_branches?: string[] | null
@@ -790,8 +794,12 @@ export type Database = {
           last_sync_status?: string | null
           sync_count?: number | null
           sync_enabled?: boolean | null
+          time_saved_minutes?: number | null
           updated_at?: string | null
           user_id: string
+          widget_token?: string | null
+          widget_token_created_at?: string | null
+          zen_mode?: boolean | null
         }
         Update: {
           allowed_branches?: string[] | null
@@ -806,8 +814,12 @@ export type Database = {
           last_sync_status?: string | null
           sync_count?: number | null
           sync_enabled?: boolean | null
+          time_saved_minutes?: number | null
           updated_at?: string | null
           user_id?: string
+          widget_token?: string | null
+          widget_token_created_at?: string | null
+          zen_mode?: boolean | null
         }
         Relationships: [
           {

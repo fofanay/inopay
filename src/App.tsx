@@ -15,6 +15,7 @@ import Pricing from "./pages/Pricing";
 import Economies from "./pages/Economies";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import LiberationReport from "./pages/LiberationReport";
+import Widget from "./pages/Widget";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/economies" element={<Economies />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/rapport-liberation/:deploymentId" element={<LiberationReport />} />
+            <Route path="/widget" element={<Widget />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
