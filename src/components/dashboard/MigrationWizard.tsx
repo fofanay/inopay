@@ -62,6 +62,7 @@ export function MigrationWizard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isGeneratingTest, setIsGeneratingTest] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, string>>({});
   const [detectedAssets, setDetectedAssets] = useState<DetectedAsset[]>([]);
   const [userServers, setUserServers] = useState<UserServer[]>([]);
@@ -80,6 +81,286 @@ export function MigrationWizard() {
     downloadUrl?: string;
     backendFiles?: Record<string, string>;
   } | null>(null);
+
+  // Test ZIP content
+  const generateTestZipContent = (): Record<string, string> => {
+    return {
+      // Edge Function 1: Auth handler
+      'supabase/functions/auth-handler/index.ts': `import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+        status: 401, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    
+    if (error || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ user, authenticated: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+});`,
+
+      // Edge Function 2: Data API
+      'supabase/functions/data-api/index.ts': `import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  try {
+    if (req.method === 'GET') {
+      const { data, error } = await supabase.from('posts').select('*').limit(10);
+      if (error) throw error;
+      return new Response(JSON.stringify({ data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (req.method === 'POST') {
+      const body = await req.json();
+      const { data, error } = await supabase.from('posts').insert(body).select();
+      if (error) throw error;
+      return new Response(JSON.stringify({ data }), {
+        status: 201,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+});`,
+
+      // Edge Function 3: Webhook handler
+      'supabase/functions/webhook-handler/index.ts': `import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
+    const signature = req.headers.get('x-webhook-signature');
+    
+    if (webhookSecret && signature !== webhookSecret) {
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const payload = await req.json();
+    console.log('Webhook received:', payload);
+
+    // Process webhook
+    const result = {
+      received: true,
+      timestamp: new Date().toISOString(),
+      event: payload.event || 'unknown'
+    };
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+});`,
+
+      // Config TOML
+      'supabase/config.toml': `[project]
+project_id = "test-project"
+
+[functions.auth-handler]
+verify_jwt = false
+
+[functions.data-api]
+verify_jwt = false
+
+[functions.webhook-handler]
+verify_jwt = false`,
+
+      // Migration file with tables and RLS
+      'supabase/migrations/20240101000000_initial.sql': `-- Create users table
+CREATE TABLE public.users (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  full_name TEXT,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create posts table
+CREATE TABLE public.posts (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content TEXT,
+  published BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+
+-- Users policies
+CREATE POLICY "Users can view their own profile" 
+ON public.users 
+FOR SELECT 
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" 
+ON public.users 
+FOR UPDATE 
+USING (auth.uid() = id);
+
+-- Posts policies
+CREATE POLICY "Anyone can view published posts" 
+ON public.posts 
+FOR SELECT 
+USING (published = true OR auth.uid() = user_id);
+
+CREATE POLICY "Users can manage their own posts" 
+ON public.posts 
+FOR ALL 
+USING (auth.uid() = user_id);`,
+
+      // Frontend example files
+      'src/App.tsx': `import { useState } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+  
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white p-8 rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold mb-4">Test App</h1>
+        <p className="text-gray-600 mb-4">Count: {count}</p>
+        <button 
+          onClick={() => setCount(c => c + 1)}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Increment
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default App;`,
+
+      'src/main.tsx': `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`,
+
+      'src/index.css': `@tailwind base;
+@tailwind components;
+@tailwind utilities;`,
+
+      'package.json': `{
+  "name": "test-project",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}`
+    };
+  };
+
+  const handleGenerateTestZip = async () => {
+    setIsGeneratingTest(true);
+    
+    try {
+      const testFiles = generateTestZipContent();
+      setUploadedFiles(testFiles);
+      analyzeProject(testFiles);
+      setCurrentStep(1);
+      toast.success('ZIP de test généré avec succès !');
+    } catch (error) {
+      console.error('Error generating test ZIP:', error);
+      toast.error('Erreur lors de la génération du ZIP de test');
+    } finally {
+      setIsGeneratingTest(false);
+    }
+  };
 
   // Fetch user's servers
   useEffect(() => {
@@ -535,7 +816,7 @@ npm run build
         {/* Step 0: Upload */}
         {currentStep === 0 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -543,7 +824,7 @@ npm run build
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                <Card className="border-dashed hover:border-primary transition-colors">
+                <Card className="border-dashed hover:border-primary transition-colors h-full">
                   <CardContent className="flex flex-col items-center justify-center py-8">
                     {isAnalyzing ? (
                       <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -551,22 +832,49 @@ npm run build
                       <Upload className="h-12 w-12 text-muted-foreground" />
                     )}
                     <h3 className="mt-4 font-medium">Upload ZIP</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground text-center">
                       Glissez ou cliquez pour uploader
                     </p>
                   </CardContent>
                 </Card>
               </label>
 
-              <Card className="border-dashed opacity-50">
+              <Card className="border-dashed opacity-50 h-full">
                 <CardContent className="flex flex-col items-center justify-center py-8">
                   <GitBranch className="h-12 w-12 text-muted-foreground" />
                   <h3 className="mt-4 font-medium">Connecter GitHub</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground text-center">
                     Bientôt disponible
                   </p>
                 </CardContent>
               </Card>
+
+              <Card 
+                className="border-dashed border-amber-500/50 hover:border-amber-500 transition-colors cursor-pointer h-full"
+                onClick={handleGenerateTestZip}
+              >
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  {isGeneratingTest ? (
+                    <Loader2 className="h-12 w-12 text-amber-500 animate-spin" />
+                  ) : (
+                    <Package className="h-12 w-12 text-amber-500" />
+                  )}
+                  <h3 className="mt-4 font-medium text-amber-600">ZIP de Test</h3>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Générer un projet exemple
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="font-medium text-sm mb-2">📦 Le ZIP de test contient :</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 3 Edge Functions (auth, data, webhook)</li>
+                <li>• 2 Tables SQL (users, posts)</li>
+                <li>• 4 RLS Policies de sécurité</li>
+                <li>• Configuration supabase/config.toml</li>
+              </ul>
             </div>
           </div>
         )}
