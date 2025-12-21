@@ -130,7 +130,7 @@ const AdminKPIs = () => {
                 <DollarSign className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-emerald-400">{stats.monthlyRevenue}€</p>
+                <p className="text-2xl font-bold text-emerald-400">{stats.monthlyRevenue}$</p>
                 <p className="text-xs text-zinc-400">MRR (Mensuel)</p>
               </div>
             </div>
@@ -144,7 +144,7 @@ const AdminKPIs = () => {
                 <DollarSign className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-400">{stats.weeklyRevenue}€</p>
+                <p className="text-2xl font-bold text-blue-400">{stats.weeklyRevenue}$</p>
                 <p className="text-xs text-zinc-400">Cette semaine</p>
               </div>
             </div>

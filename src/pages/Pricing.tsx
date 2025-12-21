@@ -51,10 +51,10 @@ const PRICES = {
     symbol: "USD" 
   },
   EUR: { 
-    deploy: "69 €", 
-    redeploy: "35 €", 
-    monitoring: "13 €",
-    server: "55 €",
+    deploy: "69 $", 
+    redeploy: "35 $", 
+    monitoring: "13 $",
+    server: "55 $",
     symbol: "EUR" 
   },
 };

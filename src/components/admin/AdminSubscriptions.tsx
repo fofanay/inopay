@@ -258,7 +258,7 @@ const AdminSubscriptions = () => {
               <div>
                 <p className="text-sm font-medium text-white/80">MRR estimé</p>
                 <p className="text-2xl font-bold text-white">
-                  {stats ? formatAmount(stats.mrr, "eur") : "0 €"}
+                  {stats ? formatAmount(stats.mrr, "cad") : "0 $"}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-white/20">

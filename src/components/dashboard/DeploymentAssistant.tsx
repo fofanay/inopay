@@ -87,7 +87,7 @@ const deploymentOptions = [
     badge: "Économique",
     badgeColor: "bg-success/10 text-success border-success/20",
     features: [
-      "À partir de 3€/mois",
+      "À partir de 3$/mois",
       "Support inclus",
       "Transfert automatique",
     ],
@@ -810,10 +810,10 @@ const DeploymentAssistant = ({
               </p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { name: "Hetzner", url: "https://hetzner.cloud", price: "~4€/mois", logo: "🖥️" },
-                  { name: "DigitalOcean", url: "https://digitalocean.com", price: "~5$/mois", logo: "🌊" },
-                  { name: "Vultr", url: "https://vultr.com", price: "~5$/mois", logo: "🔥" },
-                  { name: "Scaleway", url: "https://scaleway.com", price: "~4€/mois", logo: "🔶" },
+                  { name: "Hetzner", url: "https://hetzner.cloud", price: "~5$/mois", logo: "🖥️" },
+                  { name: "DigitalOcean", url: "https://digitalocean.com", price: "~6$/mois", logo: "🌊" },
+                  { name: "Vultr", url: "https://vultr.com", price: "~6$/mois", logo: "🔥" },
+                  { name: "Scaleway", url: "https://scaleway.com", price: "~5$/mois", logo: "🔶" },
                 ].map((vps) => (
                   <a
                     key={vps.name}

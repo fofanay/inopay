@@ -28,12 +28,12 @@ interface VPSProvider {
 }
 
 const VPS_PROVIDERS: VPSProvider[] = [
-  { id: 'hetzner', name: 'Hetzner', logo: '🇩🇪', signupUrl: 'https://www.hetzner.com/cloud', minPrice: '3.79€/mois' },
-  { id: 'digitalocean', name: 'DigitalOcean', logo: '🌊', signupUrl: 'https://www.digitalocean.com/', minPrice: '$4/mois' },
-  { id: 'vultr', name: 'Vultr', logo: '⚡', signupUrl: 'https://www.vultr.com/', minPrice: '$2.50/mois' },
-  { id: 'ionos', name: 'IONOS', logo: '🇪🇺', signupUrl: 'https://www.ionos.fr/serveur/vps', minPrice: '1€/mois' },
-  { id: 'scaleway', name: 'Scaleway', logo: '🇫🇷', signupUrl: 'https://www.scaleway.com/', minPrice: '2.99€/mois' },
-  { id: 'ovh', name: 'OVH', logo: '🇫🇷', signupUrl: 'https://www.ovhcloud.com/fr/vps/', minPrice: '3.50€/mois' },
+  { id: 'hetzner', name: 'Hetzner', logo: '🇩🇪', signupUrl: 'https://www.hetzner.com/cloud', minPrice: '5$/mois' },
+  { id: 'digitalocean', name: 'DigitalOcean', logo: '🌊', signupUrl: 'https://www.digitalocean.com/', minPrice: '6$/mois' },
+  { id: 'vultr', name: 'Vultr', logo: '⚡', signupUrl: 'https://www.vultr.com/', minPrice: '4$/mois' },
+  { id: 'ionos', name: 'IONOS', logo: '🌐', signupUrl: 'https://www.ionos.ca/serveur/vps', minPrice: '2$/mois' },
+  { id: 'scaleway', name: 'Scaleway', logo: '🇫🇷', signupUrl: 'https://www.scaleway.com/', minPrice: '4$/mois' },
+  { id: 'ovh', name: 'OVH', logo: '🇨🇦', signupUrl: 'https://www.ovhcloud.com/en-ca/vps/', minPrice: '5$/mois' },
 ];
 
 interface UserServer {
