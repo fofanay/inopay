@@ -85,15 +85,59 @@ serve(async (req) => {
       );
     }
 
-    if (!server.coolify_url || !server.coolify_token) {
+    // FIXED: Check if database is ALREADY set up by the bash script (setup-callback)
+    // This avoids creating a duplicate PostgreSQL instance
+    if (server.db_status === 'ready' && server.db_password) {
+      console.log('[setup-database] Database already configured by installation script');
+      
+      // Generate security keys if not already present
+      let needsUpdate = false;
+      const updateFields: Record<string, unknown> = {};
+      
+      if (!server.jwt_secret) {
+        updateFields.jwt_secret = generateJWTSecret();
+        needsUpdate = true;
+      }
+      if (!server.anon_key) {
+        updateFields.anon_key = generateSecureKey(48);
+        needsUpdate = true;
+      }
+      if (!server.service_role_key) {
+        updateFields.service_role_key = generateSecureKey(48);
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        await supabase
+          .from('user_servers')
+          .update(updateFields)
+          .eq('id', server.id);
+        console.log('[setup-database] Generated missing security keys');
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Server Coolify configuration is incomplete' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          message: 'Database already configured by installation script',
+          database: {
+            host: server.db_host,
+            port: server.db_port,
+            name: server.db_name,
+            status: server.db_status
+          },
+          secrets_generated: {
+            jwt_secret: needsUpdate && !!updateFields.jwt_secret,
+            anon_key: needsUpdate && !!updateFields.anon_key,
+            service_role_key: needsUpdate && !!updateFields.service_role_key
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Check if database is already set up
-    if (server.db_status === 'ready' && server.db_url) {
+    
+    // If db_status is 'ready' but no password (edge case), skip Coolify creation too
+    if (server.db_url && server.db_host) {
+      console.log('[setup-database] Database URL exists, skipping creation');
       return new Response(
         JSON.stringify({
           success: true,
@@ -102,10 +146,18 @@ serve(async (req) => {
             host: server.db_host,
             port: server.db_port,
             name: server.db_name,
-            status: server.db_status
+            status: server.db_status || 'unknown'
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check Coolify configuration for creating new database
+    if (!server.coolify_url || !server.coolify_token) {
+      return new Response(
+        JSON.stringify({ error: 'Server Coolify configuration is incomplete. Cannot create database via Coolify API.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

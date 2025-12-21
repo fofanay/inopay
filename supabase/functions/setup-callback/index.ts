@@ -13,7 +13,19 @@ serve(async (req) => {
   }
 
   try {
-    const { setup_id, server_ip, coolify_port, coolify_token, status } = await req.json();
+    const { 
+      setup_id, 
+      server_ip, 
+      coolify_port, 
+      coolify_token, 
+      status,
+      // DB credentials from bash script
+      db_host,
+      db_port,
+      db_name,
+      db_user,
+      db_password
+    } = await req.json();
 
     if (!setup_id) {
       return new Response(
@@ -44,20 +56,57 @@ serve(async (req) => {
     // Build coolify URL
     const coolifyUrl = `http://${server_ip || server.ip_address}:${coolify_port || 8000}`;
 
-    // Update server with installation status
+    // Build database URL if credentials provided
+    const dbHost = db_host || server_ip || server.ip_address;
+    const dbPort = db_port || 5432;
+    const dbUrl = db_password 
+      ? `postgresql://${db_user}:${db_password}@${dbHost}:${dbPort}/${db_name}`
+      : null;
+
+    // Update server with installation status AND database credentials
     const updateData: Record<string, unknown> = {
       status: status === 'ready' ? 'ready' : 'error',
       coolify_url: coolifyUrl,
       updated_at: new Date().toISOString()
     };
 
+    // Save Coolify token if provided
     if (coolify_token) {
       updateData.coolify_token = coolify_token;
+    }
+
+    // Save all database credentials if provided
+    if (db_host || server_ip) {
+      updateData.db_host = dbHost;
+    }
+    if (db_port) {
+      updateData.db_port = dbPort;
+    }
+    if (db_name) {
+      updateData.db_name = db_name;
+    }
+    if (db_user) {
+      updateData.db_user = db_user;
+    }
+    if (db_password) {
+      updateData.db_password = db_password;
+      updateData.db_url = dbUrl;
+      updateData.db_status = 'ready'; // Mark DB as ready since script created it
     }
 
     if (status === 'error') {
       updateData.error_message = 'Installation failed';
     }
+
+    console.log(`[setup-callback] Updating server ${server.id} with:`, {
+      status: updateData.status,
+      coolify_url: coolifyUrl,
+      db_host: updateData.db_host,
+      db_port: updateData.db_port,
+      db_name: updateData.db_name,
+      db_status: updateData.db_status,
+      has_password: !!db_password
+    });
 
     const { error: updateError } = await supabase
       .from('user_servers')
