@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SecurityBadge } from '@/components/ui/security-badge';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,9 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import { VPSOnboarding } from './VPSOnboarding';
 
@@ -41,6 +44,8 @@ interface ServerDeployment {
   status: string;
   deployed_url: string | null;
   created_at: string;
+  secrets_cleaned: boolean | null;
+  secrets_cleaned_at: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<{ className?: string }> }> = {
@@ -73,11 +78,10 @@ export function ServerManagement() {
 
       setServers(serversData || []);
 
-      // Fetch deployments for each server
       if (serversData && serversData.length > 0) {
         const { data: deploymentsData, error: deploymentsError } = await supabase
           .from('server_deployments')
-          .select('*')
+          .select('id, project_name, status, deployed_url, created_at, server_id, secrets_cleaned, secrets_cleaned_at')
           .in('server_id', serversData.map(s => s.id))
           .order('created_at', { ascending: false });
 
@@ -255,7 +259,18 @@ export function ServerManagement() {
                             key={deployment.id}
                             className="flex items-center justify-between text-sm bg-muted/50 rounded-lg p-2"
                           >
-                            <span className="font-medium">{deployment.project_name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{deployment.project_name}</span>
+                              {/* Security badges */}
+                              {deployment.secrets_cleaned ? (
+                                <SecurityBadge type="zero-knowledge" size="default" />
+                              ) : (
+                                <Badge variant="outline" className="text-xs gap-1 text-warning border-warning/30 bg-warning/10">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Secrets temporaires
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">
                                 {deployment.status}

@@ -11,10 +11,15 @@ import {
   Loader2, 
   Zap,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  CreditCard,
+  Crown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserLimits } from "@/hooks/useUserLimits";
+import { SecurityBadge } from "@/components/ui/security-badge";
+import { LIMIT_SOURCES } from "@/lib/constants";
 import { toast } from "sonner";
 
 interface UserStatsData {
@@ -30,6 +35,7 @@ interface UserStatsProps {
 
 const UserStats = ({ onNavigate }: UserStatsProps) => {
   const { user } = useAuth();
+  const limits = useUserLimits();
   const [stats, setStats] = useState<UserStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +44,6 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
     
     setLoading(true);
     try {
-      // Fetch projects
       const { data: projects, error: projectsError } = await supabase
         .from("projects_analysis")
         .select("portability_score")
@@ -46,7 +51,6 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
 
       if (projectsError) throw projectsError;
 
-      // Fetch deployments
       const { data: deployments, error: deploymentsError } = await supabase
         .from("deployment_history")
         .select("id")
@@ -54,7 +58,6 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
 
       if (deploymentsError) throw deploymentsError;
 
-      // Calculate average score
       const scores = projects?.map(p => p.portability_score).filter(s => s !== null) || [];
       const avgScore = scores.length > 0 
         ? Math.round(scores.reduce((a, b) => a + (b || 0), 0) / scores.length)
@@ -64,7 +67,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
         totalProjects: projects?.length || 0,
         totalDeployments: deployments?.length || 0,
         averageScore: avgScore,
-        cleanedFiles: Math.floor((projects?.length || 0) * 2.5), // Estimation
+        cleanedFiles: Math.floor((projects?.length || 0) * 2.5),
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -78,7 +81,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
     fetchStats();
   }, [user]);
 
-  if (loading) {
+  if (loading || limits.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -115,13 +118,13 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
       iconColor: "text-accent",
     },
     {
-      title: "Fichiers Nettoyés",
-      value: stats?.cleanedFiles || 0,
-      subtitle: "Par notre IA",
-      icon: Sparkles,
-      gradient: "from-warning to-warning/80",
-      iconBg: "bg-warning/10",
-      iconColor: "text-warning",
+      title: "Crédits Disponibles",
+      value: limits.credits.total,
+      subtitle: limits.isTester ? "Accès illimité" : `${limits.credits.deploy} déploiements`,
+      icon: limits.isTester ? Crown : CreditCard,
+      gradient: limits.isTester ? "from-warning to-warning/80" : "from-primary to-primary/80",
+      iconBg: limits.isTester ? "bg-warning/10" : "bg-primary/10",
+      iconColor: limits.isTester ? "text-warning" : "text-primary",
     },
   ];
 
@@ -150,6 +153,35 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
           </Card>
         ))}
       </div>
+
+      {/* Limits Info Card */}
+      <Card className="border-0 shadow-md bg-gradient-to-r from-primary/5 to-transparent">
+        <CardContent className="py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {limits.isTester ? (
+                  <Crown className="h-5 w-5 text-warning" />
+                ) : limits.hasEnterpriseAccess ? (
+                  <Zap className="h-5 w-5 text-primary" />
+                ) : (
+                  <Sparkles className="h-5 w-5 text-muted-foreground" />
+                )}
+                <span className="font-medium">
+                  Limites: {limits.maxFiles} fichiers, {limits.maxRepos} repos
+                </span>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {LIMIT_SOURCES[limits.source]}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              {limits.hasEnterpriseAccess && <SecurityBadge type="enterprise-limits" size="default" />}
+              {limits.isTester && <SecurityBadge type="tester" size="default" />}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Score Card & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
