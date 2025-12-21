@@ -225,6 +225,22 @@ export function OnboardingHebergeur({
         }
       });
 
+      // Handle 402 Payment Required (credit insufficient)
+      if (error?.message?.includes('402') || error?.status === 402) {
+        const errorData = JSON.parse(error.context?.responseText || '{}');
+        const creditType = errorData.credit_type || 'deploy';
+        
+        toast.error(`Crédit "${creditType}" requis`, {
+          description: "Veuillez acheter un crédit pour continuer",
+          action: {
+            label: "Acheter",
+            onClick: () => window.location.href = '/tarifs'
+          }
+        });
+        setIsDeploying(false);
+        return;
+      }
+
       if (error) throw error;
 
       setDeploymentProgress(100);
@@ -246,9 +262,21 @@ export function OnboardingHebergeur({
         onDeploymentComplete(deployedUrl);
         toast.success("Déploiement terminé avec succès !");
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Deployment error:", error);
-      toast.error("Erreur lors du déploiement. Veuillez réessayer.");
+      
+      // Check if it's a credit error
+      if (error?.message?.includes('Crédit insuffisant')) {
+        toast.error("Crédit requis", {
+          description: "Achetez un crédit pour déployer",
+          action: {
+            label: "Acheter",
+            onClick: () => window.location.href = '/tarifs'
+          }
+        });
+      } else {
+        toast.error("Erreur lors du déploiement. Veuillez réessayer.");
+      }
       setIsDeploying(false);
     }
   };
