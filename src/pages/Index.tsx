@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Github, Download, Server, Database, Lock, RefreshCw, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Github, Download, Server, Database, Lock, RefreshCw, Settings, Key, PiggyBank, Terminal, Palette } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -58,36 +59,43 @@ const Index = () => {
     },
   ];
 
-  const features = [
+  // Features Vibe-Friendly
+  const vibeFeatures = [
     {
-      icon: Code2,
-      title: "Détection intelligente",
-      description: "Identifie automatiquement les imports et dépendances spécifiques à chaque plateforme IA.",
+      icon: Terminal,
+      title: "Zéro ligne de commande",
+      description: "Si vous savez copier-coller une URL, vous savez déployer avec Inopay. On s'occupe de la plomberie technique (Docker, SSH, SSL).",
+      badge: "Vibe-Friendly",
     },
     {
-      icon: Zap,
-      title: "Nettoyage IA",
-      description: "Notre IA remplace les composants verrouillés par des alternatives Open Source universelles.",
+      icon: PiggyBank,
+      title: "Divisez vos factures par 3",
+      description: "Pourquoi payer un abonnement Pro + des frais cachés ? Passez sur votre hébergement et gardez vos profits pour vous.",
+      badge: null,
     },
     {
-      icon: Rocket,
-      title: "Déploiement Zero-Config",
-      description: "Docker + Coolify installés automatiquement sur votre VPS. Aucune configuration manuelle.",
+      icon: Key,
+      title: "Propriété Intellectuelle Réelle",
+      description: "Un code sur Lovable est emprunté. Un code Inopay sur votre VPS est un actif que vous pouvez revendre.",
+      badge: null,
     },
     {
       icon: Database,
       title: "Base de données managée",
       description: "PostgreSQL configuré et sécurisé automatiquement, prêt pour la production.",
+      badge: null,
     },
     {
       icon: Lock,
       title: "SSL Automatique",
       description: "Let's Encrypt provisionné sans intervention. HTTPS garanti dès le premier déploiement.",
+      badge: null,
     },
     {
       icon: RefreshCw,
       title: "Monitoring Pro",
       description: "Health checks toutes les 5 minutes + redémarrage automatique en cas de panne.",
+      badge: null,
     },
   ];
 
@@ -127,15 +135,15 @@ const Index = () => {
   ];
 
   const heroBenefits = [
-    "Déploiement automatique sur votre VPS",
-    "Monitoring 24/7 avec auto-recovery",
-    "SSL + Base de données PostgreSQL inclus",
-    "Sécurité Zero-Knowledge",
+    "Zéro ligne de commande requise",
+    "Divisez vos factures par 3",
+    "Propriété intellectuelle réelle",
+    "Du prototype IA à la vraie entreprise",
   ];
 
   return (
     <Layout>
-      {/* Hero Section */}
+      {/* Hero Section - Vibecoder */}
       <section className="relative overflow-hidden py-20 lg:py-28">
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
@@ -144,21 +152,22 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left Column - Content */}
             <div className="max-w-xl">
-              {/* Badge */}
+              {/* Badge Vibe-Friendly */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
-                <Rocket className="h-4 w-4" />
-                Déploiement Automatique
+                <Palette className="h-4 w-4" />
+                🎨 Vibe-Friendly
               </div>
 
-              {/* Title */}
+              {/* Title - Vibecoder */}
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-6 animate-fade-in-up text-foreground leading-tight">
-                Du Code IA au Serveur en{" "}
-                <span className="text-primary">10 Minutes</span>
+                Gardez le Vibe.{" "}
+                <span className="text-primary">Reprenez le Code.</span>
               </h1>
 
-              {/* Subtitle */}
+              {/* Subtitle - Vibecoder */}
               <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.1s" }}>
-                Inopay prend votre projet Lovable, Bolt ou Cursor, le nettoie automatiquement et le déploie sur votre propre VPS. Zéro configuration manuelle.
+                Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. 
+                Vous avez créé quelque chose de grand. <strong className="text-foreground">Inopay le rend libre.</strong>
               </p>
 
               {/* Benefits list with checkmarks */}
@@ -177,7 +186,10 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
                 <Link to={user ? "/dashboard" : "/auth"}>
                   <Button size="lg" className="text-lg px-8 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all bg-primary hover:bg-primary/90">
-                    Déployer mon projet
+                    <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
+                      Zéro Terminal
+                    </Badge>
+                    Libérer mon projet
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -211,6 +223,29 @@ const Index = () => {
                   
                   {/* Deployment flow visualization */}
                   <div className="p-6 space-y-4 bg-gradient-to-br from-card to-primary/5">
+                    {/* Vibe Score Preview */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <span className="text-sm font-medium text-foreground">Vibe-Score™</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-primary">95%</p>
+                          <p className="text-[10px] text-muted-foreground">Vibe</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-accent">12%</p>
+                          <p className="text-[10px] text-muted-foreground">Liberté</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-success">100%</p>
+                          <p className="text-[10px] text-muted-foreground">Après</p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Flow diagram */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col items-center gap-2 flex-1">
@@ -271,13 +306,13 @@ const Index = () => {
                 </div>
                 
                 <div className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "0.5s" }}>
-                  <RefreshCw className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Auto-restart</span>
+                  <Terminal className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Zéro Terminal</span>
                 </div>
                 
                 <div className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "1s" }}>
                   <Zap className="h-4 w-4" />
-                  <span className="text-sm font-medium">En 10 min</span>
+                  <span className="text-sm font-medium">Vibe-to-Prod</span>
                 </div>
               </div>
             </div>
@@ -285,8 +320,27 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Manifeste du Vibecoder */}
+      <section className="py-16 bg-muted/50 border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <p className="text-2xl md:text-3xl font-semibold text-foreground italic mb-6">
+              "Vous n'êtes pas développeur ? On s'en fiche. Vous êtes un créateur."
+            </p>
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Votre projet est prisonnier d'un écosystème qui vous facture au succès.
+              Inopay est l'outil ultime pour passer du <span className="text-primary font-semibold">'Prototype IA'</span> à 
+              la <span className="text-primary font-semibold">'Véritable Entreprise'</span>.
+            </p>
+            <p className="text-lg text-foreground font-medium mt-4">
+              Pas de technique. Pas de terminal. Juste votre vision, enfin libre.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Platforms Section */}
-      <section className="py-16 border-y border-border bg-muted/30">
+      <section className="py-16 border-b border-border bg-background">
         <div className="container mx-auto px-4">
           <p className="text-center text-sm text-muted-foreground mb-8">
             Compatible avec les principales plateformes IA no-code
@@ -363,24 +417,33 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Vibe-Friendly */}
       <section className="py-24 lg:py-32 bg-muted/30 border-y border-border">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
+            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Vibe-Friendly
+            </Badge>
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Pourquoi choisir Inopay ?
+              Pourquoi les Vibecoders choisissent Inopay
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Une solution complète pour passer de l'idée à la production sans effort
+              Vous créez par instinct. Nous libérons par expertise.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {features.map((feature) => (
+            {vibeFeatures.map((feature) => (
               <div 
                 key={feature.title}
-                className="p-6 rounded-2xl border border-border bg-card card-shadow card-hover group"
+                className="relative p-6 rounded-2xl border border-border bg-card card-shadow card-hover group"
               >
+                {feature.badge && (
+                  <Badge className="absolute -top-3 right-4 bg-primary/10 text-primary border-primary/20">
+                    {feature.badge}
+                  </Badge>
+                )}
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-5 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                   <feature.icon className="h-6 w-6" />
                 </div>
@@ -392,23 +455,28 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonial Section */}
+      {/* Testimonial Section - Vibecoder */}
       <section className="py-24 lg:py-32">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <Card className="card-shadow-lg border border-border bg-card overflow-hidden">
               <CardContent className="p-10 md:p-12 text-center">
+                <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Vibecodeur depuis 2024
+                </Badge>
                 <Quote className="h-10 w-10 text-primary/30 mx-auto mb-6" />
                 <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 leading-relaxed">
-                  "J'ai connecté mon VPS IONOS et en 10 minutes, mon app Lovable était en ligne avec SSL et PostgreSQL. Le monitoring m'a alerté d'un problème de nuit et l'a résolu automatiquement."
+                  "J'ai créé mon SaaS en vibant avec Lovable pendant 3 semaines. Le jour où j'ai voulu scaler, les coûts ont explosé. 
+                  Inopay m'a permis de tout migrer sur mon IONOS en 10 minutes. <span className="text-primary">Maintenant je paie 5€/mois au lieu de 50€.</span>"
                 </blockquote>
                 <div className="flex items-center justify-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-bold text-primary">T</span>
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    <span className="text-lg font-bold text-primary">M</span>
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-foreground">Thomas Martin</p>
-                    <p className="text-sm text-muted-foreground">Fondateur, SaaSify.io</p>
+                    <p className="font-semibold text-foreground">Marie L.</p>
+                    <p className="text-sm text-muted-foreground">Créatrice de TaskFlow.app</p>
                   </div>
                 </div>
               </CardContent>
@@ -454,20 +522,28 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section - Vibecoder */}
       <section className="py-24 lg:py-32 bg-muted/30 border-t border-border">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
+            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
+              <Palette className="h-3 w-3 mr-1" />
+              Vibe-to-Production
+            </Badge>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">
-              Prêt à déployer en 10 minutes ?
+              Prêt à libérer votre création ?
             </h2>
             <p className="text-lg text-muted-foreground mb-10">
-              Analysez votre projet gratuitement et découvrez comment Inopay peut le mettre en production sur votre infrastructure.
+              Analysez votre projet gratuitement et découvrez votre <span className="text-primary font-semibold">Vibe-Score™</span>. 
+              Passez du prototype IA à votre propre infrastructure en 10 minutes.
             </p>
             <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
+                  Zéro Terminal
+                </Badge>
                 <Rocket className="mr-2 h-5 w-5" />
-                {user ? "Déployer mon projet" : "Commencer gratuitement"}
+                {user ? "Libérer mon projet" : "Commencer gratuitement"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

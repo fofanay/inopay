@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock, Activity, Plus } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock, Activity, Plus, Palette, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -115,21 +115,21 @@ const Pricing = () => {
     {
       id: "deploy" as ServiceType,
       name: "Déploiement VPS",
-      description: "Configuration complète de votre serveur",
+      description: "Du prototype IA à la production",
       price: PRICES[currency].deploy,
       period: `${PRICES[currency].symbol} / déploiement`,
       icon: Rocket,
-      badge: "Principal",
+      badge: "Vibe-to-Prod",
       popular: true,
       features: [
+        "Zéro ligne de commande",
         "Docker + Coolify installés",
         "PostgreSQL configuré",
         "SSL Let's Encrypt inclus",
         "Monitoring 7 jours inclus",
-        "Auto-restart activé",
         "Nettoyage IA du code",
       ],
-      buttonText: "Déployer maintenant",
+      buttonText: "Libérer mon projet",
     },
     {
       id: "redeploy" as ServiceType,
@@ -191,21 +191,24 @@ const Pricing = () => {
     <Layout>
       <section className="py-24 lg:py-32">
         <div className="container mx-auto px-4">
-          {/* Header */}
+          {/* Header - Vibecoder */}
           <div className="text-center mb-16">
             <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
-              <Crown className="h-3 w-3 mr-1" />
-              Modèle à l'acte
+              <Palette className="h-3 w-3 mr-1" />
+              🎨 Vibe-to-Production
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
-              Payez uniquement ce que vous utilisez
+              Passez du prototype IA à votre infrastructure
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Analyse gratuite. Aucun abonnement obligatoire. Tarification transparente.
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
+              Sans abonnement piège. Sans ligne de commande. Sans complications.
+            </p>
+            <p className="text-lg text-primary font-medium">
+              Analyse gratuite • Tarification transparente • Propriété totale
             </p>
             
             {/* Currency Selector */}
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3 mt-8">
               <Globe className="h-5 w-5 text-muted-foreground" />
               <Select value={currency} onValueChange={(value: Currency) => setCurrency(value)}>
                 <SelectTrigger className="w-[140px]">
@@ -268,7 +271,7 @@ const Pricing = () => {
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
+                  {/* CTA Button with Badge */}
                   <Button
                     variant={service.popular ? "default" : "outline"}
                     size="sm"
@@ -278,6 +281,11 @@ const Pricing = () => {
                   >
                     {loadingService === service.id ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : service.popular ? (
+                      <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
+                        <Terminal className="h-3 w-3 mr-1" />
+                        Zéro Terminal
+                      </Badge>
                     ) : null}
                     {service.buttonText}
                     <ArrowRight className="h-3 w-3 ml-2" />
@@ -287,14 +295,18 @@ const Pricing = () => {
             ))}
           </div>
 
-          {/* Value Comparison */}
+          {/* Value Comparison - Vibecoder */}
           <div className="mt-20 max-w-4xl mx-auto">
             <div className="text-center mb-10">
+              <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Divisez vos factures par 3
+              </Badge>
               <h2 className="text-3xl font-bold mb-4 text-foreground">
-                Pourquoi ces prix ?
+                Comparez et économisez
               </h2>
               <p className="text-muted-foreground">
-                Comparez avec les alternatives du marché
+                Passez de l'abonnement mensuel au paiement unique
               </p>
             </div>
 
@@ -314,6 +326,7 @@ const Pricing = () => {
                       <div className="flex items-center gap-2">
                         <Rocket className="h-4 w-4 text-primary" />
                         <span className="font-semibold text-primary">Inopay</span>
+                        <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">Vibe-Friendly</Badge>
                       </div>
                     </TableCell>
                     <TableCell className="text-center font-semibold text-primary">{PRICES[currency].deploy}</TableCell>
@@ -369,7 +382,7 @@ const Pricing = () => {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-muted-foreground" />
-                        Analyse & Nettoyage IA
+                        Analyse & Vibe-Score™
                       </div>
                     </TableCell>
                     <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
@@ -418,18 +431,18 @@ const Pricing = () => {
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
                     <TableCell className="text-center bg-primary/5">7 jours</TableCell>
-                    <TableCell className="text-center font-semibold">Permanent 24/7</TableCell>
+                    <TableCell className="text-center font-semibold text-primary">24/7 permanent</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-muted-foreground" />
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
                         Auto-restart
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
-                    <TableCell className="text-center bg-primary/5">7 jours</TableCell>
-                    <TableCell className="text-center font-semibold">Permanent</TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center font-semibold text-primary">Prioritaire</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
@@ -447,15 +460,27 @@ const Pricing = () => {
             </Card>
           </div>
 
-          {/* Bottom CTA */}
-          <div className="text-center mt-16">
-            <p className="text-muted-foreground mb-4">
-              Pas encore sûr ? Analysez votre projet gratuitement.
+          {/* CTA Section */}
+          <div className="mt-20 max-w-3xl mx-auto text-center">
+            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Vibe-to-Production
+            </Badge>
+            <h2 className="text-3xl font-bold mb-6 text-foreground">
+              Prêt à libérer votre création ?
+            </h2>
+            <p className="text-lg text-muted-foreground mb-10">
+              Analysez votre projet gratuitement et découvrez votre <span className="text-primary font-semibold">Vibe-Score™</span>.
             </p>
             <Link to={user ? "/dashboard" : "/auth"}>
-              <Button variant="outline" size="lg" className="rounded-xl">
-                Analyser mon projet gratuitement
-                <ArrowRight className="h-4 w-4 ml-2" />
+              <Button size="lg" className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
+                  <Terminal className="h-3 w-3 mr-1" />
+                  Zéro Terminal
+                </Badge>
+                <Rocket className="mr-2 h-5 w-5" />
+                {user ? "Libérer mon projet" : "Commencer gratuitement"}
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
