@@ -51,11 +51,12 @@ import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
 import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
+import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers";
+type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration";
 
 interface GitHubRepo {
   id: number;
@@ -566,6 +567,7 @@ const Dashboard = () => {
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deployments", label: "Déploiements", icon: Rocket },
     { id: "servers", label: "Mes Serveurs", icon: Server },
+    { id: "migration", label: "Migration Wizard", icon: Sparkles },
     { id: "services", label: "Mes Services", icon: Crown },
   ];
 
@@ -581,6 +583,7 @@ const Dashboard = () => {
       case "projects": return "Gérez et déployez vos projets analysés";
       case "deployments": return "Historique de vos déploiements";
       case "servers": return "Gérez vos serveurs VPS et Coolify";
+      case "migration": return "Convertissez votre projet Supabase en stack autonome";
       case "services": return "Vos crédits et abonnements actifs";
       default: return "";
     }
@@ -1141,6 +1144,11 @@ const Dashboard = () => {
             {/* Tab: Servers */}
             {activeTab === "servers" && (
               <ServerManagement />
+            )}
+
+            {/* Tab: Migration Wizard */}
+            {activeTab === "migration" && (
+              <MigrationWizard />
             )}
 
             {/* Tab: Services */}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Upload, 
   GitBranch, 
@@ -21,7 +22,8 @@ import {
   Settings,
   ChevronRight,
   Package,
-  FolderArchive
+  FolderArchive,
+  Cloud
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,12 +49,23 @@ interface MigrationOptions {
   includeSupabaseFolder: boolean;
 }
 
+interface UserServer {
+  id: string;
+  name: string;
+  ip_address: string;
+  status: string;
+  coolify_url: string | null;
+}
+
 export function MigrationWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, string>>({});
   const [detectedAssets, setDetectedAssets] = useState<DetectedAsset[]>([]);
+  const [userServers, setUserServers] = useState<UserServer[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState<string>("");
   const [options, setOptions] = useState<MigrationOptions>({
     convertEdgeFunctions: true,
     migrateDatabase: true,
@@ -65,7 +78,26 @@ export function MigrationWizard() {
     middlewares?: { name: string; content: string }[];
     dockerCompose?: string;
     downloadUrl?: string;
+    backendFiles?: Record<string, string>;
   } | null>(null);
+
+  // Fetch user's servers
+  useEffect(() => {
+    const fetchServers = async () => {
+      const { data, error } = await supabase
+        .from('user_servers')
+        .select('id, name, ip_address, status, coolify_url')
+        .eq('status', 'active');
+      
+      if (!error && data) {
+        setUserServers(data);
+        if (data.length > 0) {
+          setSelectedServerId(data[0].id);
+        }
+      }
+    };
+    fetchServers();
+  }, []);
 
   const steps: MigrationStep[] = [
     {
@@ -374,6 +406,80 @@ npm run build
 
 **Généré par Inopay** - Libérez votre code !
 `;
+  };
+
+  const handleVPSDeploy = async () => {
+    if (!selectedServerId || !conversionResult) {
+      toast.error('Veuillez sélectionner un serveur');
+      return;
+    }
+
+    setIsDeploying(true);
+
+    try {
+      const selectedServer = userServers.find(s => s.id === selectedServerId);
+      if (!selectedServer) {
+        throw new Error('Serveur non trouvé');
+      }
+
+      // Prepare files for deployment
+      const deployFiles: Record<string, string> = {};
+      
+      // Add backend files
+      if (conversionResult.routes) {
+        for (const route of conversionResult.routes) {
+          deployFiles[`backend/src/routes/${route.name}.ts`] = route.content;
+        }
+      }
+      
+      if (conversionResult.middlewares) {
+        for (const mw of conversionResult.middlewares) {
+          deployFiles[`backend/src/middleware/${mw.name}.ts`] = mw.content;
+        }
+      }
+
+      // Add docker-compose
+      if (conversionResult.dockerCompose) {
+        deployFiles['docker-compose.yml'] = conversionResult.dockerCompose;
+      }
+
+      // Add frontend files
+      for (const [path, content] of Object.entries(uploadedFiles)) {
+        if (!path.startsWith('supabase/')) {
+          deployFiles[`frontend/${path}`] = content;
+        }
+      }
+
+      // Call deploy function
+      const { data: session } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('deploy-direct', {
+        body: {
+          serverId: selectedServerId,
+          projectName: `migration-${Date.now()}`,
+          files: deployFiles,
+          serverIp: selectedServer.ip_address,
+          coolifyUrl: selectedServer.coolify_url,
+        },
+        headers: {
+          Authorization: `Bearer ${session.session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Déploiement lancé avec succès !', {
+        description: `Le projet est en cours de déploiement sur ${selectedServer.name}`,
+      });
+
+    } catch (error) {
+      console.error('VPS Deploy error:', error);
+      toast.error('Erreur lors du déploiement', {
+        description: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    } finally {
+      setIsDeploying(false);
+    }
   };
 
   const edgeFunctionCount = detectedAssets.filter(a => a.type === 'edge-function').length;
@@ -691,15 +797,60 @@ npm run build
               </TabsContent>
             </Tabs>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button onClick={handleDownload} className="w-full">
-                <Download className="mr-2 h-4 w-4" />
-                Télécharger Archive Souveraine
-              </Button>
-              <Button variant="outline" className="w-full" disabled>
-                <Rocket className="mr-2 h-4 w-4" />
-                Déployer sur VPS (bientôt)
-              </Button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button onClick={handleDownload} className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Télécharger Archive Souveraine
+                </Button>
+                
+                {userServers.length > 0 ? (
+                  <div className="flex gap-2">
+                    <Select value={selectedServerId} onValueChange={setSelectedServerId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Choisir un serveur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userServers.map((server) => (
+                          <SelectItem key={server.id} value={server.id}>
+                            <div className="flex items-center gap-2">
+                              <Server className="h-4 w-4" />
+                              {server.name} ({server.ip_address})
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={handleVPSDeploy}
+                      disabled={isDeploying || !selectedServerId}
+                      className="whitespace-nowrap"
+                    >
+                      {isDeploying ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Rocket className="mr-2 h-4 w-4" />
+                      )}
+                      Déployer
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => toast.info("Ajoutez d'abord un serveur dans 'Mes Serveurs'")}
+                  >
+                    <Cloud className="mr-2 h-4 w-4" />
+                    Aucun serveur configuré
+                  </Button>
+                )}
+              </div>
+              
+              {userServers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center">
+                  Pour déployer sur un VPS, configurez d'abord un serveur dans l'onglet "Mes Serveurs"
+                </p>
+              )}
             </div>
           </div>
         )}
