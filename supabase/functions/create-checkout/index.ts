@@ -70,7 +70,7 @@ serve(async (req) => {
         },
       ],
       mode: mode || "payment",
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/payment-success?service=${serviceType || "deploy"}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/tarifs`,
       metadata: {
         user_id: user.id,
