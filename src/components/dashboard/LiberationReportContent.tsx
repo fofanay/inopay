@@ -9,14 +9,15 @@ import {
   Globe,
   Database,
   Lock,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { QRCodeSVG } from "qrcode.react";
 
 interface ServiceReplacement {
   from: string;
@@ -467,8 +468,49 @@ const LiberationReportContent = ({ data }: LiberationReportContentProps) => {
         </CardContent>
       </Card>
 
+      {/* QR Code Section */}
+      {deployedUrl && (
+        <Card className="mb-6 print:break-inside-avoid">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Smartphone className="h-5 w-5 text-primary" />
+              Accès Mobile Rapide
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
+                <QRCodeSVG 
+                  value={deployedUrl} 
+                  size={140}
+                  level="H"
+                  includeMargin={true}
+                  bgColor="#ffffff"
+                  fgColor="#1B3A5F"
+                />
+              </div>
+              <div className="text-center md:text-left">
+                <p className="font-medium mb-2">Scannez pour accéder à votre application</p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Utilisez l'appareil photo de votre smartphone pour scanner ce QR code et accéder directement à votre application déployée.
+                </p>
+                <a 
+                  href={deployedUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline text-sm font-medium inline-flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {deployedUrl}
+                </a>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Footer */}
-      <div className="text-center mt-8 pt-6 border-t border-border">
+      <div className="text-center mt-8 pt-6 border-t border-border print:mt-4 print:pt-4">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Sparkles className="h-5 w-5 text-primary" />
           <span className="font-bold text-primary">INOPAY</span>

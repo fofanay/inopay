@@ -92,3 +92,12 @@ verify_jwt = false
 
 [functions.generate-docker-alternatives]
 verify_jwt = false
+
+[functions.send-liberation-report]
+verify_jwt = false
+
+[functions.get-user-credits]
+verify_jwt = false
+
+[functions.use-credit]
+verify_jwt = false
