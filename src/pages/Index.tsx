@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Github, Download } from "lucide-react";
+import { ArrowRight, Upload, Search, FileText, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Github, Download, Server, Database, Lock, RefreshCw, Settings } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -17,26 +17,44 @@ const Index = () => {
     { name: "Replit", icon: "🔁" },
   ];
 
+  const hosters = [
+    { name: "IONOS", icon: "🌐" },
+    { name: "OVH", icon: "☁️" },
+    { name: "Hetzner", icon: "🖥️" },
+    { name: "DigitalOcean", icon: "🌊" },
+    { name: "Scaleway", icon: "⚡" },
+  ];
+
   const steps = [
     {
       icon: Upload,
       title: "Source",
-      description: "Connectez votre GitHub ou déposez votre fichier .zip exporté",
+      description: "Connectez votre GitHub ou déposez votre fichier .zip",
     },
     {
       icon: Search,
       title: "Analyse",
-      description: "Notre IA détecte les dépendances propriétaires et verrous technologiques",
+      description: "Détection des dépendances propriétaires et verrous",
     },
     {
       icon: FileText,
       title: "Nettoyage",
-      description: "Remplacement automatique par des standards Open Source universels",
+      description: "Remplacement automatique par des alternatives Open Source",
+    },
+    {
+      icon: Settings,
+      title: "Config VPS",
+      description: "Entrez l'IP de votre serveur IONOS, OVH ou Hetzner",
     },
     {
       icon: Rocket,
-      title: "Export",
-      description: "Téléchargez votre projet 100% autonome avec configuration Docker",
+      title: "Déploiement",
+      description: "Docker, PostgreSQL et SSL installés automatiquement",
+    },
+    {
+      icon: RefreshCw,
+      title: "Monitoring",
+      description: "Health checks toutes les 5 min + auto-restart",
     },
   ];
 
@@ -44,64 +62,80 @@ const Index = () => {
     {
       icon: Code2,
       title: "Détection intelligente",
-      description: "Identifie automatiquement les imports, configurations et dépendances spécifiques à chaque plateforme.",
+      description: "Identifie automatiquement les imports et dépendances spécifiques à chaque plateforme IA.",
     },
     {
       icon: Zap,
       title: "Nettoyage IA",
-      description: "Notre intelligence artificielle remplace les composants verrouillés par des alternatives Open Source.",
+      description: "Notre IA remplace les composants verrouillés par des alternatives Open Source universelles.",
     },
     {
       icon: Rocket,
-      title: "Déploiement universel",
-      description: "Exportez avec Docker, déployez sur n'importe quel hébergeur. Votre code, vos règles.",
+      title: "Déploiement Zero-Config",
+      description: "Docker + Coolify installés automatiquement sur votre VPS. Aucune configuration manuelle.",
+    },
+    {
+      icon: Database,
+      title: "Base de données managée",
+      description: "PostgreSQL configuré et sécurisé automatiquement, prêt pour la production.",
+    },
+    {
+      icon: Lock,
+      title: "SSL Automatique",
+      description: "Let's Encrypt provisionné sans intervention. HTTPS garanti dès le premier déploiement.",
+    },
+    {
+      icon: RefreshCw,
+      title: "Monitoring Pro",
+      description: "Health checks toutes les 5 minutes + redémarrage automatique en cas de panne.",
     },
   ];
 
   const faqs = [
     {
-      question: "Quelles plateformes IA sont compatibles avec Inopay ?",
-      answer: "Inopay est compatible avec toutes les principales plateformes de génération de code IA : Lovable, Bolt, v0 by Vercel, Cursor, Replit et bien d'autres. Si votre projet utilise React, Vue, ou tout framework JavaScript moderne, nous pouvons le libérer."
+      question: "Comment fonctionne le déploiement automatique ?",
+      answer: "Vous fournissez simplement l'IP de votre VPS et vos identifiants SSH. Inopay se connecte, installe Docker et Coolify, configure PostgreSQL, provisionne un certificat SSL, et déploie votre application. Tout est automatique, aucune commande à taper."
     },
     {
-      question: "Mon code original est-il modifié sur GitHub ?",
-      answer: "Non, jamais. Inopay crée une copie optimisée de votre projet. Votre code source original reste intact sur GitHub. Vous pouvez continuer à utiliser la plateforme IA tout en ayant une version autonome en parallèle."
+      question: "Quels hébergeurs VPS sont supportés ?",
+      answer: "Inopay est compatible avec tous les principaux hébergeurs : IONOS, OVH, Hetzner, DigitalOcean, Scaleway, Linode, Vultr, et tout serveur Ubuntu accessible en SSH. Si vous avez un VPS avec accès root, ça marche."
     },
     {
-      question: "Que signifie « libérer » mon code exactement ?",
-      answer: "Libérer votre code signifie remplacer toutes les dépendances propriétaires (SDK spécifiques, imports verrouillés, configurations cloud) par des alternatives Open Source standards. Le résultat est un projet que vous pouvez déployer sur n'importe quel hébergeur sans abonnement obligatoire."
+      question: "Mes secrets sont-ils en sécurité ? (Zero-Knowledge)",
+      answer: "Absolument. Vos credentials SSH et clés API sont utilisés uniquement pendant le déploiement puis effacés de nos serveurs. Nous ne stockons aucun secret après l'installation. C'est le principe Zero-Knowledge."
     },
     {
-      question: "Est-ce que je perds des fonctionnalités après la libération ?",
-      answer: "Non. Notre IA remplace chaque composant propriétaire par un équivalent fonctionnel Open Source. Les fonctionnalités restent identiques, seule la dépendance à la plateforme disparaît. Vous gardez 100% des capacités de votre application."
+      question: "Que se passe-t-il si mon serveur tombe en panne ?",
+      answer: "Notre système de monitoring vérifie la santé de votre application toutes les 5 minutes. En cas de défaillance, un redémarrage automatique est déclenché. Vous recevez une notification par email pour chaque incident."
     },
     {
-      question: "Combien de temps prend le processus de libération ?",
-      answer: "Le processus complet prend généralement moins de 5 minutes : connexion GitHub (30 sec), analyse du projet (1-2 min), nettoyage IA (1-2 min), et export final (30 sec). Les projets plus complexes peuvent prendre un peu plus de temps."
+      question: "Puis-je utiliser mon propre nom de domaine ?",
+      answer: "Oui ! Configurez simplement un enregistrement DNS pointant vers l'IP de votre VPS. Inopay configure automatiquement le SSL Let's Encrypt pour votre domaine personnalisé."
     },
     {
-      question: "Le service est-il vraiment gratuit ?",
-      answer: "Oui, la libération de votre premier projet est entièrement gratuite. Cela inclut l'analyse complète, le nettoyage IA et l'export avec configuration Docker. Pour les équipes avec de nombreux projets, nous proposons des forfaits adaptés."
+      question: "La base de données PostgreSQL est-elle incluse ?",
+      answer: "Oui, une instance PostgreSQL est automatiquement installée et configurée sur votre VPS. Vos données restent sur votre infrastructure, avec des sauvegardes automatiques possibles."
     },
     {
-      question: "Puis-je déployer mon projet libéré sur n'importe quel hébergeur ?",
-      answer: "Absolument. Votre projet exporté inclut une configuration Docker prête à l'emploi. Vous pouvez le déployer sur Vercel, Netlify, Railway, DigitalOcean, AWS, votre propre serveur, ou tout autre hébergeur de votre choix."
+      question: "Quelles plateformes IA sont compatibles ?",
+      answer: "Inopay est compatible avec Lovable, Bolt, v0, Cursor, Replit et toutes les plateformes générant du code React/Vue/JavaScript moderne. Le nettoyage IA adapte le code à votre infrastructure."
     },
     {
-      question: "Que se passe-t-il si la libération échoue ou pose problème ?",
-      answer: "Notre équipe technique est disponible pour vous accompagner. Si un composant spécifique pose problème, nous analysons le cas et proposons une solution adaptée. Votre satisfaction et votre autonomie sont notre priorité."
+      question: "Combien de temps prend le déploiement complet ?",
+      answer: "Environ 10 minutes du début à la fin : analyse (2 min), nettoyage IA (2 min), configuration VPS (3-4 min), et mise en ligne (2 min). Votre app est en production avec SSL et base de données en moins d'un quart d'heure."
     }
   ];
 
   const heroBenefits = [
-    "Libérez votre code en moins de 5 minutes",
-    "Zéro dépendance aux plateformes IA",
-    "Déployez sur n'importe quel hébergeur",
+    "Déploiement automatique sur votre VPS",
+    "Monitoring 24/7 avec auto-recovery",
+    "SSL + Base de données PostgreSQL inclus",
+    "Sécurité Zero-Knowledge",
   ];
 
   return (
     <Layout>
-      {/* Hero Section - Inspired by AppBuilder design */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden py-20 lg:py-28">
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
@@ -112,19 +146,19 @@ const Index = () => {
             <div className="max-w-xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
-                <Shield className="h-4 w-4" />
-                100% Indépendance Garantie
+                <Rocket className="h-4 w-4" />
+                Déploiement Automatique
               </div>
 
               {/* Title */}
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-6 animate-fade-in-up text-foreground leading-tight">
-                Libérez Votre Code IA en{" "}
-                <span className="text-primary">Open Source</span>
+                Du Code IA au Serveur en{" "}
+                <span className="text-primary">10 Minutes</span>
               </h1>
 
               {/* Subtitle */}
               <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.1s" }}>
-                Vous avez créé une application géniale avec Lovable, Bolt ou Cursor. Maintenant, rendez-la totalement autonome et déployable partout.
+                Inopay prend votre projet Lovable, Bolt ou Cursor, le nettoie automatiquement et le déploie sur votre propre VPS. Zéro configuration manuelle.
               </p>
 
               {/* Benefits list with checkmarks */}
@@ -143,7 +177,7 @@ const Index = () => {
               <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
                 <Link to={user ? "/dashboard" : "/auth"}>
                   <Button size="lg" className="text-lg px-8 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all bg-primary hover:bg-primary/90">
-                    Libérer mon projet
+                    Déployer mon projet
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -151,14 +185,14 @@ const Index = () => {
                 {/* Trust indicator */}
                 <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
                   <Unlock className="h-4 w-4" />
-                  Premier projet gratuit, sans carte bancaire
+                  Analyse gratuite, sans carte bancaire
                 </p>
               </div>
             </div>
 
             {/* Right Column - Visual Mockup */}
             <div className="relative lg:pl-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
-              {/* Main visual card - Code editor mockup */}
+              {/* Main visual card - Deployment flow */}
               <div className="relative">
                 {/* Glow effect behind */}
                 <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-2xl opacity-60" />
@@ -172,40 +206,59 @@ const Index = () => {
                       <div className="w-3 h-3 rounded-full bg-warning/60" />
                       <div className="w-3 h-3 rounded-full bg-primary/60" />
                     </div>
-                    <span className="text-xs text-muted-foreground ml-2">mon-projet-libere/</span>
+                    <span className="text-xs text-muted-foreground ml-2">mon-app.com</span>
                   </div>
                   
-                  {/* Code content simulation */}
+                  {/* Deployment flow visualization */}
                   <div className="p-6 space-y-4 bg-gradient-to-br from-card to-primary/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Code2 className="h-5 w-5 text-primary" />
+                    {/* Flow diagram */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col items-center gap-2 flex-1">
+                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                          <Code2 className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">Code IA</span>
                       </div>
-                      <div>
-                        <p className="font-semibold text-foreground">Projet Nettoyé</p>
-                        <p className="text-sm text-muted-foreground">100% Open Source</p>
+                      <ArrowRight className="h-5 w-5 text-primary" />
+                      <div className="flex flex-col items-center gap-2 flex-1">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Sparkles className="h-6 w-6 text-primary" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">Inopay</span>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-primary" />
+                      <div className="flex flex-col items-center gap-2 flex-1">
+                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+                          <Server className="h-6 w-6 text-primary-foreground" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">Votre VPS</span>
                       </div>
                     </div>
                     
-                    {/* Progress bars */}
-                    <div className="space-y-3 pt-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Dépendances propriétaires</span>
-                        <span className="text-primary font-medium">0 restantes</span>
+                    {/* Status indicators */}
+                    <div className="grid grid-cols-3 gap-2 pt-4">
+                      <div className="p-3 rounded-xl bg-primary/10 text-center">
+                        <Check className="h-4 w-4 text-primary mx-auto mb-1" />
+                        <p className="text-xs text-muted-foreground">Docker</p>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full w-full" />
+                      <div className="p-3 rounded-xl bg-primary/10 text-center">
+                        <Check className="h-4 w-4 text-primary mx-auto mb-1" />
+                        <p className="text-xs text-muted-foreground">SSL</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-primary/10 text-center">
+                        <Check className="h-4 w-4 text-primary mx-auto mb-1" />
+                        <p className="text-xs text-muted-foreground">PostgreSQL</p>
                       </div>
                     </div>
                     
                     <div className="flex gap-3 pt-2">
-                      <div className="flex-1 p-3 rounded-xl bg-primary/10 text-center">
-                        <p className="text-2xl font-bold text-primary">42</p>
-                        <p className="text-xs text-muted-foreground">Fichiers</p>
-                      </div>
                       <div className="flex-1 p-3 rounded-xl bg-accent/10 text-center">
-                        <p className="text-2xl font-bold text-accent">100%</p>
-                        <p className="text-xs text-muted-foreground">Portable</p>
+                        <p className="text-2xl font-bold text-accent">10 min</p>
+                        <p className="text-xs text-muted-foreground">Déploiement</p>
+                      </div>
+                      <div className="flex-1 p-3 rounded-xl bg-primary/10 text-center">
+                        <p className="text-2xl font-bold text-primary">24/7</p>
+                        <p className="text-xs text-muted-foreground">Monitoring</p>
                       </div>
                     </div>
                   </div>
@@ -213,18 +266,18 @@ const Index = () => {
 
                 {/* Floating badges */}
                 <div className="absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2 animate-bounce" style={{ animationDuration: "3s" }}>
-                  <Github className="h-4 w-4 text-foreground" />
-                  <span className="text-sm font-medium">GitHub</span>
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Zero-Knowledge</span>
                 </div>
                 
                 <div className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "0.5s" }}>
-                  <Download className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Docker Ready</span>
+                  <RefreshCw className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Auto-restart</span>
                 </div>
                 
                 <div className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2" style={{ animation: "bounce 3s infinite", animationDelay: "1s" }}>
                   <Zap className="h-4 w-4" />
-                  <span className="text-sm font-medium">En 5 min</span>
+                  <span className="text-sm font-medium">En 10 min</span>
                 </div>
               </div>
             </div>
@@ -238,7 +291,7 @@ const Index = () => {
           <p className="text-center text-sm text-muted-foreground mb-8">
             Compatible avec les principales plateformes IA no-code
           </p>
-          <div className="flex flex-wrap justify-center gap-6 md:gap-10">
+          <div className="flex flex-wrap justify-center gap-6 md:gap-10 mb-10">
             {platforms.map((platform) => (
               <div 
                 key={platform.name}
@@ -246,6 +299,21 @@ const Index = () => {
               >
                 <span className="text-xl">{platform.icon}</span>
                 <span className="font-medium text-foreground">{platform.name}</span>
+              </div>
+            ))}
+          </div>
+          
+          <p className="text-center text-sm text-muted-foreground mb-8">
+            Déployez sur votre hébergeur préféré
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            {hosters.map((hoster) => (
+              <div 
+                key={hoster.name}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all"
+              >
+                <span className="text-lg">{hoster.icon}</span>
+                <span className="text-sm font-medium text-foreground">{hoster.name}</span>
               </div>
             ))}
           </div>
@@ -260,11 +328,11 @@ const Index = () => {
               Comment ça marche ?
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              En quatre étapes simples, transformez votre projet IA en application autonome
+              En six étapes, votre app IA est en production sur votre propre infrastructure
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-7xl mx-auto">
             {steps.map((step, index) => (
               <div 
                 key={step.title}
@@ -272,22 +340,22 @@ const Index = () => {
               >
                 {/* Connector line */}
                 {index < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-12 left-[60%] w-full h-px bg-border" />
+                  <div className="hidden lg:block absolute top-12 left-[60%] w-full h-px bg-border" />
                 )}
                 
-                <div className="flex flex-col items-center text-center p-6 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all card-shadow card-hover">
+                <div className="flex flex-col items-center text-center p-4 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all card-shadow card-hover h-full">
                   {/* Step number */}
-                  <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                  <div className="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
                     {index + 1}
                   </div>
                   
                   {/* Icon */}
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-5 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <step.icon className="h-7 w-7" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                    <step.icon className="h-6 w-6" />
                   </div>
                   
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground">{step.description}</p>
+                  <h3 className="text-sm font-semibold mb-2 text-foreground">{step.title}</h3>
+                  <p className="text-xs text-muted-foreground">{step.description}</p>
                 </div>
               </div>
             ))}
@@ -303,21 +371,21 @@ const Index = () => {
               Pourquoi choisir Inopay ?
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Une solution conçue pour les entrepreneurs qui veulent garder le contrôle
+              Une solution complète pour passer de l'idée à la production sans effort
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {features.map((feature) => (
               <div 
                 key={feature.title}
-                className="p-8 rounded-2xl border border-border bg-card card-shadow card-hover group"
+                className="p-6 rounded-2xl border border-border bg-card card-shadow card-hover group"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-5 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                   <feature.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
+                <h3 className="text-lg font-semibold mb-2 text-foreground">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -332,15 +400,15 @@ const Index = () => {
               <CardContent className="p-10 md:p-12 text-center">
                 <Quote className="h-10 w-10 text-primary/30 mx-auto mb-6" />
                 <blockquote className="text-xl md:text-2xl font-medium text-foreground mb-6 leading-relaxed">
-                  "Indispensable pour passer d'une idée générée par IA à une véritable entreprise sans dépendre d'un abonnement mensuel."
+                  "J'ai connecté mon VPS IONOS et en 10 minutes, mon app Lovable était en ligne avec SSL et PostgreSQL. Le monitoring m'a alerté d'un problème de nuit et l'a résolu automatiquement."
                 </blockquote>
                 <div className="flex items-center justify-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-bold text-primary">M</span>
+                    <span className="text-lg font-bold text-primary">T</span>
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-foreground">Marie Dupont</p>
-                    <p className="text-sm text-muted-foreground">Fondatrice, TechStartup</p>
+                    <p className="font-semibold text-foreground">Thomas Martin</p>
+                    <p className="text-sm text-muted-foreground">Fondateur, SaaSify.io</p>
                   </div>
                 </div>
               </CardContent>
@@ -361,7 +429,7 @@ const Index = () => {
               Tout ce que vous devez savoir
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Des réponses claires aux questions les plus courantes sur la libération de code
+              Des réponses claires sur le déploiement, la sécurité et le monitoring
             </p>
           </div>
 
@@ -391,15 +459,15 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-foreground">
-              Prêt à reprendre le contrôle ?
+              Prêt à déployer en 10 minutes ?
             </h2>
             <p className="text-lg text-muted-foreground mb-10">
-              Libérez gratuitement votre premier projet et découvrez la vraie indépendance technologique.
+              Analysez votre projet gratuitement et découvrez comment Inopay peut le mettre en production sur votre infrastructure.
             </p>
             <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                <Sparkles className="mr-2 h-5 w-5" />
-                {user ? "Libérer mon projet" : "Commencer gratuitement"}
+                <Rocket className="mr-2 h-5 w-5" />
+                {user ? "Déployer mon projet" : "Commencer gratuitement"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>

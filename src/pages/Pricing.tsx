@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, FileCode, Github, Server, Rocket } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +33,6 @@ const PRICES = {
   CAD: { pack: "29 $", pro: "59 $", symbol: "CAD" },
   USD: { pack: "21 $", pro: "43 $", symbol: "USD" },
   EUR: { pack: "19 €", pro: "39 €", symbol: "EUR" },
-};
-
-// Plan limits configuration
-const PLAN_LIMITS = {
-  free: { maxFiles: 100, maxRepos: 3, apiDelay: "Lent" },
-  pack: { maxFiles: 200, maxRepos: 10, apiDelay: "Normal" },
-  pro: { maxFiles: 500, maxRepos: 50, apiDelay: "Rapide" },
-  enterprise: { maxFiles: 2000, maxRepos: "Illimité", apiDelay: "Ultra-rapide" },
 };
 
 const Pricing = () => {
@@ -94,19 +86,20 @@ const Pricing = () => {
     {
       id: "pack",
       name: "Pack Liberté",
-      description: "Parfait pour un projet unique",
+      description: "Un déploiement VPS complet",
       price: PRICES[currency].pack,
-      period: `${PRICES[currency].symbol} / export`,
+      period: `${PRICES[currency].symbol} / déploiement`,
       badge: null,
       features: [
-        "1 export de projet complet",
-        "Nettoyage IA inclus",
-        "Configuration Docker",
+        "1 déploiement VPS complet",
+        "Nettoyage IA du code",
+        "Docker + Coolify installés",
+        "SSL Let's Encrypt inclus",
+        "PostgreSQL configuré",
+        "Monitoring 7 jours",
         "Support par email",
-        `Jusqu'à ${PLAN_LIMITS.pack.maxFiles} fichiers analysés`,
-        `${PLAN_LIMITS.pack.maxRepos} dépôts GitHub`,
       ],
-      buttonText: "Acheter le Pack",
+      buttonText: "Déployer maintenant",
       buttonVariant: "outline" as const,
       popular: false,
     },
@@ -118,13 +111,14 @@ const Pricing = () => {
       period: `${PRICES[currency].symbol} / mois`,
       badge: "Populaire",
       features: [
-        "Exports illimités",
+        "Déploiements VPS illimités",
         "Nettoyage IA prioritaire",
-        "Configuration Docker",
-        "Push vers GitHub",
-        "Support prioritaire",
-        `Jusqu'à ${PLAN_LIMITS.pro.maxFiles} fichiers analysés`,
-        `${PLAN_LIMITS.pro.maxRepos} dépôts GitHub`,
+        "Docker + Coolify installés",
+        "SSL Let's Encrypt inclus",
+        "PostgreSQL configuré",
+        "Monitoring permanent 24/7",
+        "Auto-restart prioritaire",
+        "Support dédié",
       ],
       buttonText: "Devenir Pro",
       buttonVariant: "default" as const,
@@ -143,10 +137,10 @@ const Pricing = () => {
               Tarification simple
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-foreground">
-              Choisissez votre liberté
+              Du code à la production
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Le scan et l'analyse sont gratuits. Payez uniquement pour libérer votre code.
+              Analyse gratuite. Payez uniquement pour déployer sur votre VPS.
             </p>
             
             {/* Currency Selector */}
@@ -189,7 +183,7 @@ const Pricing = () => {
                     {plan.popular ? (
                       <Zap className="h-7 w-7 text-primary" />
                     ) : (
-                      <Sparkles className="h-7 w-7 text-primary" />
+                      <Rocket className="h-7 w-7 text-primary" />
                     )}
                   </div>
                   <CardTitle className="text-2xl text-foreground">{plan.name}</CardTitle>
@@ -245,7 +239,7 @@ const Pricing = () => {
                 Comparaison détaillée
               </h2>
               <p className="text-muted-foreground">
-                Toutes les fonctionnalités et limites par plan
+                Toutes les fonctionnalités incluses par plan
               </p>
             </div>
 
@@ -262,7 +256,7 @@ const Pricing = () => {
                     </TableHead>
                     <TableHead className="text-center">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="font-semibold">Pack</span>
+                        <span className="font-semibold">Pack Liberté</span>
                         <span className="text-xs text-muted-foreground">{PRICES[currency].pack}</span>
                       </div>
                     </TableHead>
@@ -279,41 +273,30 @@ const Pricing = () => {
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <FileCode className="h-4 w-4 text-muted-foreground" />
-                        Fichiers analysés max
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        Analyse & Nettoyage IA
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.free.maxFiles}</TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.pack.maxFiles}</TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.maxFiles}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Github className="h-4 w-4 text-muted-foreground" />
-                        Dépôts GitHub
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.free.maxRepos}</TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.pack.maxRepos}</TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.maxRepos}</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Server className="h-4 w-4 text-muted-foreground" />
-                        Vitesse d'analyse
+                        Déploiement VPS
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.free.apiDelay}</TableCell>
-                    <TableCell className="text-center">{PLAN_LIMITS.pack.apiDelay}</TableCell>
-                    <TableCell className="text-center bg-primary/5 font-semibold">{PLAN_LIMITS.pro.apiDelay}</TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center">1 déploiement</TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">Illimité</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Rocket className="h-4 w-4 text-muted-foreground" />
-                        Export de projet
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                        PostgreSQL configuré
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
@@ -323,11 +306,44 @@ const Pricing = () => {
                   <TableRow>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-muted-foreground" />
-                        Nettoyage IA
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                        SSL Let's Encrypt
                       </div>
                     </TableCell>
                     <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                        Monitoring
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center">7 jours</TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">Permanent 24/7</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-muted-foreground" />
+                        Auto-restart
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">—</TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
+                    <TableCell className="text-center bg-primary/5 font-semibold">Prioritaire</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        Zero-Knowledge
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center bg-primary/5"><Check className="h-4 w-4 text-success mx-auto" /></TableCell>
                   </TableRow>
@@ -339,7 +355,7 @@ const Pricing = () => {
           {/* Bottom CTA */}
           <div className="text-center mt-16">
             <p className="text-muted-foreground mb-4">
-              Pas encore sûr ? Testez gratuitement le scan de votre projet.
+              Pas encore sûr ? Analysez votre projet gratuitement.
             </p>
             <Link to={user ? "/dashboard" : "/auth"}>
               <Button variant="outline" size="lg" className="rounded-xl">
