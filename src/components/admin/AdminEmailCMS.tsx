@@ -80,65 +80,396 @@ interface EmailCampaign {
   created_at: string;
 }
 
+// Logo Inopay en base64 pour les emails
+const INOPAY_LOGO_URL = "https://izqveyvcebolrqpqlmho.supabase.co/storage/v1/object/public/cleaned-archives/inopay-logo.png";
+
+// Email template wrapper professionnel
+const getEmailWrapper = (content: string, preheader: string = "") => `<!DOCTYPE html>
+<html lang="fr" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Inopay</title>
+  <!--[if mso]>
+  <style>
+    table { border-collapse: collapse; }
+    td { font-family: Arial, sans-serif; }
+  </style>
+  <![endif]-->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background-color: #f4f4f5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .preheader { display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+    .header { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%); padding: 40px 30px; text-align: center; }
+    .header img { max-width: 180px; height: auto; }
+    .header-title { color: #ffffff; font-size: 14px; font-weight: 500; margin-top: 15px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; }
+    .content { padding: 50px 40px; background-color: #ffffff; }
+    .content h1 { color: #1a1a1a; font-size: 28px; font-weight: 700; margin-bottom: 25px; line-height: 1.3; }
+    .content h2 { color: #4f46e5; font-size: 22px; font-weight: 600; margin: 30px 0 15px; }
+    .content p { color: #4a4a4a; font-size: 16px; line-height: 1.7; margin-bottom: 18px; }
+    .content ul { margin: 20px 0; padding-left: 25px; }
+    .content li { color: #4a4a4a; font-size: 16px; line-height: 1.8; margin-bottom: 10px; }
+    .highlight-box { background: linear-gradient(135deg, #f8f7ff 0%, #f0f0ff 100%); border-left: 4px solid #6366f1; padding: 25px; margin: 30px 0; border-radius: 0 12px 12px 0; }
+    .highlight-box p { margin: 0; color: #1a1a1a; font-weight: 500; }
+    .cta-container { text-align: center; margin: 40px 0; }
+    .cta-button { 
+      display: inline-block; 
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #ffffff !important; 
+      padding: 18px 45px; 
+      text-decoration: none; 
+      border-radius: 12px; 
+      font-weight: 600; 
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+      transition: all 0.3s ease;
+    }
+    .cta-button:hover { box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45); }
+    .cta-secondary {
+      display: inline-block;
+      background: transparent;
+      color: #6366f1 !important;
+      padding: 16px 40px;
+      text-decoration: none;
+      border: 2px solid #6366f1;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      margin-top: 15px;
+    }
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, #e5e5e5, transparent); margin: 35px 0; }
+    .info-card { background-color: #fafafa; border-radius: 12px; padding: 25px; margin: 25px 0; border: 1px solid #eaeaea; }
+    .info-card-title { font-size: 14px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .info-card-value { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+    .signature { margin-top: 40px; padding-top: 25px; border-top: 1px solid #eaeaea; }
+    .signature p { color: #6b6b6b; font-size: 15px; margin-bottom: 8px; }
+    .signature-name { color: #1a1a1a !important; font-weight: 600; }
+    .footer { background-color: #1a1a1a; padding: 40px 30px; text-align: center; }
+    .footer-logo { max-width: 120px; height: auto; opacity: 0.9; margin-bottom: 20px; }
+    .footer-links { margin: 20px 0; }
+    .footer-links a { color: #a0a0a0; text-decoration: none; font-size: 14px; margin: 0 15px; }
+    .footer-links a:hover { color: #ffffff; }
+    .footer-text { color: #6b6b6b; font-size: 13px; line-height: 1.6; margin-top: 20px; }
+    .footer-text a { color: #6366f1; text-decoration: none; }
+    .social-links { margin: 25px 0; }
+    .social-links a { display: inline-block; margin: 0 8px; }
+    .badge { display: inline-block; background-color: #6366f1; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .badge-warning { background-color: #f59e0b; }
+    .badge-success { background-color: #10b981; }
+    .badge-danger { background-color: #ef4444; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .content { padding: 30px 20px !important; }
+      .header { padding: 30px 20px !important; }
+      .content h1 { font-size: 24px !important; }
+      .cta-button { padding: 16px 35px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5;">
+  <span class="preheader">${preheader}</span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.08);">
+          <!-- Header -->
+          <tr>
+            <td class="header">
+              <img src="${INOPAY_LOGO_URL}" alt="Inopay" style="max-width: 160px; height: auto;">
+              <p class="header-title">Liberté • Portabilité • Souveraineté</p>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td class="content">
+              ${content}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td class="footer">
+              <img src="${INOPAY_LOGO_URL}" alt="Inopay" class="footer-logo" style="max-width: 100px; filter: brightness(0) invert(1); opacity: 0.8;">
+              <div class="footer-links">
+                <a href="{{app_url}}">Accueil</a>
+                <a href="{{app_url}}/pricing">Tarifs</a>
+                <a href="{{app_url}}/about">À propos</a>
+              </div>
+              <p class="footer-text">
+                © ${new Date().getFullYear()} Inopay. Tous droits réservés.<br>
+                <a href="{{app_url}}/unsubscribe?email={{user_email}}">Se désabonner</a> • 
+                <a href="{{app_url}}/preferences">Préférences emails</a>
+              </p>
+              <p class="footer-text" style="margin-top: 15px; font-size: 12px; color: #4a4a4a;">
+                Inopay - Québec, Canada 🇨🇦
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
 const defaultTemplates = [
   {
     name: "Bienvenue",
-    subject: "Bienvenue sur Inopay, {{user_name}} !",
+    subject: "🎉 Bienvenue sur Inopay, {{user_name}} !",
     category: "onboarding",
-    html_content: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h1 style="color: #6366f1;">Bienvenue sur Inopay ! 🎉</h1>
-  <p>Bonjour {{user_name}},</p>
-  <p>Merci de nous avoir rejoints ! Nous sommes ravis de vous compter parmi nos utilisateurs.</p>
-  <p>Avec Inopay, vous pouvez exporter et déployer vos projets Lovable en toute simplicité.</p>
-  <a href="{{app_url}}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">Commencer maintenant</a>
-  <p>À bientôt,<br>L'équipe Inopay</p>
-</body>
-</html>`,
-    variables: ["user_name", "app_url"],
+    html_content: getEmailWrapper(`
+      <h1>Bienvenue dans la famille Inopay ! 🚀</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Nous sommes ravis de vous accueillir sur Inopay, la plateforme qui vous permet de <strong>reprendre le contrôle total</strong> de vos projets Lovable.</p>
+      
+      <div class="highlight-box">
+        <p>💡 Avec Inopay, vous pouvez exporter, déployer et gérer vos applications en toute liberté, sans dépendre d'aucune plateforme.</p>
+      </div>
+      
+      <h2>Ce que vous pouvez faire maintenant :</h2>
+      
+      <ul>
+        <li><strong>Analyser</strong> vos projets Lovable pour évaluer leur portabilité</li>
+        <li><strong>Exporter</strong> votre code source complet et nettoyé</li>
+        <li><strong>Déployer</strong> directement sur votre hébergeur favori</li>
+        <li><strong>Gérer</strong> vos bases de données en toute autonomie</li>
+      </ul>
+      
+      <div class="cta-container">
+        <a href="{{app_url}}/dashboard" class="cta-button">Commencer maintenant</a>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>À très bientôt,</p>
+        <p class="signature-name">L'équipe Inopay</p>
+        <p style="font-size: 14px; color: #6366f1;">Votre liberté numérique commence ici.</p>
+      </div>
+    `, "Bienvenue sur Inopay ! Découvrez comment reprendre le contrôle de vos projets."),
+    variables: ["user_name", "app_url", "user_email"],
   },
   {
     name: "Abonnement expire bientôt",
-    subject: "Votre abonnement Inopay expire dans {{days}} jours",
+    subject: "⏰ Votre abonnement Inopay expire dans {{days}} jours",
     category: "subscription",
-    html_content: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h1 style="color: #f59e0b;">⚠️ Votre abonnement expire bientôt</h1>
-  <p>Bonjour {{user_name}},</p>
-  <p>Votre abonnement <strong>{{plan_name}}</strong> expire le <strong>{{expiry_date}}</strong>.</p>
-  <p>Pour continuer à profiter de toutes les fonctionnalités, pensez à renouveler votre abonnement.</p>
-  <a href="{{app_url}}/pricing" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">Renouveler maintenant</a>
-  <p>Cordialement,<br>L'équipe Inopay</p>
-</body>
-</html>`,
-    variables: ["user_name", "plan_name", "expiry_date", "days", "app_url"],
+    html_content: getEmailWrapper(`
+      <h1>Votre abonnement arrive à échéance</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Nous vous informons que votre abonnement <strong>{{plan_name}}</strong> arrive bientôt à expiration.</p>
+      
+      <div class="info-card">
+        <p class="info-card-title">Date d'expiration</p>
+        <p class="info-card-value">{{expiry_date}}</p>
+        <p style="margin-top: 10px; color: #f59e0b; font-weight: 600;">
+          <span class="badge badge-warning">{{days}} jours restants</span>
+        </p>
+      </div>
+      
+      <p>Pour continuer à profiter de toutes les fonctionnalités d'Inopay et ne pas interrompre vos exports et déploiements, nous vous recommandons de renouveler dès maintenant.</p>
+      
+      <div class="highlight-box">
+        <p>🔒 En renouvelant maintenant, vous conservez votre historique de projets et tous vos crédits non utilisés.</p>
+      </div>
+      
+      <div class="cta-container">
+        <a href="{{app_url}}/pricing" class="cta-button">Renouveler mon abonnement</a>
+        <br>
+        <a href="{{app_url}}/dashboard" class="cta-secondary">Voir mon compte</a>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>Des questions ? Répondez simplement à cet email.</p>
+        <p class="signature-name">L'équipe Inopay</p>
+      </div>
+    `, "Votre abonnement Inopay expire bientôt. Renouvelez pour continuer à utiliser toutes les fonctionnalités."),
+    variables: ["user_name", "plan_name", "expiry_date", "days", "app_url", "user_email"],
   },
   {
     name: "Crédits épuisés",
-    subject: "Vos crédits Inopay sont épuisés",
+    subject: "📉 Vos crédits Inopay sont épuisés",
     category: "credits",
-    html_content: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h1 style="color: #ef4444;">Vos crédits sont épuisés 📉</h1>
-  <p>Bonjour {{user_name}},</p>
-  <p>Vous avez utilisé tous vos crédits d'export ce mois-ci.</p>
-  <p>Pour continuer à exporter vos projets, vous pouvez :</p>
-  <ul>
-    <li>Attendre le renouvellement mensuel</li>
-    <li>Acheter un pack de crédits supplémentaires</li>
-    <li>Passer à un plan supérieur</li>
-  </ul>
-  <a href="{{app_url}}/pricing" style="display: inline-block; background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">Voir les options</a>
-  <p>Cordialement,<br>L'équipe Inopay</p>
-</body>
-</html>`,
-    variables: ["user_name", "app_url"],
+    html_content: getEmailWrapper(`
+      <h1>Vos crédits sont épuisés</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Nous vous informons que vous avez utilisé tous vos crédits d'export pour ce mois.</p>
+      
+      <div class="info-card">
+        <p class="info-card-title">Crédits restants</p>
+        <p class="info-card-value" style="color: #ef4444;">0 crédit</p>
+        <p style="margin-top: 10px;">
+          <span class="badge badge-danger">Limite atteinte</span>
+        </p>
+      </div>
+      
+      <h2>Vos options pour continuer :</h2>
+      
+      <ul>
+        <li><strong>Attendre</strong> le renouvellement mensuel automatique</li>
+        <li><strong>Acheter</strong> un pack de crédits supplémentaires</li>
+        <li><strong>Upgrader</strong> vers un plan supérieur avec plus de crédits</li>
+      </ul>
+      
+      <div class="highlight-box">
+        <p>💡 Le plan <strong>Pro Illimité</strong> vous offre des exports illimités pour ne plus jamais être bloqué !</p>
+      </div>
+      
+      <div class="cta-container">
+        <a href="{{app_url}}/pricing" class="cta-button">Voir les options</a>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>Besoin d'aide ? Nous sommes là pour vous.</p>
+        <p class="signature-name">L'équipe Inopay</p>
+      </div>
+    `, "Vous avez utilisé tous vos crédits d'export Inopay ce mois-ci."),
+    variables: ["user_name", "app_url", "user_email"],
+  },
+  {
+    name: "Export réussi",
+    subject: "✅ Votre projet {{project_name}} a été exporté avec succès",
+    category: "transactional",
+    html_content: getEmailWrapper(`
+      <h1>Export terminé avec succès ! 🎉</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Excellente nouvelle ! Votre projet a été exporté et est prêt à être téléchargé.</p>
+      
+      <div class="info-card">
+        <p class="info-card-title">Projet exporté</p>
+        <p class="info-card-value">{{project_name}}</p>
+        <p style="margin-top: 10px;">
+          <span class="badge badge-success">Export réussi</span>
+        </p>
+      </div>
+      
+      <div class="highlight-box">
+        <p>📦 Votre archive contient le code source nettoyé et prêt pour le déploiement sur n'importe quel hébergeur.</p>
+      </div>
+      
+      <h2>Prochaines étapes :</h2>
+      
+      <ul>
+        <li>Téléchargez votre archive depuis le tableau de bord</li>
+        <li>Décompressez les fichiers sur votre ordinateur</li>
+        <li>Déployez sur votre hébergeur favori (FTP, GitHub, etc.)</li>
+      </ul>
+      
+      <div class="cta-container">
+        <a href="{{app_url}}/dashboard" class="cta-button">Télécharger l'archive</a>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>Félicitations pour cette étape vers la liberté numérique !</p>
+        <p class="signature-name">L'équipe Inopay</p>
+      </div>
+    `, "Votre projet a été exporté avec succès. Téléchargez-le maintenant."),
+    variables: ["user_name", "project_name", "app_url", "user_email"],
+  },
+  {
+    name: "Newsletter mensuelle",
+    subject: "📬 Les nouveautés Inopay de {{month}}",
+    category: "marketing",
+    html_content: getEmailWrapper(`
+      <h1>Quoi de neuf chez Inopay ?</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Voici les dernières nouveautés et améliorations que nous avons apportées à Inopay ce mois-ci.</p>
+      
+      <div class="divider"></div>
+      
+      <h2>🚀 Nouvelles fonctionnalités</h2>
+      
+      <p>{{new_features}}</p>
+      
+      <h2>🔧 Améliorations</h2>
+      
+      <p>{{improvements}}</p>
+      
+      <h2>📊 Vos statistiques du mois</h2>
+      
+      <div style="display: flex; gap: 15px; margin: 25px 0;">
+        <div class="info-card" style="flex: 1; text-align: center;">
+          <p class="info-card-title">Projets analysés</p>
+          <p class="info-card-value">{{projects_count}}</p>
+        </div>
+        <div class="info-card" style="flex: 1; text-align: center;">
+          <p class="info-card-title">Exports réalisés</p>
+          <p class="info-card-value">{{exports_count}}</p>
+        </div>
+      </div>
+      
+      <div class="cta-container">
+        <a href="{{app_url}}/dashboard" class="cta-button">Voir mon tableau de bord</a>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>Merci de faire partie de la communauté Inopay !</p>
+        <p class="signature-name">L'équipe Inopay</p>
+      </div>
+    `, "Découvrez les nouveautés Inopay de ce mois-ci !"),
+    variables: ["user_name", "month", "new_features", "improvements", "projects_count", "exports_count", "app_url", "user_email"],
+  },
+  {
+    name: "Réinitialisation mot de passe",
+    subject: "🔐 Réinitialisez votre mot de passe Inopay",
+    category: "transactional",
+    html_content: getEmailWrapper(`
+      <h1>Réinitialisation de mot de passe</h1>
+      
+      <p>Bonjour <strong>{{user_name}}</strong>,</p>
+      
+      <p>Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte Inopay.</p>
+      
+      <div class="highlight-box">
+        <p>⚠️ Si vous n'avez pas fait cette demande, vous pouvez ignorer cet email en toute sécurité.</p>
+      </div>
+      
+      <p>Pour réinitialiser votre mot de passe, cliquez sur le bouton ci-dessous :</p>
+      
+      <div class="cta-container">
+        <a href="{{reset_link}}" class="cta-button">Réinitialiser mon mot de passe</a>
+      </div>
+      
+      <p style="text-align: center; color: #6b6b6b; font-size: 14px; margin-top: 20px;">Ce lien expire dans 24 heures.</p>
+      
+      <div class="divider"></div>
+      
+      <p style="font-size: 14px; color: #6b6b6b;">Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+      <p style="font-size: 13px; word-break: break-all; color: #6366f1;">{{reset_link}}</p>
+      
+      <div class="divider"></div>
+      
+      <div class="signature">
+        <p>Besoin d'aide ? Contactez-nous.</p>
+        <p class="signature-name">L'équipe Inopay</p>
+      </div>
+    `, "Réinitialisez votre mot de passe Inopay"),
+    variables: ["user_name", "reset_link", "app_url", "user_email"],
   },
 ];
 
