@@ -13,11 +13,11 @@ const Footer = () => {
               <img src={inopayLogo} alt="Inopay" className="h-12 w-auto" />
             </Link>
             <p className="text-sm text-muted-foreground max-w-md mb-4">
-              Transformez vos projets IA en applications 100% autonomes. 
-              Libérez votre code et déployez où vous voulez.
+              Du code IA à la production en 10 minutes. Nettoyage automatique, 
+              déploiement VPS, SSL et monitoring 24/7 inclus.
             </p>
             <p className="text-sm font-medium text-primary">
-              Le pont vers votre autonomie technologique.
+              Inopay : De l'IA à la Production en 10 minutes.
             </p>
           </div>
 
@@ -81,7 +81,7 @@ const Footer = () => {
               © {new Date().getFullYear()} Inopay. Tous droits réservés.
             </p>
             <p className="text-sm font-medium text-foreground">
-              Inopay : Le pont vers votre autonomie technologique
+              Inopay : De l'IA à la Production en 10 minutes
             </p>
           </div>
         </div>

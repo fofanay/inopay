@@ -1,30 +1,30 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Shield, Users, Target, Lightbulb } from "lucide-react";
+import { ArrowRight, Shield, Zap, Target, Server, RefreshCw, Lock } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 
 const About = () => {
   const values = [
     {
-      icon: Shield,
-      title: "Liberté",
-      description: "Votre code vous appartient. Nous croyons que vous devez pouvoir l'exécuter où vous voulez, quand vous voulez.",
+      icon: Server,
+      title: "Autonomie",
+      description: "Votre serveur, vos données, votre contrôle total. Aucune dépendance à une plateforme tierce.",
     },
     {
-      icon: Target,
-      title: "Transparence",
-      description: "Nous analysons votre code localement et ne stockons aucune donnée. Votre propriété intellectuelle reste privée.",
+      icon: Zap,
+      title: "Automatisation",
+      description: "Zéro configuration manuelle. Docker, PostgreSQL et SSL installés automatiquement.",
     },
     {
-      icon: Lightbulb,
-      title: "Simplicité",
-      description: "Un outil intuitif qui donne des résultats clairs et actionnables, sans jargon technique inutile.",
+      icon: Lock,
+      title: "Sécurité Zero-Knowledge",
+      description: "Vos credentials sont effacés après déploiement. Nous ne stockons aucun secret.",
     },
     {
-      icon: Users,
-      title: "Communauté",
-      description: "Construit par des développeurs, pour des développeurs. Nous comprenons vos besoins.",
+      icon: RefreshCw,
+      title: "Fiabilité",
+      description: "Monitoring 24/7 avec auto-recovery. Votre app reste en ligne même en cas de panne.",
     },
   ];
 
@@ -38,8 +38,8 @@ const About = () => {
               À propos d'<span className="text-primary">Inopay</span>
             </h1>
             <p className="text-xl text-muted-foreground animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-              Nous construisons des outils pour aider les développeurs à reprendre 
-              le contrôle de leurs projets générés par IA.
+              La plateforme qui automatise le déploiement de vos projets IA 
+              sur votre propre infrastructure.
             </p>
           </div>
         </div>
@@ -53,25 +53,26 @@ const About = () => {
               <div>
                 <h2 className="text-3xl font-bold mb-6">Notre mission</h2>
                 <p className="text-muted-foreground mb-4">
-                  Les plateformes de génération de code IA comme Lovable, Bolt, v0 et d'autres 
-                  ont révolutionné la façon dont nous créons des applications. Mais elles 
-                  créent aussi un nouveau type de dépendance : le <strong className="text-foreground">vendor lock-in</strong>.
+                  Les plateformes IA comme Lovable, Bolt et Cursor ont révolutionné 
+                  la création d'applications. Mais mettre ce code en production reste 
+                  un cauchemar technique.
                 </p>
                 <p className="text-muted-foreground mb-4">
-                  Votre projet utilise des configurations, des imports et des dépendances 
-                  spécifiques à chaque plateforme. Résultat ? Il devient difficile de migrer 
-                  votre code vers vos propres serveurs.
+                  Configuration Docker, provisionnement de base de données, certificats SSL, 
+                  monitoring... Autant d'obstacles entre votre idée et sa mise en ligne.
                 </p>
                 <p className="text-muted-foreground">
-                  <strong className="text-foreground">Inopay résout ce problème.</strong> Notre outil analyse 
-                  automatiquement votre projet et vous guide vers une migration réussie.
+                  <strong className="text-foreground">Inopay automatise tout.</strong> Du nettoyage 
+                  du code propriétaire jusqu'au déploiement sur votre propre VPS, en passant 
+                  par le monitoring 24/7 avec auto-recovery.
                 </p>
               </div>
               <div className="relative">
                 <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-border/50 flex items-center justify-center">
                   <div className="text-center p-8">
-                    <div className="text-6xl mb-4">🔓</div>
-                    <p className="text-lg font-medium">Libérez votre code</p>
+                    <div className="text-6xl mb-4">🚀</div>
+                    <p className="text-lg font-medium">10 minutes</p>
+                    <p className="text-sm text-muted-foreground">Du code à la production</p>
                   </div>
                 </div>
               </div>
@@ -111,14 +112,14 @@ const About = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Prêt à essayer ?
+              Prêt à déployer ?
             </h2>
             <p className="text-lg text-muted-foreground mb-10">
-              Analysez votre premier projet gratuitement et découvrez son niveau de portabilité.
+              Analysez votre projet gratuitement et mettez-le en production sur votre VPS en 10 minutes.
             </p>
             <Link to="/dashboard">
               <Button size="lg" className="glow-primary text-lg px-10 py-6">
-                Analyser mon projet
+                Déployer mon projet
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
