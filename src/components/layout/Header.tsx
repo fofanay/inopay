@@ -70,6 +70,17 @@ const Header = () => {
               Dashboard
             </Link>
             <Link 
+              to="/economies" 
+              className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 ${
+                isActive("/economies") ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              Économies
+              <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5 py-0">
+                NEW
+              </Badge>
+            </Link>
+            <Link 
               to="/tarifs" 
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 isActive("/tarifs") ? "text-primary" : "text-muted-foreground"

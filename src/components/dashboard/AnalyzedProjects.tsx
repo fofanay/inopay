@@ -3,13 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Package, 
   RefreshCw,
   Rocket,
   Trash2,
   FolderOpen,
-  Loader2
+  Loader2,
+  DollarSign,
+  TrendingDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +20,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Json } from "@/integrations/supabase/types";
+import { analyzeCostlyServices, COSTLY_SERVICES } from "@/lib/costOptimization";
 
 export interface AnalyzedProject {
   id: string;
@@ -28,6 +32,30 @@ export interface AnalyzedProject {
   detected_issues: Json;
   recommendations: Json;
 }
+
+// Helper to estimate potential savings from detected issues
+const estimateSavings = (detectedIssues: Json): number => {
+  if (!detectedIssues || !Array.isArray(detectedIssues)) return 0;
+  
+  let savings = 0;
+  const issuesStr = JSON.stringify(detectedIssues).toLowerCase();
+  
+  // Check for patterns in detected issues
+  COSTLY_SERVICES.forEach(service => {
+    service.patterns.forEach(pattern => {
+      if (issuesStr.includes(pattern.toLowerCase())) {
+        savings += service.averageMonthlyCost;
+      }
+    });
+    service.envPatterns.forEach(pattern => {
+      if (issuesStr.includes(pattern.toLowerCase())) {
+        if (!savings) savings += service.averageMonthlyCost;
+      }
+    });
+  });
+  
+  return savings;
+};
 
 interface AnalyzedProjectsProps {
   onSelectProject?: (project: AnalyzedProject) => void;
@@ -150,71 +178,97 @@ export function AnalyzedProjects({ onSelectProject, onRefresh, loadingProjectId 
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground">Projet</TableHead>
               <TableHead className="text-muted-foreground">Score</TableHead>
+              <TableHead className="text-muted-foreground">Économies</TableHead>
               <TableHead className="text-muted-foreground">Statut</TableHead>
               <TableHead className="text-muted-foreground">Date</TableHead>
               <TableHead className="text-muted-foreground text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {projects.map((project) => (
-              <TableRow key={project.id} className="border-border hover:bg-muted/50 group">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{project.project_name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getScoreBadgeClass(project.portability_score)}>
-                    {project.portability_score !== null ? `${project.portability_score}/100` : "N/A"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize border-border text-muted-foreground">
-                    {project.status === "analyzed" ? "Analysé" : project.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDistanceToNow(new Date(project.created_at), { 
-                    addSuffix: true, 
-                    locale: fr 
-                  })}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {onSelectProject && (
+            {projects.map((project) => {
+              const potentialSavings = estimateSavings(project.detected_issues);
+              
+              return (
+                <TableRow key={project.id} className="border-border hover:bg-muted/50 group">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{project.project_name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getScoreBadgeClass(project.portability_score)}>
+                      {project.portability_score !== null ? `${project.portability_score}/100` : "N/A"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {potentialSavings > 0 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge className="bg-success/10 text-success border-success/20 gap-1 cursor-help">
+                              <TrendingDown className="h-3 w-3" />
+                              -{potentialSavings}$/mois
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Économie potentielle en migrant vers Open Source</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground border-muted">
+                        Optimisé
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize border-border text-muted-foreground">
+                      {project.status === "analyzed" ? "Analysé" : project.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDistanceToNow(new Date(project.created_at), { 
+                      addSuffix: true, 
+                      locale: fr 
+                    })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {onSelectProject && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSelectProject(project)}
+                          disabled={loadingProjectId === project.id}
+                          className="h-8 gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          {loadingProjectId === project.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Rocket className="h-4 w-4" />
+                          )}
+                          Déployer
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onSelectProject(project)}
-                        disabled={loadingProjectId === project.id}
-                        className="h-8 gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleDelete(project.id)}
+                        disabled={deleting === project.id || loadingProjectId === project.id}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                       >
-                        {loadingProjectId === project.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {deleting === project.id ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Rocket className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         )}
-                        Déployer
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(project.id)}
-                      disabled={deleting === project.id || loadingProjectId === project.id}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                    >
-                      {deleting === project.id ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
