@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,9 +10,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostDeploymentAssistant from "./PostDeploymentAssistant";
+
+type DeployPlatform = "vercel" | "netlify" | "railway" | "none";
 
 interface ProjectExporterProps {
   projectId?: string;
@@ -22,6 +25,13 @@ interface ProjectExporterProps {
   onClose: () => void;
   onComplete?: () => void;
 }
+
+const PLATFORM_INFO: Record<DeployPlatform, { name: string; icon: React.ReactNode; color: string }> = {
+  vercel: { name: "Vercel", icon: <Zap className="h-4 w-4" />, color: "text-foreground" },
+  netlify: { name: "Netlify", icon: <Cloud className="h-4 w-4" />, color: "text-teal-500" },
+  railway: { name: "Railway", icon: <Rocket className="h-4 w-4" />, color: "text-purple-500" },
+  none: { name: "Aucun", icon: null, color: "text-muted-foreground" },
+};
 
 const ProjectExporter = ({ 
   projectId, 
@@ -50,14 +60,82 @@ const ProjectExporter = ({
   const [hasGitHubToken, setHasGitHubToken] = useState<boolean | null>(null);
   const [checkingToken, setCheckingToken] = useState(false);
   const [githubUsername, setGithubUsername] = useState<string | null>(null);
-  const [autoDeployToVercel, setAutoDeployToVercel] = useState(true);
+  
+  // Deployment preferences
+  const [deployPlatform, setDeployPlatform] = useState<DeployPlatform>("vercel");
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
-  // Check GitHub token on mount and when dialog opens
+  // Load user preferences on mount
+  useEffect(() => {
+    if (isOpen) {
+      loadUserPreferences();
+    }
+  }, [isOpen]);
+
+  // Check GitHub token when dialog opens for github export
   useEffect(() => {
     if (isOpen && exportType === "github") {
       checkGitHubToken();
     }
   }, [isOpen, exportType]);
+
+  const loadUserPreferences = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('preferred_deploy_platform, default_repo_private')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (data && !error) {
+        setDeployPlatform((data.preferred_deploy_platform as DeployPlatform) || 'vercel');
+        setIsPrivate(data.default_repo_private ?? true);
+      }
+      setPreferencesLoaded(true);
+    } catch (error) {
+      console.error("Error loading preferences:", error);
+      setPreferencesLoaded(true);
+    }
+  };
+
+  const saveUserPreferences = async () => {
+    setSavingPreferences(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: session.user.id,
+          preferred_deploy_platform: deployPlatform,
+          default_repo_private: isPrivate,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Préférences sauvegardées",
+        description: "Vos paramètres de déploiement ont été enregistrés",
+      });
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les préférences",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
 
   const checkGitHubToken = async () => {
     setCheckingToken(true);
@@ -310,16 +388,32 @@ const ProjectExporter = ({
         description: `${data.filesCount} fichiers exportés vers GitHub`,
       });
 
-      // Auto-deploy to Vercel if enabled
-      if (autoDeployToVercel && data.repoUrl) {
-        const vercelUrl = `https://vercel.com/new/clone?repository-url=${encodeURIComponent(data.repoUrl)}`;
-        toast({
-          title: "Redirection vers Vercel",
-          description: "Ouverture du déploiement automatique...",
-        });
-        setTimeout(() => {
-          window.open(vercelUrl, '_blank');
-        }, 1500);
+      // Auto-deploy to selected platform if enabled
+      if (deployPlatform !== "none" && data.repoUrl) {
+        const platformName = PLATFORM_INFO[deployPlatform].name;
+        let deployUrl: string | null = null;
+        
+        switch (deployPlatform) {
+          case "vercel":
+            deployUrl = `https://vercel.com/new/clone?repository-url=${encodeURIComponent(data.repoUrl)}`;
+            break;
+          case "netlify":
+            deployUrl = `https://app.netlify.com/start/deploy?repository=${encodeURIComponent(data.repoUrl)}`;
+            break;
+          case "railway":
+            deployUrl = `https://railway.app/template?code=${encodeURIComponent(data.repoUrl)}`;
+            break;
+        }
+
+        if (deployUrl) {
+          toast({
+            title: `Redirection vers ${platformName}`,
+            description: "Ouverture du déploiement automatique...",
+          });
+          setTimeout(() => {
+            window.open(deployUrl!, '_blank');
+          }, 1500);
+        }
       }
 
       onComplete?.();
@@ -543,23 +637,50 @@ const ProjectExporter = ({
                       />
                     </div>
 
-                    {/* Auto-deploy to Vercel option */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-foreground" />
-                        <div>
-                          <Label htmlFor="autoVercel" className="cursor-pointer">Déployer automatiquement sur Vercel</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Redirige vers Vercel après l'export pour un déploiement en 1 clic
-                          </p>
-                        </div>
+                    {/* Platform selection */}
+                    <div className="space-y-3 p-4 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center justify-between">
+                        <Label className="font-medium">Déploiement automatique après export</Label>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={saveUserPreferences}
+                          disabled={savingPreferences}
+                          className="gap-1 text-xs h-7"
+                        >
+                          {savingPreferences ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                          Sauvegarder
+                        </Button>
                       </div>
-                      <Switch
-                        id="autoVercel"
-                        checked={autoDeployToVercel}
-                        onCheckedChange={setAutoDeployToVercel}
+                      <RadioGroup 
+                        value={deployPlatform} 
+                        onValueChange={(v) => setDeployPlatform(v as DeployPlatform)}
+                        className="grid grid-cols-2 gap-2"
                         disabled={!hasGitHubToken}
-                      />
+                      >
+                        {(Object.keys(PLATFORM_INFO) as DeployPlatform[]).map((platform) => (
+                          <div key={platform} className="flex items-center space-x-2">
+                            <RadioGroupItem 
+                              value={platform} 
+                              id={`platform-${platform}`}
+                              disabled={!hasGitHubToken}
+                            />
+                            <Label 
+                              htmlFor={`platform-${platform}`} 
+                              className={`flex items-center gap-1.5 cursor-pointer ${PLATFORM_INFO[platform].color}`}
+                            >
+                              {PLATFORM_INFO[platform].icon}
+                              {PLATFORM_INFO[platform].name}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                      <p className="text-xs text-muted-foreground">
+                        {deployPlatform !== "none" 
+                          ? `Après l'export, vous serez redirigé vers ${PLATFORM_INFO[deployPlatform].name}`
+                          : "Le dépôt sera créé sans déploiement automatique"
+                        }
+                      </p>
                     </div>
 
                     <Button 
@@ -569,14 +690,10 @@ const ProjectExporter = ({
                       disabled={!hasGitHubToken || exporting}
                     >
                       <Github className="mr-2 h-5 w-5" />
-                      {autoDeployToVercel ? "Exporter + Déployer sur Vercel" : "Créer le dépôt GitHub"}
+                      {deployPlatform !== "none" 
+                        ? `Exporter + Déployer sur ${PLATFORM_INFO[deployPlatform].name}` 
+                        : "Créer le dépôt GitHub"}
                     </Button>
-
-                    {autoDeployToVercel && hasGitHubToken && (
-                      <p className="text-xs text-center text-muted-foreground">
-                        Après l'export, vous serez redirigé vers Vercel pour finaliser le déploiement
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
