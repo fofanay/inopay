@@ -10,7 +10,8 @@ import {
   Settings,
   History,
   Power,
-  PowerOff
+  PowerOff,
+  Smartphone
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { SyncSetupWizard } from "./SyncSetupWizard";
 import { SyncHistory } from "./SyncHistory";
+import { WidgetManager } from "./WidgetManager";
 
 interface SyncConfig {
   id: string;
@@ -33,6 +35,7 @@ interface SyncConfig {
   last_sync_error: string | null;
   sync_count: number;
   allowed_branches: string[];
+  widget_token: string | null;
   server_deployments?: {
     project_name: string;
     deployed_url: string | null;
@@ -59,6 +62,7 @@ export function SyncMirror() {
   const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedConfigForHistory, setSelectedConfigForHistory] = useState<string | null>(null);
+  const [showWidgetManager, setShowWidgetManager] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -350,6 +354,14 @@ export function SyncMirror() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setShowWidgetManager(showWidgetManager === config.id ? null : config.id)}
+                        className={showWidgetManager === config.id ? "bg-primary/10" : ""}
+                      >
+                        <Smartphone className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => {
                           setSelectedConfigForHistory(config.id);
                           setShowHistory(true);
@@ -381,6 +393,21 @@ export function SyncMirror() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Widget Manager Panel */}
+                  {showWidgetManager === config.id && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <WidgetManager
+                        syncConfigId={config.id}
+                        currentToken={config.widget_token}
+                        onTokenUpdate={(newToken) => {
+                          setSyncConfigs(prev =>
+                            prev.map(c => (c.id === config.id ? { ...c, widget_token: newToken } : c))
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
