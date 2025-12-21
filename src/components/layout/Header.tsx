@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Menu, X, Settings, Archive, Crown, Shield } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, Twitter, Github, ArrowDownRight } from "lucide-react";
 import { useState } from "react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
@@ -43,102 +43,75 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/95 backdrop-blur-md shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50">
+      {/* Top Bar - Navy */}
+      <div className="bg-inopay-navy text-white py-2 text-sm hidden md:block">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <span className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              contact@inopay.io
+            </span>
+            <span className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Support 24/7
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link to="/about" className="hover:text-white/80 transition-colors">À propos</Link>
+            <Link to="/tarifs" className="hover:text-white/80 transition-colors">Tarifs</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Bar - White with logo and info */}
+      <div className="bg-card py-4 border-b border-border">
+        <div className="container mx-auto px-4 flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <img src={inopayLogo} alt="Inopay" className="h-10 w-auto" />
+            <img src={inopayLogo} alt="Inopay" className="h-12 w-auto" />
           </Link>
+          
+          {/* Center info */}
+          <div className="hidden lg:flex items-center gap-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Notre mission</p>
+                <p className="text-sm font-medium text-foreground">Libérer votre code IA</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Contact</p>
+                <p className="text-sm font-medium text-foreground">support@inopay.io</p>
+              </div>
+            </div>
+          </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link 
-              to="/" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/") ? "text-primary" : "text-muted-foreground"
-              }`}
+          {/* Social icons */}
+          <div className="hidden md:flex items-center gap-3">
+            <a 
+              href="https://twitter.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
             >
-              Accueil
-            </Link>
-            <Link 
-              to="/dashboard" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
-              }`}
+              <Twitter className="h-4 w-4" />
+            </a>
+            <a 
+              href="https://github.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
             >
-              Dashboard
-            </Link>
-            <Link 
-              to="/economies" 
-              className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-1 ${
-                isActive("/economies") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Économies
-              <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5 py-0">
-                NEW
-              </Badge>
-            </Link>
-            <Link 
-              to="/tarifs" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/tarifs") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Tarifs
-            </Link>
-            <Link 
-              to="/historique" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive("/historique") ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Historique
-            </Link>
-          </nav>
-
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-4">
-            {user ? (
-              <>
-                {isAdmin && (
-                  <Link to="/admin-dashboard">
-                    <Button variant="outline" size="sm" className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10">
-                      <Shield className="h-4 w-4" />
-                      Admin
-                    </Button>
-                  </Link>
-                )}
-                {getPlanBadge()}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span className="max-w-[150px] truncate">{user.email}</span>
-                </div>
-                <Link to="/parametres">
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Button variant="outline" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Déconnexion
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="ghost" size="sm">
-                    Connexion
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button size="sm" className="rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                    Commencer
-                  </Button>
-                </Link>
-              </>
-            )}
+              <Github className="h-4 w-4" />
+            </a>
           </div>
 
           {/* Mobile Menu Button */}
@@ -153,10 +126,107 @@ const Header = () => {
             )}
           </button>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
+      {/* Navigation Bar - Gradient Inopay */}
+      <nav className="gradient-inopay py-3 hidden md:block">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            <Link 
+              to="/" 
+              className={`text-sm font-medium transition-colors ${
+                isActive("/") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Accueil
+            </Link>
+            <Link 
+              to="/dashboard" 
+              className={`text-sm font-medium transition-colors ${
+                isActive("/dashboard") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Dashboard
+            </Link>
+            <Link 
+              to="/economies" 
+              className={`text-sm font-medium transition-colors flex items-center gap-1 ${
+                isActive("/economies") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Économies
+              <Badge className="bg-white/20 text-white border-white/30 text-xs px-1.5 py-0">
+                NEW
+              </Badge>
+            </Link>
+            <Link 
+              to="/tarifs" 
+              className={`text-sm font-medium transition-colors ${
+                isActive("/tarifs") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Tarifs
+            </Link>
+            <Link 
+              to="/historique" 
+              className={`text-sm font-medium transition-colors ${
+                isActive("/historique") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Historique
+            </Link>
+          </div>
+          
+          {/* Auth section */}
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Link to="/admin-dashboard">
+                    <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 gap-2">
+                      <Shield className="h-4 w-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                {getPlanBadge()}
+                <div className="flex items-center gap-2 text-sm text-white/80">
+                  <User className="h-4 w-4" />
+                  <span className="max-w-[150px] truncate">{user.email}</span>
+                </div>
+                <Link to="/parametres">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  className="bg-white text-accent hover:bg-white/90 rounded-full px-4"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Déconnexion
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button 
+                  size="sm" 
+                  className="bg-white text-accent hover:bg-white/90 rounded-full px-6 font-semibold"
+                >
+                  Commencer
+                  <ArrowDownRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden py-4 border-t border-border bg-card">
+          <div className="container mx-auto px-4">
             <nav className="flex flex-col gap-4">
               <Link 
                 to="/" 
@@ -175,6 +245,18 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Dashboard
+              </Link>
+              <Link 
+                to="/economies" 
+                className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-2 ${
+                  isActive("/economies") ? "text-primary" : "text-muted-foreground"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Économies
+                <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5 py-0">
+                  NEW
+                </Badge>
               </Link>
               <Link 
                 to="/tarifs" 
@@ -212,12 +294,6 @@ const Header = () => {
                         </Button>
                       </Link>
                     )}
-                    <Link to="/historique" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Archive className="h-4 w-4 mr-2" />
-                        Historique
-                      </Button>
-                    </Link>
                     <Link to="/parametres" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="outline" size="sm" className="w-full">
                         <Settings className="h-4 w-4 mr-2" />
@@ -231,7 +307,7 @@ const Header = () => {
                   </div>
                 ) : (
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full rounded-lg">
+                    <Button className="w-full rounded-full gradient-inopay">
                       Connexion / Inscription
                     </Button>
                   </Link>
@@ -239,8 +315,8 @@ const Header = () => {
               </div>
             </nav>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </header>
   );
 };
