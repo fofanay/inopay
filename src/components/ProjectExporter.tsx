@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,8 +14,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostDeploymentAssistant from "./PostDeploymentAssistant";
+import { DirectDeployment } from "./dashboard/DirectDeployment";
 
 type DeployPlatform = "vercel" | "netlify" | "railway" | "none";
+type ExportType = "zip" | "github" | "vps";
 
 interface ProjectExporterProps {
   projectId?: string;
@@ -47,7 +49,10 @@ const ProjectExporter = ({
   const [status, setStatus] = useState<"idle" | "cleaning" | "packaging" | "uploading" | "github" | "complete">("idle");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [cleanedFilesCount, setCleanedFilesCount] = useState(0);
-  const [exportType, setExportType] = useState<"zip" | "github">("zip");
+  const [exportType, setExportType] = useState<ExportType>("zip");
+  const [showVPSSetup, setShowVPSSetup] = useState(false);
+  const [vpsCleanedFiles, setVpsCleanedFiles] = useState<Record<string, string> | null>(null);
+  const [preparingVPS, setPreparingVPS] = useState(false);
   const [repoName, setRepoName] = useState(projectName.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase());
   const [repoDescription, setRepoDescription] = useState("Projet exporté depuis InoPay Cleaner - 100% autonome");
   const [isPrivate, setIsPrivate] = useState(true);
@@ -430,6 +435,36 @@ const ProjectExporter = ({
     }
   };
 
+  const prepareVPSDeployment = async () => {
+    if (vpsCleanedFiles) return; // Already prepared
+    
+    setPreparingVPS(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Non connecté",
+          description: "Veuillez vous connecter pour utiliser cette fonctionnalité",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const cleanedFiles = await cleanFiles(session);
+      setVpsCleanedFiles(cleanedFiles);
+    } catch (error) {
+      console.error("VPS preparation error:", error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la préparation des fichiers",
+        variant: "destructive",
+      });
+    } finally {
+      setPreparingVPS(false);
+    }
+  };
+
   const handleClose = () => {
     setStatus("idle");
     setProgress(0);
@@ -439,6 +474,8 @@ const ProjectExporter = ({
     setDetectedEnvVars([]);
     setCleanedFilesCount(0);
     setShowAssistant(false);
+    setVpsCleanedFiles(null);
+    setShowVPSSetup(false);
     onClose();
   };
 
@@ -500,21 +537,34 @@ const ProjectExporter = ({
             Exporter le projet autonome
           </DialogTitle>
           <DialogDescription>
-            Générer une archive ZIP ou créer un nouveau dépôt GitHub
+            Générer une archive ZIP, exporter vers GitHub, ou déployer directement sur votre VPS
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
           {status === "idle" ? (
-            <Tabs value={exportType} onValueChange={(v) => setExportType(v as "zip" | "github")}>
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs 
+              value={exportType} 
+              onValueChange={(v) => {
+                setExportType(v as ExportType);
+                // Prepare files when switching to VPS tab
+                if (v === "vps") {
+                  prepareVPSDeployment();
+                }
+              }}
+            >
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="zip" className="gap-2">
                   <Package className="h-4 w-4" />
-                  Archive ZIP
+                  ZIP
                 </TabsTrigger>
                 <TabsTrigger value="github" className="gap-2">
                   <Github className="h-4 w-4" />
                   GitHub
+                </TabsTrigger>
+                <TabsTrigger value="vps" className="gap-2">
+                  <Server className="h-4 w-4" />
+                  VPS Direct
                 </TabsTrigger>
               </TabsList>
 
@@ -696,6 +746,44 @@ const ProjectExporter = ({
                     </Button>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="vps" className="mt-4">
+                {preparingVPS ? (
+                  <Card className="border-dashed">
+                    <CardContent className="py-8 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Nettoyage et préparation des fichiers...
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {cleanedFilesCount} fichier(s) nettoyé(s)
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : vpsCleanedFiles ? (
+                  <DirectDeployment
+                    projectName={projectName}
+                    cleanedFiles={vpsCleanedFiles}
+                    onDeploymentComplete={(url) => {
+                      setStatus("complete");
+                      onComplete?.();
+                    }}
+                    onNeedSetup={() => {
+                      setShowVPSSetup(true);
+                      handleClose();
+                    }}
+                  />
+                ) : (
+                  <Card className="border-dashed">
+                    <CardContent className="py-8 text-center">
+                      <Server className="h-8 w-8 mx-auto text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Cliquez sur cet onglet pour préparer le déploiement VPS
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           ) : status === "complete" ? (
