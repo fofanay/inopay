@@ -19,7 +19,8 @@ import {
   Shield,
   Wrench,
   TrendingUp,
-  ShoppingCart
+  ShoppingCart,
+  Smartphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ import AdminSecurityAudit from "@/components/admin/AdminSecurityAudit";
 import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import AdminPurchases from "@/components/admin/AdminPurchases";
+import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -81,6 +83,7 @@ const AdminDashboard = () => {
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
     { id: "fleet", label: "Flotte Serveurs", icon: Server },
+    { id: "widgets", label: "Widgets & Sync", icon: Smartphone },
     { id: "monitoring", label: "Monitoring", icon: Activity },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart },
@@ -106,6 +109,7 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case "overview": return "Statistiques globales de la plateforme Inopay";
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
+      case "widgets": return "Surveillance des widgets mobiles et synchronisations";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
       case "kpis": return "Revenus, taux de succès et métriques business";
       case "purchases": return "Tous les achats de services par utilisateur";
@@ -193,6 +197,7 @@ const AdminDashboard = () => {
           <div className="max-w-7xl mx-auto">
             {activeTab === "overview" && <AdminStats />}
             {activeTab === "fleet" && <AdminServerFleet />}
+            {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
             {activeTab === "kpis" && <AdminKPIs />}
             {activeTab === "purchases" && <AdminPurchases />}
