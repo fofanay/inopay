@@ -521,8 +521,10 @@ export type Database = {
           api_key: string | null
           api_provider: string
           created_at: string
+          default_repo_private: boolean | null
           github_token: string | null
           id: string
+          preferred_deploy_platform: string | null
           updated_at: string
           user_id: string
         }
@@ -530,8 +532,10 @@ export type Database = {
           api_key?: string | null
           api_provider?: string
           created_at?: string
+          default_repo_private?: boolean | null
           github_token?: string | null
           id?: string
+          preferred_deploy_platform?: string | null
           updated_at?: string
           user_id: string
         }
@@ -539,8 +543,10 @@ export type Database = {
           api_key?: string | null
           api_provider?: string
           created_at?: string
+          default_repo_private?: boolean | null
           github_token?: string | null
           id?: string
+          preferred_deploy_platform?: string | null
           updated_at?: string
           user_id?: string
         }
