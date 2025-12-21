@@ -62,10 +62,81 @@ serve(async (req) => {
         
         // Known dependency fixes for React 18 compatibility
         const dependencyFixes: Record<string, string> = {
+          // Map libraries
           'react-leaflet': '^4.2.1',
           '@react-leaflet/core': '^2.1.0',
+          'google-map-react': '^2.2.1',
+          '@react-google-maps/api': '^2.19.3',
+          
+          // Markdown/MDX
           'react-markdown': '^8.0.7',
           '@mdx-js/react': '^2.3.0',
+          'remark-gfm': '^3.0.1',
+          
+          // Form libraries
+          'react-hook-form': '^7.51.5',
+          'formik': '^2.4.6',
+          
+          // Animation libraries
+          'framer-motion': '^10.18.0',
+          'react-spring': '^9.7.3',
+          'react-transition-group': '^4.4.5',
+          
+          // UI Component libraries
+          'react-select': '^5.8.0',
+          'react-datepicker': '^6.9.0',
+          'react-dropzone': '^14.2.3',
+          'react-modal': '^3.16.1',
+          'react-tooltip': '^5.26.4',
+          'react-toastify': '^10.0.5',
+          
+          // Data visualization
+          'recharts': '^2.12.7',
+          'react-chartjs-2': '^5.2.0',
+          'victory': '^36.9.2',
+          
+          // Table libraries
+          'react-table': '^7.8.0',
+          '@tanstack/react-table': '^8.17.3',
+          
+          // State management
+          'react-redux': '^8.1.3',
+          'zustand': '^4.5.2',
+          'jotai': '^2.8.0',
+          'recoil': '^0.7.7',
+          
+          // Router
+          'react-router-dom': '^6.23.1',
+          
+          // Query/Data fetching
+          '@tanstack/react-query': '^5.40.1',
+          'swr': '^2.2.5',
+          
+          // DnD libraries
+          'react-beautiful-dnd': '^13.1.1',
+          '@dnd-kit/core': '^6.1.0',
+          'react-dnd': '^16.0.1',
+          
+          // Virtualization
+          'react-virtualized': '^9.22.5',
+          'react-window': '^1.8.10',
+          
+          // PDF
+          'react-pdf': '^7.7.3',
+          '@react-pdf/renderer': '^3.4.4',
+          
+          // Rich text editors
+          'draft-js': '^0.11.7',
+          'slate': '^0.103.0',
+          'slate-react': '^0.103.0',
+          '@tiptap/react': '^2.4.0',
+          
+          // Date libraries
+          'react-day-picker': '^8.10.1',
+          
+          // Media
+          'react-player': '^2.16.0',
+          'react-webcam': '^7.2.0',
         };
         
         // Apply fixes to dependencies
