@@ -50,7 +50,7 @@ const Header = () => {
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2">
               <Phone className="h-4 w-4" />
-              contact@inopay.io
+              contact@getinopay.com
             </span>
             <span className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -89,7 +89,7 @@ const Header = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Contact</p>
-                <p className="text-sm font-medium text-foreground">support@inopay.io</p>
+                <p className="text-sm font-medium text-foreground">contact@getinopay.com</p>
               </div>
             </div>
           </div>
