@@ -36,7 +36,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
+import { CostlyServiceDetection } from "@/lib/costOptimization";
 import CodeCleaner from "@/components/CodeCleaner";
+import CostSavingsReport from "@/components/dashboard/CostSavingsReport";
 import ProjectExporter from "@/components/ProjectExporter";
 import StepperProgress from "@/components/dashboard/StepperProgress";
 import AnalysisProgressSteps, { AnalysisStep } from "@/components/dashboard/AnalysisProgressSteps";
@@ -944,6 +946,21 @@ const Dashboard = () => {
                           </Table>
                         </CardContent>
                       </Card>
+                    )}
+
+                    {/* Cost Savings Report - Conseiller en Économies */}
+                    {result.costAnalysis && result.costAnalysis.detectedServices.length > 0 && (
+                      <CostSavingsReport 
+                        costAnalysis={result.costAnalysis}
+                        projectName={fileName.replace('.zip', '')}
+                        onMigrate={(services: CostlyServiceDetection[]) => {
+                          toast({
+                            title: "Migration automatique",
+                            description: `${services.length} service(s) sélectionné(s) pour la migration Open Source`,
+                          });
+                          // TODO: Trigger clean-code with cost optimization
+                        }}
+                      />
                     )}
 
                     {/* Dependencies Table */}
