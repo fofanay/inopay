@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostDeploymentAssistant from "./PostDeploymentAssistant";
+
 interface ProjectExporterProps {
   projectId?: string;
   projectName: string;
@@ -42,6 +45,79 @@ const ProjectExporter = ({
   const [envExampleUrl, setEnvExampleUrl] = useState<string | null>(null);
   const [detectedEnvVars, setDetectedEnvVars] = useState<string[]>([]);
   const [showAssistant, setShowAssistant] = useState(false);
+  
+  // GitHub token verification
+  const [hasGitHubToken, setHasGitHubToken] = useState<boolean | null>(null);
+  const [checkingToken, setCheckingToken] = useState(false);
+  const [githubUsername, setGithubUsername] = useState<string | null>(null);
+  const [autoDeployToVercel, setAutoDeployToVercel] = useState(true);
+
+  // Check GitHub token on mount and when dialog opens
+  useEffect(() => {
+    if (isOpen && exportType === "github") {
+      checkGitHubToken();
+    }
+  }, [isOpen, exportType]);
+
+  const checkGitHubToken = async () => {
+    setCheckingToken(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.provider_token;
+      
+      if (!token) {
+        setHasGitHubToken(false);
+        setGithubUsername(null);
+        setCheckingToken(false);
+        return;
+      }
+
+      // Verify token is valid by calling GitHub API
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setHasGitHubToken(true);
+        setGithubUsername(userData.login);
+      } else {
+        setHasGitHubToken(false);
+        setGithubUsername(null);
+      }
+    } catch (error) {
+      console.error("Error checking GitHub token:", error);
+      setHasGitHubToken(false);
+      setGithubUsername(null);
+    } finally {
+      setCheckingToken(false);
+    }
+  };
+
+  const handleReconnectGitHub = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          scopes: 'repo',
+          redirectTo: window.location.href,
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Erreur de connexion",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("GitHub reconnect error:", error);
+    }
+  };
 
   const cleanFiles = async (session: { access_token: string }) => {
     const cleanedFiles: Record<string, string> = {};
@@ -234,6 +310,18 @@ const ProjectExporter = ({
         description: `${data.filesCount} fichiers exportés vers GitHub`,
       });
 
+      // Auto-deploy to Vercel if enabled
+      if (autoDeployToVercel && data.repoUrl) {
+        const vercelUrl = `https://vercel.com/new/clone?repository-url=${encodeURIComponent(data.repoUrl)}`;
+        toast({
+          title: "Redirection vers Vercel",
+          description: "Ouverture du déploiement automatique...",
+        });
+        setTimeout(() => {
+          window.open(vercelUrl, '_blank');
+        }, 1500);
+      }
+
       onComplete?.();
     } catch (error) {
       console.error("GitHub export error:", error);
@@ -380,6 +468,51 @@ const ProjectExporter = ({
                     <CardTitle className="text-lg">Exporter vers GitHub</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* GitHub Token Status */}
+                    {checkingToken ? (
+                      <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Vérification de la connexion GitHub...
+                      </div>
+                    ) : hasGitHubToken === false ? (
+                      <Alert variant="destructive" className="mb-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Connexion GitHub requise</AlertTitle>
+                        <AlertDescription className="mt-2">
+                          <p className="mb-3">
+                            Pour exporter vers votre compte GitHub, vous devez vous connecter avec GitHub.
+                          </p>
+                          <Button 
+                            onClick={handleReconnectGitHub}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <Github className="h-4 w-4" />
+                            Se connecter avec GitHub
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ) : hasGitHubToken === true && githubUsername ? (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/20">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                          <span className="text-sm">
+                            Connecté à GitHub en tant que <strong>@{githubUsername}</strong>
+                          </span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={checkGitHubToken}
+                          className="gap-1 text-xs"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Actualiser
+                        </Button>
+                      </div>
+                    ) : null}
+
                     <div className="space-y-2">
                       <Label htmlFor="repoName">Nom du dépôt</Label>
                       <Input
@@ -387,6 +520,7 @@ const ProjectExporter = ({
                         value={repoName}
                         onChange={(e) => setRepoName(e.target.value)}
                         placeholder="mon-projet-autonome"
+                        disabled={!hasGitHubToken}
                       />
                     </div>
                     <div className="space-y-2">
@@ -396,6 +530,7 @@ const ProjectExporter = ({
                         value={repoDescription}
                         onChange={(e) => setRepoDescription(e.target.value)}
                         placeholder="Description du projet"
+                        disabled={!hasGitHubToken}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -404,12 +539,44 @@ const ProjectExporter = ({
                         id="private"
                         checked={isPrivate}
                         onCheckedChange={setIsPrivate}
+                        disabled={!hasGitHubToken}
                       />
                     </div>
-                    <Button onClick={handleExportGithub} className="w-full glow-sm" size="lg">
+
+                    {/* Auto-deploy to Vercel option */}
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-foreground" />
+                        <div>
+                          <Label htmlFor="autoVercel" className="cursor-pointer">Déployer automatiquement sur Vercel</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Redirige vers Vercel après l'export pour un déploiement en 1 clic
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        id="autoVercel"
+                        checked={autoDeployToVercel}
+                        onCheckedChange={setAutoDeployToVercel}
+                        disabled={!hasGitHubToken}
+                      />
+                    </div>
+
+                    <Button 
+                      onClick={handleExportGithub} 
+                      className="w-full glow-sm" 
+                      size="lg"
+                      disabled={!hasGitHubToken || exporting}
+                    >
                       <Github className="mr-2 h-5 w-5" />
-                      Créer le dépôt GitHub
+                      {autoDeployToVercel ? "Exporter + Déployer sur Vercel" : "Créer le dépôt GitHub"}
                     </Button>
+
+                    {autoDeployToVercel && hasGitHubToken && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        Après l'export, vous serez redirigé vers Vercel pour finaliser le déploiement
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
