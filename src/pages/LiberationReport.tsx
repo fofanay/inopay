@@ -11,7 +11,8 @@ import {
   ExternalLink, 
   ArrowLeft, 
   Home,
-  Share2
+  Share2,
+  Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -143,6 +144,14 @@ const LiberationReport = () => {
     }
   };
 
+  const handlePrint = () => {
+    toast.info("Préparation de l'impression...");
+    // Small delay to allow toast to show before print dialog
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
+
   const transformDeploymentToReportData = (dep: DeploymentRecord): LiberationReportData => {
     // Parse cost_analysis
     let costAnalysis: CostAnalysis | undefined;
@@ -248,9 +257,18 @@ const LiberationReport = () => {
             </Link>
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={shareReport}>
+            <Button variant="outline" size="sm" onClick={shareReport} className="hidden sm:flex">
               <Share2 className="h-4 w-4 mr-2" />
               Partager
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrint}
+              className="gap-1"
+            >
+              <Printer className="h-4 w-4" />
+              <span className="hidden sm:inline">Imprimer</span>
             </Button>
             <Button 
               size="sm" 
@@ -259,7 +277,7 @@ const LiberationReport = () => {
               className="bg-primary hover:bg-primary/90"
             >
               <FileDown className="h-4 w-4 mr-2" />
-              {exporting ? "Export en cours..." : "Exporter en PDF"}
+              {exporting ? "Export..." : "PDF"}
             </Button>
           </div>
         </div>
