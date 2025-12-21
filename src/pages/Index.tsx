@@ -368,8 +368,8 @@ const Index = () => {
             {/* Mini témoignage inline */}
             <div className="flex items-center justify-center gap-3 mb-8 p-4 rounded-xl bg-muted/50 border border-border">
               <Quote className="h-5 w-5 text-primary/50 flex-shrink-0" />
-              <p className="text-sm text-muted-foreground italic">
-                "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5€/mois au lieu de 50€."
+            <p className="text-sm text-muted-foreground italic">
+                "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5$/mois au lieu de 50$."
               </p>
               <span className="text-xs text-muted-foreground whitespace-nowrap">— Marie L.</span>
             </div>
