@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, TrendingUp, Euro, CreditCard, RotateCcw, Eye } from "lucide-react";
+import { Loader2, RefreshCw, TrendingUp, DollarSign, CreditCard, RotateCcw, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
@@ -102,10 +102,10 @@ const AdminPayments = () => {
     }
   };
 
-  const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("fr-FR", {
+  const formatAmount = (amount: number, currency: string = "cad") => {
+    return new Intl.NumberFormat("fr-CA", {
       style: "currency",
-      currency: currency.toUpperCase(),
+      currency: "CAD",
     }).format(amount / 100);
   };
 
@@ -157,11 +157,11 @@ const AdminPayments = () => {
               <div>
                 <p className="text-sm font-medium text-primary-foreground/80">Solde disponible</p>
                 <p className="text-2xl font-bold text-primary-foreground">
-                  {balance?.available?.[0] ? formatAmount(balance.available[0].amount, balance.available[0].currency) : "0 €"}
+                  {balance?.available?.[0] ? formatAmount(balance.available[0].amount) : "0,00 $CA"}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-primary-foreground/20">
-                <Euro className="h-6 w-6 text-primary-foreground" />
+                <DollarSign className="h-6 w-6 text-primary-foreground" />
               </div>
             </div>
           </CardContent>
@@ -173,7 +173,7 @@ const AdminPayments = () => {
               <div>
                 <p className="text-sm font-medium text-success-foreground/80">Revenus ce mois</p>
                 <p className="text-2xl font-bold text-success-foreground">
-                  {stats ? formatAmount(stats.monthly_revenue, "eur") : "0 €"}
+                  {stats ? formatAmount(stats.monthly_revenue) : "0,00 $CA"}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-success-foreground/20">
@@ -203,7 +203,7 @@ const AdminPayments = () => {
               <div>
                 <p className="text-sm font-medium text-warning-foreground/80">Total remboursements</p>
                 <p className="text-2xl font-bold text-warning-foreground">
-                  {stats ? formatAmount(stats.total_refunds, "eur") : "0 €"}
+                  {stats ? formatAmount(stats.total_refunds) : "0,00 $CA"}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-warning-foreground/20">
@@ -238,9 +238,9 @@ const AdminPayments = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="date" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(v) => `${v}€`} />
+                  <YAxis className="text-xs" tickFormatter={(v) => `${v} $`} />
                   <Tooltip 
-                    formatter={(value: number) => [`${value.toFixed(2)}€`, "Montant"]}
+                    formatter={(value: number) => [`${value.toFixed(2)} $CA`, "Montant"]}
                     contentStyle={{ 
                       backgroundColor: "hsl(var(--card))", 
                       border: "1px solid hsl(var(--border))",
