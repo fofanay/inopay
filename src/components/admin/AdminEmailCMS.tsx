@@ -80,10 +80,16 @@ interface EmailCampaign {
   created_at: string;
 }
 
-// Logo Inopay en base64 pour les emails
-const INOPAY_LOGO_URL = "https://izqveyvcebolrqpqlmho.supabase.co/storage/v1/object/public/cleaned-archives/inopay-logo.png";
+// Logo Inopay hébergé publiquement
+const INOPAY_LOGO_URL = "https://5686b0fc-e7aa-43ec-a843-21de6b6b3340.lovableproject.com/inopay-logo-email.png";
 
-// Email template wrapper professionnel
+// Couleurs Inopay
+const INOPAY_GREEN = "#2E8B57";
+const INOPAY_DARK_GREEN = "#228B22";
+const INOPAY_NAVY = "#1B3A57";
+const INOPAY_LIGHT_NAVY = "#2C5282";
+
+// Email template wrapper professionnel avec couleurs Inopay
 const getEmailWrapper = (content: string, preheader: string = "") => `<!DOCTYPE html>
 <html lang="fr" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -104,67 +110,67 @@ const getEmailWrapper = (content: string, preheader: string = "") => `<!DOCTYPE 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
       color: #1a1a1a;
-      background-color: #f4f4f5;
+      background-color: #f4f7f6;
       -webkit-font-smoothing: antialiased;
     }
     .preheader { display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0; }
     .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-    .header { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%); padding: 40px 30px; text-align: center; }
-    .header img { max-width: 180px; height: auto; }
-    .header-title { color: #ffffff; font-size: 14px; font-weight: 500; margin-top: 15px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; }
+    .header { background: linear-gradient(135deg, ${INOPAY_GREEN} 0%, ${INOPAY_DARK_GREEN} 50%, ${INOPAY_NAVY} 100%); padding: 40px 30px; text-align: center; }
+    .header img { max-width: 200px; height: auto; background-color: #ffffff; padding: 15px 25px; border-radius: 12px; }
+    .header-title { color: #ffffff; font-size: 14px; font-weight: 500; margin-top: 18px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.95; }
     .content { padding: 50px 40px; background-color: #ffffff; }
-    .content h1 { color: #1a1a1a; font-size: 28px; font-weight: 700; margin-bottom: 25px; line-height: 1.3; }
-    .content h2 { color: #4f46e5; font-size: 22px; font-weight: 600; margin: 30px 0 15px; }
+    .content h1 { color: ${INOPAY_NAVY}; font-size: 28px; font-weight: 700; margin-bottom: 25px; line-height: 1.3; }
+    .content h2 { color: ${INOPAY_GREEN}; font-size: 22px; font-weight: 600; margin: 30px 0 15px; }
     .content p { color: #4a4a4a; font-size: 16px; line-height: 1.7; margin-bottom: 18px; }
     .content ul { margin: 20px 0; padding-left: 25px; }
     .content li { color: #4a4a4a; font-size: 16px; line-height: 1.8; margin-bottom: 10px; }
-    .highlight-box { background: linear-gradient(135deg, #f8f7ff 0%, #f0f0ff 100%); border-left: 4px solid #6366f1; padding: 25px; margin: 30px 0; border-radius: 0 12px 12px 0; }
-    .highlight-box p { margin: 0; color: #1a1a1a; font-weight: 500; }
+    .highlight-box { background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 100%); border-left: 4px solid ${INOPAY_GREEN}; padding: 25px; margin: 30px 0; border-radius: 0 12px 12px 0; }
+    .highlight-box p { margin: 0; color: ${INOPAY_NAVY}; font-weight: 500; }
     .cta-container { text-align: center; margin: 40px 0; }
     .cta-button { 
       display: inline-block; 
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      background: linear-gradient(135deg, ${INOPAY_GREEN} 0%, ${INOPAY_DARK_GREEN} 100%);
       color: #ffffff !important; 
       padding: 18px 45px; 
       text-decoration: none; 
       border-radius: 12px; 
       font-weight: 600; 
       font-size: 16px;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 4px 15px rgba(46, 139, 87, 0.35);
       transition: all 0.3s ease;
     }
-    .cta-button:hover { box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45); }
+    .cta-button:hover { box-shadow: 0 6px 20px rgba(46, 139, 87, 0.45); }
     .cta-secondary {
       display: inline-block;
       background: transparent;
-      color: #6366f1 !important;
+      color: ${INOPAY_NAVY} !important;
       padding: 16px 40px;
       text-decoration: none;
-      border: 2px solid #6366f1;
+      border: 2px solid ${INOPAY_NAVY};
       border-radius: 12px;
       font-weight: 600;
       font-size: 15px;
       margin-top: 15px;
     }
-    .divider { height: 1px; background: linear-gradient(90deg, transparent, #e5e5e5, transparent); margin: 35px 0; }
-    .info-card { background-color: #fafafa; border-radius: 12px; padding: 25px; margin: 25px 0; border: 1px solid #eaeaea; }
-    .info-card-title { font-size: 14px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-    .info-card-value { font-size: 24px; font-weight: 700; color: #1a1a1a; }
-    .signature { margin-top: 40px; padding-top: 25px; border-top: 1px solid #eaeaea; }
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, #d4e5de, transparent); margin: 35px 0; }
+    .info-card { background-color: #f8faf9; border-radius: 12px; padding: 25px; margin: 25px 0; border: 1px solid #e0ebe6; }
+    .info-card-title { font-size: 14px; font-weight: 600; color: ${INOPAY_GREEN}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .info-card-value { font-size: 24px; font-weight: 700; color: ${INOPAY_NAVY}; }
+    .signature { margin-top: 40px; padding-top: 25px; border-top: 1px solid #e0ebe6; }
     .signature p { color: #6b6b6b; font-size: 15px; margin-bottom: 8px; }
-    .signature-name { color: #1a1a1a !important; font-weight: 600; }
-    .footer { background-color: #1a1a1a; padding: 40px 30px; text-align: center; }
-    .footer-logo { max-width: 120px; height: auto; opacity: 0.9; margin-bottom: 20px; }
+    .signature-name { color: ${INOPAY_NAVY} !important; font-weight: 600; }
+    .footer { background-color: ${INOPAY_NAVY}; padding: 40px 30px; text-align: center; }
+    .footer-logo { max-width: 140px; height: auto; background-color: #ffffff; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; }
     .footer-links { margin: 20px 0; }
-    .footer-links a { color: #a0a0a0; text-decoration: none; font-size: 14px; margin: 0 15px; }
+    .footer-links a { color: #b0c4de; text-decoration: none; font-size: 14px; margin: 0 15px; }
     .footer-links a:hover { color: #ffffff; }
-    .footer-text { color: #6b6b6b; font-size: 13px; line-height: 1.6; margin-top: 20px; }
-    .footer-text a { color: #6366f1; text-decoration: none; }
+    .footer-text { color: #8faabe; font-size: 13px; line-height: 1.6; margin-top: 20px; }
+    .footer-text a { color: ${INOPAY_GREEN}; text-decoration: none; }
     .social-links { margin: 25px 0; }
     .social-links a { display: inline-block; margin: 0 8px; }
-    .badge { display: inline-block; background-color: #6366f1; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .badge { display: inline-block; background-color: ${INOPAY_GREEN}; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
     .badge-warning { background-color: #f59e0b; }
-    .badge-success { background-color: #10b981; }
+    .badge-success { background-color: ${INOPAY_GREEN}; }
     .badge-danger { background-color: #ef4444; }
     @media only screen and (max-width: 600px) {
       .container { width: 100% !important; }
@@ -175,17 +181,17 @@ const getEmailWrapper = (content: string, preheader: string = "") => `<!DOCTYPE 
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5;">
+<body style="margin: 0; padding: 0; background-color: #f4f7f6;">
   <span class="preheader">${preheader}</span>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f7f6; padding: 40px 20px;">
     <tr>
       <td align="center">
         <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.08);">
           <!-- Header -->
           <tr>
-            <td class="header">
-              <img src="${INOPAY_LOGO_URL}" alt="Inopay" style="max-width: 160px; height: auto;">
-              <p class="header-title">Liberté • Portabilité • Souveraineté</p>
+            <td class="header" style="background: linear-gradient(135deg, ${INOPAY_GREEN} 0%, ${INOPAY_DARK_GREEN} 50%, ${INOPAY_NAVY} 100%);">
+              <img src="${INOPAY_LOGO_URL}" alt="Inopay" style="max-width: 180px; height: auto; background-color: #ffffff; padding: 15px 25px; border-radius: 12px;">
+              <p class="header-title" style="color: #ffffff; margin-top: 18px;">Liberté • Portabilité • Souveraineté</p>
             </td>
           </tr>
           <!-- Content -->
@@ -196,19 +202,19 @@ const getEmailWrapper = (content: string, preheader: string = "") => `<!DOCTYPE 
           </tr>
           <!-- Footer -->
           <tr>
-            <td class="footer">
-              <img src="${INOPAY_LOGO_URL}" alt="Inopay" class="footer-logo" style="max-width: 100px; filter: brightness(0) invert(1); opacity: 0.8;">
+            <td class="footer" style="background-color: ${INOPAY_NAVY};">
+              <img src="${INOPAY_LOGO_URL}" alt="Inopay" class="footer-logo" style="max-width: 120px; background-color: #ffffff; padding: 10px 18px; border-radius: 8px;">
               <div class="footer-links">
-                <a href="{{app_url}}">Accueil</a>
-                <a href="{{app_url}}/pricing">Tarifs</a>
-                <a href="{{app_url}}/about">À propos</a>
+                <a href="{{app_url}}" style="color: #b0c4de;">Accueil</a>
+                <a href="{{app_url}}/pricing" style="color: #b0c4de;">Tarifs</a>
+                <a href="{{app_url}}/about" style="color: #b0c4de;">À propos</a>
               </div>
-              <p class="footer-text">
+              <p class="footer-text" style="color: #8faabe;">
                 © ${new Date().getFullYear()} Inopay. Tous droits réservés.<br>
-                <a href="{{app_url}}/unsubscribe?email={{user_email}}">Se désabonner</a> • 
-                <a href="{{app_url}}/preferences">Préférences emails</a>
+                <a href="{{app_url}}/unsubscribe?email={{user_email}}" style="color: #2E8B57;">Se désabonner</a> • 
+                <a href="{{app_url}}/preferences" style="color: #2E8B57;">Préférences emails</a>
               </p>
-              <p class="footer-text" style="margin-top: 15px; font-size: 12px; color: #4a4a4a;">
+              <p class="footer-text" style="margin-top: 15px; font-size: 12px; color: #6b8ba3;">
                 Inopay - Québec, Canada 🇨🇦
               </p>
             </td>
