@@ -13,11 +13,14 @@ import {
   DollarSign,
   TrendingUp,
   Package,
-  Filter
+  Filter,
+  Crown,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { formatAmount, SERVICE_LABELS } from "@/lib/constants";
 
 interface Purchase {
   id: string;
@@ -37,6 +40,7 @@ interface ServiceStats {
   count: number;
   revenue: number;
   usedCount: number;
+  enterpriseCount: number;
 }
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
@@ -46,10 +50,12 @@ const AdminPurchases = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [serviceStats, setServiceStats] = useState<ServiceStats[]>([]);
   const [filterType, setFilterType] = useState<string>("all");
+  const [filterEnterprise, setFilterEnterprise] = useState<string>("all");
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [mrr, setMrr] = useState(0);
   const [conversionRate, setConversionRate] = useState(0);
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
+  const [usersWithEnterprise, setUsersWithEnterprise] = useState(0);
 
   const fetchPurchases = async () => {
     setLoading(true);
@@ -70,15 +76,29 @@ const AdminPurchases = () => {
       let usedCredits = 0;
       let totalCredits = 0;
 
+      // Check for enterprise access (deploy purchases within 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const enterpriseUsers = new Set<string>();
+
       for (const p of data || []) {
+        // Track enterprise users
+        if (p.service_type === 'deploy' && p.status === 'completed' && new Date(p.created_at) >= sevenDaysAgo) {
+          enterpriseUsers.add(p.user_id);
+        }
+
         if (p.status !== "refunded") {
           total += p.amount;
           
           if (!stats[p.service_type]) {
-            stats[p.service_type] = { type: p.service_type, count: 0, revenue: 0, usedCount: 0 };
+            stats[p.service_type] = { type: p.service_type, count: 0, revenue: 0, usedCount: 0, enterpriseCount: 0 };
           }
           stats[p.service_type].count++;
           stats[p.service_type].revenue += p.amount;
+
+          if (p.service_type === 'deploy' && new Date(p.created_at) >= sevenDaysAgo) {
+            stats[p.service_type].enterpriseCount++;
+          }
 
           if (p.is_subscription && p.subscription_status === "active") {
             monthly += p.amount;
@@ -94,6 +114,7 @@ const AdminPurchases = () => {
         }
       }
 
+      setUsersWithEnterprise(enterpriseUsers.size);
       setServiceStats(Object.values(stats));
       setTotalRevenue(total);
       setMrr(monthly);
@@ -135,15 +156,7 @@ const AdminPurchases = () => {
     fetchPurchases();
   }, []);
 
-  const getServiceLabel = (type: string) => {
-    switch (type) {
-      case "deploy": return "Déploiement VPS";
-      case "redeploy": return "Re-déploiement";
-      case "monitoring": return "Monitoring";
-      case "server": return "Serveur Supp.";
-      default: return type;
-    }
-  };
+  const getServiceLabel = (type: string) => SERVICE_LABELS[type] || type;
 
   const getServiceIcon = (type: string) => {
     switch (type) {
@@ -153,13 +166,6 @@ const AdminPurchases = () => {
       case "server": return <Server className="h-4 w-4" />;
       default: return <Package className="h-4 w-4" />;
     }
-  };
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('fr-CA', {
-      style: 'currency',
-      currency: 'CAD',
-    }).format(amount / 100);
   };
 
   const formatDate = (dateStr: string) => {
@@ -187,9 +193,24 @@ const AdminPurchases = () => {
     return <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">Disponible</Badge>;
   };
 
-  const filteredPurchases = filterType === "all" 
-    ? purchases 
-    : purchases.filter(p => p.service_type === filterType);
+  // Check if purchase grants enterprise limits
+  const hasEnterpriseLimits = (purchase: Purchase) => {
+    if (purchase.service_type !== 'deploy') return false;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(purchase.created_at) >= sevenDaysAgo;
+  };
+
+  // Filter purchases
+  let filteredPurchases = purchases;
+  if (filterType !== "all") {
+    filteredPurchases = filteredPurchases.filter(p => p.service_type === filterType);
+  }
+  if (filterEnterprise === "enterprise") {
+    filteredPurchases = filteredPurchases.filter(p => hasEnterpriseLimits(p));
+  } else if (filterEnterprise === "standard") {
+    filteredPurchases = filteredPurchases.filter(p => !hasEnterpriseLimits(p));
+  }
 
   const pieData = serviceStats.map((s, i) => ({
     name: getServiceLabel(s.type),
@@ -208,7 +229,7 @@ const AdminPurchases = () => {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -260,6 +281,20 @@ const AdminPurchases = () => {
               <div>
                 <p className="text-2xl font-bold text-amber-400">{conversionRate}%</p>
                 <p className="text-xs text-zinc-400">Taux d'utilisation</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-zinc-900/50 border-zinc-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-pink-500/10">
+                <Crown className="h-5 w-5 text-pink-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-pink-400">{usersWithEnterprise}</p>
+                <p className="text-xs text-zinc-400">Users Enterprise</p>
               </div>
             </div>
           </CardContent>
@@ -350,6 +385,12 @@ const AdminPurchases = () => {
                 <div className="flex items-center gap-2 mb-2">
                   {getServiceIcon(stat.type)}
                   <span className="font-medium text-zinc-200">{getServiceLabel(stat.type)}</span>
+                  {stat.type === 'deploy' && stat.enterpriseCount > 0 && (
+                    <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-xs">
+                      <Crown className="h-3 w-3 mr-1" />
+                      {stat.enterpriseCount}
+                    </Badge>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-lg font-bold text-zinc-100">{stat.count} ventes</p>
@@ -377,14 +418,25 @@ const AdminPurchases = () => {
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filtrer" />
+                <SelectValue placeholder="Service" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="all">Tous services</SelectItem>
                 <SelectItem value="deploy">Déploiement</SelectItem>
                 <SelectItem value="redeploy">Re-déploiement</SelectItem>
                 <SelectItem value="monitoring">Monitoring</SelectItem>
                 <SelectItem value="server">Serveur</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterEnterprise} onValueChange={setFilterEnterprise}>
+              <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
+                <Crown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Limites" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="enterprise">Enterprise</SelectItem>
+                <SelectItem value="standard">Standard</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={fetchPurchases} className="border-zinc-700">
@@ -399,6 +451,7 @@ const AdminPurchases = () => {
                 <TableHead className="text-zinc-400">Service</TableHead>
                 <TableHead className="text-zinc-400">Montant</TableHead>
                 <TableHead className="text-zinc-400">Date</TableHead>
+                <TableHead className="text-zinc-400">Limites</TableHead>
                 <TableHead className="text-zinc-400">Statut</TableHead>
               </TableRow>
             </TableHeader>
@@ -418,6 +471,16 @@ const AdminPurchases = () => {
                   </TableCell>
                   <TableCell className="text-zinc-400">
                     {formatDate(purchase.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    {hasEnterpriseLimits(purchase) ? (
+                      <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Enterprise
+                      </Badge>
+                    ) : (
+                      <span className="text-zinc-500">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {getStatusBadge(purchase)}

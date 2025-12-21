@@ -2,16 +2,19 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, FileText, DollarSign, TrendingUp, RefreshCw, Loader2, Zap, Target } from "lucide-react";
+import { Users, FileText, DollarSign, TrendingUp, RefreshCw, Loader2, Zap, Target, CreditCard, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatAmount } from "@/lib/constants";
 
 interface Stats {
   totalUsers: number;
   totalProjects: number;
   totalDeployments: number;
-  activeSubscriptions: number;
+  creditsVendus30j: number;
+  revenusPayPerService: number;
   averageScore: number;
+  tauxConversion: number;
 }
 
 const AdminStats = () => {
@@ -33,12 +36,24 @@ const AdminStats = () => {
 
       if (deploymentsError) throw deploymentsError;
 
-      const { data: subscriptions, error: subscriptionsError } = await supabase
-        .from("subscriptions")
-        .select("id, status")
-        .eq("status", "active");
+      // Fetch purchases from last 30 days for Pay-per-Service metrics
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      if (subscriptionsError) throw subscriptionsError;
+      const { data: recentPurchases, error: purchasesError } = await supabase
+        .from("user_purchases")
+        .select("amount, used, is_subscription")
+        .eq("status", "completed")
+        .gte("created_at", thirtyDaysAgo.toISOString());
+
+      if (purchasesError) throw purchasesError;
+
+      // Calculate credits sold (non-subscription purchases)
+      const creditPurchases = recentPurchases?.filter(p => !p.is_subscription) || [];
+      const creditsVendus = creditPurchases.length;
+      const revenusPayPerService = creditPurchases.reduce((sum, p) => sum + p.amount, 0);
+      const usedCredits = creditPurchases.filter(p => p.used).length;
+      const tauxConversion = creditsVendus > 0 ? Math.round((usedCredits / creditsVendus) * 100) : 0;
 
       const scores = projects?.map(p => p.portability_score).filter(s => s !== null) || [];
       const avgScore = scores.length > 0 
@@ -57,8 +72,10 @@ const AdminStats = () => {
         totalUsers: uniqueUserIds.size,
         totalProjects: projects?.length || 0,
         totalDeployments: deployments?.length || 0,
-        activeSubscriptions: subscriptions?.length || 0,
+        creditsVendus30j: creditsVendus,
+        revenusPayPerService: revenusPayPerService,
         averageScore: avgScore,
+        tauxConversion,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -91,31 +108,31 @@ const AdminStats = () => {
       iconColor: "text-primary",
     },
     {
-      title: "Projets Analysés",
-      value: stats?.totalProjects || 0,
-      subtitle: "Analyses effectuées",
-      icon: FileText,
-      gradient: "from-accent to-accent/80",
-      iconBg: "bg-accent/10",
-      iconColor: "text-accent",
+      title: "Crédits Vendus (30j)",
+      value: stats?.creditsVendus30j || 0,
+      subtitle: "Pay-per-Service",
+      icon: CreditCard,
+      gradient: "from-violet-500 to-violet-400",
+      iconBg: "bg-violet-500/10",
+      iconColor: "text-violet-400",
     },
     {
-      title: "Déploiements",
-      value: stats?.totalDeployments || 0,
-      subtitle: "Total déployés",
-      icon: TrendingUp,
-      gradient: "from-success to-success/80",
-      iconBg: "bg-success/10",
-      iconColor: "text-success",
-    },
-    {
-      title: "Abonnements Actifs",
-      value: stats?.activeSubscriptions || 0,
-      subtitle: "Clients payants",
+      title: "Revenus (30j)",
+      value: formatAmount(stats?.revenusPayPerService || 0),
+      subtitle: "Pay-per-Service",
       icon: DollarSign,
-      gradient: "from-warning to-warning/80",
-      iconBg: "bg-warning/10",
-      iconColor: "text-warning",
+      gradient: "from-emerald-500 to-emerald-400",
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
+    },
+    {
+      title: "Taux Conversion",
+      value: `${stats?.tauxConversion || 0}%`,
+      subtitle: "Crédit → Déploiement",
+      icon: Rocket,
+      gradient: "from-amber-500 to-amber-400",
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-400",
     },
   ];
 
@@ -214,7 +231,7 @@ const AdminStats = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Activity Summary */}
         <Card className="border-0 shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -222,24 +239,33 @@ const AdminStats = () => {
                 <Zap className="h-6 w-6 text-accent" />
               </div>
               <div>
-                <CardTitle>Actions Rapides</CardTitle>
-                <CardDescription>Accès aux fonctions principales</CardDescription>
+                <CardTitle>Résumé Activité</CardTitle>
+                <CardDescription>Métriques clés du modèle Pay-per-Service</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full justify-start gap-3 h-12" variant="outline">
-              <Users className="h-5 w-5 text-primary" />
-              <span>Gérer les utilisateurs</span>
-            </Button>
-            <Button className="w-full justify-start gap-3 h-12" variant="outline">
-              <FileText className="h-5 w-5 text-accent" />
-              <span>Voir les exports récents</span>
-            </Button>
-            <Button className="w-full justify-start gap-3 h-12" variant="outline">
-              <DollarSign className="h-5 w-5 text-success" />
-              <span>Consulter les paiements</span>
-            </Button>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <span>Projets analysés</span>
+              </div>
+              <span className="font-bold text-primary">{stats?.totalProjects || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-success" />
+                <span>Déploiements totaux</span>
+              </div>
+              <span className="font-bold text-success">{stats?.totalDeployments || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-emerald-500/10 rounded-lg">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-400" />
+                <span>Revenus Pay-per-Service</span>
+              </div>
+              <span className="font-bold text-emerald-400">{formatAmount(stats?.revenusPayPerService || 0)}</span>
+            </div>
           </CardContent>
         </Card>
       </div>
