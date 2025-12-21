@@ -76,60 +76,15 @@ const Index = () => {
 
   return (
     <Layout>
-      {/* Hero Section - Vibecoder */}
-      <section className="relative overflow-hidden py-20 lg:py-28">
+      {/* Hero Section - Style Mexlife avec couleurs Inopay */}
+      <section className="relative overflow-hidden pt-8 pb-20 lg:pt-12 lg:pb-28">
+        {/* Background avec dégradé subtil */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
         
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left Column - Content */}
-            <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-8 animate-fade-in">
-                <Palette className="h-4 w-4" />
-                🎨 Vibe-Friendly
-              </div>
-
-              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-6 animate-fade-in-up text-foreground leading-tight">
-                Gardez le Vibe.{" "}
-                <span className="text-primary">Reprenez le Code.</span>
-              </h1>
-
-              <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.1s" }}>
-                Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. 
-                Vous avez créé quelque chose de grand. <strong className="text-foreground">Inopay le rend libre.</strong>
-              </p>
-
-              <ul className="space-y-4 mb-10 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
-                {heroBenefits.map((benefit, index) => (
-                  <li key={index} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Check className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="text-foreground font-medium">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-                <Link to={user ? "/dashboard" : "/auth"}>
-                  <Button size="lg" className="text-lg px-8 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all bg-primary hover:bg-primary/90">
-                    <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
-                      Zéro Terminal
-                    </Badge>
-                    Libérer mon projet
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                
-                <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
-                  <Unlock className="h-4 w-4" />
-                  Analyse gratuite, sans carte bancaire
-                </p>
-              </div>
-            </div>
-
-            {/* Right Column - Visual Mockup */}
-            <div className="relative lg:pl-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+            {/* Left Column - Visual Mockup (inversé style Mexlife) */}
+            <div className="relative order-2 lg:order-1 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
               <div className="relative">
                 <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-3xl blur-2xl opacity-60" />
                 
@@ -231,6 +186,74 @@ const Index = () => {
                   <Zap className="h-4 w-4" />
                   <span className="text-sm font-medium">Vibe-to-Prod</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Right Column - Content (style Mexlife) */}
+            <div className="max-w-xl order-1 lg:order-2">
+              {/* Badge arrondi style Mexlife */}
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-accent text-accent text-sm font-semibold uppercase tracking-wide mb-8 animate-fade-in">
+                <Palette className="h-4 w-4" />
+                Vibe-Friendly
+              </div>
+
+              {/* Titre principal style Mexlife */}
+              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-4 animate-fade-in-up leading-tight">
+                <span className="text-accent">Gardez le Vibe.</span>
+                <br />
+                <span className="text-primary">Reprenez le Code.</span>
+              </h1>
+
+              {/* Sous-titre en italique */}
+              <p className="text-xl text-primary italic font-medium mb-8 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+                Du prototype IA à la vraie entreprise.
+              </p>
+
+              {/* Description */}
+              <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.15s" }}>
+                Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. 
+                Vous avez créé quelque chose de grand. <strong className="text-foreground">Inopay le rend libre.</strong>
+              </p>
+
+              {/* Liste des avantages */}
+              <ul className="space-y-4 mb-10 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+                {heroBenefits.map((benefit, index) => (
+                  <li key={index} className="flex items-center gap-3">
+                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-foreground font-medium">{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Section "Call Now" style - avec icône Rocket animée */}
+              <div className="flex items-center gap-4 mb-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                  <Rocket className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Déploiement en</p>
+                  <p className="text-2xl font-bold text-accent">10 minutes chrono</p>
+                </div>
+              </div>
+
+              {/* CTA Button arrondi style Mexlife */}
+              <div className="animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
+                <Link to={user ? "/dashboard" : "/auth"}>
+                  <Button 
+                    size="lg" 
+                    className="text-lg px-10 py-7 rounded-full shadow-xl hover:shadow-2xl transition-all bg-primary hover:bg-primary/90 uppercase font-semibold tracking-wide"
+                  >
+                    Libérer mon projet
+                    <ArrowRight className="ml-3 h-5 w-5" />
+                  </Button>
+                </Link>
+                
+                <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+                  <Unlock className="h-4 w-4" />
+                  Analyse gratuite, sans carte bancaire
+                </p>
               </div>
             </div>
           </div>
