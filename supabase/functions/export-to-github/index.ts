@@ -67,12 +67,14 @@ serve(async (req) => {
       
       try {
         const pkg = JSON.parse(filesObj['package.json']);
+        let modified = false;
         
         // Known dependency fixes for React 18 compatibility
         const dependencyFixes: Record<string, string> = {
-          // Map libraries
+          // Map libraries - FORCE compatible versions regardless of current version
           'react-leaflet': '^4.2.1',
           '@react-leaflet/core': '^2.1.0',
+          'leaflet': '^1.9.4',
           'google-map-react': '^2.2.1',
           '@react-google-maps/api': '^2.19.3',
           
@@ -147,16 +149,26 @@ serve(async (req) => {
           'react-webcam': '^7.2.0',
         };
         
-        // Apply fixes to dependencies
-        let modified = false;
-        for (const [dep, version] of Object.entries(dependencyFixes)) {
+        // Check and fix dependencies - ALWAYS fix known problematic packages
+        for (const [dep, compatibleVersion] of Object.entries(dependencyFixes)) {
           if (pkg.dependencies?.[dep]) {
             const currentVersion = pkg.dependencies[dep];
-            // Only fix if it's a major version that's incompatible
-            if (currentVersion.includes('5.') || currentVersion.includes('6.') || currentVersion.includes('^5') || currentVersion.includes('^6')) {
-              pkg.dependencies[dep] = version;
+            // Fix if version starts with ^5, ^6, 5., 6., or any version that's not the compatible one
+            const needsFix = 
+              currentVersion.includes('5.') || 
+              currentVersion.includes('6.') || 
+              currentVersion.includes('^5') || 
+              currentVersion.includes('^6') ||
+              currentVersion.includes('7.') ||
+              currentVersion.includes('^7') ||
+              // Special case for react-leaflet - always force compatible version
+              (dep === 'react-leaflet' && !currentVersion.startsWith('^4')) ||
+              (dep === '@react-leaflet/core' && !currentVersion.startsWith('^2'));
+            
+            if (needsFix) {
+              console.log(`[CLEAN] Fixing dependency: ${dep} ${currentVersion} -> ${compatibleVersion}`);
+              pkg.dependencies[dep] = compatibleVersion;
               modified = true;
-              console.log(`Fixed dependency: ${dep} ${currentVersion} -> ${version}`);
             }
           }
         }
@@ -169,6 +181,7 @@ serve(async (req) => {
             'react-dom': '$react-dom'
           };
           modified = true;
+          console.log('[CLEAN] Added react-leaflet overrides');
         }
         
         // Ensure engines field for Node.js version
@@ -179,10 +192,10 @@ serve(async (req) => {
         
         if (modified) {
           filesObj['package.json'] = JSON.stringify(pkg, null, 2);
-          console.log('package.json cleaned successfully');
+          console.log('[CLEAN] package.json cleaned successfully');
         }
       } catch (e) {
-        console.error('Error cleaning package.json:', e);
+        console.error('[CLEAN] Error cleaning package.json:', e);
       }
       
       return filesObj;
@@ -247,18 +260,45 @@ legacy-peer-deps=true
 engine-strict=false
 `;
 
+    // Generate vercel.json for Vercel deployments
+    const VERCEL_JSON = JSON.stringify({
+      "$schema": "https://openapi.vercel.sh/vercel.json",
+      "installCommand": "npm install --legacy-peer-deps",
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist",
+      "framework": "vite",
+      "rewrites": [
+        { "source": "/(.*)", "destination": "/" }
+      ]
+    }, null, 2);
+
+    // Generate netlify.toml for Netlify deployments
+    const NETLIFY_TOML = `[build]
+  command = "npm install --legacy-peer-deps && npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+`;
+
     // Clean package.json first
     const cleanedFilesObj = cleanPackageJson({ ...files } as Record<string, string>);
     
     const detectedEnvVars = detectEnvVariables(cleanedFilesObj);
     const envExampleContent = generateEnvExample(detectedEnvVars);
     
-    // Add .env.example and .npmrc to files
+    // Add config files for all platforms
     const filesWithEnv = { 
       ...cleanedFilesObj, 
       '.env.example': envExampleContent,
-      '.npmrc': NPMRC_CONTENT
+      '.npmrc': NPMRC_CONTENT,
+      'vercel.json': VERCEL_JSON,
+      'netlify.toml': NETLIFY_TOML
     };
+    
+    console.log('[EXPORT] Added vercel.json and netlify.toml for easier deployment');
 
     console.log(`Creating GitHub repo: ${repoName}`);
 
