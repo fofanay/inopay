@@ -640,6 +640,47 @@ const AdminEmailCMS = () => {
     }
   };
 
+  // Upgrade existing templates to professional design
+  const upgradeTemplatesToProfessional = async () => {
+    setSaving(true);
+    try {
+      // Map template names to their professional versions
+      const templateMap: Record<string, typeof defaultTemplates[0]> = {};
+      defaultTemplates.forEach(t => {
+        templateMap[t.name] = t;
+      });
+
+      let upgraded = 0;
+      for (const existingTemplate of templates) {
+        const professionalVersion = templateMap[existingTemplate.name];
+        if (professionalVersion) {
+          const { error } = await supabase
+            .from("email_templates")
+            .update({
+              html_content: professionalVersion.html_content,
+              subject: professionalVersion.subject,
+              variables: professionalVersion.variables,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingTemplate.id);
+          if (!error) upgraded++;
+        }
+      }
+
+      if (upgraded > 0) {
+        toast.success(`${upgraded} template(s) mis à jour avec le design professionnel`);
+      } else {
+        toast.info("Aucun template à mettre à jour");
+      }
+      fetchAll();
+    } catch (error) {
+      console.error("Error upgrading templates:", error);
+      toast.error("Erreur lors de la mise à jour");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const previewTemplate = (template: EmailTemplate) => {
     const previewHtml = template.html_content
       .replace(/\{\{user_name\}\}/g, "Jean Dupont")
@@ -1140,6 +1181,13 @@ const AdminEmailCMS = () => {
                 <CardDescription>{templates.length} templates</CardDescription>
               </div>
               <div className="flex gap-2">
+                {templates.length > 0 && (
+                  <Button variant="outline" onClick={upgradeTemplatesToProfessional} disabled={saving}>
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Appliquer design Inopay
+                  </Button>
+                )}
                 {templates.length === 0 && (
                   <Button variant="outline" onClick={importDefaultTemplates} disabled={saving}>
                     {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
