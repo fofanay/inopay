@@ -230,6 +230,27 @@ const DeploymentAssistant = ({
         },
       });
 
+      // Handle 402 Payment Required (credit insufficient)
+      if (error?.message?.includes('402') || error?.status === 402) {
+        setIsDeploying(false);
+        setStep("ftp-credentials");
+        
+        toast({
+          title: "Crédit requis",
+          description: "Un crédit de déploiement est nécessaire pour continuer",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/tarifs'}
+            >
+              Acheter un crédit
+            </Button>
+          ),
+        });
+        return;
+      }
+
       if (error) throw error;
 
       setDeployProgress(80);
@@ -254,15 +275,33 @@ const DeploymentAssistant = ({
         description: `Votre site est en ligne sur ${providerName}`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("FTP Deploy error:", error);
       setIsDeploying(false);
       setStep("ftp-credentials");
-      toast({
-        title: "Erreur de déploiement",
-        description: error instanceof Error ? error.message : "Impossible de se connecter au serveur",
-        variant: "destructive",
-      });
+      
+      // Check for credit error
+      if (error?.message?.includes('Crédit insuffisant')) {
+        toast({
+          title: "Crédit requis",
+          description: "Achetez un crédit pour déployer votre application",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/tarifs'}
+            >
+              Acheter
+            </Button>
+          ),
+        });
+      } else {
+        toast({
+          title: "Erreur de déploiement",
+          description: error instanceof Error ? error.message : "Impossible de se connecter au serveur",
+          variant: "destructive",
+        });
+      }
     }
   };
 

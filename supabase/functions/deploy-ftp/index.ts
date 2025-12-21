@@ -216,6 +216,29 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { credentials, projectId, files } = await req.json() as DeployRequest;
 
     // SECURITY: Never log credentials - only log non-sensitive info
@@ -243,6 +266,44 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Check for existing FTP deployments to determine deploy vs redeploy
+    const { data: existingDeployments } = await supabase
+      .from('deployment_history')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('deployment_type', 'ftp')
+      .eq('status', 'success');
+
+    const creditType = (existingDeployments && existingDeployments.length > 0) ? 'redeploy' : 'deploy';
+    console.log(`[DEPLOY-FTP] Credit type needed: ${creditType}`);
+
+    // Consume credit before proceeding
+    const creditResponse = await fetch(`${supabaseUrl}/functions/v1/use-credit`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ credit_type: creditType })
+    });
+
+    if (!creditResponse.ok) {
+      const creditError = await creditResponse.json();
+      console.log('[DEPLOY-FTP] Credit check failed:', creditError);
+      return new Response(
+        JSON.stringify({
+          error: 'Crédit insuffisant',
+          credit_type: creditType,
+          details: creditError.message || `Un crédit "${creditType}" est requis`,
+          redirect_to_pricing: true
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const creditData = await creditResponse.json();
+    console.log(`[DEPLOY-FTP] Credit consumed:`, creditData);
 
     // Generate static build
     console.log("[DEPLOY-FTP] Generating static build...");

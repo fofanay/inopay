@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,8 @@ import {
   RefreshCw,
   Copy,
   Eye,
-  EyeOff
+  EyeOff,
+  CreditCard
 } from 'lucide-react';
 
 interface UserServer {
@@ -194,6 +196,31 @@ export function DirectDeployment({
         }
       });
 
+      // Handle 402 Payment Required (credit insufficient)
+      if (error?.message?.includes('402') || error?.status === 402) {
+        const errorData = JSON.parse(error.context?.responseText || '{}');
+        const creditType = errorData.credit_type || 'deploy';
+        
+        setDeployStep('error');
+        setErrorMessage(`Crédit "${creditType}" requis pour continuer`);
+        
+        toast({
+          title: "Crédit requis",
+          description: `Un crédit "${creditType}" est nécessaire pour ce déploiement`,
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/tarifs'}
+            >
+              <CreditCard className="h-4 w-4 mr-1" />
+              Acheter
+            </Button>
+          ),
+        });
+        return;
+      }
+
       if (error) throw error;
 
       setProgress(100);
@@ -209,6 +236,28 @@ export function DirectDeployment({
 
     } catch (error: any) {
       console.error('Deployment error:', error);
+      
+      // Check if it's a 402 error from the response
+      if (error?.message?.includes('Crédit insuffisant') || error?.message?.includes('402')) {
+        setDeployStep('error');
+        setErrorMessage('Crédit insuffisant. Veuillez acheter un crédit de déploiement.');
+        toast({
+          title: "Crédit requis",
+          description: "Achetez un crédit pour déployer votre application",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/tarifs'}
+            >
+              <CreditCard className="h-4 w-4 mr-1" />
+              Acheter
+            </Button>
+          ),
+        });
+        return;
+      }
+      
       setDeployStep('error');
       setErrorMessage(error.message || 'Erreur lors du déploiement');
       toast({

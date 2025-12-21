@@ -74,6 +74,44 @@ serve(async (req) => {
       );
     }
 
+    // Check for existing deployments to determine deploy vs redeploy
+    const { data: existingDeployments } = await supabase
+      .from('server_deployments')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('server_id', server_id)
+      .in('status', ['deployed', 'success']);
+
+    const creditType = (existingDeployments && existingDeployments.length > 0) ? 'redeploy' : 'deploy';
+    console.log(`[deploy-coolify] Credit type needed: ${creditType}`);
+
+    // Consume credit before proceeding
+    const creditResponse = await fetch(`${supabaseUrl}/functions/v1/use-credit`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ credit_type: creditType })
+    });
+
+    if (!creditResponse.ok) {
+      const creditError = await creditResponse.json();
+      console.log('[deploy-coolify] Credit check failed:', creditError);
+      return new Response(
+        JSON.stringify({
+          error: 'Crédit insuffisant',
+          credit_type: creditType,
+          details: creditError.message || `Un crédit "${creditType}" est requis`,
+          redirect_to_pricing: true
+        }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const creditData = await creditResponse.json();
+    console.log(`[deploy-coolify] Credit consumed:`, creditData);
+
     // Create deployment record
     const { data: deployment, error: deployError } = await supabase
       .from('server_deployments')
@@ -87,6 +125,14 @@ serve(async (req) => {
       })
       .select()
       .single();
+
+    // Link the credit to this deployment
+    if (!deployError && deployment && creditData.purchase_id) {
+      await supabase
+        .from('user_purchases')
+        .update({ deployment_id: deployment.id })
+        .eq('id', creditData.purchase_id);
+    }
 
     if (deployError) {
       console.error('Deploy insert error:', deployError);
