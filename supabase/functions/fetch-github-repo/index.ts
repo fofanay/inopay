@@ -298,14 +298,6 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const GITHUB_TOKEN = Deno.env.get("GITHUB_PERSONAL_ACCESS_TOKEN");
-    if (!GITHUB_TOKEN) {
-      return new Response(
-        JSON.stringify({ error: "GitHub token not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Verify user authentication
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -351,7 +343,9 @@ serve(async (req) => {
     const limits = PLAN_LIMITS[planType] || PLAN_LIMITS.free;
     logStep("User plan detected", { userId: user.id, planType, limits });
 
-    const { url } = await req.json();
+    // Parse request body to get URL and optional user GitHub token
+    const requestBody = await req.json();
+    const { url, github_token } = requestBody;
 
     if (!url) {
       return new Response(
@@ -359,6 +353,20 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Prioritize user's GitHub token, fallback to server token
+    const serverToken = Deno.env.get("GITHUB_PERSONAL_ACCESS_TOKEN");
+    const GITHUB_TOKEN = github_token || serverToken;
+    const usingUserToken = !!github_token;
+
+    if (!GITHUB_TOKEN) {
+      return new Response(
+        JSON.stringify({ error: "GitHub token not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("Token configuration", { usingUserToken, hasServerToken: !!serverToken });
 
     const parsed = parseGitHubUrl(url);
     if (!parsed) {
@@ -377,13 +385,25 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${GITHUB_TOKEN}`,
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "FreedomCode-App",
+          "User-Agent": "Inopay-FreedomCode-App",
         },
       }
     );
 
     if (!repoResponse.ok) {
       const errorData = await repoResponse.json();
+      
+      // Check if token is expired
+      if (repoResponse.status === 401) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Votre connexion GitHub a expiré. Veuillez vous reconnecter.",
+            tokenExpired: true
+          }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: repoResponse.status === 404 
@@ -395,18 +415,25 @@ serve(async (req) => {
     }
 
     const repoInfo = await repoResponse.json();
-    logStep("Repository info retrieved", { name: repoInfo.name, size: repoInfo.size, private: repoInfo.private });
+    logStep("Repository info retrieved", { name: repoInfo.name, size: repoInfo.size, private: repoInfo.private, usingUserToken });
 
-    // SECURITY: Only allow public repositories
-    if (repoInfo.private === true) {
-      logStep("Access denied - private repository", { repo: repoInfo.full_name });
+    // SECURITY: Only allow private repositories if user is using their own token
+    // If using server token, only public repos are allowed
+    if (repoInfo.private === true && !usingUserToken) {
+      logStep("Access denied - private repository with server token", { repo: repoInfo.full_name });
       return new Response(
         JSON.stringify({ 
-          error: "Ce dépôt est privé. Pour des raisons de sécurité, seuls les dépôts publics peuvent être analysés.",
-          isPrivate: true
+          error: "Ce dépôt est privé. Veuillez vous connecter avec GitHub pour analyser vos dépôts privés.",
+          isPrivate: true,
+          needsGitHubAuth: true
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // If private repo with user token, log it
+    if (repoInfo.private === true && usingUserToken) {
+      logStep("Accessing private repository with user token", { repo: repoInfo.full_name });
     }
 
     // Check repository size BEFORE downloading

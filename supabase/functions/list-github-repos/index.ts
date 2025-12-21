@@ -35,31 +35,28 @@ serve(async (req) => {
       );
     }
 
-    // Get the GitHub provider token from user identities
-    const githubIdentity = user.identities?.find(i => i.provider === "github");
+    // Get the GitHub token from the request body (user's OAuth token) or fallback to server token
+    let github_token: string | null = null;
     
-    if (!githubIdentity) {
-      return new Response(
-        JSON.stringify({ error: "GitHub not connected. Please sign in with GitHub." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    try {
+      const body = await req.json();
+      github_token = body?.github_token || null;
+    } catch {
+      // No body or invalid JSON, will use server token
     }
 
-    // Use the stored GitHub token to fetch repos
-    // We need to get the provider_token from the session
-    const { data: sessionData } = await supabase.auth.admin.getUserById(user.id);
-    
-    // Fallback to using the GITHUB_PERSONAL_ACCESS_TOKEN if available
-    const GITHUB_TOKEN = Deno.env.get("GITHUB_PERSONAL_ACCESS_TOKEN");
+    // Prioritize user's GitHub token, fallback to server token
+    const GITHUB_TOKEN = github_token || Deno.env.get("GITHUB_PERSONAL_ACCESS_TOKEN");
+    const usingUserToken = !!github_token;
     
     if (!GITHUB_TOKEN) {
       return new Response(
-        JSON.stringify({ error: "GitHub token not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "GitHub token not available. Please reconnect with GitHub." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Fetching repos for user: ${user.email}`);
+    console.log(`[LIST-GITHUB-REPOS] Fetching repos for user: ${user.email}, using ${usingUserToken ? "user" : "server"} token`);
 
     // Fetch user's repositories
     const reposResponse = await fetch(
@@ -68,14 +65,26 @@ serve(async (req) => {
         headers: {
           Authorization: `Bearer ${GITHUB_TOKEN}`,
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "FreedomCode-App",
+          "User-Agent": "Inopay-FreedomCode-App",
         },
       }
     );
 
     if (!reposResponse.ok) {
       const errorData = await reposResponse.json();
-      console.error("GitHub API error:", errorData);
+      console.error("[LIST-GITHUB-REPOS] GitHub API error:", errorData);
+      
+      // Check if token is expired
+      if (reposResponse.status === 401) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Votre connexion GitHub a expiré. Veuillez vous reconnecter.",
+            tokenExpired: true
+          }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: `GitHub API error: ${errorData.message}` }),
         { status: reposResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -84,11 +93,12 @@ serve(async (req) => {
 
     const repos = await reposResponse.json();
 
-    console.log(`Found ${repos.length} repositories`);
+    console.log(`[LIST-GITHUB-REPOS] Found ${repos.length} repositories (using ${usingUserToken ? "user" : "server"} token)`);
 
     return new Response(
       JSON.stringify({
         success: true,
+        usingUserToken,
         repos: repos.map((repo: any) => ({
           id: repo.id,
           name: repo.name,
@@ -105,7 +115,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
+    console.error("[LIST-GITHUB-REPOS] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch repositories";
     return new Response(
       JSON.stringify({ error: errorMessage }),

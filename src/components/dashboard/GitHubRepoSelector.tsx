@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar, CheckCircle2 } from "lucide-react";
+import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar, CheckCircle2, Github, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,20 +43,39 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading, isCompleted }: GitHubRepo
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
-      if (!sessionData.session?.provider_token) {
-        setError("Token GitHub non disponible. Veuillez vous reconnecter.");
+      if (!sessionData.session) {
+        setError("Session non disponible. Veuillez vous reconnecter.");
         setLoading(false);
         return;
       }
 
+      // Check if user has a GitHub provider token (connected via OAuth)
+      const githubToken = sessionData.session.provider_token;
+      
+      if (!githubToken) {
+        setError("Token GitHub non disponible. Veuillez vous connecter avec GitHub pour accéder à vos dépôts.");
+        setLoading(false);
+        return;
+      }
+
+      // Send the GitHub token to the edge function
       const response = await supabase.functions.invoke("list-github-repos", {
+        body: {
+          github_token: githubToken,
+        },
         headers: {
           Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
 
       if (response.error) {
-        throw new Error(response.error.message || "Erreur lors de la récupération des dépôts");
+        // Check if it's a token expiration error
+        if (response.error.message?.includes("401") || response.error.message?.includes("expired")) {
+          setError("Votre connexion GitHub a expiré. Veuillez vous reconnecter avec GitHub.");
+        } else {
+          throw new Error(response.error.message || "Erreur lors de la récupération des dépôts");
+        }
+        return;
       }
 
       const repoList = response.data.repos || [];
@@ -131,20 +151,56 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading, isCompleted }: GitHubRepo
     );
   }
 
+  const handleGitHubReconnect = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: "repo read:user user:email",
+        },
+      });
+      if (error) throw error;
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de se reconnecter à GitHub",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (error) {
+    const isTokenExpired = error.includes("expiré") || error.includes("reconnecter");
+    
     return (
       <Card className="card-shadow border border-border status-border-red">
         <CardContent className="py-16">
           <div className="flex flex-col items-center justify-center text-center">
             <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
-              <GitBranch className="h-8 w-8 text-destructive" />
+              {isTokenExpired ? (
+                <AlertCircle className="h-8 w-8 text-warning" />
+              ) : (
+                <GitBranch className="h-8 w-8 text-destructive" />
+              )}
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-foreground">Erreur de connexion</h3>
+            <h3 className="text-lg font-semibold mb-2 text-foreground">
+              {isTokenExpired ? "Connexion GitHub expirée" : "Erreur de connexion"}
+            </h3>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={fetchRepos} variant="outline" className="gap-2 rounded-lg">
-              <RefreshCw className="h-4 w-4" />
-              Réessayer
-            </Button>
+            <div className="flex gap-3">
+              {isTokenExpired ? (
+                <Button onClick={handleGitHubReconnect} className="gap-2 rounded-lg">
+                  <Github className="h-4 w-4" />
+                  Reconnecter GitHub
+                </Button>
+              ) : (
+                <Button onClick={fetchRepos} variant="outline" className="gap-2 rounded-lg">
+                  <RefreshCw className="h-4 w-4" />
+                  Réessayer
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

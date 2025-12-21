@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Mail, Lock, ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Mail, Lock, ArrowLeft, Github } from "lucide-react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
 const authSchema = z.object({
@@ -179,6 +180,42 @@ const Auth = () => {
                 </Button>
               </form>
             </Form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Ou continuer avec</span>
+              </div>
+            </div>
+
+            {/* GitHub OAuth */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={async () => {
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "github",
+                  options: {
+                    redirectTo: `${window.location.origin}/dashboard`,
+                    scopes: "repo read:user user:email",
+                  },
+                });
+                if (error) {
+                  toast({
+                    title: "Erreur",
+                    description: error.message,
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <Github className="h-4 w-4" />
+              GitHub
+            </Button>
 
             <div className="mt-6 text-center">
               <button

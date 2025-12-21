@@ -37,7 +37,7 @@ const GitHubConnectButton = ({
         provider: "github",
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
-          scopes: "repo read:user",
+          scopes: "repo read:user user:email",
         },
       });
 
