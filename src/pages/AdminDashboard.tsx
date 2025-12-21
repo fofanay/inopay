@@ -18,7 +18,8 @@ import {
   Activity,
   Shield,
   Wrench,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ import AdminActivityMonitor from "@/components/admin/AdminActivityMonitor";
 import AdminSecurityAudit from "@/components/admin/AdminSecurityAudit";
 import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminSupportTools from "@/components/admin/AdminSupportTools";
+import AdminPurchases from "@/components/admin/AdminPurchases";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -81,6 +83,7 @@ const AdminDashboard = () => {
     { id: "fleet", label: "Flotte Serveurs", icon: Server },
     { id: "monitoring", label: "Monitoring", icon: Activity },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp },
+    { id: "purchases", label: "Achats Services", icon: ShoppingCart },
     { id: "security", label: "Sécurité", icon: Shield },
     { id: "support", label: "Support Admin", icon: Wrench },
     { id: "users", label: "Utilisateurs", icon: Users },
@@ -105,6 +108,7 @@ const AdminDashboard = () => {
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
       case "kpis": return "Revenus, taux de succès et métriques business";
+      case "purchases": return "Tous les achats de services par utilisateur";
       case "security": return "Audit Zero-Knowledge et vérification des secrets";
       case "support": return "Outils d'intervention et notifications utilisateurs";
       case "users": return "Gérez les utilisateurs et leurs accès";
@@ -191,6 +195,7 @@ const AdminDashboard = () => {
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
             {activeTab === "kpis" && <AdminKPIs />}
+            {activeTab === "purchases" && <AdminPurchases />}
             {activeTab === "security" && <AdminSecurityAudit />}
             {activeTab === "support" && <AdminSupportTools />}
             {activeTab === "users" && <AdminUsersList />}
