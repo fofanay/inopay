@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette } from "lucide-react";
+import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette, Heart, MousePointer, RefreshCw, Globe, Cloud, Droplets } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
@@ -13,19 +13,19 @@ const Index = () => {
   const mousePosition = useMouseParallax(15);
 
   const platforms = [
-    { name: "Lovable", icon: "💜" },
-    { name: "Bolt", icon: "⚡" },
-    { name: "v0", icon: "🔮" },
-    { name: "Cursor", icon: "🖱️" },
-    { name: "Replit", icon: "🔁" },
+    { name: "Lovable", icon: Heart, color: "text-purple-500", bgColor: "bg-purple-500/10" },
+    { name: "Bolt", icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+    { name: "v0", icon: Sparkles, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+    { name: "Cursor", icon: MousePointer, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+    { name: "Replit", icon: RefreshCw, color: "text-teal-500", bgColor: "bg-teal-500/10" },
   ];
 
   const hosters = [
-    { name: "IONOS", icon: "🌐" },
-    { name: "OVH", icon: "☁️" },
-    { name: "Hetzner", icon: "🖥️" },
-    { name: "DigitalOcean", icon: "🌊" },
-    { name: "Scaleway", icon: "⚡" },
+    { name: "IONOS", icon: Globe, color: "text-blue-600" },
+    { name: "OVH", icon: Cloud, color: "text-sky-500" },
+    { name: "Hetzner", icon: Server, color: "text-red-500" },
+    { name: "DigitalOcean", icon: Droplets, color: "text-blue-400" },
+    { name: "Scaleway", icon: Zap, color: "text-purple-500" },
   ];
 
   // 3 Features Vibe-Friendly essentielles
@@ -313,56 +313,91 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Plateformes + Process Compact */}
-      <section className="py-12 border-b border-border bg-muted/30">
+      {/* Plateformes + Process Compact - Premium Design */}
+      <section className="py-16 border-b border-border bg-gradient-to-b from-muted/40 via-background to-muted/30 relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-accent/5 rounded-full blur-3xl -z-10" />
+        
         <div className="container mx-auto px-4">
-          {/* Plateformes inline */}
-          <div className="flex flex-wrap justify-center gap-3 mb-6">
-            {platforms.map((platform) => (
-              <span 
+          {/* Section title */}
+          <p className="text-center text-sm text-muted-foreground mb-8 uppercase tracking-widest font-medium">
+            Compatible avec toutes les plateformes IA
+          </p>
+          
+          {/* Plateformes avec icônes personnalisées */}
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
+            {platforms.map((platform, index) => (
+              <div 
                 key={platform.name}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground"
+                className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-background border border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-default group animate-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <span>{platform.icon}</span>
-                {platform.name}
-              </span>
+                <div className={`p-1.5 rounded-lg ${platform.bgColor} group-hover:scale-110 transition-transform`}>
+                  <platform.icon className={`h-4 w-4 ${platform.color}`} />
+                </div>
+                <span className="text-sm font-medium text-foreground">{platform.name}</span>
+              </div>
             ))}
           </div>
 
-          {/* 3 étapes visuelles */}
-          <div className="flex items-center justify-center gap-4 max-w-lg mx-auto mb-6">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
-                <Upload className="h-6 w-6 text-muted-foreground" />
+          {/* 3 étapes visuelles - Premium */}
+          <div className="flex items-center justify-center gap-4 md:gap-8 max-w-2xl mx-auto mb-12 relative">
+            {/* Connecting line */}
+            <div className="absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-border via-primary/30 to-primary -translate-y-1/2 -z-10 hidden md:block" />
+            
+            {/* Étape 1 - Votre code */}
+            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
+              <div className="w-20 h-20 rounded-2xl bg-background border border-border/60 shadow-lg shadow-black/5 flex items-center justify-center hover:shadow-xl hover:border-border transition-all duration-300 group">
+                <Upload className="h-8 w-8 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">Votre code</span>
+              <span className="text-sm text-muted-foreground font-medium">Votre code</span>
             </div>
-            <ArrowRight className="h-5 w-5 text-primary flex-shrink-0" />
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-primary" />
+            
+            {/* Flèche 1 */}
+            <div className="flex items-center animate-fade-in" style={{ animationDelay: '300ms' }}>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ArrowRight className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-xs text-primary font-medium">Inopay</span>
             </div>
-            <ArrowRight className="h-5 w-5 text-primary flex-shrink-0" />
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center">
-                <Server className="h-6 w-6 text-primary-foreground" />
+            
+            {/* Étape 2 - Inopay (highlight) */}
+            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '400ms' }}>
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/40 shadow-lg shadow-primary/20 flex items-center justify-center relative overflow-hidden group">
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-primary/10 animate-pulse" />
+                <Sparkles className="h-8 w-8 text-primary relative z-10" />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">Votre VPS</span>
+              <span className="text-sm text-primary font-semibold">Inopay</span>
+            </div>
+            
+            {/* Flèche 2 */}
+            <div className="flex items-center animate-fade-in" style={{ animationDelay: '500ms' }}>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ArrowRight className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+            
+            {/* Étape 3 - Votre VPS */}
+            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '600ms' }}>
+              <div className="w-20 h-20 rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 group">
+                <Server className="h-8 w-8 text-primary-foreground group-hover:scale-110 transition-transform" />
+              </div>
+              <span className="text-sm text-foreground font-medium">Votre VPS</span>
             </div>
           </div>
 
-          {/* Hébergeurs inline */}
-          <div className="flex flex-wrap justify-center gap-2">
-            {hosters.map((hoster) => (
-              <span 
+          {/* Hébergeurs - Modern badges */}
+          <div className="flex flex-wrap justify-center gap-3">
+            {hosters.map((hoster, index) => (
+              <div 
                 key={hoster.name}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground rounded-md bg-background border border-border"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-full bg-background border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-default group animate-fade-in"
+                style={{ animationDelay: `${700 + index * 100}ms` }}
               >
-                <span>{hoster.icon}</span>
-                {hoster.name}
-              </span>
+                <hoster.icon className={`h-4 w-4 ${hoster.color} group-hover:scale-110 transition-transform`} />
+                <span className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">{hoster.name}</span>
+              </div>
             ))}
           </div>
         </div>
