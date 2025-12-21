@@ -94,38 +94,65 @@ export type Database = {
       }
       deployment_history: {
         Row: {
+          cleaned_dependencies: string[] | null
+          coolify_url: string | null
+          cost_analysis: Json | null
           created_at: string
           deployed_url: string | null
           deployment_type: string
           files_uploaded: number | null
           host: string | null
+          hosting_type: string | null
           id: string
+          liberation_report_generated: boolean | null
+          portability_score_after: number | null
+          portability_score_before: number | null
           project_name: string
           provider: string
+          server_ip: string | null
+          services_replaced: Json | null
           status: string
           user_id: string
         }
         Insert: {
+          cleaned_dependencies?: string[] | null
+          coolify_url?: string | null
+          cost_analysis?: Json | null
           created_at?: string
           deployed_url?: string | null
           deployment_type?: string
           files_uploaded?: number | null
           host?: string | null
+          hosting_type?: string | null
           id?: string
+          liberation_report_generated?: boolean | null
+          portability_score_after?: number | null
+          portability_score_before?: number | null
           project_name: string
           provider: string
+          server_ip?: string | null
+          services_replaced?: Json | null
           status?: string
           user_id: string
         }
         Update: {
+          cleaned_dependencies?: string[] | null
+          coolify_url?: string | null
+          cost_analysis?: Json | null
           created_at?: string
           deployed_url?: string | null
           deployment_type?: string
           files_uploaded?: number | null
           host?: string | null
+          hosting_type?: string | null
           id?: string
+          liberation_report_generated?: boolean | null
+          portability_score_after?: number | null
+          portability_score_before?: number | null
           project_name?: string
           provider?: string
+          server_ip?: string | null
+          services_replaced?: Json | null
           status?: string
           user_id?: string
         }
