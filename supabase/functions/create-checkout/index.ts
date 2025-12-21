@@ -25,8 +25,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { priceId, mode } = await req.json();
-    logStep("Request body parsed", { priceId, mode });
+    const { priceId, mode, serviceType } = await req.json();
+    logStep("Request body parsed", { priceId, mode, serviceType });
 
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
@@ -49,6 +49,16 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://localhost:3000";
 
+    // Determine plan type based on serviceType
+    const planTypeMap: Record<string, string> = {
+      deploy: "deploy",
+      redeploy: "redeploy",
+      monitoring: "monitoring",
+      server: "server",
+    };
+
+    const planType = planTypeMap[serviceType] || (mode === "subscription" ? "monitoring" : "deploy");
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -64,11 +74,12 @@ serve(async (req) => {
       cancel_url: `${origin}/tarifs`,
       metadata: {
         user_id: user.id,
-        plan_type: mode === "subscription" ? "pro" : "pack",
+        service_type: serviceType || "deploy",
+        plan_type: planType,
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url, serviceType, planType });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
