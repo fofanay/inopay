@@ -97,6 +97,12 @@ export const RATE_LIMITS = {
   "check-subscription": { maxRequests: 60, windowMs: 60 * 1000 }, // 60 req/min
   "list-github-repos": { maxRequests: 30, windowMs: 60 * 1000 },
   
+  // Webhook endpoints - needs higher limits for Stripe bursts
+  "stripe-webhook": { maxRequests: 100, windowMs: 60 * 1000 }, // 100 req/min
+  
+  // Customer portal - moderate limits
+  "customer-portal": { maxRequests: 10, windowMs: 60 * 1000 }, // 10 req/min
+  
   // Default for unspecified endpoints
   default: { maxRequests: 100, windowMs: 60 * 1000 }, // 100 req/min
 } as const;
