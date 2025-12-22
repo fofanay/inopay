@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Parse Coolify JSON logs array into readable text
+function parseJsonLogs(logsInput: string): string {
+  try {
+    const parsed = JSON.parse(logsInput);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((entry: { output?: string }) => entry.output)
+        .map((entry: { output?: string; command?: string }) => 
+          entry.command ? `$ ${entry.command}\n${entry.output}` : entry.output
+        )
+        .join('\n');
+    }
+    return logsInput;
+  } catch {
+    return logsInput;
+  }
+}
+
 // Helper function to fetch Coolify logs via the CORRECT API endpoints
 async function fetchCoolifyDeploymentLogs(
   coolifyUrl: string,
@@ -65,18 +83,35 @@ async function fetchCoolifyDeploymentLogs(
       return { logs: JSON.stringify(fallbackData, null, 2).slice(0, 3000), deploymentUuid: null, status: null };
     }
     
-    const deploymentsList = await deploymentsListResponse.json();
-    console.log('[deploy-coolify] Deployments list count:', Array.isArray(deploymentsList) ? deploymentsList.length : 'not-array');
-    console.log('[deploy-coolify] Deployments list sample:', JSON.stringify(deploymentsList).slice(0, 800));
+    const deploymentsListRaw = await deploymentsListResponse.json();
     
-    if (!deploymentsList || !Array.isArray(deploymentsList) || deploymentsList.length === 0) {
+    // Coolify API may return an array OR an object { count, deployments: [...] }
+    let deploymentsArray: Array<{ deployment_uuid?: string; uuid?: string; status?: string; logs?: string }> = [];
+    if (Array.isArray(deploymentsListRaw)) {
+      deploymentsArray = deploymentsListRaw;
+    } else if (deploymentsListRaw && Array.isArray(deploymentsListRaw.deployments)) {
+      deploymentsArray = deploymentsListRaw.deployments;
+    }
+    
+    console.log('[deploy-coolify] Deployments list count:', deploymentsArray.length);
+    console.log('[deploy-coolify] Deployments list sample:', JSON.stringify(deploymentsListRaw).slice(0, 800));
+    
+    if (deploymentsArray.length === 0) {
       return { logs: 'No deployments found in list', deploymentUuid: null, status: null };
     }
     
     // Get the most recent deployment
-    const latestDeployment = deploymentsList[0];
+    const latestDeployment = deploymentsArray[0];
     const deploymentUuid = latestDeployment.deployment_uuid || latestDeployment.uuid;
-    const deploymentStatus = latestDeployment.status;
+    const deploymentStatus = latestDeployment.status || null;
+    
+    // IMPORTANT: If the deployment already has logs embedded (common in list response), use them first!
+    if (latestDeployment.logs && typeof latestDeployment.logs === 'string' && latestDeployment.logs.length > 10) {
+      console.log('[deploy-coolify] Using embedded logs from list response');
+      const parsedLogs = parseJsonLogs(latestDeployment.logs);
+      return { logs: parsedLogs, deploymentUuid: deploymentUuid || null, status: deploymentStatus };
+    }
+    
     console.log('[deploy-coolify] Latest deployment UUID:', deploymentUuid, 'status:', deploymentStatus);
     
     // Fetch detailed deployment info including logs
@@ -90,7 +125,7 @@ async function fetchCoolifyDeploymentLogs(
       console.warn('[deploy-coolify] Failed to fetch deployment details:', errorText);
       return { 
         logs: `Deployment ${deploymentUuid} status: ${deploymentStatus}\nCould not fetch details: ${errorText}`, 
-        deploymentUuid, 
+        deploymentUuid: deploymentUuid || null, 
         status: deploymentStatus 
       };
     }
@@ -112,7 +147,7 @@ async function fetchCoolifyDeploymentLogs(
     }
     
     console.log(`[deploy-coolify] Retrieved ${logs.length} chars of logs`);
-    return { logs, deploymentUuid, status: deploymentStatus };
+    return { logs, deploymentUuid: deploymentUuid || null, status: deploymentStatus };
   } catch (error) {
     console.error('[deploy-coolify] Error fetching logs:', error);
     return { logs: `Error fetching logs: ${error}`, deploymentUuid: null, status: null };
@@ -648,6 +683,13 @@ serve(async (req) => {
 
       const deployData = await deployResponse.json();
       console.log('[deploy-coolify] Deployment triggered:', deployData);
+      
+      // Extract deployment_uuid from /deploy response for precise log fetching later
+      let triggeredDeploymentUuid: string | null = null;
+      if (deployData?.deployments && Array.isArray(deployData.deployments) && deployData.deployments.length > 0) {
+        triggeredDeploymentUuid = deployData.deployments[0].deployment_uuid || null;
+        console.log('[deploy-coolify] Captured deployment_uuid:', triggeredDeploymentUuid);
+      }
 
       // Step 4: Wait and check build status (poll for up to 8 minutes)
       console.log('[deploy-coolify] Waiting for build to complete...');
@@ -687,17 +729,20 @@ serve(async (req) => {
       if (isFailed) {
         console.log('[deploy-coolify] Build failed, fetching comprehensive logs...');
         
-        const { logs: buildLogs, deploymentUuid } = await fetchCoolifyDeploymentLogs(
+        // Pass triggeredDeploymentUuid for more precise log fetching
+        const { logs: buildLogs, deploymentUuid: fetchedDeploymentUuid } = await fetchCoolifyDeploymentLogs(
           server.coolify_url,
           coolifyHeaders,
-          appData.uuid
+          appData.uuid,
+          triggeredDeploymentUuid
         );
+        const usedDeploymentUuid = fetchedDeploymentUuid || triggeredDeploymentUuid;
         
         // Build comprehensive error message
         const errorParts: string[] = [];
         errorParts.push(`🔴 Build failed with status: ${buildStatus}`);
         errorParts.push(`📦 App UUID: ${appData.uuid}`);
-        if (deploymentUuid) errorParts.push(`🔧 Deployment UUID: ${deploymentUuid}`);
+        if (usedDeploymentUuid) errorParts.push(`🔧 Deployment UUID: ${usedDeploymentUuid}`);
         errorParts.push(`⏱️ Checks performed: ${attempts}`);
         errorParts.push(`🔄 Is redeploy: ${isRedeploy}`);
         errorParts.push('');
@@ -723,7 +768,15 @@ serve(async (req) => {
         // Add troubleshooting hints based on error type
         errorParts.push('');
         errorParts.push('💡 Suggestions de dépannage:');
-        if (buildStatus === 'exited:unhealthy') {
+        
+        // Detect Docker daemon error specifically
+        const logsLower = (buildLogs || '').toLowerCase();
+        if (logsLower.includes('cannot connect to the docker daemon') || logsLower.includes('error response from daemo')) {
+          errorParts.push('  ⚠️ ERREUR DOCKER DAEMON DÉTECTÉE');
+          errorParts.push('  - Le daemon Docker du serveur n\'est pas accessible');
+          errorParts.push('  - SSH sur le serveur et exécutez: sudo systemctl restart docker');
+          errorParts.push('  - Vérifiez l\'espace disque: df -h');
+        } else if (buildStatus === 'exited:unhealthy') {
           errorParts.push('  - Le container démarre mais échoue au healthcheck');
           errorParts.push('  - Vérifiez que le Dockerfile expose le bon port (80 pour nginx)');
           errorParts.push('  - Vérifiez que nginx.conf est configuré correctement');
