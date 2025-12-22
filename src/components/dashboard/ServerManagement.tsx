@@ -251,11 +251,7 @@ export function ServerManagement() {
 
             return (
               <Card key={server.id}>
-                {/* Show setup wizard for pending/installing/error servers */}
-                {server.status !== 'ready' ? (
-                  <ServerSetupWizard server={server} onRefresh={fetchServers} />
-                ) : (
-                  <>
+                {/* Header toujours visible avec bouton supprimer */}
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -272,132 +268,141 @@ export function ServerManagement() {
                         <StatusIcon className="w-3 h-3" />
                         {statusConfig.label}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSettingsServer(server)}
-                        title="Paramètres du serveur"
-                      >
-                        <Settings2 className="w-4 h-4" />
-                      </Button>
+                      {server.status === 'ready' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSettingsServer(server)}
+                          title="Paramètres du serveur"
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteServerId(server.id)}
+                        title="Supprimer ce serveur"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    {server.provider && (
+
+                {/* Show setup wizard for pending/installing/error servers */}
+                {server.status !== 'ready' ? (
+                  <CardContent>
+                    <ServerSetupWizard server={server} onRefresh={fetchServers} />
+                  </CardContent>
+                ) : (
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      {server.provider && (
+                        <div>
+                          <span className="text-muted-foreground">Provider:</span>{' '}
+                          <span className="font-medium capitalize">{server.provider}</span>
+                        </div>
+                      )}
                       <div>
-                        <span className="text-muted-foreground">Provider:</span>{' '}
-                        <span className="font-medium capitalize">{server.provider}</span>
+                        <span className="text-muted-foreground">Ajouté le:</span>{' '}
+                        <span className="font-medium">
+                          {new Date(server.created_at).toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
-                    )}
-                    <div>
-                      <span className="text-muted-foreground">Ajouté le:</span>{' '}
-                      <span className="font-medium">
-                        {new Date(server.created_at).toLocaleDateString('fr-FR')}
-                      </span>
+                      {server.coolify_url && (
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto"
+                          onClick={() => window.open(server.coolify_url!, '_blank')}
+                        >
+                          Ouvrir Coolify <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      )}
                     </div>
-                    {server.coolify_url && (
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto"
-                        onClick={() => window.open(server.coolify_url!, '_blank')}
-                      >
-                        Ouvrir Coolify <ExternalLink className="w-3 h-3 ml-1" />
-                      </Button>
-                    )}
-                  </div>
 
-                  {/* Coolify token configuration */}
-                  <CoolifyTokenConfig
-                    serverId={server.id}
-                    serverIp={server.ip_address}
-                    coolifyUrl={server.coolify_url}
-                    currentToken={server.coolify_token}
-                    onSuccess={fetchServers}
-                  />
-
-                  {/* First deployment wizard - show only if token is configured */}
-                  {server.coolify_token && serverDeployments.length === 0 && (
-                    <FirstDeploymentWizard
+                    {/* Coolify token configuration */}
+                    <CoolifyTokenConfig
                       serverId={server.id}
-                      serverName={server.name}
-                      onDeploymentComplete={fetchServers}
+                      serverIp={server.ip_address}
+                      coolifyUrl={server.coolify_url}
+                      currentToken={server.coolify_token}
+                      onSuccess={fetchServers}
                     />
-                  )}
 
-                  {serverDeployments.length > 0 && (
-                    <div className="border-t pt-4">
-                      <h4 className="text-sm font-medium mb-2">Déploiements récents</h4>
-                      <div className="space-y-2">
-                        {serverDeployments.slice(0, 3).map((deployment) => (
-                          <div 
-                            key={deployment.id}
-                            className="flex items-center justify-between text-sm bg-muted/50 rounded-lg p-2"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{deployment.project_name}</span>
-                              {/* Security badges */}
-                              {deployment.secrets_cleaned ? (
-                                <SecurityBadge type="zero-knowledge" size="default" />
-                              ) : deployment.status !== 'failed' && (
-                                <Badge variant="outline" className="text-xs gap-1 text-warning border-warning/30 bg-warning/10">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Secrets temporaires
+                    {/* First deployment wizard - show only if token is configured */}
+                    {server.coolify_token && serverDeployments.length === 0 && (
+                      <FirstDeploymentWizard
+                        serverId={server.id}
+                        serverName={server.name}
+                        onDeploymentComplete={fetchServers}
+                      />
+                    )}
+
+                    {serverDeployments.length > 0 && (
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-2">Déploiements récents</h4>
+                        <div className="space-y-2">
+                          {serverDeployments.slice(0, 3).map((deployment) => (
+                            <div 
+                              key={deployment.id}
+                              className="flex items-center justify-between text-sm bg-muted/50 rounded-lg p-2"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{deployment.project_name}</span>
+                                {/* Security badges */}
+                                {deployment.secrets_cleaned ? (
+                                  <SecurityBadge type="zero-knowledge" size="default" />
+                                ) : deployment.status !== 'failed' && (
+                                  <Badge variant="outline" className="text-xs gap-1 text-warning border-warning/30 bg-warning/10">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Secrets temporaires
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge 
+                                  variant={deployment.status === 'failed' ? 'destructive' : 'outline'} 
+                                  className="text-xs"
+                                >
+                                  {deployment.status === 'failed' ? 'Échec' : deployment.status}
                                 </Badge>
-                              )}
+                                {deployment.status === 'failed' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 text-xs"
+                                    disabled={retryingDeploymentId === deployment.id}
+                                    onClick={() => handleRetryDeployment(deployment)}
+                                  >
+                                    {retryingDeploymentId === deployment.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <RefreshCw className="w-3 h-3 mr-1" />
+                                        Réessayer
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                                {deployment.deployed_url && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => window.open(deployment.deployed_url!, '_blank')}
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge 
-                                variant={deployment.status === 'failed' ? 'destructive' : 'outline'} 
-                                className="text-xs"
-                              >
-                                {deployment.status === 'failed' ? 'Échec' : deployment.status}
-                              </Badge>
-                              {deployment.status === 'failed' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 text-xs"
-                                  disabled={retryingDeploymentId === deployment.id}
-                                  onClick={() => handleRetryDeployment(deployment)}
-                                >
-                                  {retryingDeploymentId === deployment.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <RefreshCw className="w-3 h-3 mr-1" />
-                                      Réessayer
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                              {deployment.deployed_url && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => window.open(deployment.deployed_url!, '_blank')}
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-                  </>
+                    )}
+                  </CardContent>
                 )}
               </Card>
             );
