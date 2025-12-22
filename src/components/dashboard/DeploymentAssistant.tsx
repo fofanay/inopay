@@ -10,6 +10,7 @@ import { ArrowLeft, ArrowRight, Check, Cloud, DollarSign, Server, Zap, Download,
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { OnboardingHebergeur } from "./OnboardingHebergeur";
+import { DeploymentErrorHandler, parseDeploymentError, DeploymentError } from "./DeploymentErrorHandler";
 
 interface DeploymentAssistantProps {
   projectName: string;
@@ -133,6 +134,7 @@ const DeploymentAssistant = ({
     provider: string;
     filesUploaded: number;
   } | null>(null);
+  const [deployError, setDeployError] = useState<DeploymentError | null>(null);
 
   const [ftpCredentials, setFtpCredentials] = useState<FTPCredentials>({
     host: "",
@@ -162,6 +164,7 @@ const DeploymentAssistant = ({
       remotePath: "/public_html",
     });
     setDeployResult(null);
+    setDeployError(null);
     setIsDeploying(false);
     setDeployProgress(0);
     setShowOnboardingHebergeur(false);
@@ -234,20 +237,11 @@ const DeploymentAssistant = ({
       if (error?.message?.includes('402') || error?.status === 402) {
         setIsDeploying(false);
         setStep("ftp-credentials");
-        
-        toast({
-          title: "Crédit requis",
-          description: "Un crédit de déploiement est nécessaire pour continuer",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.href = '/tarifs'}
-            >
-              Acheter un crédit
-            </Button>
-          ),
-        });
+        setDeployError(parseDeploymentError({
+          code: '402',
+          message: 'Crédit de déploiement requis',
+          details: error.message
+        }));
         return;
       }
 
@@ -279,29 +273,7 @@ const DeploymentAssistant = ({
       console.error("FTP Deploy error:", error);
       setIsDeploying(false);
       setStep("ftp-credentials");
-      
-      // Check for credit error
-      if (error?.message?.includes('Crédit insuffisant')) {
-        toast({
-          title: "Crédit requis",
-          description: "Achetez un crédit pour déployer votre application",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.href = '/tarifs'}
-            >
-              Acheter
-            </Button>
-          ),
-        });
-      } else {
-        toast({
-          title: "Erreur de déploiement",
-          description: error instanceof Error ? error.message : "Impossible de se connecter au serveur",
-          variant: "destructive",
-        });
-      }
+      setDeployError(parseDeploymentError(error));
     }
   };
 
@@ -939,6 +911,15 @@ const DeploymentAssistant = ({
             Entrez les informations FTP reçues par email de votre hébergeur
           </p>
         </div>
+
+        {/* Error display */}
+        {deployError && (
+          <DeploymentErrorHandler
+            error={deployError}
+            onRetry={() => setDeployError(null)}
+            className="max-w-md mx-auto"
+          />
+        )}
 
         <Card className="card-shadow max-w-md mx-auto">
           <CardContent className="p-6">

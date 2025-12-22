@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { DeploymentErrorHandler, parseDeploymentError, DeploymentError } from './DeploymentErrorHandler';
 import { 
   Server, 
   Loader2, 
@@ -65,7 +66,7 @@ export function DirectDeployment({
   const [deployStep, setDeployStep] = useState<DeployStep>('idle');
   const [progress, setProgress] = useState(0);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deployError, setDeployError] = useState<DeploymentError | null>(null);
   const [showSecrets, setShowSecrets] = useState(false);
   const [migrationResults, setMigrationResults] = useState<any>(null);
   const { toast } = useToast();
@@ -158,7 +159,7 @@ export function DirectDeployment({
     setIsLoading(true);
     setDeployStep('checking-db');
     setProgress(5);
-    setErrorMessage(null);
+    setDeployError(null);
     setMigrationResults(null);
 
     try {
@@ -202,22 +203,11 @@ export function DirectDeployment({
         const creditType = errorData.credit_type || 'deploy';
         
         setDeployStep('error');
-        setErrorMessage(`Crédit "${creditType}" requis pour continuer`);
-        
-        toast({
-          title: "Crédit requis",
-          description: `Un crédit "${creditType}" est nécessaire pour ce déploiement`,
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.href = '/tarifs'}
-            >
-              <CreditCard className="h-4 w-4 mr-1" />
-              Acheter
-            </Button>
-          ),
-        });
+        setDeployError(parseDeploymentError({
+          code: '402',
+          message: `Crédit "${creditType}" requis pour continuer`,
+          details: error.message
+        }));
         return;
       }
 
@@ -237,34 +227,8 @@ export function DirectDeployment({
     } catch (error: any) {
       console.error('Deployment error:', error);
       
-      // Check if it's a 402 error from the response
-      if (error?.message?.includes('Crédit insuffisant') || error?.message?.includes('402')) {
-        setDeployStep('error');
-        setErrorMessage('Crédit insuffisant. Veuillez acheter un crédit de déploiement.');
-        toast({
-          title: "Crédit requis",
-          description: "Achetez un crédit pour déployer votre application",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => window.location.href = '/tarifs'}
-            >
-              <CreditCard className="h-4 w-4 mr-1" />
-              Acheter
-            </Button>
-          ),
-        });
-        return;
-      }
-      
       setDeployStep('error');
-      setErrorMessage(error.message || 'Erreur lors du déploiement');
-      toast({
-        title: "Erreur",
-        description: error.message || 'Erreur lors du déploiement',
-        variant: "destructive"
-      });
+      setDeployError(parseDeploymentError(error));
     } finally {
       setIsLoading(false);
     }
@@ -411,28 +375,25 @@ export function DirectDeployment({
   }
 
   // Error state
-  if (deployStep === 'error') {
+  if (deployStep === 'error' && deployError) {
+    const handleRetry = () => {
+      setDeployStep('idle');
+      setProgress(0);
+      setDeployError(null);
+    };
+
+    const handleNavigate = (tab: string) => {
+      if (tab === 'servers' && onNeedSetup) {
+        onNeedSetup();
+      }
+    };
+
     return (
-      <Card className="border-destructive/30">
-        <CardContent className="pt-6">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Erreur de déploiement</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-          <Button 
-            onClick={() => {
-              setDeployStep('idle');
-              setProgress(0);
-              setErrorMessage(null);
-            }} 
-            className="w-full mt-4"
-            variant="outline"
-          >
-            Réessayer
-          </Button>
-        </CardContent>
-      </Card>
+      <DeploymentErrorHandler
+        error={deployError}
+        onRetry={handleRetry}
+        onNavigate={handleNavigate}
+      />
     );
   }
 
