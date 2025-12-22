@@ -136,6 +136,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => authSubscription.unsubscribe();
   }, []);
 
+  // Periodic subscription refresh every 60 seconds
+  useEffect(() => {
+    if (!session?.access_token) return;
+
+    const interval = setInterval(() => {
+      console.log("[AUTH] Periodic subscription refresh");
+      checkSubscription(session.access_token);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [session?.access_token]);
+
   // Check role when user changes
   useEffect(() => {
     if (user) {
