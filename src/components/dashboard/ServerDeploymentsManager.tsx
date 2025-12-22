@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   FileText,
-  RotateCcw
+  RotateCcw,
+  CheckCircle2
 } from "lucide-react";
 import {
   Dialog,
@@ -69,6 +70,7 @@ export function ServerDeploymentsManager() {
   const { user } = useAuth();
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [previousStatuses, setPreviousStatuses] = useState<Record<string, string>>({});
 
@@ -238,6 +240,41 @@ export function ServerDeploymentsManager() {
       toast.error(error instanceof Error ? error.message : "Échec du redéploiement");
     } finally {
       setRetryingId(null);
+    }
+  };
+
+  const handleSyncStatus = async (deployment: ServerDeployment) => {
+    if (!deployment.coolify_app_uuid) {
+      toast.error("Aucun UUID d'application Coolify trouvé");
+      return;
+    }
+
+    setSyncingId(deployment.id);
+    
+    try {
+      const response = await supabase.functions.invoke("sync-coolify-status", {
+        body: { deployment_id: deployment.id }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Échec de la synchronisation");
+      }
+
+      const result = response.data;
+      
+      if (result.success) {
+        toast.success(`Statut synchronisé: ${result.new_status} / ${result.new_health_status}`, {
+          description: result.url_healthy ? "URL accessible" : "URL non testée"
+        });
+        fetchDeployments();
+      } else {
+        throw new Error(result.error || "Échec de la synchronisation");
+      }
+    } catch (error) {
+      console.error("Sync status error:", error);
+      toast.error(error instanceof Error ? error.message : "Échec de la synchronisation");
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -411,6 +448,25 @@ export function ServerDeploymentsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
+                {/* Sync status button - show for deployments with coolify_app_uuid */}
+                {deployment.coolify_app_uuid && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1"
+                    onClick={() => handleSyncStatus(deployment)}
+                    disabled={syncingId === deployment.id}
+                    title="Vérifier le statut dans Coolify"
+                  >
+                    {syncingId === deployment.id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Vérifier
+                  </Button>
+                )}
+
                 {/* Show retry button for failed or stuck deployments */}
                 {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (
                   <Button
