@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.validate-coolify-token]
+verify_jwt = false
