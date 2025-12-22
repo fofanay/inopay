@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.validate-coolify-token]
 verify_jwt = false
+
+[functions.cleanup-coolify-orphans]
+verify_jwt = false

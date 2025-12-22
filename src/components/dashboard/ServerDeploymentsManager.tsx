@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SecretsCleanupButton } from "./SecretsCleanupButton";
+import { CoolifyOrphansCleanupButton } from "./CoolifyOrphansCleanupButton";
 import { 
   Rocket, 
   ExternalLink, 
@@ -157,6 +158,9 @@ export function ServerDeploymentsManager() {
     );
   }
 
+  // Get unique server IDs for cleanup button
+  const uniqueServerIds = [...new Set(deployments.map(d => d.server_id))];
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -170,15 +174,24 @@ export function ServerDeploymentsManager() {
               Vos applications sur VPS avec statut Zero-Knowledge
             </CardDescription>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={fetchDeployments}
-            className="gap-1"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Actualiser
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Show cleanup button if there's at least one server */}
+            {uniqueServerIds.length > 0 && (
+              <CoolifyOrphansCleanupButton
+                serverId={uniqueServerIds[0]}
+                onCleanupComplete={fetchDeployments}
+              />
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={fetchDeployments}
+              className="gap-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
