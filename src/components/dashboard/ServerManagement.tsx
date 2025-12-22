@@ -24,9 +24,11 @@ import {
   CheckCircle2,
   Clock,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Settings2
 } from 'lucide-react';
 import { VPSOnboarding } from './VPSOnboarding';
+import { ServerSetupWizard } from './ServerSetupWizard';
 
 interface UserServer {
   id: string;
@@ -35,6 +37,9 @@ interface UserServer {
   provider: string | null;
   status: string;
   coolify_url: string | null;
+  coolify_token: string | null;
+  setup_id: string | null;
+  error_message: string | null;
   created_at: string;
 }
 
@@ -198,6 +203,11 @@ export function ServerManagement() {
 
             return (
               <Card key={server.id}>
+                {/* Show setup wizard for pending/installing/error servers */}
+                {server.status !== 'ready' ? (
+                  <ServerSetupWizard server={server} onRefresh={fetchServers} />
+                ) : (
+                  <>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -292,6 +302,8 @@ export function ServerManagement() {
                     </div>
                   )}
                 </CardContent>
+                  </>
+                )}
               </Card>
             );
           })}

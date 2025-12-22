@@ -20,13 +20,16 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Github
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserLimits } from "@/hooks/useUserLimits";
 import { SecurityBadge } from "@/components/ui/security-badge";
 import { CreditsBanner } from "./CreditsBanner";
+import { GettingStartedChecklist } from "./GettingStartedChecklist";
+import { GitHubConnectionStatus } from "./GitHubConnectionStatus";
 import { LIMIT_SOURCES } from "@/lib/constants";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -220,8 +223,32 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
     }
   };
 
+  const handleGitHubConnect = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: "repo read:user user:email",
+        },
+      });
+    } catch (error) {
+      console.error("GitHub OAuth error:", error);
+      toast.error("Erreur lors de la connexion GitHub");
+    }
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Getting Started Checklist */}
+      <GettingStartedChecklist 
+        onNavigate={onNavigate}
+        onGitHubConnect={handleGitHubConnect}
+      />
+
+      {/* GitHub Connection Status - show only if not fully connected */}
+      <GitHubConnectionStatus variant="full" />
+
       {/* Credits Banner */}
       <CreditsBanner />
 
