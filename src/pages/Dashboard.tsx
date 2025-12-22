@@ -64,8 +64,23 @@ import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboa
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
+
+const TAB_LABELS: Record<string, string> = {
+  "overview": "Vue d'ensemble",
+  "fleet": "Fleet Dashboard",
+  "import": "Importer",
+  "batch-import": "Import Batch",
+  "projects": "Mes Projets",
+  "deploy-choice": "Déployer",
+  "sync-mirror": "Sync Mirror",
+  "deployments": "Historique",
+  "servers": "Mes Serveurs",
+  "migration": "Migration Wizard",
+  "services": "Mes Services",
+};
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
@@ -1415,6 +1430,8 @@ const Dashboard = () => {
               <UserPurchases />
             )}
           </div>
+          {/* Padding for mobile pagination dots */}
+          <div className="h-20 md:hidden" />
         </div>
       </main>
 
@@ -1447,6 +1464,14 @@ const Dashboard = () => {
       <SovereignExport
         isOpen={sovereignExportOpen}
         onClose={() => setSovereignExportOpen(false)}
+      />
+
+      {/* Mobile Pagination Dots */}
+      <MobilePaginationDots
+        tabs={DASHBOARD_TABS}
+        currentTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab)}
+        labels={TAB_LABELS}
       />
     </div>
   );
