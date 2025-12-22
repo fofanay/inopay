@@ -55,6 +55,8 @@ interface ServerDeployment {
   created_at: string;
   secrets_cleaned: boolean | null;
   secrets_cleaned_at: string | null;
+  github_repo_url: string | null;
+  server_id: string;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<{ className?: string }> }> = {
@@ -72,6 +74,7 @@ export function ServerManagement() {
   const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [settingsServer, setSettingsServer] = useState<UserServer | null>(null);
+  const [retryingDeploymentId, setRetryingDeploymentId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchServers = async () => {
@@ -91,7 +94,7 @@ export function ServerManagement() {
       if (serversData && serversData.length > 0) {
         const { data: deploymentsData, error: deploymentsError } = await supabase
           .from('server_deployments')
-          .select('id, project_name, status, deployed_url, created_at, server_id, secrets_cleaned, secrets_cleaned_at')
+          .select('id, project_name, status, deployed_url, created_at, server_id, secrets_cleaned, secrets_cleaned_at, github_repo_url')
           .in('server_id', serversData.map(s => s.id))
           .order('created_at', { ascending: false });
 
@@ -147,6 +150,46 @@ export function ServerManagement() {
     } finally {
       setIsDeleting(false);
       setDeleteServerId(null);
+    }
+  };
+
+  const handleRetryDeployment = async (deployment: ServerDeployment) => {
+    setRetryingDeploymentId(deployment.id);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('deploy-coolify', {
+        body: {
+          server_id: deployment.server_id,
+          project_name: deployment.project_name,
+          github_repo_url: deployment.github_repo_url || null,
+          domain: null,
+          retry_deployment_id: deployment.id
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Déploiement relancé !",
+          description: "Votre application est en cours de construction.",
+        });
+        fetchServers();
+      } else {
+        throw new Error(data.error || 'Deployment failed');
+      }
+    } catch (error: any) {
+      console.error('Retry deployment error:', error);
+      toast({
+        title: "Erreur de déploiement",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setRetryingDeploymentId(null);
     }
   };
 
@@ -305,7 +348,7 @@ export function ServerManagement() {
                               {/* Security badges */}
                               {deployment.secrets_cleaned ? (
                                 <SecurityBadge type="zero-knowledge" size="default" />
-                              ) : (
+                              ) : deployment.status !== 'failed' && (
                                 <Badge variant="outline" className="text-xs gap-1 text-warning border-warning/30 bg-warning/10">
                                   <AlertTriangle className="h-3 w-3" />
                                   Secrets temporaires
@@ -313,9 +356,30 @@ export function ServerManagement() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {deployment.status}
+                              <Badge 
+                                variant={deployment.status === 'failed' ? 'destructive' : 'outline'} 
+                                className="text-xs"
+                              >
+                                {deployment.status === 'failed' ? 'Échec' : deployment.status}
                               </Badge>
+                              {deployment.status === 'failed' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-xs"
+                                  disabled={retryingDeploymentId === deployment.id}
+                                  onClick={() => handleRetryDeployment(deployment)}
+                                >
+                                  {retryingDeploymentId === deployment.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="w-3 h-3 mr-1" />
+                                      Réessayer
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                               {deployment.deployed_url && (
                                 <Button
                                   variant="ghost"
