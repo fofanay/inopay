@@ -13,7 +13,7 @@ function parseJsonLogs(logsInput: string): string {
     if (Array.isArray(parsed)) {
       return parsed
         .filter((entry: { output?: string }) => entry.output)
-        .map((entry: { output?: string; command?: string }) => 
+        .map((entry: { output?: string; command?: string }) =>
           entry.command ? `$ ${entry.command}\n${entry.output}` : entry.output
         )
         .join('\n');
@@ -23,6 +23,69 @@ function parseJsonLogs(logsInput: string): string {
     return logsInput;
   }
 }
+
+function redactSecrets(input: string): string {
+  return input
+    .replace(/x-access-token:[^@\s]+@github\.com/gi, 'x-access-token:[REDACTED]@github.com')
+    .replace(/ghp_[A-Za-z0-9]+/g, 'ghp_[REDACTED]')
+    .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[REDACTED]');
+}
+
+function buildAuthenticatedGithubUrl(repoUrl: string, token: string | null): string | null {
+  if (!token) return null;
+  if (!repoUrl || !repoUrl.includes('github.com')) return null;
+
+  const urlMatch = repoUrl.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
+  if (!urlMatch) return null;
+
+  const [, owner, repo] = urlMatch;
+  return `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+}
+
+function looksLikeGitAuthError(text: string): boolean {
+  const s = (text || '').toLowerCase();
+  return (
+    s.includes('authentication failed') ||
+    s.includes('fatal: could not read username') ||
+    s.includes('permission denied') ||
+    s.includes('repository not found') ||
+    (s.includes('403') && s.includes('github')) ||
+    (s.includes('access denied') && s.includes('github'))
+  );
+}
+
+async function fetchCoolifyApplicationLogs(
+  coolifyUrl: string,
+  coolifyHeaders: Record<string, string>,
+  appUuid: string,
+): Promise<string> {
+  const candidates = [
+    `${coolifyUrl}/api/v1/applications/${appUuid}/logs`,
+    `${coolifyUrl}/api/v1/applications/${appUuid}/logs?take=200`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: 'GET', headers: coolifyHeaders });
+      if (!res.ok) continue;
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await res.json();
+        const maybe = (json?.logs ?? json?.log ?? json?.data ?? json) as unknown;
+        if (typeof maybe === 'string') return maybe;
+        return JSON.stringify(maybe, null, 2);
+      }
+
+      return await res.text();
+    } catch {
+      // continue
+    }
+  }
+
+  return '';
+}
+
 
 // Helper function to fetch Coolify logs via the CORRECT API endpoints
 async function fetchCoolifyDeploymentLogs(
@@ -430,6 +493,17 @@ serve(async (req) => {
         throw new Error('No project data available');
       }
 
+      // Git URL strategy: try public first, fallback to authenticated URL ONLY if we detect a Git auth error.
+      const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN') || null;
+      const authenticatedGitRepoUrl = buildAuthenticatedGithubUrl(github_repo_url, githubToken);
+      let repoAuthMode: 'public' | 'authenticated' = 'public';
+      let repoAttemptedAuthFallback = false;
+
+      const getGitRepoUrlForCoolify = () =>
+        repoAuthMode === 'authenticated' && authenticatedGitRepoUrl
+          ? authenticatedGitRepoUrl
+          : github_repo_url;
+
       // Step 2: Check for existing app to REDEPLOY instead of recreating
       let appData: { uuid: string; domains?: string; fqdn?: string } | null = null;
       let isRedeploy = false;
@@ -475,22 +549,8 @@ serve(async (req) => {
       if (!appData) {
         console.log('[deploy-coolify] Creating new Coolify application with DOCKERFILE mode...');
         
-        // Get GitHub token for private repos - inject into URL if available
-        const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
-        let gitRepoForCoolify = github_repo_url;
-        let isPrivateRepo = false;
-        
-        // If we have a GitHub token, modify the URL to include authentication
-        // Format: https://x-access-token:TOKEN@github.com/owner/repo.git
-        if (githubToken && github_repo_url.includes('github.com')) {
-          const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
-          if (urlMatch) {
-            const [, owner, repo] = urlMatch;
-            gitRepoForCoolify = `https://x-access-token:${githubToken}@github.com/${owner}/${repo}.git`;
-            isPrivateRepo = true;
-            console.log('[deploy-coolify] Using authenticated GitHub URL for private repo');
-          }
-        }
+        const gitRepoForCoolify = getGitRepoUrlForCoolify();
+        const isPrivateRepo = repoAuthMode === 'authenticated';
         
         // Use Dockerfile mode (port 80) since the repo has Dockerfile + nginx.conf
         // IMPORTANT: Don't use dockerfile_location in /applications/public endpoint - it's not allowed
@@ -687,85 +747,176 @@ serve(async (req) => {
         }
       }
 
-      // Step 3: Trigger deployment
-      console.log('[deploy-coolify] Triggering deployment...');
-      const deployResponse = await fetch(`${server.coolify_url}/api/v1/deploy?uuid=${appData.uuid}&force=true`, {
-        method: 'GET',
-        headers: coolifyHeaders
-      });
+      const triggerDeployAndPoll = async (label: string) => {
+        // Step 3: Trigger deployment
+        console.log(`[deploy-coolify] Triggering deployment (${label})...`);
+        const deployResponse = await fetch(`${server.coolify_url}/api/v1/deploy?uuid=${appData.uuid}&force=true`, {
+          method: 'GET',
+          headers: coolifyHeaders
+        });
 
-      if (!deployResponse.ok) {
-        const errorText = await deployResponse.text();
-        console.error('[deploy-coolify] Coolify deploy failed:', errorText);
-        throw new Error(`Failed to trigger deployment: ${errorText}`);
-      }
+        if (!deployResponse.ok) {
+          const errorText = await deployResponse.text();
+          console.error('[deploy-coolify] Coolify deploy failed:', errorText);
+          throw new Error(`Failed to trigger deployment: ${errorText}`);
+        }
 
-      const deployData = await deployResponse.json();
-      console.log('[deploy-coolify] Deployment triggered:', deployData);
-      
-      // Extract deployment_uuid from /deploy response for precise log fetching later
-      let triggeredDeploymentUuid: string | null = null;
-      if (deployData?.deployments && Array.isArray(deployData.deployments) && deployData.deployments.length > 0) {
-        triggeredDeploymentUuid = deployData.deployments[0].deployment_uuid || null;
-        console.log('[deploy-coolify] Captured deployment_uuid:', triggeredDeploymentUuid);
-      }
+        const deployData = await deployResponse.json();
+        console.log('[deploy-coolify] Deployment triggered:', redactSecrets(JSON.stringify(deployData)));
 
-      // Step 4: Wait and check build status (poll for up to 8 minutes)
-      console.log('[deploy-coolify] Waiting for build to complete...');
+        // Extract deployment_uuid from /deploy response for precise log fetching later
+        let triggeredDeploymentUuid: string | null = null;
+        if (deployData?.deployments && Array.isArray(deployData.deployments) && deployData.deployments.length > 0) {
+          triggeredDeploymentUuid = deployData.deployments[0].deployment_uuid || null;
+          console.log('[deploy-coolify] Captured deployment_uuid:', triggeredDeploymentUuid);
+        }
+
+        // Step 4: Wait and check build status (poll for up to 8 minutes)
+        console.log('[deploy-coolify] Waiting for build to complete...');
+        let buildStatus = 'building';
+        let attempts = 0;
+        const maxAttempts = 96; // 96 * 5s = 8 minutes (longer timeout for slower builds)
+        let lastAppStatus: Record<string, unknown> | null = null;
+
+        let exitedStreak = 0;
+        const maxExitedStreak = 4; // avoid concluding after a single exited:unhealthy
+
+        while (
+          attempts < maxAttempts &&
+          buildStatus !== 'running' &&
+          !buildStatus.includes('failed') &&
+          !(buildStatus.startsWith('exited') && exitedStreak >= maxExitedStreak)
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s
+          attempts++;
+
+          try {
+            const statusResponse = await fetch(
+              `${server.coolify_url}/api/v1/applications/${appData.uuid}`,
+              { method: 'GET', headers: coolifyHeaders }
+            );
+
+            if (statusResponse.ok) {
+              lastAppStatus = await statusResponse.json();
+              buildStatus = (lastAppStatus as { status?: string }).status || 'unknown';
+
+              if (buildStatus.startsWith('exited')) exitedStreak++;
+              else exitedStreak = 0;
+
+              console.log(`[deploy-coolify] Build status check ${attempts}/${maxAttempts}: ${buildStatus}`);
+            }
+          } catch (statusError) {
+            console.warn(`[deploy-coolify] Status check ${attempts} failed:`, statusError);
+          }
+        }
+
+        return { buildStatus, attempts, lastAppStatus, triggeredDeploymentUuid };
+      };
+
+      // First attempt: public URL
       let buildStatus = 'building';
       let attempts = 0;
-      const maxAttempts = 96; // 96 * 5s = 8 minutes (longer timeout for slower builds)
       let lastAppStatus: Record<string, unknown> | null = null;
-      
-      while (attempts < maxAttempts && buildStatus !== 'running' && !buildStatus.includes('failed') && !buildStatus.includes('exited')) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s
-        attempts++;
-        
-        try {
-          const statusResponse = await fetch(
-            `${server.coolify_url}/api/v1/applications/${appData.uuid}`,
-            { method: 'GET', headers: coolifyHeaders }
-          );
-          
-          if (statusResponse.ok) {
-            lastAppStatus = await statusResponse.json();
-            buildStatus = (lastAppStatus as { status?: string }).status || 'unknown';
-            console.log(`[deploy-coolify] Build status check ${attempts}/${maxAttempts}: ${buildStatus}`);
-          }
-        } catch (statusError) {
-          console.warn(`[deploy-coolify] Status check ${attempts} failed:`, statusError);
-        }
-      }
-      
-      // Determine final status - treat exited:unhealthy as failed
-      const isHealthy = buildStatus === 'running';
-      const isFailed = buildStatus.includes('unhealthy') || buildStatus.includes('failed') || buildStatus === 'exited';
-      const finalStatus = isHealthy ? 'deployed' : (isFailed ? 'failed' : 'deploying');
-      console.log(`[deploy-coolify] Final status after ${attempts} checks: ${finalStatus} (build: ${buildStatus})`);
+      let triggeredDeploymentUuid: string | null = null;
+      let buildLogsForSummary = '';
+      let usedDeploymentUuid: string | null = null;
 
-      // Fetch comprehensive logs
-      let errorSummary = '';
-      if (isFailed) {
-        console.log('[deploy-coolify] Build failed, fetching comprehensive logs...');
-        
-        // Pass triggeredDeploymentUuid for more precise log fetching
-        const { logs: buildLogs, deploymentUuid: fetchedDeploymentUuid } = await fetchCoolifyDeploymentLogs(
+      ({ buildStatus, attempts, lastAppStatus, triggeredDeploymentUuid } = await triggerDeployAndPoll('public'));
+
+      // If it looks like a Git auth failure, retry once with authenticated URL (if available)
+      if (buildStatus !== 'running') {
+        const { logs: firstAttemptLogs, deploymentUuid: fetchedDeploymentUuid } = await fetchCoolifyDeploymentLogs(
           server.coolify_url,
           coolifyHeaders,
           appData.uuid,
           triggeredDeploymentUuid
         );
-        const usedDeploymentUuid = fetchedDeploymentUuid || triggeredDeploymentUuid;
-        
+
+        usedDeploymentUuid = fetchedDeploymentUuid || triggeredDeploymentUuid;
+        buildLogsForSummary = redactSecrets(parseJsonLogs(firstAttemptLogs || ''));
+
+        if (repoAuthMode === 'public' && authenticatedGitRepoUrl && looksLikeGitAuthError(buildLogsForSummary)) {
+          repoAttemptedAuthFallback = true;
+          repoAuthMode = 'authenticated';
+          console.log('[deploy-coolify] Git auth error detected; retrying with authenticated Git URL...');
+
+          try {
+            const patchRes = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}`, {
+              method: 'PATCH',
+              headers: coolifyHeaders,
+              body: JSON.stringify({ git_repository: authenticatedGitRepoUrl })
+            });
+
+            if (!patchRes.ok) {
+              const patchErr = await patchRes.text();
+              console.warn('[deploy-coolify] Could not update git repository (non-blocking):', redactSecrets(patchErr));
+            }
+          } catch (e) {
+            console.warn('[deploy-coolify] Error updating git repository (non-blocking):', e);
+          }
+
+          ({ buildStatus, attempts, lastAppStatus, triggeredDeploymentUuid } = await triggerDeployAndPoll('authenticated'));
+
+          if (buildStatus !== 'running') {
+            const { logs: secondAttemptLogs, deploymentUuid: fetchedDeploymentUuid2 } = await fetchCoolifyDeploymentLogs(
+              server.coolify_url,
+              coolifyHeaders,
+              appData.uuid,
+              triggeredDeploymentUuid
+            );
+
+            usedDeploymentUuid = fetchedDeploymentUuid2 || triggeredDeploymentUuid;
+            buildLogsForSummary = redactSecrets(parseJsonLogs(secondAttemptLogs || ''));
+          } else {
+            // succeeded; clear logs (not needed)
+            buildLogsForSummary = '';
+          }
+        }
+      }
+
+      // Determine final status
+      const isHealthy = buildStatus === 'running';
+      const isFailed = buildStatus.includes('failed') || buildStatus.includes('unhealthy') || buildStatus.startsWith('exited');
+      const finalStatus = isHealthy ? 'deployed' : (isFailed ? 'failed' : 'deploying');
+      console.log(`[deploy-coolify] Final status after ${attempts} checks: ${finalStatus} (build: ${buildStatus})`);
+
+      // Fetch comprehensive logs
+      let errorSummary = '';
+      if (finalStatus === 'failed') {
+        console.log('[deploy-coolify] Build failed, fetching comprehensive logs...');
+
+        // Ensure we have build logs (may already be filled from the auth-fallback detection)
+        let buildLogs = buildLogsForSummary;
+
+        if (!buildLogs) {
+          const { logs: fetchedLogs, deploymentUuid: fetchedDeploymentUuid } = await fetchCoolifyDeploymentLogs(
+            server.coolify_url,
+            coolifyHeaders,
+            appData.uuid,
+            triggeredDeploymentUuid
+          );
+          usedDeploymentUuid = fetchedDeploymentUuid || triggeredDeploymentUuid;
+          buildLogs = redactSecrets(parseJsonLogs(fetchedLogs || ''));
+        }
+
+        // Fetch runtime logs (helps for exited:unhealthy)
+        const runtimeLogsRaw = await fetchCoolifyApplicationLogs(
+          server.coolify_url,
+          coolifyHeaders,
+          appData.uuid
+        );
+        const runtimeLogs = runtimeLogsRaw ? redactSecrets(parseJsonLogs(runtimeLogsRaw)) : '';
+
         // Build comprehensive error message
         const errorParts: string[] = [];
         errorParts.push(`🔴 Build failed with status: ${buildStatus}`);
         errorParts.push(`📦 App UUID: ${appData.uuid}`);
         if (usedDeploymentUuid) errorParts.push(`🔧 Deployment UUID: ${usedDeploymentUuid}`);
+        errorParts.push(`🔐 Repo auth: ${repoAuthMode}${repoAttemptedAuthFallback ? ' (auto-fallback attempted)' : ''}`);
         errorParts.push(`⏱️ Checks performed: ${attempts}`);
         errorParts.push(`🔄 Is redeploy: ${isRedeploy}`);
         errorParts.push('');
-        
+
         // Add app status info
         if (lastAppStatus) {
           errorParts.push('📊 App status details:');
@@ -775,7 +926,7 @@ serve(async (req) => {
           if (statusInfo.fqdn) errorParts.push(`  - Domain: ${statusInfo.fqdn}`);
           errorParts.push('');
         }
-        
+
         // Add logs
         if (buildLogs && buildLogs.length > 0) {
           errorParts.push('📝 Build logs (last 3000 chars):');
@@ -783,28 +934,47 @@ serve(async (req) => {
         } else {
           errorParts.push('⚠️ No build logs available');
         }
-        
+
+        if (runtimeLogs && runtimeLogs.trim().length > 0) {
+          errorParts.push('');
+          errorParts.push('📟 Application runtime logs (last 3000 chars):');
+          errorParts.push(runtimeLogs.slice(-3000));
+        }
+
         // Add troubleshooting hints based on error type
         errorParts.push('');
         errorParts.push('💡 Suggestions de dépannage:');
-        
-        // Detect Docker daemon error specifically
-        const logsLower = (buildLogs || '').toLowerCase();
-        if (logsLower.includes('cannot connect to the docker daemon') || logsLower.includes('error response from daemo')) {
+
+        const combinedLower = `${buildLogs}\n${runtimeLogs}`.toLowerCase();
+
+        if (looksLikeGitAuthError(combinedLower)) {
+          errorParts.push('  ⚠️ ERREUR GIT AUTH DÉTECTÉE');
+          errorParts.push('  - Le dépôt est privé ou les permissions GitHub sont insuffisantes');
+          errorParts.push('  - Si le dépôt est public: attendez 1-2 minutes et relancez (cache Git)');
+          errorParts.push('  - Sinon: vérifiez votre token GitHub (lecture repo)');
+        } else if (
+          combinedLower.includes('cannot connect to the docker daemon') ||
+          combinedLower.includes('is the docker daemon running') ||
+          combinedLower.includes('/var/run/docker.sock')
+        ) {
           errorParts.push('  ⚠️ ERREUR DOCKER DAEMON DÉTECTÉE');
           errorParts.push('  - Le daemon Docker du serveur n\'est pas accessible');
           errorParts.push('  - SSH sur le serveur et exécutez: sudo systemctl restart docker');
           errorParts.push('  - Vérifiez l\'espace disque: df -h');
-        } else if (buildStatus === 'exited:unhealthy') {
+        } else if (combinedLower.includes('no such container')) {
+          errorParts.push('  ℹ️ CONTAINER INTROUVABLE (pas un souci Docker daemon)');
+          errorParts.push('  - Le conteneur a été supprimé/arrêté avant la commande');
+          errorParts.push('  - Concentrez-vous sur les logs de build et les logs runtime ci-dessus');
+        } else if (buildStatus.includes('unhealthy') || buildStatus.startsWith('exited')) {
           errorParts.push('  - Le container démarre mais échoue au healthcheck');
+          errorParts.push('  - Vérifiez que /health répond bien en HTTP 200');
           errorParts.push('  - Vérifiez que le Dockerfile expose le bon port (80 pour nginx)');
-          errorParts.push('  - Vérifiez que nginx.conf est configuré correctement');
-          errorParts.push('  - Vérifiez les variables d\'environnement VITE_*');
+          errorParts.push('  - Vérifiez la configuration nginx.conf');
         } else if (buildStatus.includes('failed')) {
           errorParts.push('  - Le build a échoué avant le démarrage du container');
           errorParts.push('  - Vérifiez le Dockerfile et les dépendances npm');
         }
-        
+
         errorSummary = errorParts.join('\n');
       }
 

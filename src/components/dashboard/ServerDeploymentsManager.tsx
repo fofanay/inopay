@@ -447,6 +447,24 @@ export function ServerDeploymentsManager() {
                       <DialogHeader>
                         <DialogTitle>Logs de build - {deployment.project_name}</DialogTitle>
                       </DialogHeader>
+
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(deployment.error_message || "");
+                              toast.success("Logs copiés");
+                            } catch {
+                              toast.error("Impossible de copier les logs");
+                            }
+                          }}
+                        >
+                          Copier
+                        </Button>
+                      </div>
+
                       <ScrollArea className="h-[60vh] rounded-md border p-4 bg-muted/50">
                         <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
                           {deployment.error_message}
