@@ -51,6 +51,7 @@ import GitHubConnectButton from "@/components/dashboard/GitHubConnectButton";
 import DeploymentAssistant from "@/components/dashboard/DeploymentAssistant";
 import DatabaseConfigAssistant from "@/components/dashboard/DatabaseConfigAssistant";
 import { DeploymentHistory } from "@/components/dashboard/DeploymentHistory";
+import { ServerDeploymentsManager } from "@/components/dashboard/ServerDeploymentsManager";
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
 import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
@@ -1416,6 +1417,7 @@ const Dashboard = () => {
             {/* Tab: Deployments */}
             {activeTab === "deployments" && (
               <div className="space-y-6">
+                <ServerDeploymentsManager />
                 <DeploymentHistory />
               </div>
             )}
