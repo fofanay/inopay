@@ -32,6 +32,7 @@ import { VPSOnboarding } from './VPSOnboarding';
 import { ServerSetupWizard } from './ServerSetupWizard';
 import { CoolifyTokenConfig } from './CoolifyTokenConfig';
 import { FirstDeploymentWizard } from './FirstDeploymentWizard';
+import { ServerSettingsDialog } from './ServerSettingsDialog';
 
 interface UserServer {
   id: string;
@@ -70,6 +71,7 @@ export function ServerManagement() {
   const [showAddServer, setShowAddServer] = useState(false);
   const [deleteServerId, setDeleteServerId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [settingsServer, setSettingsServer] = useState<UserServer | null>(null);
   const { toast } = useToast();
 
   const fetchServers = async () => {
@@ -230,6 +232,14 @@ export function ServerManagement() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setSettingsServer(server)}
+                        title="Paramètres du serveur"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteServerId(server.id)}
                       >
@@ -362,6 +372,16 @@ export function ServerManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Server settings dialog */}
+      {settingsServer && (
+        <ServerSettingsDialog
+          open={!!settingsServer}
+          onOpenChange={(open) => !open && setSettingsServer(null)}
+          server={settingsServer}
+          onSuccess={fetchServers}
+        />
+      )}
     </div>
   );
 }
