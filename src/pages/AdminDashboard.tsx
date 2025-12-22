@@ -20,7 +20,8 @@ import {
   Wrench,
   TrendingUp,
   ShoppingCart,
-  Smartphone
+  Smartphone,
+  Webhook
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ import AdminSecurityAudit from "@/components/admin/AdminSecurityAudit";
 import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import AdminPurchases from "@/components/admin/AdminPurchases";
+import AdminStripeLogs from "@/components/admin/AdminStripeLogs";
 import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
@@ -88,6 +90,7 @@ const AdminDashboard = () => {
     { id: "fleet", label: "Flotte Serveurs", icon: Server },
     { id: "widgets", label: "Widgets & Sync", icon: Smartphone },
     { id: "monitoring", label: "Monitoring", icon: Activity },
+    { id: "stripe-logs", label: "Logs Stripe", icon: Webhook },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart },
     { id: "security", label: "Sécurité", icon: Shield },
@@ -114,6 +117,7 @@ const AdminDashboard = () => {
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
       case "widgets": return "Surveillance des widgets mobiles et synchronisations";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
+      case "stripe-logs": return "Historique des webhooks Stripe et erreurs de paiement";
       case "kpis": return "Revenus, taux de succès et métriques business";
       case "purchases": return "Tous les achats de services par utilisateur";
       case "security": return "Audit Zero-Knowledge et vérification des secrets";
@@ -239,6 +243,7 @@ const AdminDashboard = () => {
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
+            {activeTab === "stripe-logs" && <AdminStripeLogs />}
             {activeTab === "kpis" && <AdminKPIs />}
             {activeTab === "purchases" && <AdminPurchases />}
             {activeTab === "security" && <AdminSecurityAudit />}
