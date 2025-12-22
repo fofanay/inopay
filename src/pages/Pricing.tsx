@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock, Activity, Plus, Palette, Terminal } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, Loader2, Globe, Server, Rocket, Database, Shield, RefreshCw, Lock, Activity, Plus, Palette, Terminal, Briefcase, Infinity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,25 +12,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useCurrencyDetection, type Currency } from "@/hooks/useCurrencyDetection";
 
-// Stripe Price IDs par devise - Nouveaux prix à l'acte
+// Stripe Price IDs par devise - Services à l'acte + Portfolio
 const STRIPE_PRICES = {
   CAD: {
     deploy: "price_1Sgr7NBYLQpzPb0ym7lV0WLF",       // 99 CAD
     redeploy: "price_1Sgr89BYLQpzPb0yTaGeD7uk",    // 49 CAD
     monitoring: "price_1Sgr8iBYLQpzPb0yo15IvGVU",  // 19 CAD/mois
     server: "price_1Sgr9zBYLQpzPb0yZJS7N412",      // 79 CAD
+    portfolio: "price_1SgxUoBYLQpzPb0yLXch6nNE",   // 299 CAD/mois
   },
   USD: {
     deploy: "price_1Sgr7ZBYLQpzPb0yh5SJNTJE",      // 75 USD
     redeploy: "price_1Sgr8LBYLQpzPb0yX0NHl6PS",    // 39 USD
     monitoring: "price_1Sgr8rBYLQpzPb0yReXWuS1J",  // 15 USD/mois
     server: "price_1SgrAsBYLQpzPb0ybNWYjt2p",      // 59 USD
+    portfolio: "price_1SgxVQBYLQpzPb0yrDdpeaAA",   // 225 USD/mois
   },
   EUR: {
     deploy: "price_1Sgr7jBYLQpzPb0yGr6Sx9uC",      // 69 EUR
     redeploy: "price_1Sgr8VBYLQpzPb0y3MKtI4Gh",    // 35 EUR
     monitoring: "price_1Sgr9VBYLQpzPb0yX1LCrf4N",  // 13 EUR/mois
     server: "price_1SgrC6BYLQpzPb0yvYbly0EL",      // 55 EUR
+    portfolio: "price_1SgxVcBYLQpzPb0yKFI4yyEd",   // 199 EUR/mois
   },
 };
 
@@ -41,6 +44,7 @@ const PRICES = {
     redeploy: "49 $", 
     monitoring: "19 $",
     server: "79 $",
+    portfolio: "299 $",
     symbol: "CAD" 
   },
   USD: { 
@@ -48,18 +52,20 @@ const PRICES = {
     redeploy: "39 $", 
     monitoring: "15 $",
     server: "59 $",
+    portfolio: "225 $",
     symbol: "USD" 
   },
   EUR: { 
-    deploy: "69 $", 
-    redeploy: "35 $", 
-    monitoring: "13 $",
-    server: "55 $",
+    deploy: "69 €", 
+    redeploy: "35 €", 
+    monitoring: "13 €",
+    server: "55 €",
+    portfolio: "199 €",
     symbol: "EUR" 
   },
 };
 
-type ServiceType = "deploy" | "redeploy" | "monitoring" | "server";
+type ServiceType = "deploy" | "redeploy" | "monitoring" | "server" | "portfolio";
 
 const Pricing = () => {
   const { user } = useAuth();
@@ -79,7 +85,7 @@ const Pricing = () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       
-      const isSubscription = serviceType === "monitoring";
+      const isSubscription = serviceType === "monitoring" || serviceType === "portfolio";
       
       const response = await supabase.functions.invoke("create-checkout", {
         body: {
@@ -113,6 +119,25 @@ const Pricing = () => {
 
   const services = [
     {
+      id: "portfolio" as ServiceType,
+      name: "Plan Portfolio",
+      description: "Pour les créateurs en série",
+      price: PRICES[currency].portfolio,
+      period: `${PRICES[currency].symbol} / mois`,
+      icon: Briefcase,
+      badge: "💎 Illimité",
+      popular: true,
+      features: [
+        "Déploiements illimités",
+        "Jusqu'à 50 repositories",
+        "Import batch GitHub",
+        "Fleet Dashboard centralisé",
+        "Sync Mirror sur tous les projets",
+        "Support prioritaire 24/7",
+      ],
+      buttonText: "Passer Pro Portfolio",
+    },
+    {
       id: "deploy" as ServiceType,
       name: "Déploiement VPS",
       description: "Du prototype IA à la production",
@@ -120,7 +145,7 @@ const Pricing = () => {
       period: `${PRICES[currency].symbol} / déploiement`,
       icon: Rocket,
       badge: "Vibe-to-Prod",
-      popular: true,
+      popular: false,
       features: [
         "Zéro ligne de commande",
         "Docker + Coolify installés",
@@ -224,7 +249,7 @@ const Pricing = () => {
           </div>
 
           {/* Service Cards Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
             {services.map((service) => (
               <Card 
                 key={service.id}
