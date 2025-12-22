@@ -8,13 +8,37 @@ const corsHeaders = {
 
 // Helper function to fetch Coolify logs via the CORRECT API endpoints
 async function fetchCoolifyDeploymentLogs(
-  coolifyUrl: string, 
-  coolifyHeaders: Record<string, string>, 
-  appUuid: string
+  coolifyUrl: string,
+  coolifyHeaders: Record<string, string>,
+  appUuid: string,
+  preferredDeploymentUuid?: string | null,
 ): Promise<{ logs: string; deploymentUuid: string | null; status: string | null }> {
   try {
     console.log('[deploy-coolify] Fetching deployment logs for app:', appUuid);
-    
+
+    // If we already have a deployment UUID (returned by /deploy), fetch it directly first.
+    if (preferredDeploymentUuid) {
+      try {
+        const directDetailResponse = await fetch(
+          `${coolifyUrl}/api/v1/deployments/${preferredDeploymentUuid}`,
+          { method: 'GET', headers: coolifyHeaders },
+        );
+
+        if (directDetailResponse.ok) {
+          const directDetail = await directDetailResponse.json();
+          const directLogs =
+            directDetail?.logs ?? directDetail?.deployment_log ?? directDetail?.log ?? '';
+
+          if (typeof directLogs === 'string' && directLogs.trim().length > 0) {
+            console.log('[deploy-coolify] Retrieved logs via deployment UUID');
+            return { logs: directLogs, deploymentUuid: preferredDeploymentUuid, status: null };
+          }
+        }
+      } catch (e) {
+        console.warn('[deploy-coolify] Direct deployment log fetch failed (will fallback):', e);
+      }
+    }
+
     // CORRECT ENDPOINT: GET /api/v1/deployments/applications/{uuid}
     // (NOT /api/v1/applications/{uuid}/deployments which returns app info, not deployments)
     const deploymentsListResponse = await fetch(
