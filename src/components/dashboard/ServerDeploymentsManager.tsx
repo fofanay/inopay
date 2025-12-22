@@ -44,11 +44,21 @@ interface ServerDeployment {
   error_message: string | null;
   github_repo_url: string | null;
   domain: string | null;
+  coolify_app_uuid: string | null;
   user_servers: {
     name: string;
     ip_address: string;
   } | null;
 }
+
+// Check if a deployment is stuck (deploying for more than 5 minutes)
+const isDeploymentStuck = (deployment: ServerDeployment): boolean => {
+  if (deployment.status !== 'deploying') return false;
+  const createdAt = new Date(deployment.created_at).getTime();
+  const now = Date.now();
+  const fiveMinutes = 5 * 60 * 1000;
+  return (now - createdAt) > fiveMinutes;
+};
 
 export function ServerDeploymentsManager() {
   const { user } = useAuth();
@@ -77,6 +87,7 @@ export function ServerDeploymentsManager() {
           error_message,
           github_repo_url,
           domain,
+          coolify_app_uuid,
           user_servers (
             name,
             ip_address
@@ -178,6 +189,16 @@ export function ServerDeploymentsManager() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const getStuckBadge = (deployment: ServerDeployment) => {
+    if (!isDeploymentStuck(deployment)) return null;
+    return (
+      <Badge className="bg-warning/10 text-warning border-warning/30 gap-1">
+        <AlertTriangle className="h-3 w-3" />
+        Bloqué
+      </Badge>
+    );
   };
 
   const getHealthBadge = (healthStatus: string | null) => {
@@ -289,6 +310,7 @@ export function ServerDeploymentsManager() {
                     {deployment.project_name}
                   </span>
                   {getStatusBadge(deployment.status, deployment.secrets_cleaned || false)}
+                  {getStuckBadge(deployment)}
                   {getHealthBadge(deployment.health_status)}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
@@ -308,8 +330,8 @@ export function ServerDeploymentsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                {/* Show retry button for failed deployments */}
-                {deployment.status === 'failed' && deployment.github_repo_url && (
+                {/* Show retry button for failed or stuck deployments */}
+                {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (
                   <Button
                     variant="outline"
                     size="sm"
