@@ -62,48 +62,8 @@ const isDeploymentStuck = (deployment: ServerDeployment): boolean => {
   return (now - createdAt) > fiveMinutes;
 };
 
-// Check if retry limit is reached (max 3 per hour)
-const MAX_RETRIES_PER_HOUR = 3;
-const canRetry = (deployment: ServerDeployment): boolean => {
-  const retryCount = deployment.retry_count || 0;
-  const lastRetryAt = deployment.last_retry_at;
-  
-  if (!lastRetryAt) return true;
-  
-  const lastRetryTime = new Date(lastRetryAt).getTime();
-  const oneHourAgo = Date.now() - (60 * 60 * 1000);
-  
-  // If last retry was more than 1 hour ago, reset counter
-  if (lastRetryTime < oneHourAgo) return true;
-  
-  // Otherwise check if under limit
-  return retryCount < MAX_RETRIES_PER_HOUR;
-};
-
-const getRetryInfo = (deployment: ServerDeployment): { remaining: number; resetIn: string | null } => {
-  const retryCount = deployment.retry_count || 0;
-  const lastRetryAt = deployment.last_retry_at;
-  
-  if (!lastRetryAt) {
-    return { remaining: MAX_RETRIES_PER_HOUR, resetIn: null };
-  }
-  
-  const lastRetryTime = new Date(lastRetryAt).getTime();
-  const oneHourAgo = Date.now() - (60 * 60 * 1000);
-  
-  if (lastRetryTime < oneHourAgo) {
-    return { remaining: MAX_RETRIES_PER_HOUR, resetIn: null };
-  }
-  
-  const remaining = Math.max(0, MAX_RETRIES_PER_HOUR - retryCount);
-  const resetTime = new Date(lastRetryTime + (60 * 60 * 1000));
-  const minutesLeft = Math.ceil((resetTime.getTime() - Date.now()) / (60 * 1000));
-  
-  return { 
-    remaining, 
-    resetIn: remaining === 0 ? `${minutesLeft} min` : null 
-  };
-};
+// Retries: volontairement illimités (les causes d'échec sont visibles via les logs)
+const canRetry = (_deployment: ServerDeployment): boolean => true;
 
 export function ServerDeploymentsManager() {
   const { user } = useAuth();
