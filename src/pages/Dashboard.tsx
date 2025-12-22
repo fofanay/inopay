@@ -61,6 +61,7 @@ import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/Deplo
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import { SovereignDeploymentWizard } from "@/components/dashboard/SovereignDeploymentWizard";
+import { SovereigntySetupWizard } from "@/components/dashboard/SovereigntySetupWizard";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
@@ -1441,18 +1442,19 @@ const Dashboard = () => {
 
             {/* Tab: Sovereign Deployment */}
             {activeTab === "sovereign-deploy" && (
-              <SovereignDeploymentWizard
-                projectId={result?.id}
-                projectName={fileName.replace('.zip', '')}
-                extractedFiles={extractedFiles}
-                onComplete={() => {
-                  toast({
-                    title: "Déploiement souverain terminé",
-                    description: "Votre projet est maintenant sur votre infrastructure",
-                  });
-                  fetchHistory();
-                }}
-              />
+              <div className="space-y-8">
+                <SovereigntySetupWizard
+                  projectName={fileName.replace('.zip', '')}
+                  extractedFiles={extractedFiles}
+                  onComplete={() => {
+                    toast({
+                      title: "Déploiement souverain terminé",
+                      description: "Votre projet est maintenant sur votre infrastructure",
+                    });
+                    fetchHistory();
+                  }}
+                />
+              </div>
             )}
 
             {/* Tab: Services */}
