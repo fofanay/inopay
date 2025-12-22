@@ -64,11 +64,14 @@ import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboa
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
 type DashboardTab = "overview" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
+
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "fleet", "import", "batch-import", "projects", "deploy-choice", "sync-mirror", "deployments", "servers", "migration", "services"];
 
 interface GitHubRepo {
   id: number;
@@ -592,6 +595,14 @@ const Dashboard = () => {
     { id: "services", label: "Mes Services", icon: Crown },
   ];
 
+  // Swipe navigation for mobile
+  const swipeHandlers = useSwipeNavigation(
+    DASHBOARD_TABS,
+    activeTab,
+    (tab) => setActiveTab(tab),
+    { threshold: 80, allowedTime: 400 }
+  );
+
   const getPageTitle = () => {
     const item = menuItems.find(m => m.id === activeTab);
     return item?.label || "Dashboard";
@@ -849,8 +860,12 @@ const Dashboard = () => {
           description={getPageDescription()} 
         />
 
-        {/* Content Area */}
-        <div className="p-4 md:p-8">
+        {/* Content Area - with swipe navigation on mobile */}
+        <div 
+          className="p-4 md:p-8"
+          onTouchStart={swipeHandlers.onTouchStart}
+          onTouchEnd={swipeHandlers.onTouchEnd}
+        >
           <div className="max-w-6xl mx-auto">
             
             {/* Tab: Overview */}
