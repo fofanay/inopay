@@ -60,6 +60,7 @@ import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
+import { SovereignDeploymentWizard } from "@/components/dashboard/SovereignDeploymentWizard";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
@@ -78,6 +79,7 @@ const TAB_LABELS: Record<string, string> = {
   "batch-import": "Import Batch",
   "projects": "Mes Projets",
   "deploy-choice": "Déployer",
+  "sovereign-deploy": "Déploiement Souverain",
   "sync-mirror": "Sync Mirror",
   "deployments": "Historique",
   "servers": "Mes Serveurs",
@@ -87,9 +89,9 @@ const TAB_LABELS: Record<string, string> = {
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
+type DashboardTab = "overview" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "fleet", "import", "batch-import", "projects", "deploy-choice", "sync-mirror", "deployments", "servers", "migration", "services"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "migration", "services"];
 
 interface GitHubRepo {
   id: number;
@@ -1435,6 +1437,22 @@ const Dashboard = () => {
             {/* Tab: Sync Mirror */}
             {activeTab === "sync-mirror" && (
               <SyncMirror />
+            )}
+
+            {/* Tab: Sovereign Deployment */}
+            {activeTab === "sovereign-deploy" && (
+              <SovereignDeploymentWizard
+                projectId={result?.id}
+                projectName={fileName.replace('.zip', '')}
+                extractedFiles={extractedFiles}
+                onComplete={() => {
+                  toast({
+                    title: "Déploiement souverain terminé",
+                    description: "Votre projet est maintenant sur votre infrastructure",
+                  });
+                  fetchHistory();
+                }}
+              />
             )}
 
             {/* Tab: Services */}

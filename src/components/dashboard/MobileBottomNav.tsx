@@ -2,7 +2,7 @@ import { Home, FolderOpen, Upload, History, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DashboardTab = "overview" | "fleet" | "import" | "batch-import" | "projects" | 
-  "deploy-choice" | "sync-mirror" | "deployments" | "servers" | "migration" | "services";
+  "deploy-choice" | "sovereign-deploy" | "sync-mirror" | "deployments" | "servers" | "migration" | "services";
 
 interface MobileBottomNavProps {
   currentTab: DashboardTab;
