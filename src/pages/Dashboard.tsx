@@ -25,7 +25,8 @@ import {
   History,
   Server,
   Zap,
-  Layers
+  Layers,
+  LayoutGrid
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -59,11 +60,12 @@ import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur"
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
+import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "batch-import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
+type DashboardTab = "overview" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
 
 interface GitHubRepo {
   id: number;
@@ -575,8 +577,9 @@ const Dashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
+    { id: "fleet", label: "Fleet Dashboard", icon: LayoutGrid, badge: "Portfolio" },
     { id: "import", label: "Importer", icon: Upload },
-    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "Portfolio" },
+    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "New" },
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deploy-choice", label: "Déployer", icon: Cloud },
     { id: "sync-mirror", label: "Sync Mirror", icon: Zap },
@@ -594,6 +597,7 @@ const Dashboard = () => {
   const getPageDescription = () => {
     switch (activeTab) {
       case "overview": return "Statistiques de vos projets et actions rapides";
+      case "fleet": return "Vue Kanban de tous vos projets et métriques globales";
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "batch-import": return "Analysez plusieurs projets GitHub en une seule opération";
       case "projects": return "Gérez et déployez vos projets analysés";
@@ -798,6 +802,17 @@ const Dashboard = () => {
             {/* Tab: Overview */}
             {activeTab === "overview" && (
               <EnhancedOverview onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
+            )}
+
+            {/* Tab: Fleet Dashboard */}
+            {activeTab === "fleet" && (
+              <FleetDashboard 
+                onSelectProject={(project) => {
+                  // Load project for deployment
+                  loadProjectForDeployment(project);
+                }}
+                onNavigate={(tab) => setActiveTab(tab as DashboardTab)}
+              />
             )}
 
             {/* Tab: Import */}
