@@ -655,7 +655,9 @@ export type Database = {
           id: string
           last_health_check: string | null
           last_restart_at: string | null
+          last_retry_at: string | null
           project_name: string
+          retry_count: number | null
           secrets_cleaned: boolean | null
           secrets_cleaned_at: string | null
           server_id: string
@@ -676,7 +678,9 @@ export type Database = {
           id?: string
           last_health_check?: string | null
           last_restart_at?: string | null
+          last_retry_at?: string | null
           project_name: string
+          retry_count?: number | null
           secrets_cleaned?: boolean | null
           secrets_cleaned_at?: string | null
           server_id: string
@@ -697,7 +701,9 @@ export type Database = {
           id?: string
           last_health_check?: string | null
           last_restart_at?: string | null
+          last_retry_at?: string | null
           project_name?: string
+          retry_count?: number | null
           secrets_cleaned?: boolean | null
           secrets_cleaned_at?: string | null
           server_id?: string
