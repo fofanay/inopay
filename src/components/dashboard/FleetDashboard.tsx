@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,15 +17,18 @@ import {
   Target,
   Zap,
   ArrowRight,
-  FolderOpen
+  FolderOpen,
+  FileDown,
+  Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Json } from "@/integrations/supabase/types";
 import { COSTLY_SERVICES } from "@/lib/costOptimization";
+import html2pdf from "html2pdf.js";
 
 interface FleetProject {
   id: string;
@@ -102,6 +105,8 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
   const [projects, setProjects] = useState<FleetProject[]>([]);
   const [deployments, setDeployments] = useState<DeploymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const fetchData = async () => {
     if (!user) return;
@@ -182,6 +187,123 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
     if (score >= 80) return "text-success";
     if (score >= 60) return "text-warning";
     return "text-destructive";
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    
+    try {
+      const reportContent = document.createElement("div");
+      reportContent.innerHTML = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a2e;">
+          <div style="text-align: center; margin-bottom: 40px;">
+            <h1 style="font-size: 28px; margin: 0; color: #7c3aed;">Rapport Fleet Portfolio</h1>
+            <p style="color: #6b7280; margin-top: 8px;">Généré le ${format(new Date(), "dd MMMM yyyy à HH:mm", { locale: fr })}</p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #f3f4f6, #e5e7eb); border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+            <h2 style="font-size: 18px; margin: 0 0 20px 0; color: #374151;">Métriques Globales</h2>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #7c3aed;">${totalProjects}</div>
+                <div style="font-size: 12px; color: #6b7280;">Total Projets</div>
+              </div>
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #22c55e;">${deployedCount}</div>
+                <div style="font-size: 12px; color: #6b7280;">Déployés</div>
+              </div>
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #f59e0b;">${readyCount}</div>
+                <div style="font-size: 12px; color: #6b7280;">Prêts à Déployer</div>
+              </div>
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #3b82f6;">${analyzedCount}</div>
+                <div style="font-size: 12px; color: #6b7280;">En Analyse</div>
+              </div>
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #7c3aed;">${averageScore}</div>
+                <div style="font-size: 12px; color: #6b7280;">Score Moyen</div>
+              </div>
+              <div style="background: white; padding: 16px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; color: #22c55e;">$${totalSavings}</div>
+                <div style="font-size: 12px; color: #6b7280;">Économies/mois</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: #f3f4f6; border-radius: 12px; padding: 16px; margin-bottom: 32px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-weight: 500;">Progression du Portfolio</span>
+              <span style="color: #6b7280;">${deployedCount}/${totalProjects} projets déployés (${deploymentRate}%)</span>
+            </div>
+            <div style="background: #d1d5db; border-radius: 9999px; height: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(90deg, #7c3aed, #22c55e); height: 100%; width: ${deploymentRate}%; border-radius: 9999px;"></div>
+            </div>
+          </div>
+
+          <h2 style="font-size: 18px; margin: 0 0 16px 0; color: #374151;">Liste des Projets</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="text-align: left; padding: 12px; border-bottom: 2px solid #e5e7eb;">Projet</th>
+                <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e5e7eb;">Score</th>
+                <th style="text-align: center; padding: 12px; border-bottom: 2px solid #e5e7eb;">Statut</th>
+                <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e5e7eb;">Économies</th>
+                <th style="text-align: right; padding: 12px; border-bottom: 2px solid #e5e7eb;">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${projects.map((project, idx) => {
+                const column = getProjectColumn(project);
+                const statusLabel = COLUMN_CONFIG[column].label;
+                const statusColor = column === "deployed" ? "#22c55e" : column === "ready" ? "#f59e0b" : column === "analyzed" ? "#3b82f6" : "#6b7280";
+                const savings = estimateSavings(project.detected_issues);
+                return `
+                  <tr style="background: ${idx % 2 === 0 ? "#ffffff" : "#f9fafb"};">
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${project.project_name}</td>
+                    <td style="text-align: center; padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                      <span style="background: ${(project.portability_score ?? 0) >= 80 ? "#dcfce7" : (project.portability_score ?? 0) >= 60 ? "#fef3c7" : "#fee2e2"}; color: ${(project.portability_score ?? 0) >= 80 ? "#166534" : (project.portability_score ?? 0) >= 60 ? "#92400e" : "#991b1b"}; padding: 4px 8px; border-radius: 4px; font-weight: 600;">
+                        ${project.portability_score ?? "N/A"}
+                      </span>
+                    </td>
+                    <td style="text-align: center; padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                      <span style="color: ${statusColor}; font-weight: 500;">${statusLabel}</span>
+                    </td>
+                    <td style="text-align: right; padding: 12px; border-bottom: 1px solid #e5e7eb; color: ${savings > 0 ? "#22c55e" : "#6b7280"};">
+                      ${savings > 0 ? `-$${savings}/mois` : "-"}
+                    </td>
+                    <td style="text-align: right; padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">
+                      ${format(new Date(project.created_at), "dd/MM/yyyy", { locale: fr })}
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 11px;">
+            <p>Rapport généré par InoPay • ${format(new Date(), "yyyy")}</p>
+            <p>Économies totales estimées: $${totalSavings * 12}/an</p>
+          </div>
+        </div>
+      `;
+
+      const opt = {
+        margin: 10,
+        filename: `fleet-report-${format(new Date(), "yyyy-MM-dd")}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+      };
+
+      await html2pdf().set(opt).from(reportContent).save();
+      toast.success("Rapport PDF exporté avec succès");
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Erreur lors de l'export PDF");
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -296,10 +418,26 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
                 <CardDescription>Vue d'ensemble de tous vos projets par statut</CardDescription>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Actualiser
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportPDF} 
+                disabled={exporting || projects.length === 0}
+                className="gap-2"
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                Export PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Actualiser
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
