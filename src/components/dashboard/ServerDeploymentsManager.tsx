@@ -45,6 +45,8 @@ interface ServerDeployment {
   github_repo_url: string | null;
   domain: string | null;
   coolify_app_uuid: string | null;
+  retry_count: number | null;
+  last_retry_at: string | null;
   user_servers: {
     name: string;
     ip_address: string;
@@ -60,11 +62,55 @@ const isDeploymentStuck = (deployment: ServerDeployment): boolean => {
   return (now - createdAt) > fiveMinutes;
 };
 
+// Check if retry limit is reached (max 3 per hour)
+const MAX_RETRIES_PER_HOUR = 3;
+const canRetry = (deployment: ServerDeployment): boolean => {
+  const retryCount = deployment.retry_count || 0;
+  const lastRetryAt = deployment.last_retry_at;
+  
+  if (!lastRetryAt) return true;
+  
+  const lastRetryTime = new Date(lastRetryAt).getTime();
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  
+  // If last retry was more than 1 hour ago, reset counter
+  if (lastRetryTime < oneHourAgo) return true;
+  
+  // Otherwise check if under limit
+  return retryCount < MAX_RETRIES_PER_HOUR;
+};
+
+const getRetryInfo = (deployment: ServerDeployment): { remaining: number; resetIn: string | null } => {
+  const retryCount = deployment.retry_count || 0;
+  const lastRetryAt = deployment.last_retry_at;
+  
+  if (!lastRetryAt) {
+    return { remaining: MAX_RETRIES_PER_HOUR, resetIn: null };
+  }
+  
+  const lastRetryTime = new Date(lastRetryAt).getTime();
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  
+  if (lastRetryTime < oneHourAgo) {
+    return { remaining: MAX_RETRIES_PER_HOUR, resetIn: null };
+  }
+  
+  const remaining = Math.max(0, MAX_RETRIES_PER_HOUR - retryCount);
+  const resetTime = new Date(lastRetryTime + (60 * 60 * 1000));
+  const minutesLeft = Math.ceil((resetTime.getTime() - Date.now()) / (60 * 1000));
+  
+  return { 
+    remaining, 
+    resetIn: remaining === 0 ? `${minutesLeft} min` : null 
+  };
+};
+
 export function ServerDeploymentsManager() {
   const { user } = useAuth();
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [previousStatuses, setPreviousStatuses] = useState<Record<string, string>>({});
 
   const fetchDeployments = async () => {
     if (!user) return;
@@ -88,6 +134,8 @@ export function ServerDeploymentsManager() {
           github_repo_url,
           domain,
           coolify_app_uuid,
+          retry_count,
+          last_retry_at,
           user_servers (
             name,
             ip_address
@@ -98,7 +146,15 @@ export function ServerDeploymentsManager() {
         .limit(10);
 
       if (error) throw error;
-      setDeployments(data || []);
+      const fetchedDeployments = data || [];
+      setDeployments(fetchedDeployments);
+      
+      // Track initial statuses for realtime comparison
+      const statuses: Record<string, string> = {};
+      fetchedDeployments.forEach(d => {
+        statuses[d.id] = d.status;
+      });
+      setPreviousStatuses(statuses);
     } catch (error) {
       console.error("Error fetching server deployments:", error);
       toast.error("Impossible de charger les déploiements serveur");
@@ -106,6 +162,67 @@ export function ServerDeploymentsManager() {
       setLoading(false);
     }
   };
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('server-deployments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'server_deployments',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const updated = payload.new as ServerDeployment;
+          const previousStatus = previousStatuses[updated.id];
+          
+          // Show notification on status change
+          if (previousStatus && previousStatus !== updated.status) {
+            if (updated.status === 'deployed') {
+              toast.success(`🚀 ${updated.project_name} déployé avec succès !`, {
+                description: updated.deployed_url ? `Disponible sur ${updated.deployed_url}` : undefined,
+                duration: 8000
+              });
+            } else if (updated.status === 'failed') {
+              toast.error(`❌ Échec du déploiement de ${updated.project_name}`, {
+                description: "Consultez les logs pour plus de détails",
+                duration: 8000
+              });
+            }
+          }
+          
+          // Update local state
+          setDeployments(prev => 
+            prev.map(d => d.id === updated.id ? { ...d, ...updated } : d)
+          );
+          setPreviousStatuses(prev => ({ ...prev, [updated.id]: updated.status }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'server_deployments',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newDeployment = payload.new as ServerDeployment;
+          toast.info(`📦 Nouveau déploiement lancé: ${newDeployment.project_name}`);
+          fetchDeployments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, previousStatuses]);
 
   useEffect(() => {
     fetchDeployments();
@@ -117,9 +234,21 @@ export function ServerDeploymentsManager() {
       return;
     }
 
+    // Check retry limit
+    if (!canRetry(deployment)) {
+      const info = getRetryInfo(deployment);
+      toast.error(`Limite de retry atteinte (${MAX_RETRIES_PER_HOUR}/heure)`, {
+        description: `Réessayez dans ${info.resetIn}`
+      });
+      return;
+    }
+
     setRetryingId(deployment.id);
     
     try {
+      // Update retry count before deleting the record
+      const newRetryCount = (deployment.retry_count || 0) + 1;
+      
       // First, delete the failed deployment record to avoid duplicates
       const { error: deleteError } = await supabase
         .from("server_deployments")
@@ -136,13 +265,15 @@ export function ServerDeploymentsManager() {
         throw new Error("Session expirée");
       }
 
-      // Call deploy-coolify with the same parameters
+      // Call deploy-coolify with the same parameters and retry info
       const response = await supabase.functions.invoke("deploy-coolify", {
         body: {
           server_id: deployment.server_id,
           project_name: deployment.project_name,
           github_repo_url: deployment.github_repo_url,
-          domain: deployment.domain || undefined
+          domain: deployment.domain || undefined,
+          retry_count: newRetryCount,
+          is_retry: true
         }
       });
 
@@ -150,7 +281,8 @@ export function ServerDeploymentsManager() {
         throw new Error(response.error.message || "Échec du redéploiement");
       }
 
-      toast.success("Redéploiement lancé avec succès !");
+      const info = getRetryInfo({ ...deployment, retry_count: newRetryCount, last_retry_at: new Date().toISOString() });
+      toast.success(`Redéploiement lancé ! (${info.remaining} essais restants cette heure)`);
       fetchDeployments();
     } catch (error) {
       console.error("Retry deployment error:", error);
@@ -331,22 +463,31 @@ export function ServerDeploymentsManager() {
               {/* Actions */}
               <div className="flex items-center gap-2">
                 {/* Show retry button for failed or stuck deployments */}
-                {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1"
-                    onClick={() => handleRetry(deployment)}
-                    disabled={retryingId === deployment.id}
-                  >
-                    {retryingId === deployment.id ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
-                    Réessayer
-                  </Button>
-                )}
+                {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (() => {
+                  const retryInfo = getRetryInfo(deployment);
+                  const canDoRetry = canRetry(deployment);
+                  
+                  return (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1"
+                      onClick={() => handleRetry(deployment)}
+                      disabled={retryingId === deployment.id || !canDoRetry}
+                      title={!canDoRetry ? `Limite atteinte. Réessayez dans ${retryInfo.resetIn}` : `${retryInfo.remaining} essais restants`}
+                    >
+                      {retryingId === deployment.id ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      Réessayer
+                      {retryInfo.remaining < MAX_RETRIES_PER_HOUR && (
+                        <span className="text-xs text-muted-foreground">({retryInfo.remaining})</span>
+                      )}
+                    </Button>
+                  );
+                })()}
 
                 {/* Show logs button for failed deployments */}
                 {deployment.status === 'failed' && deployment.error_message && (

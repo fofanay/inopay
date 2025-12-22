@@ -36,7 +36,7 @@ serve(async (req) => {
       );
     }
 
-    const { server_id, project_name, github_repo_url, domain } = await req.json();
+    const { server_id, project_name, github_repo_url, domain, retry_count, is_retry } = await req.json();
 
     if (!server_id || !project_name || !github_repo_url) {
       return new Response(
@@ -44,6 +44,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`[deploy-coolify] Starting deployment for ${project_name}, is_retry: ${is_retry}, retry_count: ${retry_count}`);
 
     // Get server info
     const { data: server, error: serverError } = await supabase
@@ -112,7 +114,7 @@ serve(async (req) => {
     const creditData = await creditResponse.json();
     console.log(`[deploy-coolify] Credit consumed:`, creditData);
 
-    // Create deployment record
+    // Create deployment record with retry info
     const { data: deployment, error: deployError } = await supabase
       .from('server_deployments')
       .insert({
@@ -121,7 +123,9 @@ serve(async (req) => {
         project_name,
         github_repo_url,
         domain: domain || null,
-        status: 'deploying'
+        status: 'deploying',
+        retry_count: retry_count || 0,
+        last_retry_at: is_retry ? new Date().toISOString() : null
       })
       .select()
       .single();
