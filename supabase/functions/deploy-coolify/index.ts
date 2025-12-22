@@ -150,6 +150,30 @@ serve(async (req) => {
     };
 
     try {
+      // Step 0: Get available servers from Coolify
+      console.log('Fetching Coolify servers...');
+      const serversResponse = await fetch(`${server.coolify_url}/api/v1/servers`, {
+        method: 'GET',
+        headers: coolifyHeaders
+      });
+
+      if (!serversResponse.ok) {
+        const errorText = await serversResponse.text();
+        console.error('Failed to fetch Coolify servers:', errorText);
+        throw new Error(`Failed to fetch Coolify servers: ${errorText}`);
+      }
+
+      const servers = await serversResponse.json();
+      console.log('Available Coolify servers:', JSON.stringify(servers));
+
+      if (!servers || servers.length === 0) {
+        throw new Error('No servers found in Coolify. Please add a server in Coolify first.');
+      }
+
+      // Use the first available server (usually localhost)
+      const coolifyServerUuid = servers[0].uuid;
+      console.log('Using Coolify server UUID:', coolifyServerUuid);
+
       // Step 1: Create a project in Coolify
       console.log('Creating Coolify project...');
       const projectResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
@@ -170,11 +194,11 @@ serve(async (req) => {
       const projectData = await projectResponse.json();
       console.log('Coolify project created:', projectData);
 
-      // Step 2: Create application from GitHub (without fqdn - not allowed in creation)
+      // Step 2: Create application from GitHub
       console.log('Creating Coolify application...');
       const appPayload: Record<string, unknown> = {
         project_uuid: projectData.uuid,
-        server_uuid: 'default', // Use default server
+        server_uuid: coolifyServerUuid, // Use real server UUID from Step 0
         environment_name: 'production',
         git_repository: github_repo_url,
         git_branch: 'main',
