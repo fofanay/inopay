@@ -6,64 +6,92 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to fetch Coolify logs with full details
+// Helper function to fetch Coolify logs via the CORRECT API endpoints
 async function fetchCoolifyDeploymentLogs(
   coolifyUrl: string, 
   coolifyHeaders: Record<string, string>, 
   appUuid: string
-): Promise<{ logs: string; deploymentUuid: string | null }> {
+): Promise<{ logs: string; deploymentUuid: string | null; status: string | null }> {
   try {
     console.log('[deploy-coolify] Fetching deployment logs for app:', appUuid);
     
-    // Get deployments list to find the latest deployment UUID
+    // CORRECT ENDPOINT: GET /api/v1/deployments/applications/{uuid}
+    // (NOT /api/v1/applications/{uuid}/deployments which returns app info, not deployments)
     const deploymentsListResponse = await fetch(
-      `${coolifyUrl}/api/v1/applications/${appUuid}/deployments`,
+      `${coolifyUrl}/api/v1/deployments/applications/${appUuid}?take=5`,
       { method: 'GET', headers: coolifyHeaders }
     );
     
     if (!deploymentsListResponse.ok) {
-      console.warn('[deploy-coolify] Failed to fetch deployments list:', await deploymentsListResponse.text());
-      return { logs: '', deploymentUuid: null };
+      const errorText = await deploymentsListResponse.text();
+      console.warn('[deploy-coolify] Failed to fetch deployments list:', errorText);
+      
+      // Fallback: try old endpoint format
+      const fallbackResponse = await fetch(
+        `${coolifyUrl}/api/v1/applications/${appUuid}/deployments`,
+        { method: 'GET', headers: coolifyHeaders }
+      );
+      
+      if (!fallbackResponse.ok) {
+        return { logs: `Could not fetch deployments: ${errorText}`, deploymentUuid: null, status: null };
+      }
+      
+      const fallbackData = await fallbackResponse.json();
+      console.log('[deploy-coolify] Fallback deployments response:', JSON.stringify(fallbackData).slice(0, 500));
+      return { logs: JSON.stringify(fallbackData, null, 2).slice(0, 3000), deploymentUuid: null, status: null };
     }
     
     const deploymentsList = await deploymentsListResponse.json();
-    console.log('[deploy-coolify] Deployments list response:', JSON.stringify(deploymentsList).slice(0, 500));
+    console.log('[deploy-coolify] Deployments list count:', Array.isArray(deploymentsList) ? deploymentsList.length : 'not-array');
+    console.log('[deploy-coolify] Deployments list sample:', JSON.stringify(deploymentsList).slice(0, 800));
     
-    if (!deploymentsList || deploymentsList.length === 0) {
-      return { logs: 'No deployments found', deploymentUuid: null };
+    if (!deploymentsList || !Array.isArray(deploymentsList) || deploymentsList.length === 0) {
+      return { logs: 'No deployments found in list', deploymentUuid: null, status: null };
     }
     
+    // Get the most recent deployment
     const latestDeployment = deploymentsList[0];
     const deploymentUuid = latestDeployment.deployment_uuid || latestDeployment.uuid;
-    console.log('[deploy-coolify] Latest deployment UUID:', deploymentUuid);
-    console.log('[deploy-coolify] Latest deployment status:', latestDeployment.status);
+    const deploymentStatus = latestDeployment.status;
+    console.log('[deploy-coolify] Latest deployment UUID:', deploymentUuid, 'status:', deploymentStatus);
     
-    // Fetch detailed logs for this deployment
-    const logsResponse = await fetch(
+    // Fetch detailed deployment info including logs
+    const deploymentDetailResponse = await fetch(
       `${coolifyUrl}/api/v1/deployments/${deploymentUuid}`,
       { method: 'GET', headers: coolifyHeaders }
     );
     
-    if (!logsResponse.ok) {
-      console.warn('[deploy-coolify] Failed to fetch deployment details:', await logsResponse.text());
-      return { logs: `Deployment status: ${latestDeployment.status}`, deploymentUuid };
+    if (!deploymentDetailResponse.ok) {
+      const errorText = await deploymentDetailResponse.text();
+      console.warn('[deploy-coolify] Failed to fetch deployment details:', errorText);
+      return { 
+        logs: `Deployment ${deploymentUuid} status: ${deploymentStatus}\nCould not fetch details: ${errorText}`, 
+        deploymentUuid, 
+        status: deploymentStatus 
+      };
     }
     
-    const logsData = await logsResponse.json();
-    console.log('[deploy-coolify] Deployment details keys:', Object.keys(logsData));
+    const deploymentDetail = await deploymentDetailResponse.json();
+    console.log('[deploy-coolify] Deployment detail keys:', Object.keys(deploymentDetail));
     
-    // Extract logs from various possible fields
+    // Extract logs from response - Coolify uses 'logs' or 'deployment_log' field
     let logs = '';
-    if (logsData.logs) logs = logsData.logs;
-    else if (logsData.deployment_log) logs = logsData.deployment_log;
-    else if (logsData.log) logs = logsData.log;
-    else logs = JSON.stringify(logsData, null, 2);
+    if (deploymentDetail.logs) {
+      logs = deploymentDetail.logs;
+    } else if (deploymentDetail.deployment_log) {
+      logs = deploymentDetail.deployment_log;
+    } else if (deploymentDetail.log) {
+      logs = deploymentDetail.log;
+    } else {
+      // Include full response for debugging
+      logs = `Deployment details:\n${JSON.stringify(deploymentDetail, null, 2)}`;
+    }
     
     console.log(`[deploy-coolify] Retrieved ${logs.length} chars of logs`);
-    return { logs, deploymentUuid };
+    return { logs, deploymentUuid, status: deploymentStatus };
   } catch (error) {
     console.error('[deploy-coolify] Error fetching logs:', error);
-    return { logs: `Error fetching logs: ${error}`, deploymentUuid: null };
+    return { logs: `Error fetching logs: ${error}`, deploymentUuid: null, status: null };
   }
 }
 
@@ -389,21 +417,22 @@ serve(async (req) => {
         console.log('[deploy-coolify] Creating new Coolify application with DOCKERFILE mode...');
         
         // Use Dockerfile mode (port 80) since the repo has Dockerfile + nginx.conf
+        // IMPORTANT: Don't use dockerfile_location in /applications/public endpoint - it's not allowed
         const appPayload = {
           project_uuid: projectData.uuid,
           server_uuid: coolifyServerUuid,
           environment_name: 'production',
           git_repository: github_repo_url,
           git_branch: 'main',
-          build_pack: 'dockerfile',  // Use Dockerfile instead of nixpacks
-          dockerfile_location: '/Dockerfile',
-          ports_exposes: '80',  // Nginx uses port 80
+          build_pack: 'dockerfile',
+          ports_exposes: '80',
           health_check_enabled: true,
-          health_check_path: '/',
+          health_check_path: '/health',  // Use nginx health endpoint
+          health_check_port: '80',
           health_check_interval: 30,
           health_check_timeout: 10,
-          health_check_retries: 3,
-          health_check_start_period: 60  // Give more time for initial startup
+          health_check_retries: 5,
+          health_check_start_period: 120  // 2 minutes for initial startup
         };
         
         console.log('[deploy-coolify] Application payload:', JSON.stringify(appPayload));
@@ -430,7 +459,11 @@ serve(async (req) => {
               git_branch: 'main',
               build_pack: 'nixpacks',
               ports_exposes: '3000',
-              start_command: 'npm run preview -- --host 0.0.0.0 --port 3000'
+              start_command: 'npm run build && npm run preview -- --host 0.0.0.0 --port 3000',
+              health_check_enabled: true,
+              health_check_path: '/',
+              health_check_port: '3000',
+              health_check_start_period: 120
             };
             
             console.log('[deploy-coolify] Fallback payload:', JSON.stringify(fallbackPayload));
@@ -592,11 +625,11 @@ serve(async (req) => {
       const deployData = await deployResponse.json();
       console.log('[deploy-coolify] Deployment triggered:', deployData);
 
-      // Step 4: Wait and check build status (poll for up to 3 minutes)
+      // Step 4: Wait and check build status (poll for up to 8 minutes)
       console.log('[deploy-coolify] Waiting for build to complete...');
       let buildStatus = 'building';
       let attempts = 0;
-      const maxAttempts = 36; // 36 * 5s = 3 minutes
+      const maxAttempts = 96; // 96 * 5s = 8 minutes (longer timeout for slower builds)
       let lastAppStatus: Record<string, unknown> | null = null;
       
       while (attempts < maxAttempts && buildStatus !== 'running' && !buildStatus.includes('failed') && !buildStatus.includes('exited')) {

@@ -194,22 +194,12 @@ export function ServerDeploymentsManager() {
       return;
     }
 
-    // Check retry limit
-    if (!canRetry(deployment)) {
-      const info = getRetryInfo(deployment);
-      toast.error(`Limite de retry atteinte (${MAX_RETRIES_PER_HOUR}/heure)`, {
-        description: `Réessayez dans ${info.resetIn}`
-      });
-      return;
-    }
-
     setRetryingId(deployment.id);
     
     try {
-      // Update retry count before deleting the record
       const newRetryCount = (deployment.retry_count || 0) + 1;
       
-      // First, delete the failed deployment record to avoid duplicates
+      // Delete failed deployment record to avoid duplicates
       const { error: deleteError } = await supabase
         .from("server_deployments")
         .delete()
@@ -225,7 +215,7 @@ export function ServerDeploymentsManager() {
         throw new Error("Session expirée");
       }
 
-      // Call deploy-coolify with the same parameters and retry info
+      // Call deploy-coolify with the same parameters
       const response = await supabase.functions.invoke("deploy-coolify", {
         body: {
           server_id: deployment.server_id,
@@ -241,8 +231,7 @@ export function ServerDeploymentsManager() {
         throw new Error(response.error.message || "Échec du redéploiement");
       }
 
-      const info = getRetryInfo({ ...deployment, retry_count: newRetryCount, last_retry_at: new Date().toISOString() });
-      toast.success(`Redéploiement lancé ! (${info.remaining} essais restants cette heure)`);
+      toast.success("Redéploiement lancé !");
       fetchDeployments();
     } catch (error) {
       console.error("Retry deployment error:", error);
@@ -423,31 +412,23 @@ export function ServerDeploymentsManager() {
               {/* Actions */}
               <div className="flex items-center gap-2">
                 {/* Show retry button for failed or stuck deployments */}
-                {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (() => {
-                  const retryInfo = getRetryInfo(deployment);
-                  const canDoRetry = canRetry(deployment);
-                  
-                  return (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1"
-                      onClick={() => handleRetry(deployment)}
-                      disabled={retryingId === deployment.id || !canDoRetry}
-                      title={!canDoRetry ? `Limite atteinte. Réessayez dans ${retryInfo.resetIn}` : `${retryInfo.remaining} essais restants`}
-                    >
-                      {retryingId === deployment.id ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-4 w-4" />
-                      )}
-                      Réessayer
-                      {retryInfo.remaining < MAX_RETRIES_PER_HOUR && (
-                        <span className="text-xs text-muted-foreground">({retryInfo.remaining})</span>
-                      )}
-                    </Button>
-                  );
-                })()}
+                {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1"
+                    onClick={() => handleRetry(deployment)}
+                    disabled={retryingId === deployment.id}
+                    title="Relancer le déploiement"
+                  >
+                    {retryingId === deployment.id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    Réessayer
+                  </Button>
+                )}
 
                 {/* Show logs button for failed deployments */}
                 {deployment.status === 'failed' && deployment.error_message && (
