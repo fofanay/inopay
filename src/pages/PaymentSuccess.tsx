@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CheckCircle2, ArrowRight, Sparkles, Rocket, RefreshCw, Activity, Server, Loader2 } from "lucide-react";
+import { CheckCircle2, ArrowRight, Sparkles, Rocket, RefreshCw, Activity, Server, Loader2, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Layout from "@/components/layout/Layout";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PurchaseDetails {
   serviceType: string;
@@ -40,12 +41,20 @@ const SERVICE_INFO: Record<string, { name: string; icon: React.ReactNode; descri
     action: "Configurer mon serveur",
     link: "/dashboard",
   },
+  portfolio: {
+    name: "Plan Portfolio",
+    icon: <Briefcase className="h-6 w-6" />,
+    description: "Votre abonnement Portfolio est maintenant actif. Déploiements illimités !",
+    action: "Voir mon portfolio",
+    link: "/dashboard",
+  },
 };
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [purchase, setPurchase] = useState<PurchaseDetails | null>(null);
+  const { checkSubscription, session } = useAuth();
 
   useEffect(() => {
     // Try to get service info from URL params
@@ -55,13 +64,22 @@ const PaymentSuccess = () => {
       setPurchase({
         serviceType,
         serviceName: SERVICE_INFO[serviceType].name,
-        isSubscription: serviceType === "monitoring",
+        isSubscription: serviceType === "monitoring" || serviceType === "portfolio",
       });
+    }
+    
+    // Refresh subscription status after successful payment
+    if (session?.access_token) {
+      // Small delay to allow Stripe webhook to process
+      setTimeout(() => {
+        console.log("[PAYMENT-SUCCESS] Refreshing subscription status after payment");
+        checkSubscription();
+      }, 2000);
     }
     
     // Small delay for visual effect
     setTimeout(() => setLoading(false), 500);
-  }, [searchParams]);
+  }, [searchParams, session?.access_token, checkSubscription]);
 
   if (loading) {
     return (

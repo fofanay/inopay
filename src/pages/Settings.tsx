@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +23,7 @@ interface UserSettings {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, subscription, checkSubscription } = useAuth();
   const { toast } = useToast();
   
   const [settings, setSettings] = useState<UserSettings>({
@@ -32,6 +34,39 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasExistingKey, setHasExistingKey] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+
+  const handleManageSubscription = async () => {
+    if (!user) return;
+    
+    setOpeningPortal(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke("customer-portal", {
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.url) {
+        window.open(response.data.url, "_blank");
+      }
+    } catch (error) {
+      console.error("Customer portal error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ouvrir le portail de gestion",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningPortal(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -264,6 +299,70 @@ const Settings = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Subscription Management Card */}
+          {subscription.subscribed && (
+            <Card className="mt-6 animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Gérer mon abonnement
+                </CardTitle>
+                <CardDescription>
+                  Gérez votre abonnement, vos moyens de paiement et vos factures
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Plan actuel</span>
+                      <Badge variant="secondary" className="capitalize">
+                        {subscription.planType}
+                      </Badge>
+                    </div>
+                    {subscription.subscriptionEnd && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          Renouvellement le {new Date(subscription.subscriptionEnd).toLocaleDateString("fr-FR")}
+                        </span>
+                      </div>
+                    )}
+                    {subscription.creditsRemaining !== undefined && subscription.creditsRemaining > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {subscription.creditsRemaining} crédit(s) restant(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <Button 
+                  onClick={handleManageSubscription}
+                  disabled={openingPortal}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {openingPortal ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Ouverture...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Gérer mon abonnement Stripe
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Modifiez votre moyen de paiement, téléchargez vos factures ou annulez votre abonnement
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Info Card */}
           <Card className="mt-6 border-primary/20 bg-primary/5">

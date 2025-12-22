@@ -44,12 +44,26 @@ async function logWebhookSuccess(supabase: any, eventType: string, userId?: stri
   }
 }
 
-// Service type mapping
+// Service type mapping - Synced with Pricing.tsx STRIPE_PRICES
 const SERVICE_PRICES: Record<string, { type: string; amount: number; currency: string; isSubscription: boolean }> = {
-  "price_1RbLNGP6LGH3d3nX8yDjVVnk": { type: "deploy", amount: 9900, currency: "cad", isSubscription: false },
-  "price_1RbLMbP6LGH3d3nXwvVDl91W": { type: "redeploy", amount: 4900, currency: "cad", isSubscription: false },
-  "price_1RbLMIP6LGH3d3nXAUjSuwuO": { type: "monitoring", amount: 1900, currency: "cad", isSubscription: true },
-  "price_1RbLLsP6LGH3d3nXrM2cWmil": { type: "server", amount: 7900, currency: "cad", isSubscription: false },
+  // CAD Prices
+  "price_1Sgr7NBYLQpzPb0ym7lV0WLF": { type: "deploy", amount: 9900, currency: "cad", isSubscription: false },
+  "price_1Sgr89BYLQpzPb0yTaGeD7uk": { type: "redeploy", amount: 4900, currency: "cad", isSubscription: false },
+  "price_1Sgr8iBYLQpzPb0yo15IvGVU": { type: "monitoring", amount: 1900, currency: "cad", isSubscription: true },
+  "price_1Sgr9zBYLQpzPb0yZJS7N412": { type: "server", amount: 7900, currency: "cad", isSubscription: false },
+  "price_1SgxUoBYLQpzPb0yLXch6nNE": { type: "portfolio", amount: 29900, currency: "cad", isSubscription: true },
+  // USD Prices
+  "price_1Sgr7ZBYLQpzPb0yh5SJNTJE": { type: "deploy", amount: 7500, currency: "usd", isSubscription: false },
+  "price_1Sgr8LBYLQpzPb0yX0NHl6PS": { type: "redeploy", amount: 3900, currency: "usd", isSubscription: false },
+  "price_1Sgr8rBYLQpzPb0yReXWuS1J": { type: "monitoring", amount: 1500, currency: "usd", isSubscription: true },
+  "price_1SgrAsBYLQpzPb0ybNWYjt2p": { type: "server", amount: 5900, currency: "usd", isSubscription: false },
+  "price_1SgxVQBYLQpzPb0yrDdpeaAA": { type: "portfolio", amount: 22500, currency: "usd", isSubscription: true },
+  // EUR Prices
+  "price_1Sgr7jBYLQpzPb0yGr6Sx9uC": { type: "deploy", amount: 6900, currency: "eur", isSubscription: false },
+  "price_1Sgr8VBYLQpzPb0y3MKtI4Gh": { type: "redeploy", amount: 3500, currency: "eur", isSubscription: false },
+  "price_1Sgr9VBYLQpzPb0yX1LCrf4N": { type: "monitoring", amount: 1300, currency: "eur", isSubscription: true },
+  "price_1SgrC6BYLQpzPb0yvYbly0EL": { type: "server", amount: 5500, currency: "eur", isSubscription: false },
+  "price_1SgxVcBYLQpzPb0yKFI4yyEd": { type: "portfolio", amount: 19900, currency: "eur", isSubscription: true },
 };
 
 serve(async (req) => {
@@ -314,6 +328,80 @@ serve(async (req) => {
           logStep("Purchase marked as refunded");
           await logWebhookSuccess(supabaseClient, event.type, undefined, { paymentIntentId });
         }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        const customerId = invoice.customer as string;
+        const subscriptionId = invoice.subscription as string;
+        const attemptCount = invoice.attempt_count;
+
+        logStep("Payment failed", { customerId, subscriptionId, attemptCount });
+
+        // Find user by customer ID
+        const { data: userPurchase } = await supabaseClient
+          .from("user_purchases")
+          .select("user_id")
+          .eq("is_subscription", true)
+          .contains("metadata", { stripe_customer_id: customerId })
+          .maybeSingle();
+
+        // Update subscription status to past_due
+        if (subscriptionId) {
+          await supabaseClient
+            .from("user_purchases")
+            .update({
+              subscription_status: "past_due",
+            })
+            .eq("is_subscription", true)
+            .contains("metadata", { stripe_subscription_id: subscriptionId });
+        }
+
+        // Log critical error for admin attention
+        await logCriticalError(
+          supabaseClient, 
+          `Payment failed for subscription (attempt ${attemptCount})`,
+          event.type,
+          { 
+            customerId, 
+            subscriptionId, 
+            attemptCount,
+            userId: userPurchase?.user_id,
+            invoiceId: invoice.id
+          }
+        );
+        break;
+      }
+
+      case "invoice.payment_action_required": {
+        const invoice = event.data.object;
+        const customerId = invoice.customer as string;
+        const subscriptionId = invoice.subscription as string;
+
+        logStep("Payment action required (3D Secure/SCA)", { customerId, subscriptionId });
+
+        // Find user by customer ID
+        const { data: userPurchase } = await supabaseClient
+          .from("user_purchases")
+          .select("user_id")
+          .eq("is_subscription", true)
+          .contains("metadata", { stripe_customer_id: customerId })
+          .maybeSingle();
+
+        // Log for admin notification
+        await logCriticalError(
+          supabaseClient,
+          "Payment requires customer action (3D Secure/SCA authentication needed)",
+          event.type,
+          {
+            customerId,
+            subscriptionId,
+            userId: userPurchase?.user_id,
+            invoiceId: invoice.id,
+            hostedInvoiceUrl: invoice.hosted_invoice_url
+          }
+        );
         break;
       }
     }
