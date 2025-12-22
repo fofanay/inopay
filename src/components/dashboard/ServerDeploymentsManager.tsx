@@ -13,7 +13,8 @@ import {
   RefreshCw,
   ShieldCheck,
   AlertTriangle,
-  FileText
+  FileText,
+  RotateCcw
 } from "lucide-react";
 import {
   Dialog,
@@ -41,6 +42,8 @@ interface ServerDeployment {
   health_status: string | null;
   last_health_check: string | null;
   error_message: string | null;
+  github_repo_url: string | null;
+  domain: string | null;
   user_servers: {
     name: string;
     ip_address: string;
@@ -50,6 +53,7 @@ interface ServerDeployment {
 export function ServerDeploymentsManager() {
   const { user } = useAuth();
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchDeployments = async () => {
@@ -71,6 +75,8 @@ export function ServerDeploymentsManager() {
           health_status,
           last_health_check,
           error_message,
+          github_repo_url,
+          domain,
           user_servers (
             name,
             ip_address
@@ -93,6 +99,55 @@ export function ServerDeploymentsManager() {
   useEffect(() => {
     fetchDeployments();
   }, [user]);
+
+  const handleRetry = async (deployment: ServerDeployment) => {
+    if (!deployment.github_repo_url) {
+      toast.error("URL du repo GitHub manquante pour relancer le déploiement");
+      return;
+    }
+
+    setRetryingId(deployment.id);
+    
+    try {
+      // First, delete the failed deployment record to avoid duplicates
+      const { error: deleteError } = await supabase
+        .from("server_deployments")
+        .delete()
+        .eq("id", deployment.id);
+
+      if (deleteError) {
+        console.warn("Could not delete old deployment record:", deleteError);
+      }
+
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Session expirée");
+      }
+
+      // Call deploy-coolify with the same parameters
+      const response = await supabase.functions.invoke("deploy-coolify", {
+        body: {
+          server_id: deployment.server_id,
+          project_name: deployment.project_name,
+          github_repo_url: deployment.github_repo_url,
+          domain: deployment.domain || undefined
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Échec du redéploiement");
+      }
+
+      toast.success("Redéploiement lancé avec succès !");
+      fetchDeployments();
+    } catch (error) {
+      console.error("Retry deployment error:", error);
+      toast.error(error instanceof Error ? error.message : "Échec du redéploiement");
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const getStatusBadge = (status: string, secretsCleaned: boolean) => {
     if (status === 'deployed' && secretsCleaned) {
@@ -253,6 +308,24 @@ export function ServerDeploymentsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
+                {/* Show retry button for failed deployments */}
+                {deployment.status === 'failed' && deployment.github_repo_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1"
+                    onClick={() => handleRetry(deployment)}
+                    disabled={retryingId === deployment.id}
+                  >
+                    {retryingId === deployment.id ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    Réessayer
+                  </Button>
+                )}
+
                 {/* Show logs button for failed deployments */}
                 {deployment.status === 'failed' && deployment.error_message && (
                   <Dialog>
