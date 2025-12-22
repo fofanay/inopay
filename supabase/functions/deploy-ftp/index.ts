@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -237,6 +238,13 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Rate limiting - 5 deployments per minute per user
+    const rateLimitResponse = withRateLimit(req, user.id, "deploy-ftp", corsHeaders);
+    if (rateLimitResponse) {
+      console.log(`[DEPLOY-FTP] Rate limit exceeded for user ${user.id.substring(0, 8)}...`);
+      return rateLimitResponse;
     }
 
     const { credentials, projectId, files } = await req.json() as DeployRequest;

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -35,14 +35,45 @@ serve(async (req) => {
     logStep("Webhook received");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+    
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+    // Get raw body for signature verification
     const body = await req.text();
-    const event = JSON.parse(body);
+    const signature = req.headers.get("stripe-signature");
+    
+    let event: Stripe.Event;
 
-    logStep("Event received", { type: event.type });
+    // CRITICAL: Verify webhook signature in production
+    if (webhookSecret && signature) {
+      try {
+        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+        logStep("Webhook signature verified successfully");
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        logStep("SECURITY ERROR: Webhook signature verification failed", { error: errorMessage });
+        return new Response(
+          JSON.stringify({ error: "Webhook signature verification failed" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    } else if (!webhookSecret) {
+      // SECURITY WARNING: No webhook secret configured - only allow in development
+      logStep("SECURITY WARNING: No STRIPE_WEBHOOK_SECRET configured - signature not verified");
+      event = JSON.parse(body);
+    } else {
+      // Signature header missing but secret is configured
+      logStep("SECURITY ERROR: stripe-signature header missing");
+      return new Response(
+        JSON.stringify({ error: "Missing stripe-signature header" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    logStep("Event received", { type: event.type, eventId: event.id });
 
     switch (event.type) {
       case "checkout.session.completed": {

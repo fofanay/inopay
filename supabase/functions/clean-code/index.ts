@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,6 +64,27 @@ serve(async (req) => {
   }
 
   try {
+    // Get user for rate limiting
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+    
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await tempSupabase.auth.getUser();
+      userId = user?.id || null;
+    }
+
+    // Rate limiting - 20 requests per minute per user
+    const rateLimitResponse = withRateLimit(req, userId, "clean-code", corsHeaders);
+    if (rateLimitResponse) {
+      console.log(`[CLEAN-CODE] Rate limit exceeded for user ${userId?.substring(0, 8) || 'anonymous'}`);
+      return rateLimitResponse;
+    }
+
     // Priority: Project secrets > User settings
     const anthropicProjectKey = Deno.env.get('ANTHROPIC_API_KEY');
     const openaiProjectKey = Deno.env.get('OPENAI_API_KEY');
@@ -81,7 +103,6 @@ serve(async (req) => {
       console.log('Using project-level OpenAI API key');
     } else {
       // Fallback to user settings
-      const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
         return new Response(JSON.stringify({ error: 'Non autorisé' }), {
           status: 401,
