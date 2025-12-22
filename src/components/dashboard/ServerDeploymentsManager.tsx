@@ -71,6 +71,7 @@ export function ServerDeploymentsManager() {
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previousStatuses, setPreviousStatuses] = useState<Record<string, string>>({});
 
@@ -305,6 +306,45 @@ export function ServerDeploymentsManager() {
     }
   };
 
+  const handleSyncAll = async () => {
+    if (deployments.length === 0) return;
+    
+    setSyncingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    console.log(`[handleSyncAll] Starting sync for ${deployments.length} deployments`);
+    
+    for (const deployment of deployments) {
+      try {
+        const response = await supabase.functions.invoke("sync-coolify-status", {
+          body: { deployment_id: deployment.id }
+        });
+
+        if (response.error) {
+          console.error(`[handleSyncAll] Error syncing ${deployment.project_name}:`, response.error);
+          errorCount++;
+        } else if (response.data?.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error(`[handleSyncAll] Error syncing ${deployment.project_name}:`, error);
+        errorCount++;
+      }
+    }
+    
+    setSyncingAll(false);
+    fetchDeployments();
+    
+    if (errorCount === 0) {
+      toast.success(`${successCount} déploiements synchronisés`);
+    } else {
+      toast.warning(`${successCount} synchronisés, ${errorCount} erreurs`);
+    }
+  };
+
   const getStatusBadge = (status: string, secretsCleaned: boolean) => {
     if (status === 'deployed' && secretsCleaned) {
       return (
@@ -408,6 +448,23 @@ export function ServerDeploymentsManager() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {/* Sync all button */}
+            {deployments.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncAll}
+                disabled={syncingAll}
+                className="gap-1"
+              >
+                {syncingAll ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                Vérifier tout
+              </Button>
+            )}
             {/* Show purge button if there's at least one server */}
             {uniqueServerIds.length > 0 && (
               <PurgeDeploymentsButton
