@@ -89,43 +89,48 @@ serve(async (req) => {
       headers: coolifyHeaders,
     });
 
+    let appData = null;
+    let coolifyStatus = 'unknown';
+    let appNotFoundInCoolify = false;
+
     if (!appResponse.ok) {
       const errorText = await appResponse.text();
-      console.error('[sync-coolify-status] Failed to fetch app:', errorText);
-      return new Response(JSON.stringify({ 
-        error: 'Failed to fetch app from Coolify',
-        details: errorText 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log('[sync-coolify-status] App not found in Coolify, will test URL directly:', errorText);
+      appNotFoundInCoolify = true;
+    } else {
+      appData = await appResponse.json();
+      console.log('[sync-coolify-status] App data:', JSON.stringify(appData, null, 2));
+      coolifyStatus = appData.status || 'unknown';
     }
 
-    const appData = await appResponse.json();
-    console.log('[sync-coolify-status] App data:', JSON.stringify(appData, null, 2));
-
     // Determine status from Coolify response
-    const coolifyStatus = appData.status || 'unknown';
-    const fqdn = appData.fqdn || deployment.deployed_url;
+    const fqdn = appData?.fqdn || deployment.deployed_url;
     
     let newStatus = deployment.status;
     let newHealthStatus = deployment.health_status;
     let newErrorMessage = deployment.error_message;
 
-    // Map Coolify status to our status
-    if (coolifyStatus === 'running' || coolifyStatus === 'healthy' || coolifyStatus.includes('running')) {
-      newStatus = 'deployed';
-      newHealthStatus = 'healthy';
-      newErrorMessage = null;
-      console.log('[sync-coolify-status] App is running, updating to deployed/healthy');
-    } else if (coolifyStatus === 'exited' || coolifyStatus === 'stopped' || coolifyStatus.includes('exited')) {
-      newStatus = 'failed';
-      newHealthStatus = 'unhealthy';
-      console.log('[sync-coolify-status] App is stopped/exited');
-    } else if (coolifyStatus === 'starting' || coolifyStatus === 'restarting') {
-      newStatus = 'deploying';
-      newHealthStatus = 'unknown';
-      console.log('[sync-coolify-status] App is starting/restarting');
+    // If app not found in Coolify, we'll rely on URL testing
+    if (appNotFoundInCoolify) {
+      console.log('[sync-coolify-status] App not in Coolify, will determine status from URL test');
+      // Clear the invalid coolify_app_uuid since the app doesn't exist anymore
+      newErrorMessage = 'Application supprimée de Coolify - vérification URL uniquement';
+    } else {
+      // Map Coolify status to our status
+      if (coolifyStatus === 'running' || coolifyStatus === 'healthy' || coolifyStatus.includes('running')) {
+        newStatus = 'deployed';
+        newHealthStatus = 'healthy';
+        newErrorMessage = null;
+        console.log('[sync-coolify-status] App is running, updating to deployed/healthy');
+      } else if (coolifyStatus === 'exited' || coolifyStatus === 'stopped' || coolifyStatus.includes('exited')) {
+        newStatus = 'failed';
+        newHealthStatus = 'unhealthy';
+        console.log('[sync-coolify-status] App is stopped/exited');
+      } else if (coolifyStatus === 'starting' || coolifyStatus === 'restarting') {
+        newStatus = 'deploying';
+        newHealthStatus = 'unknown';
+        console.log('[sync-coolify-status] App is starting/restarting');
+      }
     }
 
     // Also test if the URL responds
@@ -182,6 +187,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       coolify_status: coolifyStatus,
+      app_not_found: appNotFoundInCoolify,
       new_status: newStatus,
       new_health_status: newHealthStatus,
       url_healthy: urlHealthy,
