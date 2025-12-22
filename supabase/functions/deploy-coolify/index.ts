@@ -272,7 +272,33 @@ serve(async (req) => {
       }
 
       const appData = await appResponse.json();
-      console.log('Coolify application created:', appData);
+      console.log('[deploy-coolify] Coolify application created:', appData);
+
+      // Step 2.3: Add environment variables for Supabase
+      console.log('[deploy-coolify] Adding environment variables...');
+      const envVars = [
+        { key: 'VITE_SUPABASE_URL', value: supabaseUrl, is_build_time: true },
+        { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: Deno.env.get('SUPABASE_ANON_KEY') || '', is_build_time: true }
+      ];
+
+      for (const envVar of envVars) {
+        try {
+          const envResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}/envs`, {
+            method: 'POST',
+            headers: coolifyHeaders,
+            body: JSON.stringify(envVar)
+          });
+          
+          if (envResponse.ok) {
+            console.log(`[deploy-coolify] Added env var: ${envVar.key}`);
+          } else {
+            const envError = await envResponse.text();
+            console.warn(`[deploy-coolify] Failed to add env var ${envVar.key}:`, envError);
+          }
+        } catch (envErr) {
+          console.warn(`[deploy-coolify] Error adding env var ${envVar.key}:`, envErr);
+        }
+      }
 
       // Step 2.5: Update application with custom domain if provided
       if (domain) {
@@ -340,22 +366,69 @@ serve(async (req) => {
         }
       }
       
-      const finalStatus = buildStatus === 'running' ? 'deployed' : 'deploying';
+      // Determine final status - treat exited:unhealthy as failed
+      const isHealthy = buildStatus === 'running';
+      const isFailed = buildStatus === 'exited:unhealthy' || buildStatus === 'failed' || buildStatus === 'exited';
+      const finalStatus = isHealthy ? 'deployed' : (isFailed ? 'failed' : 'deploying');
       console.log(`[deploy-coolify] Final status after ${attempts} checks: ${finalStatus} (build: ${buildStatus})`);
+
+      // If build failed, try to get logs from Coolify
+      let buildLogs = '';
+      if (isFailed) {
+        console.log('[deploy-coolify] Build failed, fetching logs...');
+        try {
+          // Get deployments list to find the latest deployment UUID
+          const deploymentsListResponse = await fetch(
+            `${server.coolify_url}/api/v1/applications/${appData.uuid}/deployments`,
+            { method: 'GET', headers: coolifyHeaders }
+          );
+          
+          if (deploymentsListResponse.ok) {
+            const deploymentsList = await deploymentsListResponse.json();
+            if (deploymentsList && deploymentsList.length > 0) {
+              const latestDeploymentUuid = deploymentsList[0].deployment_uuid;
+              console.log(`[deploy-coolify] Fetching logs for deployment: ${latestDeploymentUuid}`);
+              
+              const logsResponse = await fetch(
+                `${server.coolify_url}/api/v1/deployments/${latestDeploymentUuid}`,
+                { method: 'GET', headers: coolifyHeaders }
+              );
+              
+              if (logsResponse.ok) {
+                const logsData = await logsResponse.json();
+                buildLogs = logsData.logs || logsData.deployment_log || '';
+                console.log(`[deploy-coolify] Retrieved ${buildLogs.length} chars of build logs`);
+              }
+            }
+          }
+        } catch (logsError) {
+          console.warn('[deploy-coolify] Failed to fetch build logs:', logsError);
+        }
+      }
 
       // Update deployment record
       const deployedUrl = domain 
         ? `https://${domain}` 
         : appData.domains || `http://${server.ip_address}:3000`;
 
+      const updatePayload: Record<string, unknown> = {
+        status: finalStatus,
+        coolify_app_uuid: appData.uuid,
+        deployed_url: deployedUrl,
+        health_status: isHealthy ? 'healthy' : (isFailed ? 'unhealthy' : 'unknown')
+      };
+
+      // Add error message with build logs if failed
+      if (isFailed) {
+        const errorSummary = buildLogs 
+          ? `Build failed (${buildStatus}). Logs:\n${buildLogs.slice(-2000)}` 
+          : `Build failed with status: ${buildStatus}`;
+        updatePayload.error_message = errorSummary;
+      }
+
       await supabase
         .from('server_deployments')
-        .update({
-          status: finalStatus,
-          coolify_app_uuid: appData.uuid,
-          deployed_url: deployedUrl,
-          health_status: buildStatus === 'running' ? 'healthy' : 'unknown'
-        })
+        .update(updatePayload)
         .eq('id', deployment.id);
 
       // Schedule automatic secrets cleanup after deployment
