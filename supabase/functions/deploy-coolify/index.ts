@@ -149,9 +149,13 @@ serve(async (req) => {
       'Accept': 'application/json'
     };
 
+    // Track if we created a new project (for rollback on failure)
+    let projectCreatedThisSession = false;
+    let projectData: { uuid: string; name: string } | null = null;
+
     try {
       // Step 0: Get available servers from Coolify
-      console.log('Fetching Coolify servers...');
+      console.log('[deploy-coolify] Fetching Coolify servers...');
       const serversResponse = await fetch(`${server.coolify_url}/api/v1/servers`, {
         method: 'GET',
         headers: coolifyHeaders
@@ -159,12 +163,12 @@ serve(async (req) => {
 
       if (!serversResponse.ok) {
         const errorText = await serversResponse.text();
-        console.error('Failed to fetch Coolify servers:', errorText);
+        console.error('[deploy-coolify] Failed to fetch Coolify servers:', errorText);
         throw new Error(`Failed to fetch Coolify servers: ${errorText}`);
       }
 
       const servers = await serversResponse.json();
-      console.log('Available Coolify servers:', JSON.stringify(servers));
+      console.log('[deploy-coolify] Available Coolify servers:', JSON.stringify(servers));
 
       if (!servers || servers.length === 0) {
         throw new Error('No servers found in Coolify. Please add a server in Coolify first.');
@@ -172,33 +176,65 @@ serve(async (req) => {
 
       // Use the first available server (usually localhost)
       const coolifyServerUuid = servers[0].uuid;
-      console.log('Using Coolify server UUID:', coolifyServerUuid);
+      console.log('[deploy-coolify] Using Coolify server UUID:', coolifyServerUuid);
 
-      // Step 1: Create a project in Coolify
-      console.log('Creating Coolify project...');
-      const projectResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
-        method: 'POST',
-        headers: coolifyHeaders,
-        body: JSON.stringify({
-          name: project_name,
-          description: `Deployed via Inopay`
-        })
+      // Step 1: Check for existing project in Coolify (to avoid duplicates)
+      console.log('[deploy-coolify] Checking for existing Coolify project...');
+      const existingProjectsResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
+        method: 'GET',
+        headers: coolifyHeaders
       });
 
-      if (!projectResponse.ok) {
-        const errorText = await projectResponse.text();
-        console.error('Coolify project creation failed:', errorText);
-        throw new Error(`Failed to create Coolify project: ${errorText}`);
+      if (!existingProjectsResponse.ok) {
+        const errorText = await existingProjectsResponse.text();
+        console.error('[deploy-coolify] Failed to fetch existing projects:', errorText);
+        throw new Error(`Failed to fetch existing Coolify projects: ${errorText}`);
       }
 
-      const projectData = await projectResponse.json();
-      console.log('Coolify project created:', projectData);
+      const existingProjects = await existingProjectsResponse.json();
+      console.log('[deploy-coolify] Existing projects:', existingProjects.length);
+
+      // Find existing project by name
+      const existingProject = existingProjects.find(
+        (p: { name: string }) => p.name === project_name
+      );
+
+      if (existingProject) {
+        console.log('[deploy-coolify] Found existing project:', existingProject.uuid);
+        projectData = existingProject;
+        projectCreatedThisSession = false;
+      } else {
+        // Create new project only if doesn't exist
+        console.log('[deploy-coolify] Creating new Coolify project...');
+        const projectResponse = await fetch(`${server.coolify_url}/api/v1/projects`, {
+          method: 'POST',
+          headers: coolifyHeaders,
+          body: JSON.stringify({
+            name: project_name,
+            description: `Deployed via Inopay`
+          })
+        });
+
+        if (!projectResponse.ok) {
+          const errorText = await projectResponse.text();
+          console.error('[deploy-coolify] Coolify project creation failed:', errorText);
+          throw new Error(`Failed to create Coolify project: ${errorText}`);
+        }
+
+        projectData = await projectResponse.json();
+        projectCreatedThisSession = true;
+        console.log('[deploy-coolify] Coolify project created:', projectData);
+      }
 
       // Step 2: Create application from GitHub
-      console.log('Creating Coolify application...');
+      if (!projectData) {
+        throw new Error('No project data available');
+      }
+      
+      console.log('[deploy-coolify] Creating Coolify application...');
       const appPayload: Record<string, unknown> = {
         project_uuid: projectData.uuid,
-        server_uuid: coolifyServerUuid, // Use real server UUID from Step 0
+        server_uuid: coolifyServerUuid,
         environment_name: 'production',
         git_repository: github_repo_url,
         git_branch: 'main',
@@ -206,7 +242,7 @@ serve(async (req) => {
         ports_exposes: '3000'
       };
       
-      console.log('Application payload:', JSON.stringify(appPayload));
+      console.log('[deploy-coolify] Application payload:', JSON.stringify(appPayload));
       
       const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/public`, {
         method: 'POST',
@@ -216,7 +252,22 @@ serve(async (req) => {
 
       if (!appResponse.ok) {
         const errorText = await appResponse.text();
-        console.error('Coolify app creation failed:', errorText);
+        console.error('[deploy-coolify] Coolify app creation failed:', errorText);
+        
+        // Rollback: Delete project if we created it in this session
+        if (projectCreatedThisSession && projectData?.uuid) {
+          console.log('[deploy-coolify] Rolling back: deleting orphan project...');
+          try {
+            await fetch(`${server.coolify_url}/api/v1/projects/${projectData.uuid}`, {
+              method: 'DELETE',
+              headers: coolifyHeaders
+            });
+            console.log('[deploy-coolify] Orphan project deleted successfully');
+          } catch (deleteError) {
+            console.error('[deploy-coolify] Failed to delete orphan project:', deleteError);
+          }
+        }
+        
         throw new Error(`Failed to create Coolify application: ${errorText}`);
       }
 
@@ -329,8 +380,22 @@ serve(async (req) => {
       );
 
     } catch (coolifyError: unknown) {
-      console.error('Coolify API error:', coolifyError);
+      console.error('[deploy-coolify] Coolify API error:', coolifyError);
       const errorMessage = coolifyError instanceof Error ? coolifyError.message : 'Unknown error';
+      
+      // Rollback: Delete project if we created it in this session and app creation failed
+      if (projectCreatedThisSession && projectData?.uuid) {
+        console.log('[deploy-coolify] Rolling back: deleting orphan project from catch block...');
+        try {
+          await fetch(`${server.coolify_url}/api/v1/projects/${projectData.uuid}`, {
+            method: 'DELETE',
+            headers: coolifyHeaders
+          });
+          console.log('[deploy-coolify] Orphan project deleted successfully');
+        } catch (deleteError) {
+          console.error('[deploy-coolify] Failed to delete orphan project:', deleteError);
+        }
+      }
       
       // Update deployment as failed
       await supabase
@@ -344,7 +409,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Coolify deployment failed', 
-          details: errorMessage 
+          details: errorMessage,
+          rolled_back: projectCreatedThisSession
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
