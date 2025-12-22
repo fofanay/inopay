@@ -24,7 +24,8 @@ import {
   Home,
   History,
   Server,
-  Zap
+  Zap,
+  Layers
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -56,11 +57,13 @@ import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
+import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
+import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
+type DashboardTab = "overview" | "import" | "batch-import" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sync-mirror";
 
 interface GitHubRepo {
   id: number;
@@ -111,6 +114,11 @@ const Dashboard = () => {
   const [sovereignExportOpen, setSovereignExportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
+  
+  // Batch import states
+  const [batchRepos, setBatchRepos] = useState<MultiRepoGitHubRepo[]>([]);
+  const [batchResults, setBatchResults] = useState<BatchAnalysisResult[]>([]);
+  const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
 
   // Keyboard shortcut for Sovereign Export (Ctrl+Shift+S)
   useEffect(() => {
@@ -568,6 +576,7 @@ const Dashboard = () => {
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
     { id: "import", label: "Importer", icon: Upload },
+    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "Portfolio" },
     { id: "projects", label: "Mes Projets", icon: Package },
     { id: "deploy-choice", label: "Déployer", icon: Cloud },
     { id: "sync-mirror", label: "Sync Mirror", icon: Zap },
@@ -586,6 +595,7 @@ const Dashboard = () => {
     switch (activeTab) {
       case "overview": return "Statistiques de vos projets et actions rapides";
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
+      case "batch-import": return "Analysez plusieurs projets GitHub en une seule opération";
       case "projects": return "Gérez et déployez vos projets analysés";
       case "deploy-choice": return "Choisissez votre méthode de déploiement";
       case "sync-mirror": return "Synchronisation automatique entre Lovable et votre serveur";
@@ -595,6 +605,110 @@ const Dashboard = () => {
       case "services": return "Vos crédits et abonnements actifs";
       default: return "";
     }
+  };
+
+  // Batch analysis handler
+  const handleBatchAnalysis = async (repos: MultiRepoGitHubRepo[]) => {
+    setBatchRepos(repos);
+    setIsBatchAnalyzing(true);
+    
+    // Initialize results
+    const initialResults: BatchAnalysisResult[] = repos.map(repo => ({
+      repo,
+      status: "pending"
+    }));
+    setBatchResults(initialResults);
+
+    // Analyze repos in parallel (max 3 at a time)
+    const batchSize = 3;
+    for (let i = 0; i < repos.length; i += batchSize) {
+      const batch = repos.slice(i, i + batchSize);
+      await Promise.all(batch.map(async (repo, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        
+        // Update status to analyzing
+        setBatchResults(prev => prev.map((r, idx) => 
+          idx === globalIndex ? { ...r, status: "analyzing" } : r
+        ));
+
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          
+          const response = await supabase.functions.invoke("fetch-github-repo", {
+            body: { url: repo.html_url },
+            headers: {
+              Authorization: `Bearer ${sessionData.session?.access_token}`,
+            },
+          });
+
+          if (response.error || response.data?.error) {
+            throw new Error(response.error?.message || response.data?.error || "Erreur d'analyse");
+          }
+
+          const { repository, files } = response.data;
+          
+          if (!files || files.length === 0) {
+            throw new Error("Aucun fichier trouvé");
+          }
+
+          const analysisResult = await analyzeFromGitHub(files, repository.name, () => {});
+          
+          // Save to database
+          if (user) {
+            const detectedIssues = [
+              ...analysisResult.issues.map(issue => ({
+                name: issue.pattern,
+                type: "Import",
+                status: issue.severity === "critical" ? "incompatible" : "warning",
+                note: `${issue.file}${issue.line ? `:${issue.line}` : ""} - ${issue.description}`,
+              })),
+              ...analysisResult.dependencies.filter(d => d.status !== "compatible"),
+            ];
+
+            const { data } = await supabase
+              .from("projects_analysis")
+              .insert([{
+                user_id: user.id,
+                project_name: repository.name,
+                file_name: repository.name,
+                portability_score: analysisResult.score,
+                detected_issues: JSON.parse(JSON.stringify(detectedIssues)),
+                recommendations: JSON.parse(JSON.stringify(analysisResult.recommendations)),
+                status: "analyzed",
+              }])
+              .select()
+              .single();
+
+            setBatchResults(prev => prev.map((r, idx) => 
+              idx === globalIndex ? { 
+                ...r, 
+                status: "complete", 
+                score: analysisResult.score,
+                analysisId: data?.id 
+              } : r
+            ));
+          }
+        } catch (error) {
+          console.error(`Error analyzing ${repo.name}:`, error);
+          setBatchResults(prev => prev.map((r, idx) => 
+            idx === globalIndex ? { 
+              ...r, 
+              status: "error", 
+              error: error instanceof Error ? error.message : "Erreur inconnue" 
+            } : r
+          ));
+        }
+      }));
+    }
+
+    setIsBatchAnalyzing(false);
+    fetchHistory();
+  };
+
+  const resetBatchAnalysis = () => {
+    setBatchRepos([]);
+    setBatchResults([]);
+    setIsBatchAnalyzing(false);
   };
 
   return (
@@ -617,7 +731,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item) => (
             <Button
@@ -632,6 +745,11 @@ const Dashboard = () => {
             >
               <item.icon className="h-4 w-4" />
               {item.label}
+              {"badge" in item && item.badge && (
+                <Badge variant="outline" className="ml-auto text-[10px] px-1.5 py-0 h-4 border-accent/50 text-accent">
+                  {item.badge}
+                </Badge>
+              )}
             </Button>
           ))}
         </nav>
@@ -1119,6 +1237,31 @@ const Dashboard = () => {
                       </CardContent>
                     </Card>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Batch Import */}
+            {activeTab === "batch-import" && (
+              <div className="space-y-6">
+                {batchRepos.length === 0 ? (
+                  <GitHubMultiRepoSelector
+                    onSelectRepos={handleBatchAnalysis}
+                    isLoading={isBatchAnalyzing}
+                    maxSelection={subscription.planType === "pro" ? 50 : 10}
+                  />
+                ) : (
+                  <BatchAnalysisProgress
+                    repos={batchRepos}
+                    results={batchResults}
+                    onComplete={() => {
+                      toast({
+                        title: "Analyse batch terminée",
+                        description: `${batchResults.filter(r => r.status === "complete").length} projets analysés avec succès`,
+                      });
+                    }}
+                    onReset={resetBatchAnalysis}
+                  />
                 )}
               </div>
             )}
