@@ -170,21 +170,24 @@ serve(async (req) => {
       const projectData = await projectResponse.json();
       console.log('Coolify project created:', projectData);
 
-      // Step 2: Create application from GitHub
+      // Step 2: Create application from GitHub (without fqdn - not allowed in creation)
       console.log('Creating Coolify application...');
+      const appPayload: Record<string, unknown> = {
+        project_uuid: projectData.uuid,
+        server_uuid: 'default', // Use default server
+        environment_name: 'production',
+        git_repository: github_repo_url,
+        git_branch: 'main',
+        build_pack: 'nixpacks',
+        ports_exposes: '3000'
+      };
+      
+      console.log('Application payload:', JSON.stringify(appPayload));
+      
       const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/public`, {
         method: 'POST',
         headers: coolifyHeaders,
-        body: JSON.stringify({
-          project_uuid: projectData.uuid,
-          server_uuid: 'default', // Use default server
-          environment_name: 'production',
-          git_repository: github_repo_url,
-          git_branch: 'main',
-          build_pack: 'nixpacks',
-          ports_exposes: '3000',
-          fqdn: domain ? `https://${domain}` : null
-        })
+        body: JSON.stringify(appPayload)
       });
 
       if (!appResponse.ok) {
@@ -195,6 +198,25 @@ serve(async (req) => {
 
       const appData = await appResponse.json();
       console.log('Coolify application created:', appData);
+
+      // Step 2.5: Update application with custom domain if provided
+      if (domain) {
+        console.log('Setting custom domain:', domain);
+        const domainResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}`, {
+          method: 'PATCH',
+          headers: coolifyHeaders,
+          body: JSON.stringify({
+            fqdn: `https://${domain}`
+          })
+        });
+        
+        if (!domainResponse.ok) {
+          const errorText = await domainResponse.text();
+          console.warn('Domain configuration failed (non-blocking):', errorText);
+        } else {
+          console.log('Custom domain configured');
+        }
+      }
 
       // Step 3: Trigger deployment
       console.log('Triggering deployment...');
