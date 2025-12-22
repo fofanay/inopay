@@ -550,7 +550,8 @@ serve(async (req) => {
         console.log('[deploy-coolify] Creating new Coolify application with DOCKERFILE mode...');
         
         const gitRepoForCoolify = getGitRepoUrlForCoolify();
-        const isPrivateRepo = repoAuthMode === 'authenticated';
+        // At app creation time, we always start with public URL
+        const isPrivateRepo = false;
         
         // Use Dockerfile mode (port 80) since the repo has Dockerfile + nginx.conf
         // IMPORTANT: Don't use dockerfile_location in /applications/public endpoint - it's not allowed
