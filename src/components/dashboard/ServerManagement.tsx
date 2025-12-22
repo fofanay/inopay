@@ -25,10 +25,13 @@ import {
   Clock,
   Shield,
   AlertTriangle,
-  Settings2
+  Settings2,
+  Rocket
 } from 'lucide-react';
 import { VPSOnboarding } from './VPSOnboarding';
 import { ServerSetupWizard } from './ServerSetupWizard';
+import { CoolifyTokenConfig } from './CoolifyTokenConfig';
+import { FirstDeploymentWizard } from './FirstDeploymentWizard';
 
 interface UserServer {
   id: string;
@@ -259,6 +262,24 @@ export function ServerManagement() {
                       </Button>
                     )}
                   </div>
+
+                  {/* Coolify token configuration */}
+                  <CoolifyTokenConfig
+                    serverId={server.id}
+                    serverIp={server.ip_address}
+                    coolifyUrl={server.coolify_url}
+                    currentToken={server.coolify_token}
+                    onSuccess={fetchServers}
+                  />
+
+                  {/* First deployment wizard - show only if token is configured */}
+                  {server.coolify_token && serverDeployments.length === 0 && (
+                    <FirstDeploymentWizard
+                      serverId={server.id}
+                      serverName={server.name}
+                      onDeploymentComplete={fetchServers}
+                    />
+                  )}
 
                   {serverDeployments.length > 0 && (
                     <div className="border-t pt-4">
