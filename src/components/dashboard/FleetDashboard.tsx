@@ -19,7 +19,10 @@ import {
   ArrowRight,
   FolderOpen,
   FileDown,
-  Loader2
+  Loader2,
+  ExternalLink,
+  GitBranch,
+  Server
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +50,16 @@ interface DeploymentRecord {
   status: string;
   created_at: string;
   deployed_url: string | null;
+  source: "history" | "server";
+}
+
+interface ServerDeploymentRecord {
+  id: string;
+  project_name: string;
+  status: string;
+  deployed_url: string | null;
+  created_at: string;
+  github_repo_url: string | null;
 }
 
 type KanbanColumn = "pending" | "analyzed" | "ready" | "deployed";
@@ -113,7 +126,8 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
     
     setLoading(true);
     try {
-      const [projectsRes, deploymentsRes] = await Promise.all([
+      // Fetch from ALL THREE sources: projects_analysis, deployment_history, AND server_deployments
+      const [projectsRes, historyRes, serverDeploymentsRes] = await Promise.all([
         supabase
           .from("projects_analysis")
           .select("*")
@@ -121,14 +135,37 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
         supabase
           .from("deployment_history")
           .select("id, project_name, status, created_at, deployed_url")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("server_deployments")
+          .select("id, project_name, status, deployed_url, created_at, github_repo_url")
           .order("created_at", { ascending: false })
       ]);
 
       if (projectsRes.error) throw projectsRes.error;
-      if (deploymentsRes.error) throw deploymentsRes.error;
+      if (historyRes.error) throw historyRes.error;
+      if (serverDeploymentsRes.error) throw serverDeploymentsRes.error;
+      
+      // Merge deployments from BOTH sources with a source indicator
+      const historyDeployments: DeploymentRecord[] = (historyRes.data || []).map(d => ({
+        ...d,
+        source: "history" as const
+      }));
+      
+      const serverDeployments: DeploymentRecord[] = (serverDeploymentsRes.data || []).map(d => ({
+        id: d.id,
+        project_name: d.project_name,
+        status: d.status === "deployed" ? "success" : d.status,
+        created_at: d.created_at,
+        deployed_url: d.deployed_url,
+        source: "server" as const
+      }));
+      
+      // Combine all deployments
+      const allDeployments = [...historyDeployments, ...serverDeployments];
       
       setProjects(projectsRes.data || []);
-      setDeployments(deploymentsRes.data || []);
+      setDeployments(allDeployments);
     } catch (error) {
       console.error("Error fetching fleet data:", error);
       toast.error("Impossible de charger les données");
@@ -143,9 +180,10 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
 
   // Categorize projects into Kanban columns
   const getProjectColumn = (project: FleetProject): KanbanColumn => {
-    // Check if project has been deployed
+    // Check if project has been deployed (in EITHER deployment_history OR server_deployments)
     const isDeployed = deployments.some(
-      d => d.project_name.toLowerCase() === project.project_name.toLowerCase() && d.status === "success"
+      d => d.project_name.toLowerCase() === project.project_name.toLowerCase() && 
+           (d.status === "success" || d.status === "deployed")
     );
     if (isDeployed) return "deployed";
     
@@ -157,6 +195,14 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
     
     // Default to pending
     return "pending";
+  };
+  
+  // Get deployment info for a project (from either source)
+  const getDeploymentInfo = (projectName: string): DeploymentRecord | undefined => {
+    return deployments.find(
+      d => d.project_name.toLowerCase() === projectName.toLowerCase() && 
+           (d.status === "success" || d.status === "deployed")
+    );
   };
 
   const groupedProjects = projects.reduce((acc, project) => {
@@ -471,47 +517,106 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
                             Aucun projet
                           </div>
                         ) : (
-                          columnProjects.map((project) => (
-                            <Card 
-                              key={project.id} 
-                              className="cursor-pointer hover:shadow-md transition-all hover:border-accent/50 group"
-                              onClick={() => onSelectProject?.(project)}
-                            >
-                              <CardContent className="p-2 md:p-3">
-                                <div className="flex items-start justify-between gap-1 md:gap-2 mb-1 md:mb-2">
-                                  <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-                                    <FolderOpen className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium text-xs md:text-sm truncate text-foreground">
-                                      {project.project_name}
+                          columnProjects.map((project) => {
+                            const deploymentInfo = getDeploymentInfo(project.project_name);
+                            const column = getProjectColumn(project);
+                            
+                            return (
+                              <Card 
+                                key={project.id} 
+                                className="cursor-pointer hover:shadow-md transition-all hover:border-accent/50 group"
+                                onClick={() => onSelectProject?.(project)}
+                              >
+                                <CardContent className="p-2 md:p-3">
+                                  <div className="flex items-start justify-between gap-1 md:gap-2 mb-1 md:mb-2">
+                                    <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+                                      <FolderOpen className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground shrink-0" />
+                                      <span className="font-medium text-xs md:text-sm truncate text-foreground">
+                                        {project.project_name}
+                                      </span>
+                                    </div>
+                                    <ArrowRight className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between">
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-[10px] md:text-xs ${getScoreColor(project.portability_score)}`}
+                                    >
+                                      {project.portability_score ?? "N/A"}/100
+                                    </Badge>
+                                    <span className="text-[10px] md:text-xs text-muted-foreground">
+                                      {formatDistanceToNow(new Date(project.created_at), { 
+                                        addSuffix: true, 
+                                        locale: fr 
+                                      })}
                                     </span>
                                   </div>
-                                  <ArrowRight className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                                </div>
-                                
-                                <div className="flex items-center justify-between">
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-[10px] md:text-xs ${getScoreColor(project.portability_score)}`}
-                                  >
-                                    {project.portability_score ?? "N/A"}/100
-                                  </Badge>
-                                  <span className="text-[10px] md:text-xs text-muted-foreground">
-                                    {formatDistanceToNow(new Date(project.created_at), { 
-                                      addSuffix: true, 
-                                      locale: fr 
-                                    })}
-                                  </span>
-                                </div>
 
-                                {estimateSavings(project.detected_issues) > 0 && (
-                                  <div className="mt-1.5 md:mt-2 flex items-center gap-1 text-[10px] md:text-xs text-success">
-                                    <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                                    -{estimateSavings(project.detected_issues)}$/mois
+                                  {estimateSavings(project.detected_issues) > 0 && (
+                                    <div className="mt-1.5 md:mt-2 flex items-center gap-1 text-[10px] md:text-xs text-success">
+                                      <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                      -{estimateSavings(project.detected_issues)}$/mois
+                                    </div>
+                                  )}
+                                  
+                                  {/* Show deployment URL if deployed */}
+                                  {column === "deployed" && deploymentInfo?.deployed_url && (
+                                    <a
+                                      href={deploymentInfo.deployed_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="mt-1.5 md:mt-2 flex items-center gap-1 text-[10px] md:text-xs text-primary hover:underline"
+                                    >
+                                      <ExternalLink className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                      <span className="truncate">{new URL(deploymentInfo.deployed_url).hostname}</span>
+                                    </a>
+                                  )}
+                                  
+                                  {/* Show source badge if deployed from server */}
+                                  {column === "deployed" && deploymentInfo?.source === "server" && (
+                                    <Badge variant="outline" className="mt-1.5 text-[9px] gap-1 bg-accent/10 text-accent border-accent/30">
+                                      <Server className="h-2 w-2" />
+                                      VPS
+                                    </Badge>
+                                  )}
+                                  
+                                  {/* Action buttons based on status */}
+                                  <div className="mt-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {column === "ready" && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        className="h-6 text-[10px] px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigate?.("deploy-choice");
+                                        }}
+                                      >
+                                        <Rocket className="h-2.5 w-2.5 mr-1" />
+                                        Déployer
+                                      </Button>
+                                    )}
+                                    {column === "deployed" && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        className="h-6 text-[10px] px-2"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onNavigate?.("sync-mirror");
+                                        }}
+                                      >
+                                        <GitBranch className="h-2.5 w-2.5 mr-1" />
+                                        Sync
+                                      </Button>
+                                    )}
                                   </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))
+                                </CardContent>
+                              </Card>
+                            );
+                          })
                         )}
                       </div>
                     </ScrollArea>

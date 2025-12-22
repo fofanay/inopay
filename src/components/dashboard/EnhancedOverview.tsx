@@ -51,6 +51,14 @@ interface ServerData {
   provider: string | null;
 }
 
+interface ServerDeploymentData {
+  id: string;
+  project_name: string;
+  status: string;
+  deployed_url: string | null;
+  created_at: string;
+}
+
 interface RecentReport {
   id: string;
   project_name: string;
@@ -67,6 +75,7 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
   const limits = useUserLimits();
   const [stats, setStats] = useState<UserStatsData | null>(null);
   const [servers, setServers] = useState<ServerData[]>([]);
+  const [serverDeployments, setServerDeployments] = useState<ServerDeploymentData[]>([]);
   const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,13 +92,22 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
 
       if (projectsError) throw projectsError;
 
-      // Fetch deployments with cost analysis
+      // Fetch deployments with cost analysis from deployment_history
       const { data: deployments, error: deploymentsError } = await supabase
         .from("deployment_history")
         .select("id, cost_analysis")
         .eq("user_id", user.id);
 
       if (deploymentsError) throw deploymentsError;
+
+      // Fetch server deployments
+      const { data: serverDeploymentsData, error: serverDeploymentsError } = await supabase
+        .from("server_deployments")
+        .select("id, project_name, status, deployed_url, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (serverDeploymentsError) throw serverDeploymentsError;
 
       // Calculate total savings from cost_analysis
       let totalSavings = 0;
@@ -122,6 +140,11 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
 
       if (reportsError) throw reportsError;
 
+      // Count TOTAL deployments from BOTH sources
+      const historyCount = deployments?.length || 0;
+      const serverCount = serverDeploymentsData?.filter(d => d.status === "deployed").length || 0;
+      const totalDeployments = historyCount + serverCount;
+
       const scores = projects?.map(p => p.portability_score).filter(s => s !== null) || [];
       const avgScore = scores.length > 0 
         ? Math.round(scores.reduce((a, b) => a + (b || 0), 0) / scores.length)
@@ -129,13 +152,14 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
 
       setStats({
         totalProjects: projects?.length || 0,
-        totalDeployments: deployments?.length || 0,
+        totalDeployments: totalDeployments,
         averageScore: avgScore,
         cleanedFiles: Math.floor((projects?.length || 0) * 2.5),
         totalSavings,
       });
 
       setServers(serversData || []);
+      setServerDeployments(serverDeploymentsData || []);
       setRecentReports(reportsData || []);
 
     } catch (error) {
@@ -444,7 +468,7 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
           </CardContent>
         </Card>
 
-        {/* Servers Mini Card */}
+        {/* Servers & Deployments Mini Card */}
         <Card className="border-0 shadow-md">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -452,12 +476,14 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
                 <div className="p-2 rounded-lg bg-accent/10">
                   <Server className="h-5 w-5 text-accent" />
                 </div>
-                <CardTitle className="text-base">Mes Serveurs ({servers.length})</CardTitle>
+                <CardTitle className="text-base">
+                  Infrastructure ({servers.length} serveurs, {serverDeployments.filter(d => d.status === "deployed").length} apps)
+                </CardTitle>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {servers.length === 0 ? (
+          <CardContent className="space-y-3">
+            {servers.length === 0 && serverDeployments.length === 0 ? (
               <div className="text-center py-4">
                 <p className="text-sm text-muted-foreground mb-3">Aucun serveur configuré</p>
                 <Button 
@@ -470,7 +496,34 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
               </div>
             ) : (
               <>
-                {servers.slice(0, 3).map((server) => (
+                {/* Active Server Deployments */}
+                {serverDeployments.filter(d => d.status === "deployed").slice(0, 2).map((deployment) => (
+                  <div 
+                    key={deployment.id} 
+                    className="flex items-center justify-between p-2 rounded-lg bg-success/5 border border-success/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                      <span className="text-sm font-medium">{deployment.project_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {deployment.deployed_url && (
+                        <a
+                          href={deployment.deployed_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Live
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Servers */}
+                {servers.slice(0, 2).map((server) => (
                   <div 
                     key={server.id} 
                     className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
@@ -489,7 +542,7 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
                   className="w-full gap-2 text-sm"
                   onClick={() => onNavigate("servers")}
                 >
-                  Gérer les serveurs
+                  Gérer l'infrastructure
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </>
