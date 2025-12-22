@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AdminUsersList from "@/components/admin/AdminUsersList";
@@ -43,6 +44,8 @@ import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import AdminPurchases from "@/components/admin/AdminPurchases";
 import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
+import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
+import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -130,8 +133,45 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-72 bg-secondary flex flex-col">
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        menuItems={menuItems}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        logo={<img src={inopayLogo} alt="Inopay" className="h-10 object-contain" />}
+        planBadge={
+          <Badge className="bg-primary/20 text-primary-foreground border-primary/30">
+            Administration
+          </Badge>
+        }
+        bottomActions={
+          <>
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-11 text-secondary-foreground/80"
+                onClick={() => navigate("/dashboard")}
+              >
+                <Home className="h-4 w-4" />
+                Dashboard Standard
+              </Button>
+            </SheetClose>
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-11 text-destructive"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                Déconnexion
+              </Button>
+            </SheetClose>
+          </>
+        }
+      />
+
+      {/* Desktop Sidebar - hidden on mobile */}
+      <aside className="hidden md:flex w-72 bg-secondary flex-col">
         {/* Logo Header */}
         <div className="p-6 border-b border-secondary/50">
           <div className="flex items-center justify-center mb-3">
@@ -186,14 +226,14 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {/* Top Header */}
-        <header className="bg-card border-b border-border px-8 py-6">
-          <h1 className="text-2xl font-bold text-foreground">{getPageTitle()}</h1>
-          <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
-        </header>
+        {/* Header */}
+        <MobileHeader 
+          title={getPageTitle()} 
+          description={getPageDescription()} 
+        />
 
         {/* Content Area */}
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === "overview" && <AdminStats />}
             {activeTab === "fleet" && <AdminServerFleet />}

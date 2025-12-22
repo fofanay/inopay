@@ -36,6 +36,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +62,8 @@ import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
+import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
+import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
@@ -717,8 +720,59 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-72 bg-secondary flex flex-col">
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        menuItems={menuItems}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as DashboardTab)}
+        logo={<img src={inopayLogo} alt="Inopay" className="h-10 object-contain" />}
+        planBadge={
+          <Badge className={`${
+            subscription.subscribed 
+              ? "bg-primary/20 text-primary-foreground border-primary/30" 
+              : "bg-muted/20 text-secondary-foreground/70 border-muted/30"
+          }`}>
+            {subscription.subscribed ? (subscription.planType === "pro" ? "Pro" : "Pack Liberté") : "Gratuit"}
+          </Badge>
+        }
+        bottomActions={
+          <>
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-11 text-secondary-foreground/80"
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="h-4 w-4" />
+                Paramètres
+              </Button>
+            </SheetClose>
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-11 text-secondary-foreground/80"
+                onClick={() => navigate("/")}
+              >
+                <Home className="h-4 w-4" />
+                Accueil
+              </Button>
+            </SheetClose>
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-11 text-destructive"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                Déconnexion
+              </Button>
+            </SheetClose>
+          </>
+        }
+      />
+
+      {/* Desktop Sidebar - hidden on mobile */}
+      <aside className="hidden md:flex w-72 bg-secondary flex-col">
         {/* Logo Header */}
         <div className="p-6 border-b border-secondary/50">
           <div className="flex items-center justify-center mb-3">
@@ -789,14 +843,14 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {/* Top Header */}
-        <header className="bg-card border-b border-border px-8 py-6">
-          <h1 className="text-2xl font-bold text-foreground">{getPageTitle()}</h1>
-          <p className="text-muted-foreground mt-1">{getPageDescription()}</p>
-        </header>
+        {/* Header */}
+        <MobileHeader 
+          title={getPageTitle()} 
+          description={getPageDescription()} 
+        />
 
         {/* Content Area */}
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             
             {/* Tab: Overview */}
