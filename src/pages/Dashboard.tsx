@@ -62,6 +62,7 @@ import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur"
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import { SovereignDeploymentWizard } from "@/components/dashboard/SovereignDeploymentWizard";
 import { SovereigntySetupWizard } from "@/components/dashboard/SovereigntySetupWizard";
+import { SovereigntyWizard } from "@/components/dashboard/SovereigntyWizard";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
