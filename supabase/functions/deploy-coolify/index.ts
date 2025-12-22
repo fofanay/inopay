@@ -261,7 +261,7 @@ serve(async (req) => {
       // Update deployment record
       const deployedUrl = domain 
         ? `https://${domain}` 
-        : `http://${server.ip_address}:3000`;
+        : appData.domains || `http://${server.ip_address}:3000`;
 
       await supabase
         .from('server_deployments')
@@ -271,6 +271,44 @@ serve(async (req) => {
           deployed_url: deployedUrl
         })
         .eq('id', deployment.id);
+
+      // Schedule automatic secrets cleanup after deployment
+      // Use background task pattern
+      const cleanupTask = async () => {
+        // Wait 60 seconds for the deployment to stabilize
+        console.log('[deploy-coolify] Scheduling automatic secrets cleanup in 60s...');
+        await new Promise(resolve => setTimeout(resolve, 60000));
+        
+        try {
+          console.log('[deploy-coolify] Starting automatic secrets cleanup...');
+          const cleanupResponse = await fetch(`${supabaseUrl}/functions/v1/cleanup-secrets`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`
+            },
+            body: JSON.stringify({
+              server_id: server_id,
+              deployment_id: deployment.id,
+              verify_health: true,
+              force: false
+            })
+          });
+          
+          const cleanupResult = await cleanupResponse.json();
+          console.log('[deploy-coolify] Automatic cleanup result:', cleanupResult);
+        } catch (cleanupError) {
+          console.error('[deploy-coolify] Automatic cleanup error:', cleanupError);
+        }
+      };
+
+      // Start cleanup in background using globalThis.EdgeRuntime if available
+      if (typeof (globalThis as any).EdgeRuntime !== 'undefined') {
+        (globalThis as any).EdgeRuntime.waitUntil(cleanupTask());
+      } else {
+        // Fallback: just start the task without waiting
+        cleanupTask().catch(console.error);
+      }
 
       return new Response(
         JSON.stringify({
@@ -284,7 +322,8 @@ serve(async (req) => {
           coolify: {
             project: projectData,
             application: appData
-          }
+          },
+          auto_cleanup_scheduled: true
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
