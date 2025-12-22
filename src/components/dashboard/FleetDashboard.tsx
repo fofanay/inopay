@@ -318,104 +318,106 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
   }
 
   return (
-    <div className="space-y-6">
-      {/* Fleet Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card className="bg-gradient-to-br from-accent/10 to-primary/10 border-accent/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <Layers className="h-8 w-8 text-accent" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-foreground">{totalProjects}</div>
-                <div className="text-xs text-muted-foreground">Total Projets</div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Fleet Metrics - Scrollable on mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4 min-w-[600px] md:min-w-0">
+          <Card className="bg-gradient-to-br from-accent/10 to-primary/10 border-accent/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <Layers className="h-6 md:h-8 w-6 md:w-8 text-accent" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-foreground">{totalProjects}</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Total Projets</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-success/5 border-success/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <CheckCircle2 className="h-8 w-8 text-success" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-success">{deployedCount}</div>
-                <div className="text-xs text-muted-foreground">Déployés</div>
+          <Card className="bg-success/5 border-success/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <CheckCircle2 className="h-6 md:h-8 w-6 md:w-8 text-success" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-success">{deployedCount}</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Déployés</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-warning/5 border-warning/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <Rocket className="h-8 w-8 text-warning" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-warning">{readyCount}</div>
-                <div className="text-xs text-muted-foreground">Prêts</div>
+          <Card className="bg-warning/5 border-warning/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <Rocket className="h-6 md:h-8 w-6 md:w-8 text-warning" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-warning">{readyCount}</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Prêts</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-info/5 border-info/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <BarChart3 className="h-8 w-8 text-info" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-info">{averageScore}</div>
-                <div className="text-xs text-muted-foreground">Score Moyen</div>
+          <Card className="bg-info/5 border-info/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <BarChart3 className="h-6 md:h-8 w-6 md:w-8 text-info" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-info">{averageScore}</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Score Moyen</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-success/5 border-success/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <TrendingDown className="h-8 w-8 text-success" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-success">${totalSavings}</div>
-                <div className="text-xs text-muted-foreground">Économies/mois</div>
+          <Card className="bg-success/5 border-success/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <TrendingDown className="h-6 md:h-8 w-6 md:w-8 text-success" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-success">${totalSavings}</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Économies/mois</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <Target className="h-8 w-8 text-primary" />
-              <div className="text-right">
-                <div className="text-3xl font-bold text-primary">{deploymentRate}%</div>
-                <div className="text-xs text-muted-foreground">Taux Deploy</div>
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-center justify-between">
+                <Target className="h-6 md:h-8 w-6 md:w-8 text-primary" />
+                <div className="text-right">
+                  <div className="text-2xl md:text-3xl font-bold text-primary">{deploymentRate}%</div>
+                  <div className="text-[10px] md:text-xs text-muted-foreground">Taux Deploy</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Deployment Progress */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
+        <CardContent className="p-3 md:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
             <span className="text-sm font-medium text-foreground">Progression du Portfolio</span>
-            <span className="text-sm text-muted-foreground">{deployedCount}/{totalProjects} projets déployés</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">{deployedCount}/{totalProjects} projets déployés</span>
           </div>
-          <Progress value={deploymentRate} className="h-3" />
+          <Progress value={deploymentRate} className="h-2 md:h-3" />
         </CardContent>
       </Card>
 
       {/* Kanban Board */}
       <Card className="overflow-hidden">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-3 md:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                <LayoutGrid className="h-5 w-5 text-primary-foreground" />
+              <div className="h-8 w-8 md:h-10 md:w-10 rounded-lg bg-gradient-to-br from-accent to-primary flex items-center justify-center shrink-0">
+                <LayoutGrid className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
               </div>
-              <div>
-                <CardTitle className="text-xl">Fleet Kanban</CardTitle>
-                <CardDescription>Vue d'ensemble de tous vos projets par statut</CardDescription>
+              <div className="min-w-0">
+                <CardTitle className="text-lg md:text-xl">Fleet Kanban</CardTitle>
+                <CardDescription className="text-xs md:text-sm truncate">Vue d'ensemble de tous vos projets par statut</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -424,101 +426,105 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
                 size="sm" 
                 onClick={handleExportPDF} 
                 disabled={exporting || projects.length === 0}
-                className="gap-2"
+                className="gap-2 text-xs md:text-sm"
               >
                 {exporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
                 ) : (
-                  <FileDown className="h-4 w-4" />
+                  <FileDown className="h-3 w-3 md:h-4 md:w-4" />
                 )}
-                Export PDF
+                <span className="hidden sm:inline">Export PDF</span>
+                <span className="sm:hidden">PDF</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Actualiser
+              <Button variant="outline" size="sm" onClick={fetchData} className="gap-2 text-xs md:text-sm">
+                <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="hidden sm:inline">Actualiser</span>
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(Object.keys(COLUMN_CONFIG) as KanbanColumn[]).map((columnKey) => {
-              const config = COLUMN_CONFIG[columnKey];
-              const columnProjects = groupedProjects[columnKey] || [];
-              const Icon = config.icon;
+        <CardContent className="p-2 md:p-6">
+          {/* Kanban - Horizontal scroll on mobile */}
+          <div className="overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 pb-2">
+            <div className="grid grid-cols-4 gap-3 md:gap-4 min-w-[800px] md:min-w-0">
+              {(Object.keys(COLUMN_CONFIG) as KanbanColumn[]).map((columnKey) => {
+                const config = COLUMN_CONFIG[columnKey];
+                const columnProjects = groupedProjects[columnKey] || [];
+                const Icon = config.icon;
 
-              return (
-                <div key={columnKey} className="flex flex-col">
-                  {/* Column Header */}
-                  <div className={`flex items-center gap-2 p-3 rounded-t-lg ${config.bgColor}`}>
-                    <Icon className={`h-4 w-4 ${config.color}`} />
-                    <span className={`font-medium text-sm ${config.color}`}>{config.label}</span>
-                    <Badge variant="outline" className="ml-auto text-xs">
-                      {columnProjects.length}
-                    </Badge>
-                  </div>
+                return (
+                  <div key={columnKey} className="flex flex-col min-w-[180px] md:min-w-0">
+                    {/* Column Header */}
+                    <div className={`flex items-center gap-2 p-2 md:p-3 rounded-t-lg ${config.bgColor}`}>
+                      <Icon className={`h-3 w-3 md:h-4 md:w-4 ${config.color}`} />
+                      <span className={`font-medium text-xs md:text-sm ${config.color} truncate`}>{config.label}</span>
+                      <Badge variant="outline" className="ml-auto text-[10px] md:text-xs shrink-0">
+                        {columnProjects.length}
+                      </Badge>
+                    </div>
 
-                  {/* Column Content */}
-                  <ScrollArea className="flex-1 min-h-[300px] max-h-[500px] border border-t-0 rounded-b-lg bg-muted/20">
-                    <div className="p-2 space-y-2">
-                      {columnProjects.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground text-sm">
-                          Aucun projet
-                        </div>
-                      ) : (
-                        columnProjects.map((project) => (
-                          <Card 
-                            key={project.id} 
-                            className="cursor-pointer hover:shadow-md transition-all hover:border-accent/50 group"
-                            onClick={() => onSelectProject?.(project)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  <span className="font-medium text-sm truncate text-foreground">
-                                    {project.project_name}
+                    {/* Column Content */}
+                    <ScrollArea className="flex-1 min-h-[200px] md:min-h-[300px] max-h-[300px] md:max-h-[500px] border border-t-0 rounded-b-lg bg-muted/20">
+                      <div className="p-1.5 md:p-2 space-y-1.5 md:space-y-2">
+                        {columnProjects.length === 0 ? (
+                          <div className="text-center py-6 md:py-8 text-muted-foreground text-xs md:text-sm">
+                            Aucun projet
+                          </div>
+                        ) : (
+                          columnProjects.map((project) => (
+                            <Card 
+                              key={project.id} 
+                              className="cursor-pointer hover:shadow-md transition-all hover:border-accent/50 group"
+                              onClick={() => onSelectProject?.(project)}
+                            >
+                              <CardContent className="p-2 md:p-3">
+                                <div className="flex items-start justify-between gap-1 md:gap-2 mb-1 md:mb-2">
+                                  <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+                                    <FolderOpen className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground shrink-0" />
+                                    <span className="font-medium text-xs md:text-sm truncate text-foreground">
+                                      {project.project_name}
+                                    </span>
+                                  </div>
+                                  <ArrowRight className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] md:text-xs ${getScoreColor(project.portability_score)}`}
+                                  >
+                                    {project.portability_score ?? "N/A"}/100
+                                  </Badge>
+                                  <span className="text-[10px] md:text-xs text-muted-foreground">
+                                    {formatDistanceToNow(new Date(project.created_at), { 
+                                      addSuffix: true, 
+                                      locale: fr 
+                                    })}
                                   </span>
                                 </div>
-                                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                              </div>
-                              
-                              <div className="flex items-center justify-between">
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs ${getScoreColor(project.portability_score)}`}
-                                >
-                                  {project.portability_score ?? "N/A"}/100
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(project.created_at), { 
-                                    addSuffix: true, 
-                                    locale: fr 
-                                  })}
-                                </span>
-                              </div>
 
-                              {estimateSavings(project.detected_issues) > 0 && (
-                                <div className="mt-2 flex items-center gap-1 text-xs text-success">
-                                  <TrendingDown className="h-3 w-3" />
-                                  -{estimateSavings(project.detected_issues)}$/mois
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              );
-            })}
+                                {estimateSavings(project.detected_issues) > 0 && (
+                                  <div className="mt-1.5 md:mt-2 flex items-center gap-1 text-[10px] md:text-xs text-success">
+                                    <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                                    -{estimateSavings(project.detected_issues)}$/mois
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Quick Actions */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-4">
         <Button 
           onClick={() => onNavigate?.("batch-import")} 
           className="gap-2 bg-gradient-to-r from-accent to-primary"

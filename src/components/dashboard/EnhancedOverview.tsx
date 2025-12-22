@@ -221,36 +221,36 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Credits Banner */}
       <CreditsBanner />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards - 2 cols mobile, 4 cols desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {statCards.map((stat) => (
           <Card 
             key={stat.title} 
             className="relative overflow-hidden card-hover border-0 shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-5`} />
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground truncate">
                 {stat.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.iconBg}`}>
-                <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+              <div className={`p-1.5 md:p-2 rounded-lg ${stat.iconBg} shrink-0`}>
+                <stat.icon className={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.subtitle}</p>
+            <CardContent className="p-3 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold text-foreground">{stat.value}</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{stat.subtitle}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Main Grid: Score + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Main Grid: Score + Quick Actions - Stack on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Freedom Score Card */}
         <Card className="relative overflow-hidden border-0 shadow-md">
           <div className="absolute inset-0 gradient-inopay opacity-5" />
