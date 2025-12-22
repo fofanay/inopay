@@ -12,8 +12,17 @@ import {
   Server,
   RefreshCw,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  FileText
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -31,6 +40,7 @@ interface ServerDeployment {
   secrets_cleaned_at: string | null;
   health_status: string | null;
   last_health_check: string | null;
+  error_message: string | null;
   user_servers: {
     name: string;
     ip_address: string;
@@ -60,6 +70,7 @@ export function ServerDeploymentsManager() {
           secrets_cleaned_at,
           health_status,
           last_health_check,
+          error_message,
           user_servers (
             name,
             ip_address
@@ -242,6 +253,32 @@ export function ServerDeploymentsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
+                {/* Show logs button for failed deployments */}
+                {deployment.status === 'failed' && deployment.error_message && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1 text-destructive hover:text-destructive"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Logs
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Logs de build - {deployment.project_name}</DialogTitle>
+                      </DialogHeader>
+                      <ScrollArea className="h-[60vh] rounded-md border p-4 bg-muted/50">
+                        <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
+                          {deployment.error_message}
+                        </pre>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                )}
+
                 {/* Cleanup button - only show if deployed and not cleaned */}
                 {deployment.status === 'deployed' && !deployment.secrets_cleaned && (
                   <SecretsCleanupButton
