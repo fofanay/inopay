@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { Resend } from "https://esm.sh/resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,109 @@ const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
+
+// Admin email for critical notifications
+const ADMIN_EMAIL = "admin@getinopay.com";
+
+// Send email notification for payment failures
+async function sendPaymentFailureEmail(
+  userEmail: string | null,
+  customerName: string | null,
+  attemptCount: number,
+  invoiceUrl: string | null
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    logStep("RESEND_API_KEY not configured, skipping email");
+    return;
+  }
+
+  const resend = new Resend(resendApiKey);
+
+  // Send email to user if we have their email
+  if (userEmail) {
+    try {
+      await resend.emails.send({
+        from: "Inopay <contact@getinopay.com>",
+        to: [userEmail],
+        subject: "⚠️ Échec de paiement - Action requise",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #e74c3c;">Échec de paiement</h1>
+            <p>Bonjour${customerName ? ` ${customerName}` : ''},</p>
+            <p>Nous n'avons pas pu traiter votre dernier paiement (tentative ${attemptCount}).</p>
+            <p>Pour éviter toute interruption de service, veuillez mettre à jour vos informations de paiement.</p>
+            ${invoiceUrl ? `<p><a href="${invoiceUrl}" style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Mettre à jour le paiement</a></p>` : ''}
+            <p style="color: #7f8c8d; font-size: 14px;">Si vous avez des questions, contactez-nous à support@getinopay.com</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #bdc3c7; font-size: 12px;">Inopay - Libérez vos projets Lovable</p>
+          </div>
+        `,
+      });
+      logStep("Payment failure email sent to user", { email: userEmail });
+    } catch (e) {
+      logStep("Failed to send user email", { error: e });
+    }
+  }
+
+  // Always notify admin
+  try {
+    await resend.emails.send({
+      from: "Inopay Alerts <alerts@getinopay.com>",
+      to: [ADMIN_EMAIL],
+      subject: `🚨 Échec paiement - ${userEmail || 'Client inconnu'}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #e74c3c;">Alerte: Échec de paiement</h1>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Client:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${customerName || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${userEmail || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Tentative:</strong></td><td style="padding: 8px; border-bottom: 1px solid #eee;">${attemptCount}</td></tr>
+          </table>
+          ${invoiceUrl ? `<p><a href="${invoiceUrl}">Voir la facture Stripe</a></p>` : ''}
+        </div>
+      `,
+    });
+    logStep("Admin notification email sent");
+  } catch (e) {
+    logStep("Failed to send admin email", { error: e });
+  }
+}
+
+// Send email for 3D Secure/SCA required
+async function sendSCARequiredEmail(
+  userEmail: string | null,
+  customerName: string | null,
+  invoiceUrl: string | null
+) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey || !userEmail) return;
+
+  const resend = new Resend(resendApiKey);
+
+  try {
+    await resend.emails.send({
+      from: "Inopay <contact@getinopay.com>",
+      to: [userEmail],
+      subject: "🔐 Authentification requise pour votre paiement",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #f39c12;">Action requise</h1>
+          <p>Bonjour${customerName ? ` ${customerName}` : ''},</p>
+          <p>Votre banque requiert une authentification supplémentaire (3D Secure) pour traiter votre paiement.</p>
+          <p>Veuillez cliquer sur le lien ci-dessous pour finaliser votre paiement :</p>
+          ${invoiceUrl ? `<p><a href="${invoiceUrl}" style="background-color: #f39c12; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Authentifier le paiement</a></p>` : ''}
+          <p style="color: #7f8c8d; font-size: 14px;">Ce lien expire dans 24 heures.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #bdc3c7; font-size: 12px;">Inopay - Libérez vos projets Lovable</p>
+        </div>
+      `,
+    });
+    logStep("SCA required email sent", { email: userEmail });
+  } catch (e) {
+    logStep("Failed to send SCA email", { error: e });
+  }
+}
 
 // Log critical errors to admin_activity_logs for monitoring
 async function logCriticalError(supabase: any, error: string, eventType?: string, metadata?: any) {
@@ -339,6 +443,19 @@ serve(async (req) => {
 
         logStep("Payment failed", { customerId, subscriptionId, attemptCount });
 
+        // Get customer details from Stripe
+        let customerEmail: string | null = null;
+        let customerName: string | null = null;
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer && !customer.deleted) {
+            customerEmail = customer.email;
+            customerName = customer.name;
+          }
+        } catch (e) {
+          logStep("Could not fetch customer details", { error: e });
+        }
+
         // Find user by customer ID
         const { data: userPurchase } = await supabaseClient
           .from("user_purchases")
@@ -358,6 +475,14 @@ serve(async (req) => {
             .contains("metadata", { stripe_subscription_id: subscriptionId });
         }
 
+        // Send email notifications
+        await sendPaymentFailureEmail(
+          customerEmail,
+          customerName,
+          attemptCount || 1,
+          invoice.hosted_invoice_url || null
+        );
+
         // Log critical error for admin attention
         await logCriticalError(
           supabaseClient, 
@@ -368,7 +493,8 @@ serve(async (req) => {
             subscriptionId, 
             attemptCount,
             userId: userPurchase?.user_id,
-            invoiceId: invoice.id
+            invoiceId: invoice.id,
+            customerEmail
           }
         );
         break;
@@ -381,6 +507,19 @@ serve(async (req) => {
 
         logStep("Payment action required (3D Secure/SCA)", { customerId, subscriptionId });
 
+        // Get customer details from Stripe
+        let customerEmail: string | null = null;
+        let customerName: string | null = null;
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer && !customer.deleted) {
+            customerEmail = customer.email;
+            customerName = customer.name;
+          }
+        } catch (e) {
+          logStep("Could not fetch customer details", { error: e });
+        }
+
         // Find user by customer ID
         const { data: userPurchase } = await supabaseClient
           .from("user_purchases")
@@ -388,6 +527,13 @@ serve(async (req) => {
           .eq("is_subscription", true)
           .contains("metadata", { stripe_customer_id: customerId })
           .maybeSingle();
+
+        // Send SCA required email to user
+        await sendSCARequiredEmail(
+          customerEmail,
+          customerName,
+          invoice.hosted_invoice_url || null
+        );
 
         // Log for admin notification
         await logCriticalError(
@@ -399,7 +545,8 @@ serve(async (req) => {
             subscriptionId,
             userId: userPurchase?.user_id,
             invoiceId: invoice.id,
-            hostedInvoiceUrl: invoice.hosted_invoice_url
+            hostedInvoiceUrl: invoice.hosted_invoice_url,
+            customerEmail
           }
         );
         break;
