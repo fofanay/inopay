@@ -97,7 +97,7 @@ export function GettingStartedChecklist({ onNavigate, onGitHubConnect }: Getting
               : "Passez à un plan Pro ou Portfolio",
             icon: Crown,
             completed: hasPaidPlan,
-            action: () => window.location.href = "/pricing",
+            action: () => window.location.href = "/tarifs",
             actionLabel: "Voir les plans",
           },
           {

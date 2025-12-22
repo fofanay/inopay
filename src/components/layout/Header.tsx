@@ -58,7 +58,7 @@ const Header = () => {
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/about" className="hover:text-white/80 transition-colors">À propos</Link>
+            <Link to="/a-propos" className="hover:text-white/80 transition-colors">À propos</Link>
             <Link to="/tarifs" className="hover:text-white/80 transition-colors">Tarifs</Link>
           </div>
         </div>
