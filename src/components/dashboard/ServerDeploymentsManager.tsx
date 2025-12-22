@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SecretsCleanupButton } from "./SecretsCleanupButton";
 import { CoolifyOrphansCleanupButton } from "./CoolifyOrphansCleanupButton";
+import { PurgeDeploymentsButton } from "./PurgeDeploymentsButton";
 import { 
   Rocket, 
   ExternalLink, 
@@ -175,6 +176,13 @@ export function ServerDeploymentsManager() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {/* Show purge button if there's at least one server */}
+            {uniqueServerIds.length > 0 && (
+              <PurgeDeploymentsButton
+                serverId={uniqueServerIds[0]}
+                onPurgeComplete={fetchDeployments}
+              />
+            )}
             {/* Show cleanup button if there's at least one server */}
             {uniqueServerIds.length > 0 && (
               <CoolifyOrphansCleanupButton

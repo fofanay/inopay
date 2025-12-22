@@ -294,7 +294,7 @@ serve(async (req) => {
       }
 
       // Step 3: Trigger deployment
-      console.log('Triggering deployment...');
+      console.log('[deploy-coolify] Triggering deployment...');
       const deployResponse = await fetch(`${server.coolify_url}/api/v1/deploy?uuid=${appData.uuid}`, {
         method: 'GET',
         headers: coolifyHeaders
@@ -302,12 +302,46 @@ serve(async (req) => {
 
       if (!deployResponse.ok) {
         const errorText = await deployResponse.text();
-        console.error('Coolify deploy failed:', errorText);
+        console.error('[deploy-coolify] Coolify deploy failed:', errorText);
         throw new Error(`Failed to trigger deployment: ${errorText}`);
       }
 
       const deployData = await deployResponse.json();
-      console.log('Deployment triggered:', deployData);
+      console.log('[deploy-coolify] Deployment triggered:', deployData);
+
+      // Step 4: Wait and check build status (poll for up to 2 minutes)
+      console.log('[deploy-coolify] Waiting for build to complete...');
+      let buildStatus = 'building';
+      let attempts = 0;
+      const maxAttempts = 24; // 24 * 5s = 2 minutes
+      
+      while (attempts < maxAttempts && buildStatus !== 'running' && buildStatus !== 'failed') {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s
+        attempts++;
+        
+        try {
+          const statusResponse = await fetch(
+            `${server.coolify_url}/api/v1/applications/${appData.uuid}`,
+            { method: 'GET', headers: coolifyHeaders }
+          );
+          
+          if (statusResponse.ok) {
+            const appStatus = await statusResponse.json();
+            buildStatus = appStatus.status || 'unknown';
+            console.log(`[deploy-coolify] Build status check ${attempts}/${maxAttempts}: ${buildStatus}`);
+            
+            // Log additional details
+            if (appStatus.deployment_uuid) {
+              console.log(`[deploy-coolify] Deployment UUID: ${appStatus.deployment_uuid}`);
+            }
+          }
+        } catch (statusError) {
+          console.warn(`[deploy-coolify] Status check ${attempts} failed:`, statusError);
+        }
+      }
+      
+      const finalStatus = buildStatus === 'running' ? 'deployed' : 'deploying';
+      console.log(`[deploy-coolify] Final status after ${attempts} checks: ${finalStatus} (build: ${buildStatus})`);
 
       // Update deployment record
       const deployedUrl = domain 
@@ -317,9 +351,10 @@ serve(async (req) => {
       await supabase
         .from('server_deployments')
         .update({
-          status: 'deployed',
+          status: finalStatus,
           coolify_app_uuid: appData.uuid,
-          deployed_url: deployedUrl
+          deployed_url: deployedUrl,
+          health_status: buildStatus === 'running' ? 'healthy' : 'unknown'
         })
         .eq('id', deployment.id);
 
@@ -366,15 +401,17 @@ serve(async (req) => {
           success: true,
           deployment: {
             ...deployment,
-            status: 'deployed',
+            status: finalStatus,
             coolify_app_uuid: appData.uuid,
             deployed_url: deployedUrl
           },
           coolify: {
             project: projectData,
-            application: appData
+            application: appData,
+            build_status: buildStatus
           },
-          auto_cleanup_scheduled: true
+          auto_cleanup_scheduled: true,
+          build_checks_performed: attempts
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
