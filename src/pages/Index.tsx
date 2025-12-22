@@ -81,32 +81,32 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero Section - Style Mexlife avec couleurs Inopay + Parallax */}
-      <section className="relative overflow-hidden pt-8 pb-20 lg:pt-12 lg:pb-28">
+      <section className="relative overflow-hidden pt-6 pb-12 md:pt-8 md:pb-20 lg:pt-12 lg:pb-28">
         {/* Background avec dégradé subtil + parallax */}
         <div 
           className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5"
           style={{ transform: `translateY(${scrollOffset * 0.5}px)` }}
         />
         
-        {/* Floating shapes avec parallax */}
+        {/* Floating shapes avec parallax - hidden on mobile for performance */}
         <div 
-          className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl -z-10"
+          className="hidden md:block absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl -z-10"
           style={{ 
             transform: `translate(${mousePosition.x * 0.5}px, ${mousePosition.y * 0.5 - scrollOffset * 0.2}px)` 
           }}
         />
         <div 
-          className="absolute bottom-20 right-10 w-96 h-96 bg-accent/5 rounded-full blur-3xl -z-10"
+          className="hidden md:block absolute bottom-20 right-10 w-96 h-96 bg-accent/5 rounded-full blur-3xl -z-10"
           style={{ 
             transform: `translate(${-mousePosition.x * 0.3}px, ${-mousePosition.y * 0.3 + scrollOffset * 0.1}px)` 
           }}
         />
         
         <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left Column - Visual Mockup (inversé style Mexlife) avec parallax */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            {/* Left Column - Visual Mockup (hidden on mobile, shown on tablet+) */}
             <div 
-              className="relative order-2 lg:order-1 animate-fade-in-up" 
+              className="relative hidden md:block order-2 lg:order-1 animate-fade-in-up" 
               style={{ 
                 animationDelay: "0.25s",
                 transform: `translateY(${-scrollOffset * 0.1}px)`
@@ -204,9 +204,9 @@ const Index = () => {
                   </div>
                 </div>
 
-                {/* Floating badges avec parallax mouse */}
+                {/* Floating badges - hidden on tablet, shown on desktop */}
                 <div 
-                  className="absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2"
+                  className="hidden lg:flex absolute -top-4 -right-4 px-4 py-2 rounded-xl bg-card border border-border shadow-lg items-center gap-2"
                   style={{ 
                     transform: `translate(${mousePosition.x * 0.8}px, ${mousePosition.y * 0.8}px)`,
                     transition: 'transform 0.1s ease-out'
@@ -217,7 +217,7 @@ const Index = () => {
                 </div>
                 
                 <div 
-                  className="absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg flex items-center gap-2"
+                  className="hidden lg:flex absolute top-1/3 -right-6 px-4 py-2 rounded-xl bg-card border border-border shadow-lg items-center gap-2"
                   style={{ 
                     transform: `translate(${mousePosition.x * -0.5}px, ${mousePosition.y * -0.5}px)`,
                     transition: 'transform 0.15s ease-out'
@@ -228,7 +228,7 @@ const Index = () => {
                 </div>
                 
                 <div 
-                  className="absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg flex items-center gap-2"
+                  className="hidden lg:flex absolute -bottom-4 right-1/4 px-4 py-2 rounded-xl bg-primary text-primary-foreground shadow-lg items-center gap-2"
                   style={{ 
                     transform: `translate(${mousePosition.x * 0.6}px, ${mousePosition.y * -0.6}px)`,
                     transition: 'transform 0.12s ease-out'
@@ -246,31 +246,31 @@ const Index = () => {
               style={{ transform: `translateY(${scrollOffset * 0.05}px)` }}
             >
               {/* Badge arrondi style Mexlife */}
-              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-accent text-accent text-sm font-semibold uppercase tracking-wide mb-8 animate-fade-in">
-                <Palette className="h-4 w-4" />
+              <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-accent text-accent text-xs md:text-sm font-semibold uppercase tracking-wide mb-6 md:mb-8 animate-fade-in">
+                <Palette className="h-3 w-3 md:h-4 md:w-4" />
                 Vibe-Friendly
               </div>
 
               {/* Titre principal style Mexlife */}
-              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight mb-4 animate-fade-in-up leading-tight">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-[3.5rem] font-bold tracking-tight mb-3 md:mb-4 animate-fade-in-up leading-tight">
                 <span className="text-accent">Gardez le Vibe.</span>
                 <br />
                 <span className="text-primary">Reprenez le Code.</span>
               </h1>
 
               {/* Sous-titre en italique */}
-              <p className="text-xl text-primary italic font-medium mb-8 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+              <p className="text-lg md:text-xl text-primary italic font-medium mb-6 md:mb-8 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
                 Du prototype IA à la vraie entreprise.
               </p>
 
               {/* Description */}
-              <p className="text-lg text-muted-foreground mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.15s" }}>
+              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.15s" }}>
                 Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. 
                 Vous avez créé quelque chose de grand. <strong className="text-foreground">Inopay le rend libre.</strong>
               </p>
 
               {/* Liste des avantages */}
-              <ul className="space-y-4 mb-10 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+              <ul className="space-y-3 md:space-y-4 mb-8 md:mb-10 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
                 {heroBenefits.map((benefit, index) => (
                   <li key={index} className="flex items-center gap-3">
                     <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -282,13 +282,13 @@ const Index = () => {
               </ul>
 
               {/* Section "Call Now" style - avec icône Rocket animée */}
-              <div className="flex items-center gap-4 mb-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                  <Rocket className="h-8 w-8 text-primary" />
+              <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                  <Rocket className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Déploiement en</p>
-                  <p className="text-2xl font-bold text-accent">10 minutes chrono</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Déploiement en</p>
+                  <p className="text-xl md:text-2xl font-bold text-accent">10 minutes chrono</p>
                 </div>
               </div>
 
@@ -297,15 +297,15 @@ const Index = () => {
                 <Link to={user ? "/dashboard" : "/auth"}>
                   <Button 
                     size="lg" 
-                    className="text-lg px-10 py-7 rounded-full shadow-xl hover:shadow-2xl transition-all bg-primary hover:bg-primary/90 uppercase font-semibold tracking-wide"
+                    className="text-base md:text-lg px-6 py-5 md:px-10 md:py-7 rounded-full shadow-xl hover:shadow-2xl transition-all bg-primary hover:bg-primary/90 uppercase font-semibold tracking-wide w-full sm:w-auto"
                   >
                     Libérer mon projet
-                    <ArrowRight className="ml-3 h-5 w-5" />
+                    <ArrowRight className="ml-2 md:ml-3 h-4 w-4 md:h-5 md:w-5" />
                   </Button>
                 </Link>
                 
-                <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
-                  <Unlock className="h-4 w-4" />
+                <p className="mt-3 md:mt-4 text-xs md:text-sm text-muted-foreground flex items-center gap-2">
+                  <Unlock className="h-3 w-3 md:h-4 md:w-4" />
                   Analyse gratuite, sans carte bancaire
                 </p>
               </div>
@@ -315,89 +315,89 @@ const Index = () => {
       </section>
 
       {/* Plateformes + Process Compact - Premium Design */}
-      <section className="py-16 border-b border-border bg-gradient-to-b from-muted/40 via-background to-muted/30 relative overflow-hidden">
-        {/* Decorative background elements */}
-        <div className="absolute top-0 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
-        <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-accent/5 rounded-full blur-3xl -z-10" />
+      <section className="py-12 md:py-16 border-b border-border bg-gradient-to-b from-muted/40 via-background to-muted/30 relative overflow-hidden">
+        {/* Decorative background elements - hidden on mobile */}
+        <div className="hidden md:block absolute top-0 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
+        <div className="hidden md:block absolute bottom-0 right-1/4 w-48 h-48 bg-accent/5 rounded-full blur-3xl -z-10" />
         
         <div className="container mx-auto px-4">
           {/* Section title */}
-          <p className="text-center text-sm text-muted-foreground mb-8 uppercase tracking-widest font-medium">
+          <p className="text-center text-xs md:text-sm text-muted-foreground mb-6 md:mb-8 uppercase tracking-widest font-medium">
             Compatible avec toutes les plateformes IA
           </p>
           
-          {/* Plateformes avec icônes personnalisées */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
+          {/* Plateformes avec icônes personnalisées - scrollable on mobile */}
+          <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 md:gap-3 mb-8 md:mb-12 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
             {platforms.map((platform, index) => (
               <div 
                 key={platform.name}
-                className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-background border border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-default group animate-fade-in"
+                className="inline-flex items-center gap-2 md:gap-2.5 px-3 py-2 md:px-5 md:py-2.5 rounded-full bg-background border border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-default group animate-fade-in shrink-0"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className={`p-1.5 rounded-lg ${platform.bgColor} group-hover:scale-110 transition-transform`}>
-                  <platform.icon className={`h-4 w-4 ${platform.color}`} />
+                <div className={`p-1 md:p-1.5 rounded-lg ${platform.bgColor} group-hover:scale-110 transition-transform`}>
+                  <platform.icon className={`h-3 w-3 md:h-4 md:w-4 ${platform.color}`} />
                 </div>
-                <span className="text-sm font-medium text-foreground">{platform.name}</span>
+                <span className="text-xs md:text-sm font-medium text-foreground whitespace-nowrap">{platform.name}</span>
               </div>
             ))}
           </div>
 
-          {/* 3 étapes visuelles - Premium */}
-          <div className="flex items-center justify-center gap-4 md:gap-8 max-w-2xl mx-auto mb-12 relative">
-            {/* Connecting line */}
-            <div className="absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-border via-primary/30 to-primary -translate-y-1/2 -z-10 hidden md:block" />
+          {/* 3 étapes visuelles - Premium - Stacked on mobile */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 max-w-2xl mx-auto mb-8 md:mb-12 relative">
+            {/* Connecting line - horizontal on desktop, vertical on mobile */}
+            <div className="hidden md:block absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-border via-primary/30 to-primary -translate-y-1/2 -z-10" />
+            <div className="md:hidden absolute top-1/4 bottom-1/4 left-1/2 w-0.5 bg-gradient-to-b from-border via-primary/30 to-primary -translate-x-1/2 -z-10" />
             
             {/* Étape 1 - Votre code */}
-            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <div className="w-20 h-20 rounded-2xl bg-background border border-border/60 shadow-lg shadow-black/5 flex items-center justify-center hover:shadow-xl hover:border-border transition-all duration-300 group">
-                <Upload className="h-8 w-8 text-muted-foreground group-hover:text-foreground transition-colors" />
+            <div className="flex flex-row md:flex-col items-center gap-3 animate-fade-in w-full md:w-auto" style={{ animationDelay: '200ms' }}>
+              <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-background border border-border/60 shadow-lg shadow-black/5 flex items-center justify-center hover:shadow-xl hover:border-border transition-all duration-300 group shrink-0">
+                <Upload className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
               <span className="text-sm text-muted-foreground font-medium">Votre code</span>
             </div>
             
-            {/* Flèche 1 */}
-            <div className="flex items-center animate-fade-in" style={{ animationDelay: '300ms' }}>
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <ArrowRight className="h-5 w-5 text-primary" />
+            {/* Flèche 1 - Rotated on mobile */}
+            <div className="flex items-center animate-fade-in rotate-90 md:rotate-0" style={{ animationDelay: '300ms' }}>
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
             </div>
             
             {/* Étape 2 - Inopay (highlight) */}
-            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '400ms' }}>
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/40 shadow-lg shadow-primary/20 flex items-center justify-center relative overflow-hidden group">
-                {/* Glow effect */}
+            <div className="flex flex-row md:flex-col items-center gap-3 animate-fade-in w-full md:w-auto" style={{ animationDelay: '400ms' }}>
+              <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/40 shadow-lg shadow-primary/20 flex items-center justify-center relative overflow-hidden group shrink-0">
                 <div className="absolute inset-0 bg-primary/10 animate-pulse" />
-                <Sparkles className="h-8 w-8 text-primary relative z-10" />
+                <Sparkles className="h-6 w-6 md:h-8 md:w-8 text-primary relative z-10" />
               </div>
               <span className="text-sm text-primary font-semibold">Inopay</span>
             </div>
             
-            {/* Flèche 2 */}
-            <div className="flex items-center animate-fade-in" style={{ animationDelay: '500ms' }}>
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <ArrowRight className="h-5 w-5 text-primary" />
+            {/* Flèche 2 - Rotated on mobile */}
+            <div className="flex items-center animate-fade-in rotate-90 md:rotate-0" style={{ animationDelay: '500ms' }}>
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-primary" />
               </div>
             </div>
             
             {/* Étape 3 - Votre VPS */}
-            <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '600ms' }}>
-              <div className="w-20 h-20 rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 group">
-                <Server className="h-8 w-8 text-primary-foreground group-hover:scale-110 transition-transform" />
+            <div className="flex flex-row md:flex-col items-center gap-3 animate-fade-in w-full md:w-auto" style={{ animationDelay: '600ms' }}>
+              <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 group shrink-0">
+                <Server className="h-6 w-6 md:h-8 md:w-8 text-primary-foreground group-hover:scale-110 transition-transform" />
               </div>
               <span className="text-sm text-foreground font-medium">Votre VPS</span>
             </div>
           </div>
 
-          {/* Hébergeurs - Modern badges */}
-          <div className="flex flex-wrap justify-center gap-3">
+          {/* Hébergeurs - Modern badges - scrollable on mobile */}
+          <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
             {hosters.map((hoster, index) => (
               <div 
                 key={hoster.name}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-full bg-background border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-default group animate-fade-in"
+                className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm rounded-full bg-background border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-default group animate-fade-in shrink-0"
                 style={{ animationDelay: `${700 + index * 100}ms` }}
               >
-                <hoster.icon className={`h-4 w-4 ${hoster.color} group-hover:scale-110 transition-transform`} />
-                <span className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">{hoster.name}</span>
+                <hoster.icon className={`h-3 w-3 md:h-4 md:w-4 ${hoster.color} group-hover:scale-110 transition-transform`} />
+                <span className="font-medium text-muted-foreground group-hover:text-foreground transition-colors whitespace-nowrap">{hoster.name}</span>
               </div>
             ))}
           </div>
@@ -405,34 +405,34 @@ const Index = () => {
       </section>
 
       {/* 3 Features Vibe-Friendly */}
-      <section className="py-16 lg:py-20">
+      <section className="py-12 md:py-16 lg:py-20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+          <div className="text-center mb-8 md:mb-12">
+            <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
               <Sparkles className="h-3 w-3 mr-1" />
               Vibe-Friendly
             </Badge>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
               Pourquoi les Vibecoders choisissent Inopay
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
             {vibeFeatures.map((feature) => (
               <div 
                 key={feature.title}
-                className="relative p-6 rounded-2xl border border-border bg-card card-shadow card-hover group"
+                className="relative p-4 md:p-6 rounded-xl md:rounded-2xl border border-border bg-card card-shadow card-hover group"
               >
                 {feature.badge && (
-                  <Badge className="absolute -top-3 right-4 bg-primary/10 text-primary border-primary/20 text-xs">
+                  <Badge className="absolute -top-2.5 md:-top-3 right-3 md:right-4 bg-primary/10 text-primary border-primary/20 text-[10px] md:text-xs">
                     {feature.badge}
                   </Badge>
                 )}
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                  <feature.icon className="h-6 w-6" />
+                <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-lg md:rounded-xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                  <feature.icon className="h-5 w-5 md:h-6 md:w-6" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2 text-foreground">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">{feature.description}</p>
+                <h3 className="text-base md:text-lg font-semibold mb-1.5 md:mb-2 text-foreground">{feature.title}</h3>
+                <p className="text-xs md:text-sm text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -443,30 +443,30 @@ const Index = () => {
       <ROICalculator currency="CAD" />
 
       {/* FAQ Compact - 4 questions */}
-      <section className="py-16 lg:py-20 bg-muted/30 border-y border-border">
+      <section className="py-12 md:py-16 lg:py-20 bg-muted/30 border-y border-border">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background text-muted-foreground text-sm font-medium mb-4">
-              <HelpCircle className="h-4 w-4" />
+          <div className="text-center mb-8 md:mb-10">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-border bg-background text-muted-foreground text-xs md:text-sm font-medium mb-3 md:mb-4">
+              <HelpCircle className="h-3 w-3 md:h-4 md:w-4" />
               FAQ
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
               Questions fréquentes
             </h2>
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <Accordion type="single" collapsible className="space-y-3">
+            <Accordion type="single" collapsible className="space-y-2 md:space-y-3">
               {faqs.map((faq, index) => (
                 <AccordionItem 
                   key={index} 
                   value={`item-${index}`}
-                  className="border border-border rounded-xl px-5 bg-card data-[state=open]:border-primary/30"
+                  className="border border-border rounded-lg md:rounded-xl px-4 md:px-5 bg-card data-[state=open]:border-primary/30"
                 >
-                  <AccordionTrigger className="text-left font-medium text-foreground hover:text-primary py-4 text-sm">
+                  <AccordionTrigger className="text-left font-medium text-foreground hover:text-primary py-3 md:py-4 text-xs md:text-sm">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground pb-4 text-sm leading-relaxed">
+                  <AccordionContent className="text-muted-foreground pb-3 md:pb-4 text-xs md:text-sm leading-relaxed">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -477,36 +477,36 @@ const Index = () => {
       </section>
 
       {/* CTA + Mini-Témoignage intégré */}
-      <section className="py-16 lg:py-20">
+      <section className="py-12 md:py-16 lg:py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             {/* Mini témoignage inline */}
-            <div className="flex items-center justify-center gap-3 mb-8 p-4 rounded-xl bg-muted/50 border border-border">
-              <Quote className="h-5 w-5 text-primary/50 flex-shrink-0" />
-            <p className="text-sm text-muted-foreground italic">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3 mb-6 md:mb-8 p-3 md:p-4 rounded-lg md:rounded-xl bg-muted/50 border border-border">
+              <Quote className="h-4 w-4 md:h-5 md:w-5 text-primary/50 flex-shrink-0" />
+              <p className="text-xs md:text-sm text-muted-foreground italic text-center sm:text-left">
                 "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5$/mois au lieu de 50$."
               </p>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">— Marie L.</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">— Marie L.</span>
             </div>
 
-            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+            <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
               <Palette className="h-3 w-3 mr-1" />
               Vibe-to-Production
             </Badge>
             
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-foreground">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-foreground">
               Prêt à libérer votre création ?
             </h2>
             
-            <p className="text-muted-foreground mb-8">
+            <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8">
               Analysez votre projet gratuitement et découvrez votre Vibe-Score™.
             </p>
             
             <Link to={user ? "/dashboard" : "/auth"}>
-              <Button size="lg" className="text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                <Rocket className="mr-2 h-5 w-5" />
+              <Button size="lg" className="text-base md:text-lg px-6 py-4 md:px-8 md:py-6 rounded-xl shadow-lg hover:shadow-xl transition-all w-full sm:w-auto">
+                <Rocket className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                 {user ? "Libérer mon projet" : "Commencer gratuitement"}
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
               </Button>
             </Link>
           </div>
