@@ -36,6 +36,7 @@ export function CoolifyTokenConfig({
   const [token, setToken] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   const coolifyDashboardUrl = coolifyUrl || `http://${serverIp}:8000`;
@@ -68,10 +69,14 @@ export function CoolifyTokenConfig({
       if (data.valid) {
         setIsValid(true);
         toast({
-          title: "Token validé !",
+          title: isEditing ? "Token mis à jour !" : "Token validé !",
           description: "Votre connexion à Coolify est configurée.",
         });
-        onSuccess();
+        if (isEditing) {
+          handleEditSuccess();
+        } else {
+          onSuccess();
+        }
       } else {
         setIsValid(false);
         toast({
@@ -101,7 +106,20 @@ export function CoolifyTokenConfig({
     });
   };
 
-  if (currentToken) {
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setToken('');
+    setIsValid(null);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditing(false);
+    setToken('');
+    setIsValid(null);
+    onSuccess();
+  };
+
+  if (currentToken && !isEditing) {
     return (
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-6">
@@ -109,21 +127,30 @@ export function CoolifyTokenConfig({
             <div className="p-2 rounded-lg bg-primary/10">
               <CheckCircle2 className="w-5 h-5 text-primary" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-medium">Coolify configuré</p>
               <p className="text-sm text-muted-foreground">
                 Votre serveur est prêt pour les déploiements
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => window.open(coolifyDashboardUrl, '_blank')}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Ouvrir Coolify
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+              >
+                <Key className="w-4 h-4 mr-2" />
+                Modifier le token
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(coolifyDashboardUrl, '_blank')}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Ouvrir Coolify
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -131,17 +158,29 @@ export function CoolifyTokenConfig({
   }
 
   return (
-    <Card className="border-warning/30 bg-warning/5">
+    <Card className={isEditing ? "border-primary/30 bg-primary/5" : "border-warning/30 bg-warning/5"}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-warning" />
-            <CardTitle className="text-lg">Configurer Coolify</CardTitle>
+            <Key className={isEditing ? "w-5 h-5 text-primary" : "w-5 h-5 text-warning"} />
+            <CardTitle className="text-lg">
+              {isEditing ? "Modifier le token Coolify" : "Configurer Coolify"}
+            </CardTitle>
           </div>
-          <CoolifyGuide serverIp={serverIp} coolifyUrl={coolifyUrl || undefined} />
+          <div className="flex items-center gap-2">
+            {isEditing && (
+              <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                Annuler
+              </Button>
+            )}
+            <CoolifyGuide serverIp={serverIp} coolifyUrl={coolifyUrl || undefined} />
+          </div>
         </div>
         <CardDescription>
-          Connectez Inopay à Coolify pour activer les déploiements automatiques
+          {isEditing 
+            ? "Entrez votre nouveau token API Coolify avec les permissions de lecture et écriture"
+            : "Connectez Inopay à Coolify pour activer les déploiements automatiques"
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
