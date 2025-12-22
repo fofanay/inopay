@@ -82,8 +82,20 @@ serve(async (req) => {
       console.log(`Coolify API response status: ${response.status}`);
 
       if (response.ok) {
-        const versionData = await response.json();
-        console.log(`Coolify version: ${JSON.stringify(versionData)}`);
+        // Try to parse as JSON, fallback to text if it fails
+        const responseText = await response.text();
+        console.log(`Coolify response: ${responseText}`);
+        
+        let coolifyVersion = responseText;
+        try {
+          const versionData = JSON.parse(responseText);
+          coolifyVersion = versionData.version || JSON.stringify(versionData);
+        } catch {
+          // Response is plain text (version string), which is fine
+          coolifyVersion = responseText.trim();
+        }
+        
+        console.log(`Coolify version: ${coolifyVersion}`);
 
         // Token is valid, save it to database
         const { error: updateError } = await supabase
@@ -107,7 +119,7 @@ serve(async (req) => {
           JSON.stringify({ 
             valid: true, 
             message: 'Token validated and saved',
-            coolify_version: versionData.version || versionData
+            coolify_version: coolifyVersion
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
