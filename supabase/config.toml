@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.cleanup-coolify-orphans]
 verify_jwt = false
+
+[functions.purge-server-deployments]
+verify_jwt = false
