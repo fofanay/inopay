@@ -67,6 +67,7 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
+import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const TAB_LABELS: Record<string, string> = {
@@ -113,6 +114,9 @@ interface HistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  
+  // Enable realtime deployment notifications
+  useDeploymentNotifications();
   const { user, loading: authLoading, subscription, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   

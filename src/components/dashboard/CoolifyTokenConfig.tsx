@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { CoolifyGuide } from './CoolifyGuide';
 import { 
   Key, 
   Loader2, 
@@ -132,9 +133,12 @@ export function CoolifyTokenConfig({
   return (
     <Card className="border-warning/30 bg-warning/5">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Key className="w-5 h-5 text-warning" />
-          <CardTitle className="text-lg">Configurer Coolify</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Key className="w-5 h-5 text-warning" />
+            <CardTitle className="text-lg">Configurer Coolify</CardTitle>
+          </div>
+          <CoolifyGuide serverIp={serverIp} coolifyUrl={coolifyUrl || undefined} />
         </div>
         <CardDescription>
           Connectez Inopay à Coolify pour activer les déploiements automatiques
