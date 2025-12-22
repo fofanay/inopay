@@ -1432,6 +1432,11 @@ const Dashboard = () => {
               <MigrationWizard />
             )}
 
+            {/* Tab: Sync Mirror */}
+            {activeTab === "sync-mirror" && (
+              <SyncMirror />
+            )}
+
             {/* Tab: Services */}
             {activeTab === "services" && (
               <UserPurchases />
