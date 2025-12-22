@@ -278,31 +278,29 @@ serve(async (req) => {
       const appData = await appResponse.json();
       console.log('[deploy-coolify] Coolify application created:', appData);
 
-      // Step 2.3: Add environment variables for Supabase
+      // Step 2.3: Add environment variables for Supabase (CRITICAL for app to work)
       console.log('[deploy-coolify] Adding environment variables...');
       const envVars = [
-        { key: 'VITE_SUPABASE_URL', value: supabaseUrl, is_build_time: true },
-        { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: Deno.env.get('SUPABASE_ANON_KEY') || '', is_build_time: true }
+        { key: 'VITE_SUPABASE_URL', value: supabaseUrl },
+        { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: Deno.env.get('SUPABASE_ANON_KEY') || '' }
       ];
 
       for (const envVar of envVars) {
-        try {
-          const envResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}/envs`, {
-            method: 'POST',
-            headers: coolifyHeaders,
-            body: JSON.stringify(envVar)
-          });
-          
-          if (envResponse.ok) {
-            console.log(`[deploy-coolify] Added env var: ${envVar.key}`);
-          } else {
-            const envError = await envResponse.text();
-            console.warn(`[deploy-coolify] Failed to add env var ${envVar.key}:`, envError);
-          }
-        } catch (envErr) {
-          console.warn(`[deploy-coolify] Error adding env var ${envVar.key}:`, envErr);
+        const envResponse = await fetch(`${server.coolify_url}/api/v1/applications/${appData.uuid}/envs`, {
+          method: 'POST',
+          headers: coolifyHeaders,
+          body: JSON.stringify(envVar)
+        });
+        
+        if (!envResponse.ok) {
+          const envError = await envResponse.text();
+          console.error(`[deploy-coolify] CRITICAL: Failed to add env var ${envVar.key}:`, envError);
+          throw new Error(`Failed to add required environment variable ${envVar.key}: ${envError}`);
         }
+        console.log(`[deploy-coolify] Added env var: ${envVar.key}`);
       }
+      
+      console.log(`[deploy-coolify] All ${envVars.length} environment variables configured successfully`);
 
       // Step 2.5: Update application with custom domain if provided
       if (domain) {
@@ -424,9 +422,14 @@ serve(async (req) => {
 
       // Add error message with build logs if failed
       if (isFailed) {
-        const errorSummary = buildLogs 
+        let errorSummary = buildLogs 
           ? `Build failed (${buildStatus}). Logs:\n${buildLogs.slice(-2000)}` 
           : `Build failed with status: ${buildStatus}`;
+        
+        // Add hint for unhealthy exits
+        if (buildStatus === 'exited:unhealthy') {
+          errorSummary += '\n\n💡 Conseil: Vérifiez que les variables d\'environnement sont correctement configurées (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY).';
+        }
         updatePayload.error_message = errorSummary;
       }
 
