@@ -244,10 +244,13 @@ export function ServerDeploymentsManager() {
   };
 
   const handleSyncStatus = async (deployment: ServerDeployment) => {
-    if (!deployment.coolify_app_uuid) {
-      toast.error("Aucun UUID d'application Coolify trouvé");
-      return;
-    }
+    // Log deployment info for debugging
+    console.log(`[handleSyncStatus] Syncing deployment:`, {
+      id: deployment.id,
+      project_name: deployment.project_name,
+      coolify_app_uuid: deployment.coolify_app_uuid,
+      current_status: deployment.status
+    });
 
     setSyncingId(deployment.id);
     
@@ -261,11 +264,35 @@ export function ServerDeploymentsManager() {
       }
 
       const result = response.data;
+      console.log(`[handleSyncStatus] Result:`, result);
       
       if (result.success) {
-        toast.success(`Statut synchronisé: ${result.new_status} / ${result.new_health_status}`, {
-          description: result.url_healthy ? "URL accessible" : "URL non testée"
+        // Build description based on result
+        let description = '';
+        if (result.app_not_found) {
+          description = `App introuvable dans Coolify. `;
+        }
+        if (result.url_healthy) {
+          description += `URL accessible (HTTP ${result.url_http_status || '2xx'})`;
+        } else if (result.url_http_status) {
+          description += `URL: HTTP ${result.url_http_status}`;
+        } else {
+          description += 'URL non testée';
+        }
+
+        toast.success(`Statut: ${result.new_status} / ${result.new_health_status}`, {
+          description,
+          duration: 5000
         });
+        
+        // Show warning if app not found in Coolify
+        if (result.app_not_found) {
+          toast.warning("Application introuvable dans Coolify", {
+            description: "Le statut a été déterminé via le test URL uniquement. Considérez nettoyer les orphelins.",
+            duration: 8000
+          });
+        }
+        
         fetchDeployments();
       } else {
         throw new Error(result.error || "Échec de la synchronisation");
@@ -448,24 +475,25 @@ export function ServerDeploymentsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                {/* Sync status button - show for deployments with coolify_app_uuid */}
-                {deployment.coolify_app_uuid && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-1"
-                    onClick={() => handleSyncStatus(deployment)}
-                    disabled={syncingId === deployment.id}
-                    title="Vérifier le statut dans Coolify"
-                  >
-                    {syncingId === deployment.id ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Vérifier
-                  </Button>
-                )}
+                {/* Sync status button - show for all deployments (will search by repo if no UUID) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={() => handleSyncStatus(deployment)}
+                  disabled={syncingId === deployment.id}
+                  title={deployment.coolify_app_uuid 
+                    ? `Vérifier le statut (UUID: ${deployment.coolify_app_uuid.substring(0, 8)}...)` 
+                    : "Rechercher et vérifier le statut dans Coolify"
+                  }
+                >
+                  {syncingId === deployment.id ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  Vérifier
+                </Button>
 
                 {/* Show retry button for failed or stuck deployments */}
                 {(deployment.status === 'failed' || isDeploymentStuck(deployment)) && deployment.github_repo_url && (

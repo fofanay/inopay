@@ -1,12 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const VERSION = "2025-12-22-v3";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  console.log(`[sync-coolify-status] version=${VERSION} starting`);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -69,38 +73,100 @@ serve(async (req) => {
       });
     }
 
-    if (!deployment.coolify_app_uuid) {
-      return new Response(JSON.stringify({ error: 'No Coolify app UUID found' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const coolifyUrl = server.coolify_url.replace(/\/$/, '');
     const coolifyHeaders = {
       'Authorization': `Bearer ${server.coolify_token}`,
       'Content-Type': 'application/json',
     };
 
-    console.log(`[sync-coolify-status] Fetching app ${deployment.coolify_app_uuid} from Coolify`);
-
-    // Fetch app status from Coolify
-    const appResponse = await fetch(`${coolifyUrl}/api/v1/applications/${deployment.coolify_app_uuid}`, {
-      headers: coolifyHeaders,
-    });
-
     let appData = null;
     let coolifyStatus = 'unknown';
     let appNotFoundInCoolify = false;
+    let foundAppUuid = deployment.coolify_app_uuid;
 
-    if (!appResponse.ok) {
-      const errorText = await appResponse.text();
-      console.log('[sync-coolify-status] App not found in Coolify, will test URL directly:', errorText);
-      appNotFoundInCoolify = true;
+    console.log(`[sync-coolify-status] Checking app UUID: ${deployment.coolify_app_uuid}`);
+
+    // Try to fetch app from Coolify using stored UUID
+    if (deployment.coolify_app_uuid) {
+      const appResponse = await fetch(`${coolifyUrl}/api/v1/applications/${deployment.coolify_app_uuid}`, {
+        headers: coolifyHeaders,
+      });
+
+      if (appResponse.status === 401 || appResponse.status === 403) {
+        console.error('[sync-coolify-status] Coolify auth error:', appResponse.status);
+        return new Response(JSON.stringify({ 
+          error: 'Token Coolify invalide ou expiré',
+          details: `HTTP ${appResponse.status}` 
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!appResponse.ok) {
+        const errorText = await appResponse.text();
+        console.log('[sync-coolify-status] App not found by UUID, will search by repo:', errorText);
+        appNotFoundInCoolify = true;
+      } else {
+        appData = await appResponse.json();
+        console.log('[sync-coolify-status] App found by UUID, status:', appData.status);
+        coolifyStatus = appData.status || 'unknown';
+      }
     } else {
-      appData = await appResponse.json();
-      console.log('[sync-coolify-status] App data:', JSON.stringify(appData, null, 2));
-      coolifyStatus = appData.status || 'unknown';
+      appNotFoundInCoolify = true;
+    }
+
+    // If app not found by UUID, try to find it by searching all applications
+    if (appNotFoundInCoolify && deployment.github_repo_url) {
+      console.log('[sync-coolify-status] Searching apps by repo:', deployment.github_repo_url);
+      
+      try {
+        const appsResponse = await fetch(`${coolifyUrl}/api/v1/applications`, {
+          headers: coolifyHeaders,
+        });
+
+        if (appsResponse.ok) {
+          const allApps = await appsResponse.json();
+          console.log(`[sync-coolify-status] Found ${allApps.length} apps in Coolify`);
+
+          // Search for matching app by git_repository or name
+          const matchingApp = allApps.find((app: { git_repository?: string; name?: string; uuid?: string }) => {
+            const repoMatch = app.git_repository && 
+              deployment.github_repo_url?.includes(app.git_repository.replace('.git', ''));
+            const nameMatch = app.name && 
+              app.name.toLowerCase().includes(deployment.project_name.toLowerCase());
+            return repoMatch || nameMatch;
+          });
+
+          if (matchingApp) {
+            console.log(`[sync-coolify-status] Found matching app: ${matchingApp.uuid} (${matchingApp.name})`);
+            foundAppUuid = matchingApp.uuid;
+            appNotFoundInCoolify = false;
+            
+            // Fetch full app details
+            const fullAppResponse = await fetch(`${coolifyUrl}/api/v1/applications/${matchingApp.uuid}`, {
+              headers: coolifyHeaders,
+            });
+            
+            if (fullAppResponse.ok) {
+              appData = await fullAppResponse.json();
+              coolifyStatus = appData.status || 'unknown';
+              
+              // Update the stored UUID in database
+              await supabase
+                .from('server_deployments')
+                .update({ coolify_app_uuid: matchingApp.uuid })
+                .eq('id', deployment_id);
+              
+              console.log(`[sync-coolify-status] Updated coolify_app_uuid to ${matchingApp.uuid}`);
+            }
+          } else {
+            console.log('[sync-coolify-status] No matching app found in Coolify');
+          }
+        }
+      } catch (searchError) {
+        console.log('[sync-coolify-status] Error searching apps:', searchError);
+      }
     }
 
     // Determine status from Coolify response
@@ -113,8 +179,7 @@ serve(async (req) => {
     // If app not found in Coolify, we'll rely on URL testing
     if (appNotFoundInCoolify) {
       console.log('[sync-coolify-status] App not in Coolify, will determine status from URL test');
-      // Clear the invalid coolify_app_uuid since the app doesn't exist anymore
-      newErrorMessage = 'Application supprimée de Coolify - vérification URL uniquement';
+      newErrorMessage = 'Application introuvable dans Coolify - vérification URL uniquement';
     } else {
       // Map Coolify status to our status
       if (coolifyStatus === 'running' || coolifyStatus === 'healthy' || coolifyStatus.includes('running')) {
@@ -125,6 +190,7 @@ serve(async (req) => {
       } else if (coolifyStatus === 'exited' || coolifyStatus === 'stopped' || coolifyStatus.includes('exited')) {
         newStatus = 'failed';
         newHealthStatus = 'unhealthy';
+        newErrorMessage = `Coolify status: ${coolifyStatus}`;
         console.log('[sync-coolify-status] App is stopped/exited');
       } else if (coolifyStatus === 'starting' || coolifyStatus === 'restarting') {
         newStatus = 'deploying';
@@ -135,6 +201,8 @@ serve(async (req) => {
 
     // Also test if the URL responds
     let urlHealthy = false;
+    let urlHttpStatus: number | null = null;
+    
     if (fqdn) {
       try {
         const testUrl = fqdn.startsWith('http') ? fqdn : `https://${fqdn}`;
@@ -143,6 +211,7 @@ serve(async (req) => {
           method: 'GET',
           signal: AbortSignal.timeout(10000),
         });
+        urlHttpStatus = urlResponse.status;
         urlHealthy = urlResponse.ok || urlResponse.status < 500;
         console.log(`[sync-coolify-status] URL test result: ${urlResponse.status} (healthy: ${urlHealthy})`);
         
@@ -165,6 +234,11 @@ serve(async (req) => {
       consecutive_failures: newHealthStatus === 'healthy' ? 0 : deployment.consecutive_failures,
     };
 
+    // Update coolify_app_uuid if we found a new one
+    if (foundAppUuid && foundAppUuid !== deployment.coolify_app_uuid) {
+      updateData.coolify_app_uuid = foundAppUuid;
+    }
+
     if (fqdn && !deployment.deployed_url) {
       updateData.deployed_url = fqdn.startsWith('http') ? fqdn : `https://${fqdn}`;
     }
@@ -186,12 +260,15 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      version: VERSION,
       coolify_status: coolifyStatus,
       app_not_found: appNotFoundInCoolify,
       new_status: newStatus,
       new_health_status: newHealthStatus,
       url_healthy: urlHealthy,
+      url_http_status: urlHttpStatus,
       deployed_url: fqdn,
+      coolify_app_uuid: foundAppUuid,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -200,7 +277,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('[sync-coolify-status] Error:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      version: VERSION
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
