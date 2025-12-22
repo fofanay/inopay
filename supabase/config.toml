@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.purge-server-deployments]
 verify_jwt = false
+
+[functions.export-schema]
+verify_jwt = false
