@@ -475,13 +475,30 @@ serve(async (req) => {
       if (!appData) {
         console.log('[deploy-coolify] Creating new Coolify application with DOCKERFILE mode...');
         
+        // Get GitHub token for private repos - inject into URL if available
+        const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
+        let gitRepoForCoolify = github_repo_url;
+        let isPrivateRepo = false;
+        
+        // If we have a GitHub token, modify the URL to include authentication
+        // Format: https://x-access-token:TOKEN@github.com/owner/repo.git
+        if (githubToken && github_repo_url.includes('github.com')) {
+          const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+          if (urlMatch) {
+            const [, owner, repo] = urlMatch;
+            gitRepoForCoolify = `https://x-access-token:${githubToken}@github.com/${owner}/${repo}.git`;
+            isPrivateRepo = true;
+            console.log('[deploy-coolify] Using authenticated GitHub URL for private repo');
+          }
+        }
+        
         // Use Dockerfile mode (port 80) since the repo has Dockerfile + nginx.conf
         // IMPORTANT: Don't use dockerfile_location in /applications/public endpoint - it's not allowed
         const appPayload = {
           project_uuid: projectData.uuid,
           server_uuid: coolifyServerUuid,
           environment_name: 'production',
-          git_repository: github_repo_url,
+          git_repository: gitRepoForCoolify,
           git_branch: 'main',
           build_pack: 'dockerfile',
           ports_exposes: '80',
@@ -494,7 +511,8 @@ serve(async (req) => {
           health_check_start_period: 120  // 2 minutes for initial startup
         };
         
-        console.log('[deploy-coolify] Application payload:', JSON.stringify(appPayload));
+        console.log('[deploy-coolify] Application payload (repo auth:', isPrivateRepo ? 'private' : 'public', '):', 
+          JSON.stringify({ ...appPayload, git_repository: isPrivateRepo ? '[AUTHENTICATED_URL]' : appPayload.git_repository }));
         
         const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/public`, {
           method: 'POST',
@@ -514,7 +532,7 @@ serve(async (req) => {
               project_uuid: projectData.uuid,
               server_uuid: coolifyServerUuid,
               environment_name: 'production',
-              git_repository: github_repo_url,
+              git_repository: gitRepoForCoolify, // Use authenticated URL for private repos
               git_branch: 'main',
               build_pack: 'nixpacks',
               ports_exposes: '3000',
@@ -525,7 +543,8 @@ serve(async (req) => {
               health_check_start_period: 120
             };
             
-            console.log('[deploy-coolify] Fallback payload:', JSON.stringify(fallbackPayload));
+            console.log('[deploy-coolify] Fallback payload (repo auth:', isPrivateRepo ? 'private' : 'public', '):', 
+              JSON.stringify({ ...fallbackPayload, git_repository: isPrivateRepo ? '[AUTHENTICATED_URL]' : fallbackPayload.git_repository }));
             
             const fallbackResponse = await fetch(`${server.coolify_url}/api/v1/applications/public`, {
               method: 'POST',
