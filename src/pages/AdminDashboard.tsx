@@ -21,7 +21,8 @@ import {
   TrendingUp,
   ShoppingCart,
   Smartphone,
-  Webhook
+  Webhook,
+  HardDrive
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import AdminPurchases from "@/components/admin/AdminPurchases";
 import AdminStripeLogs from "@/components/admin/AdminStripeLogs";
 import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
+import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -102,6 +104,7 @@ const AdminDashboard = () => {
     { id: "emails", label: "Emails (CMS)", icon: Mail },
     { id: "reminders", label: "Relances", icon: Bell },
     { id: "exports", label: "Exports & Qualité", icon: FileText },
+    { id: "migration", label: "Migration", icon: HardDrive },
     { id: "testers", label: "Testeurs", icon: FlaskConical },
     { id: "settings", label: "Paramètres", icon: Settings },
   ];
@@ -129,6 +132,7 @@ const AdminDashboard = () => {
       case "emails": return "Templates d'emails personnalisables";
       case "reminders": return "Campagnes d'emails automatiques";
       case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
+      case "migration": return "Exportez schéma et données pour migrer vers votre Supabase";
       case "testers": return "Gérez les comptes avec accès Pro gratuit à vie";
       case "settings": return "Configuration globale de l'application";
       default: return "";
@@ -255,6 +259,7 @@ const AdminDashboard = () => {
             {activeTab === "emails" && <AdminEmailCMS />}
             {activeTab === "reminders" && <AdminReminders />}
             {activeTab === "exports" && <AdminExportsList />}
+            {activeTab === "migration" && <AdminMigrationTools />}
             {activeTab === "testers" && <AdminTesters />}
             {activeTab === "settings" && <AdminSettings />}
           </div>
