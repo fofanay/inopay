@@ -12,6 +12,38 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Log critical errors to admin_activity_logs for monitoring
+async function logCriticalError(supabase: any, error: string, eventType?: string, metadata?: any) {
+  try {
+    await supabase.from("admin_activity_logs").insert({
+      action_type: "stripe_webhook_error",
+      title: `Webhook Error: ${eventType || 'unknown'}`,
+      description: error,
+      status: "error",
+      metadata: { ...metadata, timestamp: new Date().toISOString() }
+    });
+  } catch (e) {
+    console.error("[STRIPE-WEBHOOK] Failed to log critical error:", e);
+  }
+}
+
+// Log successful webhook processing for monitoring
+async function logWebhookSuccess(supabase: any, eventType: string, userId?: string, metadata?: any) {
+  try {
+    await supabase.from("admin_activity_logs").insert({
+      action_type: "stripe_webhook_success",
+      title: `Webhook Processed: ${eventType}`,
+      description: `Successfully processed ${eventType} event`,
+      status: "success",
+      user_id: userId,
+      metadata: { ...metadata, timestamp: new Date().toISOString() }
+    });
+  } catch (e) {
+    // Non-critical, don't fail the webhook
+    console.log("[STRIPE-WEBHOOK] Could not log success:", e);
+  }
+}
+
 // Service type mapping
 const SERVICE_PRICES: Record<string, { type: string; amount: number; currency: string; isSubscription: boolean }> = {
   "price_1RbLNGP6LGH3d3nX8yDjVVnk": { type: "deploy", amount: 9900, currency: "cad", isSubscription: false },
@@ -142,8 +174,10 @@ serve(async (req) => {
 
           if (purchaseError) {
             logStep("Error creating purchase record", { error: purchaseError });
+            await logCriticalError(supabaseClient, `Failed to create subscription purchase: ${purchaseError.message}`, event.type, { sessionId: session.id, userId });
           } else {
             logStep("Subscription purchase recorded", { userId, serviceType: serviceInfo.type });
+            await logWebhookSuccess(supabaseClient, event.type, userId, { sessionId: session.id, serviceType: serviceInfo.type });
           }
 
           // Also update old subscriptions table for backwards compatibility
@@ -180,8 +214,10 @@ serve(async (req) => {
 
           if (purchaseError) {
             logStep("Error creating purchase record", { error: purchaseError });
+            await logCriticalError(supabaseClient, `Failed to create one-time purchase: ${purchaseError.message}`, event.type, { sessionId: session.id, userId });
           } else {
             logStep("One-time purchase recorded", { userId, serviceType: serviceInfo.type });
+            await logWebhookSuccess(supabaseClient, event.type, userId, { sessionId: session.id, serviceType: serviceInfo.type });
           }
 
           // Also update old subscriptions table for backwards compatibility (add credit)
@@ -232,6 +268,7 @@ serve(async (req) => {
 
         if (updateError) {
           logStep("Error updating purchase subscription status", { error: updateError });
+          await logCriticalError(supabaseClient, `Failed to update subscription status: ${updateError.message}`, event.type, { subscriptionId: subscription.id });
         }
 
         // Also update old subscriptions table for backwards compatibility
@@ -272,8 +309,10 @@ serve(async (req) => {
 
         if (updateError) {
           logStep("Error updating purchase to refunded", { error: updateError });
+          await logCriticalError(supabaseClient, `Failed to mark purchase as refunded: ${updateError.message}`, event.type, { paymentIntentId });
         } else {
           logStep("Purchase marked as refunded");
+          await logWebhookSuccess(supabaseClient, event.type, undefined, { paymentIntentId });
         }
         break;
       }
@@ -286,6 +325,10 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
+    
+    // Log critical errors for admin monitoring
+    await logCriticalError(supabaseClient, errorMessage, "unknown", { stack: error instanceof Error ? error.stack : undefined });
+    
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

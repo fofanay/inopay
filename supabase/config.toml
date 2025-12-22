@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.widget-auth]
 verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
