@@ -65,6 +65,7 @@ import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
+import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
@@ -1466,12 +1467,10 @@ const Dashboard = () => {
         onClose={() => setSovereignExportOpen(false)}
       />
 
-      {/* Mobile Pagination Dots */}
-      <MobilePaginationDots
-        tabs={DASHBOARD_TABS}
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
         currentTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
-        labels={TAB_LABELS}
       />
     </div>
   );
