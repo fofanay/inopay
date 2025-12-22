@@ -108,7 +108,8 @@ export function useUserLimits(): UserLimits {
           .eq('status', 'active')
           .single();
 
-        const isPro = subscription?.plan_type === 'pro' || subscription?.plan_type === 'enterprise';
+        const isPro = subscription?.plan_type === 'pro' || subscription?.plan_type === 'enterprise' || subscription?.plan_type === 'portfolio';
+        const isPortfolio = subscription?.plan_type === 'portfolio';
 
         // Determine limits based on purchase or subscription
         if (recentPurchase) {
@@ -121,6 +122,17 @@ export function useUserLimits(): UserLimits {
             credits,
             isTester: false,
             isPro,
+          });
+        } else if (isPortfolio) {
+          setLimits({
+            maxFiles: PLAN_LIMITS.portfolio.maxFiles,
+            maxRepos: PLAN_LIMITS.portfolio.maxRepos,
+            source: 'plan',
+            hasEnterpriseAccess: true,
+            isLoading: false,
+            credits,
+            isTester: false,
+            isPro: true,
           });
         } else if (isPro) {
           const planLimits = subscription?.plan_type === 'enterprise' 

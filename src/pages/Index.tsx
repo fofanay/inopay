@@ -6,6 +6,7 @@ import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCi
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
+import ROICalculator from "@/components/landing/ROICalculator";
 
 const Index = () => {
   const { user } = useAuth();
@@ -437,6 +438,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* ROI Calculator */}
+      <ROICalculator currency="CAD" />
 
       {/* FAQ Compact - 4 questions */}
       <section className="py-16 lg:py-20 bg-muted/30 border-y border-border">

@@ -22,7 +22,8 @@ export const SERVICE_LABELS: Record<string, string> = {
 export const PLAN_LIMITS = {
   free: { maxFiles: 100, maxRepos: 1 },
   pro: { maxFiles: 1000, maxRepos: 5 },
-  enterprise: { maxFiles: 10000, maxRepos: Infinity },
+  portfolio: { maxFiles: Infinity, maxRepos: 50 },
+  enterprise: { maxFiles: Infinity, maxRepos: Infinity },
 } as const;
 
 // Limit sources
