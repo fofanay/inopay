@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => ({
       manifest: false, // Using external manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB limit
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/izqveyvcebolrqpqlmho\.supabase\.co\/.*/i,
