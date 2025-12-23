@@ -1,115 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { 
+  cleanFileContent, 
+  validateSyntax,
+  SECURITY_LIMITS,
+  type CleaningResult 
+} from "../_shared/proprietary-patterns.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Patterns propriétaires à supprimer - Liste exhaustive pour garantir un code 100% standard
-const PROPRIETARY_PATTERNS = {
-  imports: [
-    /@lovable\//g,
-    /@gptengineer\//g,
-    /from ['"]lovable/g,
-    /from ['"]gptengineer/g,
-    /from ['"]@lovable/g,
-    /from ['"]@gptengineer/g,
-    /lovable-tagger/g,
-    /componentTagger/g,
-    /lovable-core/g,
-    /gpt-engineer/g,
-  ],
-  files: [
-    '.bolt',
-    '.lovable',
-    '.gptengineer',
-    '.gpteng',
-    'lovable.config',
-    'gptengineer.config',
-    '.lovable.json',
-    '.gptengineer.json',
-    'bolt.config',
-    '.bolt.json',
-  ],
-  content: [
-    // Import statements
-    /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@gptengineer\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]lovable-[^'"]*['"]\s*;?\n?/g,
-    
-    // Plugin usage in vite.config
-    /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g,
-    /componentTagger\(\)\s*,?\n?/g,
-    
-    // Comment markers
-    /\/\/\s*@lovable.*\n?/g,
-    /\/\*\s*@lovable[\s\S]*?\*\//g,
-    /\/\/\s*@gptengineer.*\n?/g,
-    /\/\*\s*@gptengineer[\s\S]*?\*\//g,
-    /\/\/\s*@bolt.*\n?/g,
-    /\/\*\s*@bolt[\s\S]*?\*\//g,
-    
-    // Data attributes
-    /data-lovable[^"]*="[^"]*"/g,
-    /data-gpt[^"]*="[^"]*"/g,
-    /data-bolt[^"]*="[^"]*"/g,
-    /data-lov-id="[^"]*"/g,
-    /data-lov-component="[^"]*"/g,
-    
-    // Environment variable references (not the actual values)
-    /VITE_LOVABLE_[A-Z_]+/g,
-    /VITE_GPT_[A-Z_]+/g,
-    
-    // Dynamic markers
-    /__lovable[^=]*=[^;]*/g,
-    /__gpteng[^=]*=[^;]*/g,
-  ],
-  telemetry: [
-    /lovable\.app/g,
-    /gptengineer\.app/g,
-    /events\.lovable/g,
-    /telemetry\.lovable/g,
-    /analytics\.lovable/g,
-    /api\.lovable\.dev/g,
-    /ws\.lovable\.dev/g,
-    /cdn\.lovable\.dev/g,
-  ],
-  // Dépendances à supprimer de package.json
-  dependencies: [
-    'lovable-tagger',
-    '@lovable/core',
-    '@lovable/cli',
-    '@lovable/runtime',
-    '@lovable/plugin-react',
-    '@gptengineer/core',
-    '@gptengineer/cli',
-    'gpt-engineer',
-    'bolt-core',
-    '@bolt/core',
-  ],
-};
-
-// Remplacements de hooks standards
-const HOOK_REPLACEMENTS: Record<string, { standard: string; import: string }> = {
-  'use-mobile': {
-    standard: `import { useState, useEffect } from 'react';
-
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  return isMobile;
-}`,
-    import: "import { useIsMobile } from '@/hooks/use-mobile';",
-  },
 };
 
 interface ProcessRequest {
@@ -117,152 +17,6 @@ interface ProcessRequest {
   projectName: string;
   userId: string;
   projectId?: string;
-}
-
-interface CleaningResult {
-  path: string;
-  originalContent: string;
-  cleanedContent: string;
-  changes: string[];
-  removed: boolean;
-}
-
-function cleanFileContent(filePath: string, content: string): CleaningResult {
-  const changes: string[] = [];
-  let cleanedContent = content;
-  let removed = false;
-
-  // Check if file should be removed
-  for (const pattern of PROPRIETARY_PATTERNS.files) {
-    if (filePath.includes(pattern)) {
-      removed = true;
-      changes.push(`Fichier propriétaire supprimé: ${filePath}`);
-      return { path: filePath, originalContent: content, cleanedContent: '', changes, removed };
-    }
-  }
-
-  // Remove proprietary imports
-  for (const pattern of PROPRIETARY_PATTERNS.imports) {
-    if (pattern.test(cleanedContent)) {
-      cleanedContent = cleanedContent.replace(pattern, '');
-      changes.push(`Import propriétaire supprimé: ${pattern.source}`);
-    }
-  }
-
-  // Remove proprietary content patterns
-  for (const pattern of PROPRIETARY_PATTERNS.content) {
-    if (pattern.test(cleanedContent)) {
-      cleanedContent = cleanedContent.replace(pattern, '');
-      changes.push(`Contenu propriétaire supprimé: ${pattern.source}`);
-    }
-  }
-
-  // Remove telemetry patterns
-  for (const pattern of PROPRIETARY_PATTERNS.telemetry) {
-    if (pattern.test(cleanedContent)) {
-      cleanedContent = cleanedContent.replace(pattern, '');
-      changes.push(`Télémétrie supprimée: ${pattern.source}`);
-    }
-  }
-
-  // Clean package.json
-  if (filePath === 'package.json' || filePath.endsWith('/package.json')) {
-    try {
-      const pkg = JSON.parse(cleanedContent);
-      
-      // Use the comprehensive dependencies list
-      for (const dep of PROPRIETARY_PATTERNS.dependencies) {
-        if (pkg.dependencies?.[dep]) {
-          delete pkg.dependencies[dep];
-          changes.push(`Dépendance supprimée: ${dep}`);
-        }
-        if (pkg.devDependencies?.[dep]) {
-          delete pkg.devDependencies[dep];
-          changes.push(`DevDépendance supprimée: ${dep}`);
-        }
-        if (pkg.peerDependencies?.[dep]) {
-          delete pkg.peerDependencies[dep];
-          changes.push(`PeerDépendance supprimée: ${dep}`);
-        }
-      }
-      
-      // Clean scripts that reference proprietary tools
-      if (pkg.scripts) {
-        const scriptsToRemove = ['lovable', 'gpteng', 'bolt'];
-        for (const [key, value] of Object.entries(pkg.scripts)) {
-          if (typeof value === 'string') {
-            for (const term of scriptsToRemove) {
-              if (value.includes(term)) {
-                delete pkg.scripts[key];
-                changes.push(`Script supprimé: ${key}`);
-                break;
-              }
-            }
-          }
-        }
-      }
-      
-      cleanedContent = JSON.stringify(pkg, null, 2);
-    } catch (e) {
-      console.error('Error parsing package.json:', e);
-    }
-  }
-
-  // Clean vite.config.ts
-  if (filePath === 'vite.config.ts' || filePath.endsWith('/vite.config.ts')) {
-    // Remove componentTagger import and usage
-    cleanedContent = cleanedContent.replace(
-      /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
-      ''
-    );
-    cleanedContent = cleanedContent.replace(
-      /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
-      ''
-    );
-    cleanedContent = cleanedContent.replace(
-      /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g,
-      ''
-    );
-    cleanedContent = cleanedContent.replace(
-      /componentTagger\(\)\s*,?\n?/g,
-      ''
-    );
-    
-    // Remove empty plugin arrays left behind
-    cleanedContent = cleanedContent.replace(/plugins:\s*\[\s*\]/g, 'plugins: []');
-    
-    if (cleanedContent !== content) {
-      changes.push('vite.config.ts nettoyé des plugins propriétaires');
-    }
-  }
-
-  // Clean index.html
-  if (filePath === 'index.html' || filePath.endsWith('/index.html')) {
-    // Remove lovable/gpteng script tags
-    cleanedContent = cleanedContent.replace(
-      /<script[^>]*lovable[^>]*>[\s\S]*?<\/script>/gi,
-      ''
-    );
-    cleanedContent = cleanedContent.replace(
-      /<script[^>]*gptengineer[^>]*>[\s\S]*?<\/script>/gi,
-      ''
-    );
-    // Remove data attributes
-    cleanedContent = cleanedContent.replace(/\s*data-lov[^=]*="[^"]*"/g, '');
-    cleanedContent = cleanedContent.replace(/\s*data-gpt[^=]*="[^"]*"/g, '');
-    
-    if (cleanedContent !== content) {
-      changes.push('index.html nettoyé des scripts propriétaires');
-    }
-  }
-
-  // Clean up empty lines left behind
-  cleanedContent = cleanedContent.replace(/\n{3,}/g, '\n\n');
-  
-  // Clean up trailing commas in arrays/objects that might be left
-  cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
-
-  return { path: filePath, originalContent: content, cleanedContent, changes, removed };
 }
 
 async function pushToGitHub(
@@ -468,8 +222,6 @@ async function triggerCoolifyDeployment(
       appUuid = existingApp.uuid;
       deploymentUrl = existingApp.fqdn;
     } else {
-      // We need to create via the Coolify dashboard for now
-      // Just trigger a rebuild if app exists
       return { 
         success: false, 
         error: 'Application non trouvée sur Coolify. Créez-la d\'abord depuis le dashboard Coolify.' 
@@ -530,6 +282,16 @@ serve(async (req) => {
 
     const { files, projectName, projectId, action } = await req.json() as ProcessRequest & { action?: string };
 
+    // Security limits check
+    if (files.length > SECURITY_LIMITS.MAX_FILES_PER_LIBERATION) {
+      return new Response(JSON.stringify({ 
+        error: `Limite de fichiers dépassée: ${files.length} > ${SECURITY_LIMITS.MAX_FILES_PER_LIBERATION}` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get user settings for GitHub token
     const { data: settings } = await supabase
       .from('user_settings')
@@ -540,24 +302,40 @@ serve(async (req) => {
     const githubToken = settings?.github_token;
 
     // Phase 1: Clean files
-    console.log(`[Liberation] Starting cleaning for ${projectName}`);
+    console.log(`[Liberation] Starting cleaning for ${projectName}, ${files.length} files`);
     
     const cleaningResults: CleaningResult[] = [];
     const cleanedFiles: { path: string; content: string }[] = [];
+    const validationErrors: { path: string; error: string }[] = [];
     let totalChanges = 0;
 
     for (const file of files) {
+      // Skip files that are too large
+      if (file.content.length > SECURITY_LIMITS.MAX_FILE_SIZE_CHARS) {
+        console.log(`[Liberation] Skipping large file: ${file.path} (${file.content.length} chars)`);
+        continue;
+      }
+
       const result = cleanFileContent(file.path, file.content);
       cleaningResults.push(result);
       
       if (!result.removed && result.cleanedContent) {
-        cleanedFiles.push({ path: result.path, content: result.cleanedContent });
+        // Validate syntax before adding
+        const validation = validateSyntax(result.cleanedContent, result.path);
+        if (validation.valid) {
+          cleanedFiles.push({ path: result.path, content: result.cleanedContent });
+        } else {
+          validationErrors.push({ path: result.path, error: validation.error || 'Syntax error' });
+          console.warn(`[Liberation] Syntax error in ${result.path}: ${validation.error}`);
+          // Fall back to original content
+          cleanedFiles.push({ path: file.path, content: file.content });
+        }
       }
       
       totalChanges += result.changes.length;
     }
 
-    console.log(`[Liberation] Cleaned ${cleanedFiles.length} files, ${totalChanges} changes made`);
+    console.log(`[Liberation] Cleaned ${cleanedFiles.length} files, ${totalChanges} changes made, ${validationErrors.length} validation errors`);
 
     // If only cleaning requested, return here
     if (action === 'clean-only') {
@@ -567,22 +345,7 @@ serve(async (req) => {
         cleaningResults,
         cleanedFiles: cleanedFiles.length,
         totalChanges,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Phase 2: Push to GitHub
-    console.log(`[Liberation] Cleaned ${cleanedFiles.length} files, ${totalChanges} changes made`);
-
-    // If only cleaning requested, return here
-    if (action === 'clean-only') {
-      return new Response(JSON.stringify({
-        success: true,
-        phase: 'cleaning',
-        cleaningResults,
-        cleanedFiles: cleanedFiles.length,
-        totalChanges,
+        validationErrors,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -656,6 +419,7 @@ serve(async (req) => {
         projectId,
         cleanedFiles: cleanedFiles.length,
         totalChanges,
+        validationErrors: validationErrors.length,
         githubSuccess: githubResult.success,
         githubRepoUrl: githubResult.repoUrl,
         coolifySuccess: coolifyResult.success,
@@ -671,6 +435,7 @@ serve(async (req) => {
           filesProcessed: files.length,
           filesCleaned: cleanedFiles.length,
           totalChanges,
+          validationErrors,
           results: cleaningResults.filter(r => r.changes.length > 0),
         },
         github: {
