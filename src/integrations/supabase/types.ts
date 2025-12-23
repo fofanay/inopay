@@ -92,6 +92,133 @@ export type Database = {
         }
         Relationships: []
       }
+      cleaning_cache: {
+        Row: {
+          api_cost_cents: number | null
+          cleaned_at: string
+          cleaned_content: string | null
+          created_at: string
+          file_hash: string
+          file_path: string
+          id: string
+          project_id: string | null
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          api_cost_cents?: number | null
+          cleaned_at?: string
+          cleaned_content?: string | null
+          created_at?: string
+          file_hash: string
+          file_path: string
+          id?: string
+          project_id?: string | null
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          api_cost_cents?: number | null
+          cleaned_at?: string
+          cleaned_content?: string | null
+          created_at?: string
+          file_hash?: string
+          file_path?: string
+          id?: string
+          project_id?: string | null
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_cache_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_estimates: {
+        Row: {
+          actual_cost_cents: number | null
+          actual_tokens_used: number | null
+          admin_approved: boolean | null
+          admin_approved_at: string | null
+          admin_approved_by: string | null
+          created_at: string
+          estimated_cost_cents: number
+          estimated_tokens: number
+          excluded_paths: string[] | null
+          id: string
+          margin_cents: number | null
+          margin_percentage: number | null
+          project_id: string | null
+          project_name: string
+          requires_admin_approval: boolean | null
+          sale_price_cents: number | null
+          status: string | null
+          total_files: number
+          total_lines: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_cost_cents?: number | null
+          actual_tokens_used?: number | null
+          admin_approved?: boolean | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          created_at?: string
+          estimated_cost_cents?: number
+          estimated_tokens?: number
+          excluded_paths?: string[] | null
+          id?: string
+          margin_cents?: number | null
+          margin_percentage?: number | null
+          project_id?: string | null
+          project_name: string
+          requires_admin_approval?: boolean | null
+          sale_price_cents?: number | null
+          status?: string | null
+          total_files?: number
+          total_lines?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_cost_cents?: number | null
+          actual_tokens_used?: number | null
+          admin_approved?: boolean | null
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          created_at?: string
+          estimated_cost_cents?: number
+          estimated_tokens?: number
+          excluded_paths?: string[] | null
+          id?: string
+          margin_cents?: number | null
+          margin_percentage?: number | null
+          project_id?: string | null
+          project_name?: string
+          requires_admin_approval?: boolean | null
+          sale_price_cents?: number | null
+          status?: string | null
+          total_files?: number
+          total_lines?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_history: {
         Row: {
           cleaned_dependencies: string[] | null
