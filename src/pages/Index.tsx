@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
 import ROICalculator from "@/components/landing/ROICalculator";
 import { useTranslation } from "react-i18next";
-import FloatingLanguageSwitcher from "@/components/FloatingLanguageSwitcher";
+import FofyChat from "@/components/FofyChat";
 
 // Import platform logos
 import lovableLogo from "@/assets/platforms/lovable-logo.png";
@@ -525,8 +525,8 @@ const Index = () => {
       </section>
     </Layout>
     
-    {/* Floating language switcher for non-logged-in visitors */}
-    {!user && <FloatingLanguageSwitcher />}
+    {/* FOFY - AI Assistant */}
+    <FofyChat />
     </>
   );
 };
