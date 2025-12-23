@@ -164,3 +164,9 @@ verify_jwt = false
 
 [functions.create-liberation-checkout]
 verify_jwt = false
+
+[functions.send-onboarding-reminder]
+verify_jwt = false
+
+[functions.send-liberation-success]
+verify_jwt = false
