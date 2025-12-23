@@ -1,23 +1,35 @@
 import { useState } from "react";
-import { Smartphone, QrCode, RefreshCw, Copy, Check, ExternalLink, Shield } from "lucide-react";
+import { Smartphone, QrCode, RefreshCw, Copy, Check, ExternalLink, Shield, Ban, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { QRCodeSVG } from "qrcode.react";
+import { Badge } from "@/components/ui/badge";
 
 interface WidgetManagerProps {
   syncConfigId: string;
   currentToken: string | null;
+  tokenUsedAt?: string | null;
+  tokenLastIp?: string | null;
+  tokenRevoked?: boolean;
   onTokenUpdate: (newToken: string) => void;
 }
 
-export function WidgetManager({ syncConfigId, currentToken, onTokenUpdate }: WidgetManagerProps) {
+export function WidgetManager({ 
+  syncConfigId, 
+  currentToken, 
+  tokenUsedAt,
+  tokenLastIp,
+  tokenRevoked = false,
+  onTokenUpdate 
+}: WidgetManagerProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const widgetUrl = currentToken 
+  const widgetUrl = currentToken && !tokenRevoked
     ? `${window.location.origin}/widget?token=${currentToken}`
     : null;
 
@@ -33,7 +45,10 @@ export function WidgetManager({ syncConfigId, currentToken, onTokenUpdate }: Wid
         .from('sync_configurations')
         .update({ 
           widget_token: newToken,
-          widget_token_created_at: new Date().toISOString()
+          widget_token_created_at: new Date().toISOString(),
+          widget_token_revoked: false,
+          widget_token_used_at: null,
+          widget_token_last_ip: null,
         })
         .eq('id', syncConfigId);
 
@@ -46,6 +61,29 @@ export function WidgetManager({ syncConfigId, currentToken, onTokenUpdate }: Wid
       toast.error("Erreur lors de la génération du token");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const revokeToken = async () => {
+    setIsRevoking(true);
+    try {
+      const { error } = await supabase
+        .from('sync_configurations')
+        .update({ 
+          widget_token_revoked: true,
+        })
+        .eq('id', syncConfigId);
+
+      if (error) throw error;
+
+      toast.success("Token révoqué ! L'accès au widget est désactivé.");
+      // Force refresh by updating with empty token effect
+      onTokenUpdate('');
+    } catch (error) {
+      console.error('Token revocation error:', error);
+      toast.error("Erreur lors de la révocation du token");
+    } finally {
+      setIsRevoking(false);
     }
   };
 
@@ -84,8 +122,17 @@ export function WidgetManager({ syncConfigId, currentToken, onTokenUpdate }: Wid
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {currentToken ? (
+        {currentToken && !tokenRevoked ? (
           <>
+            {/* Token usage info */}
+            {tokenUsedAt && (
+              <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>Dernier accès: {new Date(tokenUsedAt).toLocaleString('fr-FR')}</span>
+                {tokenLastIp && <span className="text-muted-foreground/60">({tokenLastIp})</span>}
+              </div>
+            )}
+
             {/* QR Code */}
             <div className="flex justify-center p-4 bg-white rounded-xl">
               <QRCodeSVG 
@@ -137,15 +184,26 @@ export function WidgetManager({ syncConfigId, currentToken, onTokenUpdate }: Wid
                 className="gap-2"
               >
                 <RefreshCw className={cn("w-4 h-4", isGenerating && "animate-spin")} />
-                Réinitialiser
+                Régénérer
               </Button>
             </div>
+
+            {/* Revoke button */}
+            <Button 
+              variant="destructive" 
+              onClick={revokeToken}
+              disabled={isRevoking}
+              className="w-full gap-2"
+            >
+              <Ban className={cn("w-4 h-4", isRevoking && "animate-pulse")} />
+              Révoquer l'accès au widget
+            </Button>
 
             {/* Security note */}
             <div className="flex items-start gap-2 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
               <Shield className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
               <p className="text-xs text-orange-200">
-                Ce token donne accès à votre widget de monitoring. Ne le partagez qu'avec des personnes de confiance. Vous pouvez le réinitialiser à tout moment.
+                Ce token donne accès à votre widget de monitoring. Vous pouvez le révoquer à tout moment pour désactiver immédiatement l'accès.
               </p>
             </div>
 

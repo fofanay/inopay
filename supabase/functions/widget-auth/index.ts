@@ -57,7 +57,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find sync configuration by widget token
+    // Find sync configuration by widget token (check not revoked)
     const { data: syncConfig, error: syncError } = await supabase
       .from('sync_configurations')
       .select(`
@@ -79,15 +79,30 @@ serve(async (req) => {
         )
       `)
       .eq('widget_token', widgetToken)
+      .eq('widget_token_revoked', false)
       .single();
 
     if (syncError || !syncConfig) {
-      console.error('Widget token not found:', syncError);
+      console.error('Widget token not found or revoked:', syncError);
       return new Response(
-        JSON.stringify({ error: 'Invalid widget token' }),
+        JSON.stringify({ error: 'Invalid or revoked widget token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get client IP for tracking
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
+
+    // Update token usage tracking
+    await supabase
+      .from('sync_configurations')
+      .update({
+        widget_token_used_at: new Date().toISOString(),
+        widget_token_last_ip: clientIp,
+      })
+      .eq('id', syncConfig.id);
 
     // Get recent sync history
     const { data: syncHistory } = await supabase

@@ -785,6 +785,9 @@ export type Database = {
           user_id: string
           widget_token: string | null
           widget_token_created_at: string | null
+          widget_token_last_ip: string | null
+          widget_token_revoked: boolean | null
+          widget_token_used_at: string | null
           zen_mode: boolean | null
         }
         Insert: {
@@ -805,6 +808,9 @@ export type Database = {
           user_id: string
           widget_token?: string | null
           widget_token_created_at?: string | null
+          widget_token_last_ip?: string | null
+          widget_token_revoked?: boolean | null
+          widget_token_used_at?: string | null
           zen_mode?: boolean | null
         }
         Update: {
@@ -825,6 +831,9 @@ export type Database = {
           user_id?: string
           widget_token?: string | null
           widget_token_created_at?: string | null
+          widget_token_last_ip?: string | null
+          widget_token_revoked?: boolean | null
+          widget_token_used_at?: string | null
           zen_mode?: boolean | null
         }
         Relationships: [
