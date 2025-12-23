@@ -2,11 +2,18 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette, Heart, MousePointer, RefreshCw, Globe, Cloud, Droplets } from "lucide-react";
+import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette, Globe, Cloud, Droplets } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
 import ROICalculator from "@/components/landing/ROICalculator";
+
+// Import platform logos
+import lovableLogo from "@/assets/platforms/lovable-logo.png";
+import boltLogo from "@/assets/platforms/bolt-logo.png";
+import v0Logo from "@/assets/platforms/v0-logo.jpg";
+import cursorLogo from "@/assets/platforms/cursor-logo.jpg";
+import replitLogo from "@/assets/platforms/replit-logo.png";
 
 const Index = () => {
   const { user } = useAuth();
@@ -14,11 +21,11 @@ const Index = () => {
   const mousePosition = useMouseParallax(15);
 
   const platforms = [
-    { name: "Lovable", icon: Heart, color: "text-purple-500", bgColor: "bg-purple-500/10" },
-    { name: "Bolt", icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
-    { name: "v0", icon: Sparkles, color: "text-orange-500", bgColor: "bg-orange-500/10" },
-    { name: "Cursor", icon: MousePointer, color: "text-blue-500", bgColor: "bg-blue-500/10" },
-    { name: "Replit", icon: RefreshCw, color: "text-teal-500", bgColor: "bg-teal-500/10" },
+    { name: "Lovable", logo: lovableLogo },
+    { name: "Bolt", logo: boltLogo },
+    { name: "v0", logo: v0Logo },
+    { name: "Cursor", logo: cursorLogo },
+    { name: "Replit", logo: replitLogo },
   ];
 
   const hosters = [
@@ -326,18 +333,19 @@ const Index = () => {
             Compatible avec toutes les plateformes IA
           </p>
           
-          {/* Plateformes avec icônes personnalisées - scrollable on mobile */}
-          <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 md:gap-3 mb-8 md:mb-12 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-            {platforms.map((platform, index) => (
+          {/* Plateformes avec vrais logos */}
+          <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-3 md:gap-4 mb-8 md:mb-12 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+{platforms.map((platform, index) => (
               <div 
                 key={platform.name}
-                className="inline-flex items-center gap-2 md:gap-2.5 px-3 py-2 md:px-5 md:py-2.5 rounded-full bg-background border border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-default group animate-fade-in shrink-0"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-6 md:py-4 rounded-2xl bg-card border border-border/60 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-105 transition-all duration-300 cursor-default group animate-fade-in shrink-0"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className={`p-1 md:p-1.5 rounded-lg ${platform.bgColor} group-hover:scale-110 transition-transform`}>
-                  <platform.icon className={`h-3 w-3 md:h-4 md:w-4 ${platform.color}`} />
-                </div>
-                <span className="text-xs md:text-sm font-medium text-foreground whitespace-nowrap">{platform.name}</span>
+                <img 
+                  src={platform.logo} 
+                  alt={`${platform.name} logo`}
+                  className="h-6 w-auto md:h-8 object-contain group-hover:scale-110 transition-transform"
+                />
               </div>
             ))}
           </div>
