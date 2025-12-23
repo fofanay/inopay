@@ -96,10 +96,13 @@
     }
   },
   "cta": {
-    "title": "Prêt à libérer votre code ?",
-    "description": "Rejoignez les développeurs qui ont repris le contrôle de leur projet.",
-    "button": "Commencer maintenant",
-    "subtext": "Analyse gratuite • Déploiement en 10 minutes"
+    "title": "Prêt à libérer votre création ?",
+    "description": "Analysez votre projet gratuitement et découvrez votre Vibe-Score™.",
+    "button": "Commencer gratuitement",
+    "buttonLoggedIn": "Libérer mon projet",
+    "subtext": "Analyse gratuite • Déploiement en 10 minutes",
+    "testimonial": "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5$/mois au lieu de 50$.",
+    "testimonialAuthor": "— Marie L."
   },
   "pulse": {
     "title": "Pouls de Souveraineté",

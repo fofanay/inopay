@@ -7,6 +7,7 @@ import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
 import ROICalculator from "@/components/landing/ROICalculator";
+import { useTranslation } from "react-i18next";
 
 // Import platform logos
 import lovableLogo from "@/assets/platforms/lovable-logo.png";
@@ -17,6 +18,7 @@ import replitLogo from "@/assets/platforms/replit-logo.png";
 
 const Index = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const scrollOffset = useParallax(0.3);
   const mousePosition = useMouseParallax(15);
 
@@ -40,20 +42,20 @@ const Index = () => {
   const vibeFeatures = [
     {
       icon: Terminal,
-      title: "Zéro ligne de commande",
-      description: "Si vous savez copier-coller une URL, vous savez déployer avec Inopay. On s'occupe de Docker, SSH et SSL.",
-      badge: "Vibe-Friendly",
+      title: t('features.noTerminal.title'),
+      description: t('features.noTerminal.description'),
+      badge: t('features.noTerminal.badge'),
     },
     {
       icon: PiggyBank,
-      title: "Divisez vos factures par 3",
-      description: "Pourquoi payer un abonnement Pro + des frais cachés ? Passez sur votre hébergement et gardez vos profits.",
+      title: t('features.divideCosts.title'),
+      description: t('features.divideCosts.description'),
       badge: null,
     },
     {
       icon: Key,
-      title: "Propriété Intellectuelle Réelle",
-      description: "Un code sur Lovable est emprunté. Un code Inopay sur votre VPS est un actif que vous pouvez revendre.",
+      title: t('features.realIP.title'),
+      description: t('features.realIP.description'),
       badge: null,
     },
   ];
@@ -61,28 +63,28 @@ const Index = () => {
   // 4 FAQs essentielles
   const faqs = [
     {
-      question: "Comment fonctionne le déploiement automatique ?",
-      answer: "Vous fournissez l'IP de votre VPS et vos identifiants SSH. Inopay installe Docker, configure PostgreSQL, provisionne SSL et déploie votre app. Tout est automatique, aucune commande à taper."
+      question: t('faq.q1.question'),
+      answer: t('faq.q1.answer')
     },
     {
-      question: "Mes secrets sont-ils en sécurité ? (Zero-Knowledge)",
-      answer: "Vos credentials SSH et clés API sont utilisés uniquement pendant le déploiement puis effacés. Nous ne stockons aucun secret après l'installation."
+      question: t('faq.q2.question'),
+      answer: t('faq.q2.answer')
     },
     {
-      question: "Combien de temps prend le déploiement ?",
-      answer: "Environ 10 minutes : analyse, nettoyage IA, configuration VPS et mise en ligne. Votre app est en production avec SSL et base de données en moins d'un quart d'heure."
+      question: t('faq.q3.question'),
+      answer: t('faq.q3.answer')
     },
     {
-      question: "Quelles plateformes IA sont compatibles ?",
-      answer: "Lovable, Bolt, v0, Cursor, Replit et toutes les plateformes générant du code React/Vue/JavaScript moderne. Le nettoyage IA adapte le code à votre infrastructure."
+      question: t('faq.q4.question'),
+      answer: t('faq.q4.answer')
     }
   ];
 
   const heroBenefits = [
-    "Zéro ligne de commande requise",
-    "Divisez vos factures par 3",
-    "Propriété intellectuelle réelle",
-    "Du prototype IA à la vraie entreprise",
+    t('hero.benefits.noTerminal'),
+    t('hero.benefits.divideCosts'),
+    t('hero.benefits.realIP'),
+    t('hero.benefits.prototypeToEnterprise'),
   ];
 
   return (
@@ -150,12 +152,12 @@ const Index = () => {
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold text-accent">12%</p>
-                          <p className="text-[10px] text-muted-foreground">Liberté</p>
+                          <p className="text-[10px] text-muted-foreground">{t('pulse.score')}</p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center">
                           <p className="text-lg font-bold text-success">100%</p>
-                          <p className="text-[10px] text-muted-foreground">Après</p>
+                          <p className="text-[10px] text-muted-foreground">After</p>
                         </div>
                       </div>
                     </div>
@@ -165,7 +167,7 @@ const Index = () => {
                         <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                           <Code2 className="h-6 w-6 text-muted-foreground" />
                         </div>
-                        <span className="text-xs text-muted-foreground">Code IA</span>
+                        <span className="text-xs text-muted-foreground">{t('process.step1.description')}</span>
                       </div>
                       <ArrowRight className="h-5 w-5 text-primary" />
                       <div className="flex flex-col items-center gap-2 flex-1">
@@ -179,7 +181,7 @@ const Index = () => {
                         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
                           <Server className="h-6 w-6 text-primary-foreground" />
                         </div>
-                        <span className="text-xs text-muted-foreground">Votre VPS</span>
+                        <span className="text-xs text-muted-foreground">{t('process.step3.description')}</span>
                       </div>
                     </div>
                     
@@ -200,8 +202,8 @@ const Index = () => {
                     
                     <div className="flex gap-3 pt-2">
                       <div className="flex-1 p-3 rounded-xl bg-accent/10 text-center">
-                        <p className="text-2xl font-bold text-accent">10 min</p>
-                        <p className="text-xs text-muted-foreground">Déploiement</p>
+                        <p className="text-2xl font-bold text-accent">{t('hero.tenMinutes').split(' ')[0]} {t('hero.tenMinutes').split(' ')[1]}</p>
+                        <p className="text-xs text-muted-foreground">{t('hero.deploymentIn')}</p>
                       </div>
                       <div className="flex-1 p-3 rounded-xl bg-primary/10 text-center">
                         <p className="text-2xl font-bold text-primary">24/7</p>
@@ -231,7 +233,7 @@ const Index = () => {
                   }}
                 >
                   <Terminal className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Zéro Terminal</span>
+                  <span className="text-sm font-medium">{t('hero.benefits.noTerminal').split(' ').slice(0, 2).join(' ')}</span>
                 </div>
                 
                 <div 
@@ -255,25 +257,24 @@ const Index = () => {
               {/* Badge arrondi style Mexlife */}
               <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full border-2 border-accent text-accent text-xs md:text-sm font-semibold uppercase tracking-wide mb-6 md:mb-8 animate-fade-in">
                 <Palette className="h-3 w-3 md:h-4 md:w-4" />
-                Vibe-Friendly
+                {t('hero.badge')}
               </div>
 
               {/* Titre principal style Mexlife */}
               <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-[3.5rem] font-bold tracking-tight mb-3 md:mb-4 animate-fade-in-up leading-tight">
-                <span className="text-accent">Gardez le Vibe.</span>
+                <span className="text-accent">{t('hero.titleLine1')}</span>
                 <br />
-                <span className="text-primary">Reprenez le Code.</span>
+                <span className="text-primary">{t('hero.titleLine2')}</span>
               </h1>
 
               {/* Sous-titre en italique */}
               <p className="text-lg md:text-xl text-primary italic font-medium mb-6 md:mb-8 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-                Du prototype IA à la vraie entreprise.
+                {t('hero.subtitle')}
               </p>
 
               {/* Description */}
               <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 animate-fade-in-up leading-relaxed" style={{ animationDelay: "0.15s" }}>
-                Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. 
-                Vous avez créé quelque chose de grand. <strong className="text-foreground">Inopay le rend libre.</strong>
+                {t('hero.description')} <strong className="text-foreground">{t('hero.descriptionBold')}</strong>
               </p>
 
               {/* Liste des avantages */}
@@ -294,8 +295,8 @@ const Index = () => {
                   <Rocket className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs md:text-sm text-muted-foreground">Déploiement en</p>
-                  <p className="text-xl md:text-2xl font-bold text-accent">10 minutes chrono</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{t('hero.deploymentIn')}</p>
+                  <p className="text-xl md:text-2xl font-bold text-accent">{t('hero.tenMinutes')}</p>
                 </div>
               </div>
 
@@ -306,14 +307,14 @@ const Index = () => {
                     size="lg" 
                     className="text-base md:text-lg px-6 py-5 md:px-10 md:py-7 rounded-full shadow-xl hover:shadow-2xl transition-all bg-primary hover:bg-primary/90 uppercase font-semibold tracking-wide w-full sm:w-auto"
                   >
-                    Libérer mon projet
+                    {t('hero.cta')}
                     <ArrowRight className="ml-2 md:ml-3 h-4 w-4 md:h-5 md:w-5" />
                   </Button>
                 </Link>
                 
                 <p className="mt-3 md:mt-4 text-xs md:text-sm text-muted-foreground flex items-center gap-2">
                   <Unlock className="h-3 w-3 md:h-4 md:w-4" />
-                  Analyse gratuite, sans carte bancaire
+                  {t('hero.ctaSubtext')}
                 </p>
               </div>
             </div>
@@ -330,12 +331,12 @@ const Index = () => {
         <div className="container mx-auto px-4">
           {/* Section title */}
           <p className="text-center text-xs md:text-sm text-muted-foreground mb-6 md:mb-8 uppercase tracking-widest font-medium">
-            Compatible avec toutes les plateformes IA
+            {t('platforms.title')}
           </p>
           
           {/* Plateformes avec vrais logos */}
           <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-3 md:gap-4 mb-8 md:mb-12 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-{platforms.map((platform, index) => (
+            {platforms.map((platform, index) => (
               <div 
                 key={platform.name}
                 className="inline-flex items-center justify-center px-5 py-3 md:px-6 md:py-4 rounded-2xl bg-card border border-border/60 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-105 transition-all duration-300 cursor-default group animate-fade-in shrink-0"
@@ -361,7 +362,7 @@ const Index = () => {
               <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-background border border-border/60 shadow-lg shadow-black/5 flex items-center justify-center hover:shadow-xl hover:border-border transition-all duration-300 group shrink-0">
                 <Upload className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
-              <span className="text-sm text-muted-foreground font-medium">Votre code</span>
+              <span className="text-sm text-muted-foreground font-medium">{t('process.step1.description')}</span>
             </div>
             
             {/* Flèche 1 - Rotated on mobile */}
@@ -392,7 +393,7 @@ const Index = () => {
               <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 group shrink-0">
                 <Server className="h-6 w-6 md:h-8 md:w-8 text-primary-foreground group-hover:scale-110 transition-transform" />
               </div>
-              <span className="text-sm text-foreground font-medium">Votre VPS</span>
+              <span className="text-sm text-foreground font-medium">{t('process.step3.description')}</span>
             </div>
           </div>
 
@@ -418,10 +419,10 @@ const Index = () => {
           <div className="text-center mb-8 md:mb-12">
             <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
               <Sparkles className="h-3 w-3 mr-1" />
-              Vibe-Friendly
+              {t('hero.badge')}
             </Badge>
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
-              Pourquoi les Vibecoders choisissent Inopay
+              {t('features.title')}
             </h2>
           </div>
 
@@ -459,7 +460,7 @@ const Index = () => {
               FAQ
             </div>
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
-              Questions fréquentes
+              {t('faq.title')}
             </h2>
           </div>
 
@@ -492,9 +493,9 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3 mb-6 md:mb-8 p-3 md:p-4 rounded-lg md:rounded-xl bg-muted/50 border border-border">
               <Quote className="h-4 w-4 md:h-5 md:w-5 text-primary/50 flex-shrink-0" />
               <p className="text-xs md:text-sm text-muted-foreground italic text-center sm:text-left">
-                "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5$/mois au lieu de 50$."
+                {t('cta.testimonial')}
               </p>
-              <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">— Marie L.</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">{t('cta.testimonialAuthor')}</span>
             </div>
 
             <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
@@ -503,17 +504,17 @@ const Index = () => {
             </Badge>
             
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-foreground">
-              Prêt à libérer votre création ?
+              {t('cta.title')}
             </h2>
             
             <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8">
-              Analysez votre projet gratuitement et découvrez votre Vibe-Score™.
+              {t('cta.description')}
             </p>
             
             <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="text-base md:text-lg px-6 py-4 md:px-8 md:py-6 rounded-xl shadow-lg hover:shadow-xl transition-all w-full sm:w-auto">
                 <Rocket className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                {user ? "Libérer mon projet" : "Commencer gratuitement"}
+                {user ? t('cta.buttonLoggedIn') : t('cta.button')}
                 <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
               </Button>
             </Link>

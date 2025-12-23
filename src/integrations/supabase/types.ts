@@ -1313,6 +1313,7 @@ export type Database = {
           github_source_token: string | null
           github_token: string | null
           id: string
+          language: string | null
           preferred_deploy_platform: string | null
           updated_at: string
           user_id: string
@@ -1327,6 +1328,7 @@ export type Database = {
           github_source_token?: string | null
           github_token?: string | null
           id?: string
+          language?: string | null
           preferred_deploy_platform?: string | null
           updated_at?: string
           user_id: string
@@ -1341,6 +1343,7 @@ export type Database = {
           github_source_token?: string | null
           github_token?: string | null
           id?: string
+          language?: string | null
           preferred_deploy_platform?: string | null
           updated_at?: string
           user_id?: string
