@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface MigrationStep {
   id: string;
@@ -47,6 +48,7 @@ interface MigrationOptions {
   generateDockerCompose: boolean;
   extractRlsPolicies: boolean;
   includeSupabaseFolder: boolean;
+  dbLocation: 'inopay' | 'personal'; // Choix: cluster Inopay ou Supabase personnel
 }
 
 interface UserServer {
@@ -73,6 +75,7 @@ export function MigrationWizard() {
     generateDockerCompose: true,
     extractRlsPolicies: true,
     includeSupabaseFolder: true,
+    dbLocation: 'inopay', // Par défaut: cluster Inopay
   });
   const [conversionResult, setConversionResult] = useState<{
     routes?: { name: string; content: string }[];
@@ -1005,6 +1008,61 @@ npm run build
                     checked={options.includeSupabaseFolder}
                     onCheckedChange={(c) => setOptions({ ...options, includeSupabaseFolder: !!c })}
                   />
+                </div>
+
+                {/* Database Location Choice */}
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Database className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium">Emplacement de la base de données</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card 
+                      className={cn(
+                        "cursor-pointer transition-all border-2",
+                        options.dbLocation === 'inopay' 
+                          ? "border-primary bg-primary/5" 
+                          : "border-muted hover:border-muted-foreground/50"
+                      )}
+                      onClick={() => setOptions({ ...options, dbLocation: 'inopay' })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="h-5 w-5 text-primary" />
+                          <span className="font-medium text-sm">Cluster Inopay</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Base hébergée sur notre infrastructure. Maintenance automatique.
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card 
+                      className={cn(
+                        "cursor-pointer transition-all border-2",
+                        options.dbLocation === 'personal' 
+                          ? "border-primary bg-primary/5" 
+                          : "border-muted hover:border-muted-foreground/50"
+                      )}
+                      onClick={() => setOptions({ ...options, dbLocation: 'personal' })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-orange-500" />
+                          <span className="font-medium text-sm">Mon Supabase</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Migrer vers votre propre instance Supabase. Souveraineté totale.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  {options.dbLocation === 'personal' && (
+                    <div className="mt-3 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                      <p className="text-xs text-orange-200">
+                        ⚠️ Configurez vos identifiants Supabase dans l'onglet "Connexions Souveraines" avant de continuer.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
