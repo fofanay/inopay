@@ -105,11 +105,11 @@ export function GettingStartedChecklist({ onNavigate, onGitHubConnect }: Getting
             title: "Connecter GitHub",
             description: hasGitHubToken 
               ? "GitHub connecté avec succès" 
-              : "Liez votre compte GitHub pour importer vos projets",
+              : "Configurez votre Personal Access Token GitHub",
             icon: Github,
             completed: hasGitHubToken,
-            action: onGitHubConnect,
-            actionLabel: "Connecter",
+            action: () => onNavigate("sovereign-deploy"),
+            actionLabel: "Configurer",
           },
           {
             id: "server",
