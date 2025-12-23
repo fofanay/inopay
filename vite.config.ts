@@ -2,9 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
+import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-// NOTE: lovable-tagger has been removed for full sovereignty
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['inopay-logo-email.png'],
