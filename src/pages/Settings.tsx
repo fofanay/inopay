@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ interface UserSettings {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, loading: authLoading, subscription, checkSubscription } = useAuth();
   const { toast } = useToast();
   
@@ -60,8 +62,8 @@ const Settings = () => {
     } catch (error) {
       console.error("Customer portal error:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'ouvrir le portail de gestion",
+        title: t("common.error"),
+        description: t("errors.portalFailed"),
         variant: "destructive",
       });
     } finally {
@@ -149,16 +151,16 @@ const Settings = () => {
     if (error) {
       console.error("Error saving settings:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres",
+        title: t("common.error"),
+        description: t("errors.saveFailed"),
         variant: "destructive",
       });
     } else {
       setHasExistingKey(!!settings.api_key || hasExistingKey);
       setSettings(prev => ({ ...prev, api_key: "" }));
       toast({
-        title: "Succès",
-        description: "Paramètres sauvegardés avec succès",
+        title: t("common.success"),
+        description: t("settings.settingsSaved"),
       });
     }
   };
@@ -176,15 +178,15 @@ const Settings = () => {
 
     if (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la clé API",
+        title: t("common.error"),
+        description: t("settings.unableToDeleteKey"),
         variant: "destructive",
       });
     } else {
       setHasExistingKey(false);
       toast({
-        title: "Clé supprimée",
-        description: "Inopay utilisera désormais son propre moteur IA",
+        title: t("settings.keyDeleted"),
+        description: t("settings.keyDeletedDesc"),
       });
     }
   };
@@ -205,10 +207,10 @@ const Settings = () => {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Paramètres
+              {t("settings.title")}
             </h1>
             <p className="text-lg text-muted-foreground">
-              Configurez votre moteur IA pour le nettoyage de code
+              {t("settings.subtitle")}
             </p>
           </div>
 
@@ -221,12 +223,10 @@ const Settings = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-emerald-400 mb-1">
-                    Moteur par défaut : DeepSeek V3
+                    {t("settings.defaultEngine")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Inopay utilise <strong>DeepSeek</strong> par défaut pour le nettoyage de code. 
-                    C'est l'un des modèles les plus performants avec un excellent rapport qualité/prix.
-                    Avec fallback automatique sur Claude Sonnet en cas de surcharge.
+                    {t("settings.defaultEngineDesc")}
                   </p>
                 </div>
               </div>
@@ -238,14 +238,14 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                Votre Clé API IA (Optionnel)
+                {t("settings.apiKey")}
                 <Badge variant="outline" className="ml-2 bg-amber-500/10 text-amber-400 border-amber-500/30">
                   <Sparkles className="h-3 w-3 mr-1" />
-                  BYOK
+                  {t("common.byok")}
                 </Badge>
               </CardTitle>
               <CardDescription>
-                Apportez votre propre clé API pour utiliser votre propre compte et bénéficier d'une réduction
+                {t("settings.apiKeyDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -255,16 +255,16 @@ const Settings = () => {
                 <Alert className="bg-amber-500/10 border-amber-500/30">
                   <Sparkles className="h-4 w-4 text-amber-400" />
                   <AlertDescription className="text-amber-200">
-                    <strong>Utilisation de votre clé personnelle :</strong> Vous bénéficiez d'une 
-                    <span className="text-amber-400 font-bold"> réduction de 30% </span> 
-                    sur le tarif de libération !
+                    <strong>{t("settings.byokDiscount")}</strong>{" "}
+                    <span className="text-amber-400 font-bold">{t("settings.byokDiscountValue")}</span>{" "}
+                    {t("settings.byokDiscountSuffix")}
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* Provider Selection */}
               <div className="space-y-3">
-                <Label>Fournisseur d'IA</Label>
+                <Label>{t("settings.provider")}</Label>
                 <RadioGroup
                   value={settings.api_provider}
                   onValueChange={(value: ApiProvider) => 
@@ -311,7 +311,7 @@ const Settings = () => {
                       className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-emerald-500 [&:has([data-state=checked])]:border-emerald-500 cursor-pointer"
                     >
                       <span className="text-lg font-semibold">DeepSeek</span>
-                      <span className="text-xs text-emerald-400">Recommandé</span>
+                      <span className="text-xs text-emerald-400">{t("settings.recommended")}</span>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -320,13 +320,13 @@ const Settings = () => {
               {/* API Key Input */}
               <div className="space-y-3">
                 <Label htmlFor="api-key">
-                  Clé API {settings.api_provider === "openai" ? "OpenAI" : settings.api_provider === "anthropic" ? "Anthropic" : "DeepSeek"}
+                  {settings.api_provider === "openai" ? "OpenAI" : settings.api_provider === "anthropic" ? "Anthropic" : "DeepSeek"} API Key
                 </Label>
                 <div className="relative">
                   <Input
                     id="api-key"
                     type={showApiKey ? "text" : "password"}
-                    placeholder={hasExistingKey ? "••••••••••••••••••••" : settings.api_provider === "deepseek" ? "sk-..." : "sk-..."}
+                    placeholder={hasExistingKey ? "••••••••••••••••••••" : "sk-..."}
                     value={settings.api_key}
                     onChange={(e) => setSettings(prev => ({ ...prev, api_key: e.target.value }))}
                     className="pr-10"
@@ -349,7 +349,7 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-emerald-400">
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>Clé API configurée (mode BYOK actif)</span>
+                      <span>{t("settings.keyConfigured")}</span>
                     </div>
                     <Button
                       variant="ghost"
@@ -357,16 +357,17 @@ const Settings = () => {
                       onClick={handleClearKey}
                       className="text-destructive hover:text-destructive"
                     >
-                      Supprimer
+                      {t("settings.deleteKey")}
                     </Button>
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
+                  {t("settings.getKeyAt")}{" "}
                   {settings.api_provider === "openai" 
-                    ? "Obtenez votre clé sur platform.openai.com" 
+                    ? "platform.openai.com" 
                     : settings.api_provider === "anthropic"
-                    ? "Obtenez votre clé sur console.anthropic.com"
-                    : "Obtenez votre clé sur platform.deepseek.com"}
+                    ? "console.anthropic.com"
+                    : "platform.deepseek.com"}
                 </p>
               </div>
 
@@ -379,12 +380,12 @@ const Settings = () => {
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sauvegarde...
+                    {t("common.saving")}
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Sauvegarder
+                    {t("common.save")}
                   </>
                 )}
               </Button>
@@ -400,12 +401,10 @@ const Settings = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-blue-400 mb-1">
-                    Fallback automatique
+                    {t("settings.fallback")}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Si DeepSeek est surchargé ou indisponible, Inopay bascule automatiquement sur 
-                    Claude Sonnet 4 pour garantir que votre libération aboutit toujours.
-                    L'équipe Inovaq est automatiquement notifiée.
+                    {t("settings.fallbackDesc")}
                   </p>
                 </div>
               </div>
@@ -418,17 +417,17 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5" />
-                  Gérer mon abonnement
+                  {t("settings.manageSubscription")}
                 </CardTitle>
                 <CardDescription>
-                  Gérez votre abonnement, vos moyens de paiement et vos factures
+                  {t("settings.manageSubscriptionDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">Plan actuel</span>
+                      <span className="font-medium">{t("settings.currentPlan")}</span>
                       <Badge variant="secondary" className="capitalize">
                         {subscription.planType}
                       </Badge>
@@ -437,13 +436,13 @@ const Settings = () => {
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Calendar className="h-3 w-3" />
                         <span>
-                          Renouvellement le {new Date(subscription.subscriptionEnd).toLocaleDateString("fr-FR")}
+                          {t("settings.renewalDate")} {new Date(subscription.subscriptionEnd).toLocaleDateString()}
                         </span>
                       </div>
                     )}
                     {subscription.creditsRemaining !== undefined && subscription.creditsRemaining > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        {subscription.creditsRemaining} crédit(s) restant(s)
+                        {subscription.creditsRemaining} {t("settings.creditsRemaining")}
                       </p>
                     )}
                   </div>
@@ -460,17 +459,17 @@ const Settings = () => {
                   {openingPortal ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Ouverture...
+                      {t("settings.openingPortal")}
                     </>
                   ) : (
                     <>
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Gérer mon abonnement Stripe
+                      {t("settings.openPortal")}
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Modifiez votre moyen de paiement, téléchargez vos factures ou annulez votre abonnement
+                  {t("settings.modifyPayment")}
                 </p>
               </CardContent>
             </Card>
@@ -482,11 +481,11 @@ const Settings = () => {
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-primary mt-0.5" />
                 <div>
-                  <h4 className="font-semibold mb-2">Comment ça fonctionne ?</h4>
+                  <h4 className="font-semibold mb-2">{t("settings.howItWorks")}</h4>
                   <ul className="text-sm text-muted-foreground space-y-2">
-                    <li><strong>Sans clé (par défaut) :</strong> Inopay utilise DeepSeek V3 pour nettoyer votre code</li>
-                    <li><strong>Avec votre clé (BYOK) :</strong> Utilisez votre propre compte IA et économisez 30%</li>
-                    <li><strong>Fallback :</strong> Si DeepSeek échoue, Claude prend le relais automatiquement</li>
+                    <li><strong>{t("settings.howItWorksDefault")}</strong> {t("settings.howItWorksDefaultDesc")}</li>
+                    <li><strong>{t("settings.howItWorksByok")}</strong> {t("settings.howItWorksByokDesc")}</li>
+                    <li><strong>{t("settings.howItWorksFallback")}</strong> {t("settings.howItWorksFallbackDesc")}</li>
                   </ul>
                 </div>
               </div>

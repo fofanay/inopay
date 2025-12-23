@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { 
   Upload, 
   Loader2, 
@@ -84,24 +85,6 @@ import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
-const TAB_LABELS: Record<string, string> = {
-  "overview": "Vue d'ensemble",
-  "fleet": "Fleet Dashboard",
-  "liberation": "Libérer & Déployer",
-  "import": "Importer",
-  "batch-import": "Import Batch",
-  "projects": "Mes Projets",
-  "deploy-choice": "Déployer",
-  "sovereign-deploy": "Déploiement Souverain",
-  "sync-mirror": "Sync Mirror",
-  "deployments": "Historique",
-  "servers": "Mes Serveurs",
-  "security": "Sécurité",
-  "migration": "Outils Migration",
-  "services": "Mes Services",
-  "exports": "Mes Exports",
-};
-
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
 type DashboardTab = "overview" | "liberation" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "security" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror" | "exports";
@@ -132,6 +115,7 @@ interface HistoryItem {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   // Enable realtime deployment notifications
   useDeploymentNotifications();
@@ -576,22 +560,22 @@ const Dashboard = () => {
   const getStatusBadge = (status: DependencyItem["status"]) => {
     switch (status) {
       case "compatible":
-        return <Badge className="bg-success/20 text-success border-success/30">Compatible</Badge>;
+        return <Badge className="bg-success/20 text-success border-success/30">{t("dashboard.status.compatible")}</Badge>;
       case "warning":
-        return <Badge className="bg-warning/20 text-warning border-warning/30">À modifier</Badge>;
+        return <Badge className="bg-warning/20 text-warning border-warning/30">{t("dashboard.status.toModify")}</Badge>;
       case "incompatible":
-        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Incompatible</Badge>;
+        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">{t("dashboard.status.incompatible")}</Badge>;
     }
   };
 
   const getSeverityBadge = (severity: AnalysisIssue["severity"]) => {
     switch (severity) {
       case "critical":
-        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Critique</Badge>;
+        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">{t("dashboard.cleaning.critical")}</Badge>;
       case "warning":
-        return <Badge className="bg-warning/20 text-warning border-warning/30">Attention</Badge>;
+        return <Badge className="bg-warning/20 text-warning border-warning/30">{t("dashboard.cleaning.warning")}</Badge>;
       case "info":
-        return <Badge className="bg-primary/20 text-primary border-primary/30">Info</Badge>;
+        return <Badge className="bg-primary/20 text-primary border-primary/30">{t("dashboard.cleaning.info")}</Badge>;
     }
   };
 
@@ -602,9 +586,9 @@ const Dashboard = () => {
   };
 
   const getScoreMessage = (score: number) => {
-    if (score >= 80) return "Projet facilement portable";
-    if (score >= 60) return "Migration possible avec modifications";
-    return "Migration complexe requise";
+    if (score >= 80) return t("dashboard.analysis.easyPortable");
+    if (score >= 60) return t("dashboard.analysis.migrationPossible");
+    return t("dashboard.analysis.complexMigration");
   };
 
   const handleSignOut = async () => {
@@ -628,43 +612,28 @@ const Dashboard = () => {
   };
 
   const menuItems = [
-    { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "espace" },
-    { id: "fleet", label: "Mon Portfolio", icon: LayoutGrid, badge: "Mes projets", section: "espace" },
-    { id: "liberation", label: "Libérer & Déployer", icon: Flame, badge: "Pipeline", section: "liberer" },
-    { id: "import", label: "Importer", icon: Upload, section: "importer" },
-    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "New", section: "importer" },
-    { id: "projects", label: "Projets Analysés", icon: Package, section: "espace" },
-    { id: "deploy-choice", label: "Déployer", icon: Cloud, section: "liberer" },
-    { id: "sync-mirror", label: "Sync Mirror", icon: Zap, section: "liberer" },
-    { id: "deployments", label: "Historique", icon: History, section: "espace" },
-    { id: "servers", label: "Mes Serveurs", icon: Server, section: "gestion" },
-    { id: "migration", label: "Outils Migration", icon: Database, section: "gestion" },
-    { id: "services", label: "Mes Services", icon: Crown, section: "gestion" },
+    { id: "overview", label: t("dashboard.overview"), icon: BarChart3, section: "espace" },
+    { id: "fleet", label: t("dashboard.fleet"), icon: LayoutGrid, badge: t("dashboard.menu.myProjects"), section: "espace" },
+    { id: "liberation", label: t("dashboard.liberation"), icon: Flame, badge: t("dashboard.menu.pipeline"), section: "liberer" },
+    { id: "import", label: t("dashboard.import"), icon: Upload, section: "importer" },
+    { id: "batch-import", label: t("dashboard.batchImport"), icon: Layers, badge: t("dashboard.menu.new"), section: "importer" },
+    { id: "projects", label: t("dashboard.projects"), icon: Package, section: "espace" },
+    { id: "deploy-choice", label: t("dashboard.deployChoice"), icon: Cloud, section: "liberer" },
+    { id: "sync-mirror", label: t("dashboard.syncMirror"), icon: Zap, section: "liberer" },
+    { id: "deployments", label: t("dashboard.deployments"), icon: History, section: "espace" },
+    { id: "servers", label: t("dashboard.servers"), icon: Server, section: "gestion" },
+    { id: "migration", label: t("dashboard.migration"), icon: Database, section: "gestion" },
+    { id: "services", label: t("dashboard.services"), icon: Crown, section: "gestion" },
   ];
-
-  // Swipe handlers are now initialized at the top of the component (before early returns)
 
   const getPageTitle = () => {
     const item = menuItems.find(m => m.id === activeTab);
-    return item?.label || "Dashboard";
+    return item?.label || t("dashboard.title");
   };
 
   const getPageDescription = () => {
-    switch (activeTab) {
-      case "overview": return "Statistiques de vos projets et actions rapides";
-      case "liberation": return "Pipeline complet: nettoyage IA → GitHub → VPS en un clic";
-      case "fleet": return "Vue Kanban de tous vos projets et métriques globales";
-      case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
-      case "batch-import": return "Analysez plusieurs projets GitHub en une seule opération";
-      case "projects": return "Gérez et déployez vos projets analysés";
-      case "deploy-choice": return "Choisissez votre méthode de déploiement";
-      case "sync-mirror": return "Synchronisation automatique entre Lovable et votre serveur";
-      case "deployments": return "Historique de vos déploiements";
-      case "servers": return "Gérez vos serveurs VPS et Coolify";
-      case "migration": return "Exportez vos données pour migrer vers votre propre infrastructure";
-      case "services": return "Vos crédits et abonnements actifs";
-      default: return "";
-    }
+    const descKey = `dashboard.descriptions.${activeTab}`;
+    return t(descKey, { defaultValue: "" });
   };
 
   // Batch analysis handler

@@ -133,14 +133,14 @@
       "actionRequired": "Action requise"
     }
   },
-  "dashboard": {
+"dashboard": {
     "title": "Tableau de bord",
     "overview": "Vue d'ensemble",
-    "fleet": "Fleet Dashboard",
+    "fleet": "Mon Portfolio",
     "liberation": "Libérer & Déployer",
     "import": "Importer",
     "batchImport": "Import Batch",
-    "projects": "Mes Projets",
+    "projects": "Projets Analysés",
     "deployChoice": "Déployer",
     "sovereignDeploy": "Déploiement Souverain",
     "syncMirror": "Sync Mirror",
@@ -156,16 +156,151 @@
     "uploadZip": "Déposez votre fichier ZIP ici",
     "orClick": "ou cliquez pour sélectionner",
     "githubImport": "Importer depuis GitHub",
-    "enterGithubUrl": "Entrez l'URL de votre dépôt GitHub"
+    "enterGithubUrl": "Entrez l'URL de votre dépôt GitHub",
+    "descriptions": {
+      "overview": "Statistiques de vos projets et actions rapides",
+      "liberation": "Pipeline complet: nettoyage IA → GitHub → VPS en un clic",
+      "fleet": "Vue Kanban de tous vos projets et métriques globales",
+      "import": "Importez un projet depuis GitHub ou un fichier ZIP",
+      "batchImport": "Analysez plusieurs projets GitHub en une seule opération",
+      "projects": "Gérez et déployez vos projets analysés",
+      "deployChoice": "Choisissez votre méthode de déploiement",
+      "syncMirror": "Synchronisation automatique entre Lovable et votre serveur",
+      "deployments": "Historique de vos déploiements",
+      "servers": "Gérez vos serveurs VPS et Coolify",
+      "migration": "Exportez vos données pour migrer vers votre propre infrastructure",
+      "services": "Vos crédits et abonnements actifs"
+    },
+    "menu": {
+      "myProjects": "Mes projets",
+      "pipeline": "Pipeline",
+      "new": "New"
+    },
+    "plan": {
+      "free": "Gratuit",
+      "pro": "Pro",
+      "liberty": "Pack Liberté"
+    },
+    "analysis": {
+      "inProgress": "En cours",
+      "portabilityAnalysis": "Analyse de portabilité",
+      "scanningCode": "Nous scannons votre code pour identifier les dépendances propriétaires.",
+      "completed": "Complété",
+      "scanComplete": "Scan terminé – voici le diagnostic de votre projet",
+      "freedomScore": "Score de liberté",
+      "projectAnalyzed": "Projet analysé",
+      "file": "Fichier",
+      "detectedPlatform": "Plateforme détectée",
+      "totalFiles": "Fichiers totaux",
+      "analyzedFiles": "Fichiers analysés",
+      "dependencies": "Dépendances",
+      "easyPortable": "Projet facilement portable",
+      "migrationPossible": "Migration possible avec modifications",
+      "complexMigration": "Migration complexe requise"
+    },
+    "cleaning": {
+      "title": "Étape 3 : Nettoyage Intelligent",
+      "subtitle": "Notre IA remplace les composants verrouillés par des standards Open Source universels.",
+      "codeUnchanged": "Votre code original reste inchangé sur GitHub, nous créons une version optimisée.",
+      "premiumFeature": "Fonctionnalité Premium",
+      "premiumDesc": "Le nettoyage IA nécessite un abonnement. Débloquez cette fonctionnalité pour libérer votre code.",
+      "viewPricing": "Voir les tarifs",
+      "cleanWithAI": "Nettoyer avec IA",
+      "pattern": "Pattern",
+      "severity": "Sévérité",
+      "action": "Action",
+      "line": "Ligne",
+      "critical": "Critique",
+      "warning": "Attention",
+      "info": "Info"
+    },
+    "dbConfig": {
+      "title": "Configuration Base de Données",
+      "step": "Étape 3.5 : Assistant Base de Données",
+      "subtitle": "Configurez votre base de données pour votre nouvel hébergeur",
+      "advancedConfig": "Configuration avancée",
+      "advancedConfigDesc": "Configurez votre base de données avec un abonnement.",
+      "configComplete": "Configuration terminée",
+      "keepCurrent": "Base de données actuelle conservée",
+      "newDbConfigured": "Nouvelle base de données configurée"
+    },
+    "deployment": {
+      "readyForDeployment": "Prêt pour le déploiement",
+      "step": "Étape 4 : Assistant de Déploiement Intelligent",
+      "subtitle": "Choisissez comment et où déployer votre projet libéré",
+      "unlockExport": "Débloquez l'export",
+      "unlockExportDesc": "Téléchargez votre projet 100% autonome avec un abonnement Pro ou un Pack Liberté.",
+      "analyzeAnother": "Analyser un autre projet"
+    },
+    "import": {
+      "zipTitle": "Glissez-déposez votre fichier .zip",
+      "dropHere": "Déposez le fichier ici",
+      "clickToSelect": "ou cliquez pour sélectionner un fichier",
+      "format": "Format accepté : .zip (max 50MB)",
+      "backToUrl": "Retour à l'import par URL",
+      "backToGithubUrl": "Retour à l'import par URL",
+      "urlRequired": "URL requise",
+      "enterUrl": "Veuillez entrer l'URL de votre dépôt GitHub"
+    },
+    "batch": {
+      "complete": "Analyse batch terminée",
+      "projectsAnalyzed": "projets analysés avec succès"
+    },
+    "toast": {
+      "projectLoaded": "Projet chargé",
+      "readyForDeployment": "est prêt pour le déploiement",
+      "analysisComplete": "Analyse terminée",
+      "analysisError": "Erreur d'analyse",
+      "unableToAnalyze": "Impossible d'analyser le fichier ZIP",
+      "importError": "Erreur d'importation",
+      "timeoutTitle": "Délai dépassé",
+      "tooLargeTitle": "Dépôt trop volumineux",
+      "partialAnalysis": "Analyse partielle",
+      "partialAnalysisDesc": "fichiers analysés (limite:",
+      "liberationSuccess": "Libération réussie",
+      "liberationSuccessDesc": "Votre projet a été nettoyé et poussé sur GitHub",
+      "sovereignComplete": "Déploiement souverain terminé",
+      "sovereignCompleteDesc": "Votre projet est maintenant sur votre infrastructure",
+      "fileUnavailable": "Fichier non disponible",
+      "fileUnavailableDesc": "Le contenu de ce fichier n'est pas disponible pour le nettoyage",
+      "unableToLoad": "Impossible de charger le projet",
+      "exportZip": "Export ZIP",
+      "exportZipDesc": "Importez d'abord votre projet pour générer l'archive nettoyée",
+      "ftpHosting": "Hébergement FTP",
+      "ftpHostingDesc": "Importez votre projet puis utilisez l'assistant de déploiement FTP",
+      "unableToSave": "Impossible de sauvegarder l'analyse"
+    },
+    "status": {
+      "compatible": "Compatible",
+      "toModify": "À modifier",
+      "incompatible": "Incompatible"
+    },
+    "messages": {
+      "connecting": "Connexion au dépôt GitHub...",
+      "retrying": "Nouvelle tentative de connexion...",
+      "downloading": "Téléchargement du dépôt en cours...",
+      "extracting": "Extraction de",
+      "files": "fichiers...",
+      "detecting": "Détection des dépendances propriétaires...",
+      "selectProjectForDeploy": "Sélectionnez un projet pour accéder directement aux options de déploiement",
+      "orUseAdvancedPipeline": "ou utilisez le pipeline avancé",
+      "timeout": "Timeout: L'opération a pris trop de temps",
+      "repoTooLarge": "Le dépôt est peut-être trop volumineux. Essayez avec un dépôt plus petit.",
+      "retry": "Réessayer",
+      "noFilesFound": "Aucun fichier trouvé dans le dépôt",
+      "rateLimited": "Limite d'API GitHub atteinte. Veuillez réessayer dans quelques minutes."
+    }
   },
-  "settings": {
+"settings": {
     "title": "Paramètres",
     "subtitle": "Configurez votre moteur IA pour le nettoyage de code",
     "defaultEngine": "Moteur par défaut : DeepSeek V3",
     "defaultEngineDesc": "Inopay utilise DeepSeek par défaut pour le nettoyage de code. C'est l'un des modèles les plus performants avec un excellent rapport qualité/prix. Avec fallback automatique sur Claude Sonnet en cas de surcharge.",
     "apiKey": "Votre Clé API IA (Optionnel)",
     "apiKeyDesc": "Apportez votre propre clé API pour utiliser votre propre compte et bénéficier d'une réduction",
-    "byokDiscount": "Utilisation de votre clé personnelle : Vous bénéficiez d'une réduction de 30% sur le tarif de libération !",
+    "byokDiscount": "Utilisation de votre clé personnelle :",
+    "byokDiscountValue": "réduction de 30%",
+    "byokDiscountSuffix": "sur le tarif de libération !",
     "provider": "Fournisseur d'IA",
     "recommended": "Recommandé",
     "getKeyAt": "Obtenez votre clé sur",
@@ -180,8 +315,18 @@
     "currentPlan": "Plan actuel",
     "renewalDate": "Renouvellement le",
     "creditsRemaining": "crédit(s) restant(s)",
-    "openPortal": "Gérer sur Stripe",
-    "openingPortal": "Ouverture..."
+    "openPortal": "Gérer mon abonnement Stripe",
+    "openingPortal": "Ouverture...",
+    "modifyPayment": "Modifiez votre moyen de paiement, téléchargez vos factures ou annulez votre abonnement",
+    "howItWorks": "Comment ça fonctionne ?",
+    "howItWorksDefault": "Sans clé (par défaut) :",
+    "howItWorksDefaultDesc": "Inopay utilise DeepSeek V3 pour nettoyer votre code",
+    "howItWorksByok": "Avec votre clé (BYOK) :",
+    "howItWorksByokDesc": "Utilisez votre propre compte IA et économisez 30%",
+    "howItWorksFallback": "Fallback :",
+    "howItWorksFallbackDesc": "Si DeepSeek échoue, Claude prend le relais automatiquement",
+    "settingsSaved": "Paramètres sauvegardés avec succès",
+    "unableToDeleteKey": "Impossible de supprimer la clé API"
   },
   "pricing": {
     "title": "Passez du prototype IA à votre infrastructure",
