@@ -6,26 +6,65 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Patterns propriétaires à supprimer
+// Patterns propriétaires à supprimer - Liste exhaustive pour garantir un code 100% standard
 const PROPRIETARY_PATTERNS = {
   imports: [
     /@lovable\//g,
     /@gptengineer\//g,
     /from ['"]lovable/g,
     /from ['"]gptengineer/g,
+    /from ['"]@lovable/g,
+    /from ['"]@gptengineer/g,
     /lovable-tagger/g,
     /componentTagger/g,
+    /lovable-core/g,
+    /gpt-engineer/g,
   ],
   files: [
     '.bolt',
     '.lovable',
     '.gptengineer',
+    '.gpteng',
+    'lovable.config',
+    'gptengineer.config',
+    '.lovable.json',
+    '.gptengineer.json',
+    'bolt.config',
+    '.bolt.json',
   ],
   content: [
+    // Import statements
     /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
+    /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
+    /import\s*.*\s*from\s*['"]@gptengineer\/[^'"]*['"]\s*;?\n?/g,
+    /import\s*.*\s*from\s*['"]lovable-[^'"]*['"]\s*;?\n?/g,
+    
+    // Plugin usage in vite.config
     /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g,
+    /componentTagger\(\)\s*,?\n?/g,
+    
+    // Comment markers
     /\/\/\s*@lovable.*\n?/g,
     /\/\*\s*@lovable[\s\S]*?\*\//g,
+    /\/\/\s*@gptengineer.*\n?/g,
+    /\/\*\s*@gptengineer[\s\S]*?\*\//g,
+    /\/\/\s*@bolt.*\n?/g,
+    /\/\*\s*@bolt[\s\S]*?\*\//g,
+    
+    // Data attributes
+    /data-lovable[^"]*="[^"]*"/g,
+    /data-gpt[^"]*="[^"]*"/g,
+    /data-bolt[^"]*="[^"]*"/g,
+    /data-lov-id="[^"]*"/g,
+    /data-lov-component="[^"]*"/g,
+    
+    // Environment variable references (not the actual values)
+    /VITE_LOVABLE_[A-Z_]+/g,
+    /VITE_GPT_[A-Z_]+/g,
+    
+    // Dynamic markers
+    /__lovable[^=]*=[^;]*/g,
+    /__gpteng[^=]*=[^;]*/g,
   ],
   telemetry: [
     /lovable\.app/g,
@@ -33,6 +72,22 @@ const PROPRIETARY_PATTERNS = {
     /events\.lovable/g,
     /telemetry\.lovable/g,
     /analytics\.lovable/g,
+    /api\.lovable\.dev/g,
+    /ws\.lovable\.dev/g,
+    /cdn\.lovable\.dev/g,
+  ],
+  // Dépendances à supprimer de package.json
+  dependencies: [
+    'lovable-tagger',
+    '@lovable/core',
+    '@lovable/cli',
+    '@lovable/runtime',
+    '@lovable/plugin-react',
+    '@gptengineer/core',
+    '@gptengineer/cli',
+    'gpt-engineer',
+    'bolt-core',
+    '@bolt/core',
   ],
 };
 
@@ -111,12 +166,12 @@ function cleanFileContent(filePath: string, content: string): CleaningResult {
   }
 
   // Clean package.json
-  if (filePath === 'package.json') {
+  if (filePath === 'package.json' || filePath.endsWith('/package.json')) {
     try {
       const pkg = JSON.parse(cleanedContent);
-      const depsToRemove = ['lovable-tagger', '@lovable/core', '@gptengineer/core'];
       
-      for (const dep of depsToRemove) {
+      // Use the comprehensive dependencies list
+      for (const dep of PROPRIETARY_PATTERNS.dependencies) {
         if (pkg.dependencies?.[dep]) {
           delete pkg.dependencies[dep];
           changes.push(`Dépendance supprimée: ${dep}`);
@@ -124,6 +179,26 @@ function cleanFileContent(filePath: string, content: string): CleaningResult {
         if (pkg.devDependencies?.[dep]) {
           delete pkg.devDependencies[dep];
           changes.push(`DevDépendance supprimée: ${dep}`);
+        }
+        if (pkg.peerDependencies?.[dep]) {
+          delete pkg.peerDependencies[dep];
+          changes.push(`PeerDépendance supprimée: ${dep}`);
+        }
+      }
+      
+      // Clean scripts that reference proprietary tools
+      if (pkg.scripts) {
+        const scriptsToRemove = ['lovable', 'gpteng', 'bolt'];
+        for (const [key, value] of Object.entries(pkg.scripts)) {
+          if (typeof value === 'string') {
+            for (const term of scriptsToRemove) {
+              if (value.includes(term)) {
+                delete pkg.scripts[key];
+                changes.push(`Script supprimé: ${key}`);
+                break;
+              }
+            }
+          }
         }
       }
       
@@ -134,24 +209,58 @@ function cleanFileContent(filePath: string, content: string): CleaningResult {
   }
 
   // Clean vite.config.ts
-  if (filePath === 'vite.config.ts') {
+  if (filePath === 'vite.config.ts' || filePath.endsWith('/vite.config.ts')) {
     // Remove componentTagger import and usage
     cleanedContent = cleanedContent.replace(
       /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
       ''
     );
     cleanedContent = cleanedContent.replace(
+      /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
+      ''
+    );
+    cleanedContent = cleanedContent.replace(
       /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g,
       ''
     );
+    cleanedContent = cleanedContent.replace(
+      /componentTagger\(\)\s*,?\n?/g,
+      ''
+    );
+    
+    // Remove empty plugin arrays left behind
+    cleanedContent = cleanedContent.replace(/plugins:\s*\[\s*\]/g, 'plugins: []');
     
     if (cleanedContent !== content) {
       changes.push('vite.config.ts nettoyé des plugins propriétaires');
     }
   }
 
+  // Clean index.html
+  if (filePath === 'index.html' || filePath.endsWith('/index.html')) {
+    // Remove lovable/gpteng script tags
+    cleanedContent = cleanedContent.replace(
+      /<script[^>]*lovable[^>]*>[\s\S]*?<\/script>/gi,
+      ''
+    );
+    cleanedContent = cleanedContent.replace(
+      /<script[^>]*gptengineer[^>]*>[\s\S]*?<\/script>/gi,
+      ''
+    );
+    // Remove data attributes
+    cleanedContent = cleanedContent.replace(/\s*data-lov[^=]*="[^"]*"/g, '');
+    cleanedContent = cleanedContent.replace(/\s*data-gpt[^=]*="[^"]*"/g, '');
+    
+    if (cleanedContent !== content) {
+      changes.push('index.html nettoyé des scripts propriétaires');
+    }
+  }
+
   // Clean up empty lines left behind
   cleanedContent = cleanedContent.replace(/\n{3,}/g, '\n\n');
+  
+  // Clean up trailing commas in arrays/objects that might be left
+  cleanedContent = cleanedContent.replace(/,(\s*[}\]])/g, '$1');
 
   return { path: filePath, originalContent: content, cleanedContent, changes, removed };
 }
