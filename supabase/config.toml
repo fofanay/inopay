@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.estimate-cleaning-cost]
 verify_jwt = false
+
+[functions.verify-zero-shadow-door]
+verify_jwt = false

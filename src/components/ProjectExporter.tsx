@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save, Server } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save, Server, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import PostDeploymentAssistant from "./PostDeploymentAssistant";
 import { DirectDeployment } from "./dashboard/DirectDeployment";
 import { CleaningCostEstimator } from "./dashboard/CleaningCostEstimator";
+import { SecurityAuditReport } from "./dashboard/SecurityAuditReport";
 
 type DeployPlatform = "vercel" | "netlify" | "railway" | "none";
 type ExportType = "zip" | "github" | "vps";
@@ -75,6 +76,12 @@ const ProjectExporter = ({
   // Cost estimation
   const [showEstimator, setShowEstimator] = useState(true);
   const [estimationApproved, setEstimationApproved] = useState(false);
+  
+  // Security audit
+  const [showSecurityAudit, setShowSecurityAudit] = useState(false);
+  const [securityAuditComplete, setSecurityAuditComplete] = useState(false);
+  const [auditedFiles, setAuditedFiles] = useState<{ path: string; content: string }[] | null>(null);
+  const [securityCertification, setSecurityCertification] = useState<string | null>(null);
   const [estimationData, setEstimationData] = useState<any>(null);
 
   // Load user preferences on mount
@@ -548,7 +555,7 @@ const ProjectExporter = ({
         </DialogHeader>
 
         <div className="py-4">
-          {/* Cost Estimation Step */}
+          {/* Step 1: Cost Estimation */}
           {showEstimator && !estimationApproved && status === "idle" && (
             <div className="space-y-4">
               <CleaningCostEstimator
@@ -563,13 +570,35 @@ const ProjectExporter = ({
                 onProceed={() => {
                   setEstimationApproved(true);
                   setShowEstimator(false);
+                  setShowSecurityAudit(true); // Move to security audit step
+                }}
+              />
+            </div>
+          )}
+
+          {/* Step 2: Security Audit (Zero Shadow Door) */}
+          {showSecurityAudit && !securityAuditComplete && status === "idle" && (
+            <div className="space-y-4">
+              <SecurityAuditReport
+                files={Array.from(extractedFiles.entries()).map(([path, content]) => ({ path, content }))}
+                projectName={projectName}
+                onAuditComplete={(result, cleanedFiles) => {
+                  setSecurityAuditComplete(true);
+                  setShowSecurityAudit(false);
+                  setAuditedFiles(cleanedFiles);
+                  setSecurityCertification(result.certificationMessage);
+                }}
+                onSkip={() => {
+                  setSecurityAuditComplete(true);
+                  setShowSecurityAudit(false);
                 }}
               />
             </div>
           )}
 
           {/* Export Options - shown after estimation is approved */}
-          {(estimationApproved || !showEstimator) && status === "idle" ? (
+          {/* Step 3: Export Options - shown after security audit is complete */}
+          {securityAuditComplete && status === "idle" ? (
             <Tabs 
               value={exportType} 
               onValueChange={(v) => {
