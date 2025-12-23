@@ -262,7 +262,7 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
       />
 
       {/* GitHub Connection Status - show only if not fully connected */}
-      <GitHubConnectionStatus variant="full" />
+      <GitHubConnectionStatus variant="full" onConnect={handleGitHubConnect} />
 
       {/* Credits Banner */}
       <CreditsBanner />
