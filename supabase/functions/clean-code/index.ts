@@ -68,6 +68,162 @@ async function hashContent(content: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
 }
 
+// Provider configurations
+const PROVIDERS = {
+  deepseek: {
+    url: 'https://api.deepseek.com/v1/chat/completions',
+    model: 'deepseek-chat',
+    name: 'DeepSeek'
+  },
+  openrouter_deepseek: {
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    model: 'deepseek/deepseek-chat',
+    name: 'OpenRouter (DeepSeek)'
+  },
+  anthropic: {
+    url: 'https://api.anthropic.com/v1/messages',
+    model: 'claude-sonnet-4-20250514',
+    name: 'Claude Sonnet 4'
+  },
+  openai: {
+    url: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o',
+    name: 'OpenAI GPT-4o'
+  }
+};
+
+// Call DeepSeek API (direct or via OpenRouter)
+async function callDeepSeek(apiKey: string, code: string, fileName: string, useOpenRouter = false): Promise<{ cleanedCode: string; tokensUsed: number }> {
+  const config = useOpenRouter ? PROVIDERS.openrouter_deepseek : PROVIDERS.deepseek;
+  
+  console.log(`[CLEAN-CODE] Calling ${config.name}...`);
+  
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  
+  if (useOpenRouter) {
+    headers['HTTP-Referer'] = 'https://getinopay.com';
+    headers['X-Title'] = 'Inopay Code Cleaner';
+  }
+  
+  const response = await fetch(config.url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Fichier: ${fileName || 'code.tsx'}\n\n\`\`\`tsx\n${code}\n\`\`\`` }
+      ],
+      max_tokens: 8192,
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[CLEAN-CODE] ${config.name} error:`, response.status, errorText);
+    throw new Error(`${config.name} API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const cleanedCode = data.choices[0].message.content;
+  const tokensUsed = data.usage?.total_tokens || 0;
+  
+  console.log(`[CLEAN-CODE] ${config.name} success, tokens: ${tokensUsed}`);
+  
+  return { cleanedCode, tokensUsed };
+}
+
+// Call Anthropic API (fallback)
+async function callAnthropic(apiKey: string, code: string, fileName: string): Promise<{ cleanedCode: string; tokensUsed: number }> {
+  console.log('[CLEAN-CODE] Calling Claude Sonnet (fallback)...');
+  
+  const response = await fetch(PROVIDERS.anthropic.url, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: PROVIDERS.anthropic.model,
+      max_tokens: 8192,
+      system: SYSTEM_PROMPT,
+      messages: [
+        { role: 'user', content: `Fichier: ${fileName || 'code.tsx'}\n\n\`\`\`tsx\n${code}\n\`\`\`` }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[CLEAN-CODE] Anthropic API error:', response.status, errorText);
+    throw new Error(`Anthropic API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const cleanedCode = data.content[0].text;
+  const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+  
+  console.log('[CLEAN-CODE] Claude success, tokens:', tokensUsed);
+  
+  return { cleanedCode, tokensUsed };
+}
+
+// Call OpenAI API (for BYOK users)
+async function callOpenAI(apiKey: string, code: string, fileName: string): Promise<{ cleanedCode: string; tokensUsed: number }> {
+  console.log('[CLEAN-CODE] Calling OpenAI (user key)...');
+  
+  const response = await fetch(PROVIDERS.openai.url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: PROVIDERS.openai.model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Fichier: ${fileName || 'code.tsx'}\n\n\`\`\`tsx\n${code}\n\`\`\`` }
+      ],
+      max_tokens: 8192,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[CLEAN-CODE] OpenAI API error:', response.status, errorText);
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const cleanedCode = data.choices[0].message.content;
+  const tokensUsed = data.usage?.total_tokens || 0;
+  
+  console.log('[CLEAN-CODE] OpenAI success, tokens:', tokensUsed);
+  
+  return { cleanedCode, tokensUsed };
+}
+
+// Notify admin of fallback usage
+async function notifyAdminFallback(supabaseAdmin: any, reason: string, details: string) {
+  try {
+    await supabaseAdmin.from('admin_activity_logs').insert({
+      action_type: 'ai_fallback',
+      title: 'DeepSeek → Claude Fallback',
+      description: reason,
+      status: 'warning',
+      metadata: { details, timestamp: new Date().toISOString() }
+    });
+    console.log('[CLEAN-CODE] Admin notified of fallback');
+  } catch (e) {
+    console.error('[CLEAN-CODE] Failed to notify admin:', e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -134,10 +290,10 @@ serve(async (req) => {
     const fileHash = await hashContent(code);
     console.log(`[CLEAN-CODE] File: ${fileName}, Hash: ${fileHash.substring(0, 8)}...`);
 
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check cache first (with TTL check)
     if (userId) {
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-      
       const ttlHoursAgo = new Date(Date.now() - SECURITY_LIMITS.CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
       
       const { data: cachedResult } = await supabaseAdmin
@@ -146,7 +302,7 @@ serve(async (req) => {
         .eq('user_id', userId)
         .eq('file_path', fileName || 'unknown')
         .eq('file_hash', fileHash)
-        .gte('cleaned_at', ttlHoursAgo) // Only return if within TTL
+        .gte('cleaned_at', ttlHoursAgo)
         .maybeSingle();
 
       if (cachedResult?.cleaned_content) {
@@ -161,140 +317,119 @@ serve(async (req) => {
       }
     }
 
-    // Priority: Project secrets > User settings
-    const anthropicProjectKey = Deno.env.get('ANTHROPIC_API_KEY');
-    const openaiProjectKey = Deno.env.get('OPENAI_API_KEY');
+    // Check for user's own API key (BYOK)
+    let userApiKey: string | null = null;
+    let userApiProvider: string | null = null;
+    let isUsingBYOK = false;
 
-    let apiKey: string | null = null;
-    let apiProvider: string = 'anthropic';
-
-    // Use project-level secrets first
-    if (anthropicProjectKey) {
-      apiKey = anthropicProjectKey;
-      apiProvider = 'anthropic';
-      console.log('[CLEAN-CODE] Using project-level Anthropic API key');
-    } else if (openaiProjectKey) {
-      apiKey = openaiProjectKey;
-      apiProvider = 'openai';
-      console.log('[CLEAN-CODE] Using project-level OpenAI API key');
-    } else {
-      // Fallback to user settings
-      if (!authHeader) {
-        return new Response(JSON.stringify({ error: 'Non autorisé' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
+    if (userId && authHeader) {
       const supabase = createClient(supabaseUrl, supabaseKey, {
         global: { headers: { Authorization: authHeader } }
       });
-
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        return new Response(JSON.stringify({ error: 'Utilisateur non authentifié' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const { data: settings, error: settingsError } = await supabase
+      
+      const { data: settings } = await supabase
         .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
+        .select('api_key, api_provider')
+        .eq('user_id', userId)
         .maybeSingle();
 
-      if (settingsError) {
-        console.error('[CLEAN-CODE] Settings error:', settingsError);
-        return new Response(JSON.stringify({ error: 'Erreur lors de la récupération des paramètres' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (settings?.api_key) {
+        userApiKey = settings.api_key;
+        userApiProvider = settings.api_provider;
+        isUsingBYOK = true;
+        console.log(`[CLEAN-CODE] BYOK mode: Using user's ${userApiProvider} key`);
       }
-
-      if (!settings?.api_key) {
-        return new Response(JSON.stringify({ error: 'Clé API non configurée. Veuillez configurer votre clé API dans les paramètres ou ajouter ANTHROPIC_API_KEY/OPENAI_API_KEY dans les secrets du projet.' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      apiKey = settings.api_key;
-      apiProvider = settings.api_provider;
-      console.log('[CLEAN-CODE] Using user settings API key');
     }
 
-    let response;
+    // Get project-level keys
+    const deepseekKey = Deno.env.get('DEEPSEEK_API_KEY');
+    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+
     let cleanedCode: string;
     let tokensUsed = 0;
+    let usedFallback = false;
+    let providerUsed = 'unknown';
 
-    if (apiProvider === 'anthropic') {
-      // Call Anthropic API
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey!,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 8192,
-          system: SYSTEM_PROMPT,
-          messages: [
-            { 
-              role: 'user', 
-              content: `Fichier: ${fileName || 'code.tsx'}\n\n\`\`\`tsx\n${code}\n\`\`\`` 
+    // Priority: User BYOK > DeepSeek > OpenRouter DeepSeek > Anthropic (fallback)
+    try {
+      if (isUsingBYOK && userApiKey) {
+        // Use user's own key
+        if (userApiProvider === 'anthropic') {
+          const result = await callAnthropic(userApiKey, code, fileName);
+          cleanedCode = result.cleanedCode;
+          tokensUsed = result.tokensUsed;
+          providerUsed = 'anthropic_byok';
+        } else {
+          const result = await callOpenAI(userApiKey, code, fileName);
+          cleanedCode = result.cleanedCode;
+          tokensUsed = result.tokensUsed;
+          providerUsed = 'openai_byok';
+        }
+      } else if (deepseekKey) {
+        // Primary: DeepSeek direct
+        try {
+          const result = await callDeepSeek(deepseekKey, code, fileName, false);
+          cleanedCode = result.cleanedCode;
+          tokensUsed = result.tokensUsed;
+          providerUsed = 'deepseek';
+        } catch (deepseekError) {
+          console.error('[CLEAN-CODE] DeepSeek failed, trying OpenRouter...', deepseekError);
+          
+          // Try OpenRouter as intermediate fallback
+          if (openrouterKey) {
+            try {
+              const result = await callDeepSeek(openrouterKey, code, fileName, true);
+              cleanedCode = result.cleanedCode;
+              tokensUsed = result.tokensUsed;
+              providerUsed = 'openrouter_deepseek';
+            } catch (openrouterError) {
+              throw openrouterError; // Will be caught by outer catch
             }
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('[CLEAN-CODE] Anthropic API error:', response.status, errorData);
-        return new Response(JSON.stringify({ error: `Erreur API Anthropic: ${response.status}` }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          } else {
+            throw deepseekError;
+          }
+        }
+      } else if (openrouterKey) {
+        // Secondary: OpenRouter DeepSeek
+        const result = await callDeepSeek(openrouterKey, code, fileName, true);
+        cleanedCode = result.cleanedCode;
+        tokensUsed = result.tokensUsed;
+        providerUsed = 'openrouter_deepseek';
+      } else if (anthropicKey) {
+        // Tertiary: Anthropic Claude
+        const result = await callAnthropic(anthropicKey, code, fileName);
+        cleanedCode = result.cleanedCode;
+        tokensUsed = result.tokensUsed;
+        providerUsed = 'anthropic';
+      } else {
+        throw new Error('Aucune clé API configurée. Veuillez configurer votre clé API dans les paramètres.');
       }
-
-      const data = await response.json();
-      cleanedCode = data.content[0].text;
-      tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
-    } else {
-      // Call OpenAI API
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey!}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { 
-              role: 'user', 
-              content: `Fichier: ${fileName || 'code.tsx'}\n\n\`\`\`tsx\n${code}\n\`\`\`` 
-            }
-          ],
-          max_tokens: 8192,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('[CLEAN-CODE] OpenAI API error:', response.status, errorData);
-        return new Response(JSON.stringify({ error: `Erreur API OpenAI: ${response.status}` }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    } catch (primaryError) {
+      // Fallback to Anthropic if available and not already tried
+      if (anthropicKey && providerUsed !== 'anthropic') {
+        console.log('[CLEAN-CODE] Primary provider failed, falling back to Claude...');
+        
+        try {
+          const result = await callAnthropic(anthropicKey, code, fileName);
+          cleanedCode = result.cleanedCode;
+          tokensUsed = result.tokensUsed;
+          providerUsed = 'anthropic_fallback';
+          usedFallback = true;
+          
+          // Notify admin of fallback
+          await notifyAdminFallback(
+            supabaseAdmin,
+            `DeepSeek a échoué, basculement sur Claude`,
+            `Erreur: ${primaryError instanceof Error ? primaryError.message : String(primaryError)}, Fichier: ${fileName}`
+          );
+        } catch (fallbackError) {
+          console.error('[CLEAN-CODE] Fallback also failed:', fallbackError);
+          throw primaryError; // Throw original error
+        }
+      } else {
+        throw primaryError;
       }
-
-      const data = await response.json();
-      cleanedCode = data.choices[0].message.content;
-      tokensUsed = data.usage?.total_tokens || 0;
     }
 
     // Extract code from markdown if present
@@ -303,15 +438,29 @@ serve(async (req) => {
       cleanedCode = codeMatch[1].trim();
     }
 
-    // Calculate API cost in cents (Anthropic pricing)
+    // Calculate API cost in cents based on provider
     const inputTokens = Math.ceil(code.length / 4);
     const outputTokens = Math.ceil(cleanedCode.length / 4);
-    const apiCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000); // $3/$15 per 1M tokens
+    let apiCostCents: number;
+
+    // DeepSeek is much cheaper: ~$0.14/1M input, ~$0.28/1M output
+    // Claude: $3/1M input, $15/1M output
+    if (providerUsed.includes('deepseek')) {
+      apiCostCents = Math.ceil(((inputTokens * 0.14) + (outputTokens * 0.28)) / 10000);
+    } else if (providerUsed.includes('anthropic')) {
+      apiCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000);
+    } else {
+      // OpenAI pricing: $2.5/1M input, $10/1M output for GPT-4o
+      apiCostCents = Math.ceil(((inputTokens * 2.5) + (outputTokens * 10)) / 10000);
+    }
+
+    // Apply 30% discount for BYOK users
+    if (isUsingBYOK) {
+      apiCostCents = Math.ceil(apiCostCents * 0.7);
+    }
 
     // Store in cache with timestamp
     if (userId) {
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-      
       await supabaseAdmin.from('cleaning_cache').upsert({
         user_id: userId,
         project_id: projectId || null,
@@ -325,14 +474,17 @@ serve(async (req) => {
         onConflict: 'project_id,file_path,file_hash'
       });
 
-      console.log(`[CLEAN-CODE] Cached result for ${fileName}, tokens: ${tokensUsed}, cost: ${apiCostCents}¢`);
+      console.log(`[CLEAN-CODE] Cached result for ${fileName}, provider: ${providerUsed}, tokens: ${tokensUsed}, cost: ${apiCostCents}¢`);
     }
 
     return new Response(JSON.stringify({ 
       cleanedCode,
       fromCache: false,
       tokensUsed,
-      apiCostCents
+      apiCostCents,
+      providerUsed,
+      usedFallback,
+      isUsingBYOK
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
