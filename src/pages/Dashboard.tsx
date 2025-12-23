@@ -32,6 +32,7 @@ import {
   Database
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
+import FofyChat from "@/components/FofyChat";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -1549,6 +1550,7 @@ const Dashboard = () => {
         onTabChange={(tab) => setActiveTab(tab)}
       />
       </div>
+      <FofyChat />
     </div>
   );
 };
