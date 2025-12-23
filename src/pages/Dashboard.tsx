@@ -27,7 +27,8 @@ import {
   Zap,
   Layers,
   LayoutGrid,
-  Flame
+  Flame,
+  Database
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -629,7 +630,7 @@ const Dashboard = () => {
     { id: "sync-mirror", label: "Sync Mirror", icon: Zap },
     { id: "deployments", label: "Historique", icon: History },
     { id: "servers", label: "Mes Serveurs", icon: Server },
-    { id: "migration", label: "Migration Wizard", icon: Sparkles },
+    { id: "migration", label: "Outils Migration", icon: Database },
     { id: "services", label: "Mes Services", icon: Crown },
   ];
 
@@ -652,7 +653,7 @@ const Dashboard = () => {
       case "sync-mirror": return "Synchronisation automatique entre Lovable et votre serveur";
       case "deployments": return "Historique de vos déploiements";
       case "servers": return "Gérez vos serveurs VPS et Coolify";
-      case "migration": return "Convertissez votre projet Supabase en stack autonome";
+      case "migration": return "Exportez vos données pour migrer vers votre propre infrastructure";
       case "services": return "Vos crédits et abonnements actifs";
       default: return "";
     }
@@ -1476,9 +1477,9 @@ const Dashboard = () => {
               <ServerManagement />
             )}
 
-            {/* Tab: Migration Wizard */}
+            {/* Tab: Migration Tools (User) */}
             {activeTab === "migration" && (
-              <MigrationWizard />
+              <UserMigrationTools />
             )}
 
             {/* Tab: Sync Mirror */}

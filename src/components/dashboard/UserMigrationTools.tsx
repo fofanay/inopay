@@ -130,11 +130,9 @@ export const UserMigrationTools = () => {
     
     setExportingData(true);
     try {
-      const { data, error } = await supabase.functions.invoke('export-data', {
+      const { data, error } = await supabase.functions.invoke('export-user-data', {
         body: { 
-          tables: selectedTables,
-          userId: user.id,
-          userScope: true
+          tables: selectedTables
         }
       });
       
