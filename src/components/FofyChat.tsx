@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Sparkles, Trash2 } from "lucide-react";
+import { X, Send, Sparkles, Trash2, HelpCircle, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,16 +12,119 @@ interface Message {
   content: string;
 }
 
+interface FAQCategory {
+  icon: string;
+  name: string;
+  questions: string[];
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fofy-chat`;
 const STORAGE_KEY = "fofy-chat-history";
 
 const FofyChat = () => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<FAQCategory | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // FAQ categories based on language
+  const faqCategories: FAQCategory[] = i18n.language === "fr" ? [
+    {
+      icon: "🚀",
+      name: "Démarrer",
+      questions: [
+        "Comment fonctionne Inopay ?",
+        "Comment créer un compte ?",
+        "Comment analyser mon projet ?",
+      ],
+    },
+    {
+      icon: "💰",
+      name: "Tarifs",
+      questions: [
+        "Quels sont vos tarifs ?",
+        "Comment fonctionne la facturation ?",
+        "Y a-t-il des frais cachés ?",
+      ],
+    },
+    {
+      icon: "🛠️",
+      name: "Déploiement",
+      questions: [
+        "Comment déployer mon projet ?",
+        "Quels hébergeurs supportez-vous ?",
+        "Puis-je utiliser mon propre serveur ?",
+      ],
+    },
+    {
+      icon: "🔒",
+      name: "Sécurité",
+      questions: [
+        "Mes données sont-elles sécurisées ?",
+        "Comment fonctionne le nettoyage du code ?",
+        "Qu'est-ce que le Zero-Shadow-Door ?",
+      ],
+    },
+    {
+      icon: "🔄",
+      name: "Synchronisation",
+      questions: [
+        "Comment fonctionne la sync GitHub ?",
+        "Puis-je connecter plusieurs repos ?",
+        "Comment configurer le webhook ?",
+      ],
+    },
+  ] : [
+    {
+      icon: "🚀",
+      name: "Getting Started",
+      questions: [
+        "How does Inopay work?",
+        "How to create an account?",
+        "How to analyze my project?",
+      ],
+    },
+    {
+      icon: "💰",
+      name: "Pricing",
+      questions: [
+        "What are your prices?",
+        "How does billing work?",
+        "Are there any hidden fees?",
+      ],
+    },
+    {
+      icon: "🛠️",
+      name: "Deployment",
+      questions: [
+        "How to deploy my project?",
+        "Which hosts do you support?",
+        "Can I use my own server?",
+      ],
+    },
+    {
+      icon: "🔒",
+      name: "Security",
+      questions: [
+        "Is my data secure?",
+        "How does code cleaning work?",
+        "What is Zero-Shadow-Door?",
+      ],
+    },
+    {
+      icon: "🔄",
+      name: "Sync",
+      questions: [
+        "How does GitHub sync work?",
+        "Can I connect multiple repos?",
+        "How to configure the webhook?",
+      ],
+    },
+  ];
 
   // Load conversation from localStorage on mount
   useEffect(() => {
@@ -123,6 +226,10 @@ const FofyChat = () => {
     const messageToSend = customMessage || input.trim();
     if (!messageToSend || isLoading) return;
 
+    // Close FAQ mode when sending a message
+    setShowFAQ(false);
+    setSelectedCategory(null);
+
     const userMessage: Message = { role: "user", content: messageToSend };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
@@ -158,17 +265,13 @@ const FofyChat = () => {
     ? "Bonjour ! Je suis FOFY, votre assistant Inopay. Comment puis-je vous aider aujourd'hui ?"
     : "Hello! I'm FOFY, your Inopay assistant. How can I help you today?";
 
-  // Predefined questions based on language
-  const suggestions = i18n.language === "fr" ? [
+  // Quick suggestions for initial view
+  const quickSuggestions = i18n.language === "fr" ? [
     "Comment fonctionne Inopay ?",
     "Quels sont vos tarifs ?",
-    "Comment déployer mon projet ?",
-    "Quels hébergeurs supportez-vous ?",
   ] : [
     "How does Inopay work?",
     "What are your prices?",
-    "How to deploy my project?",
-    "Which hosts do you support?",
   ];
 
   return (
@@ -209,6 +312,16 @@ const FofyChat = () => {
           >
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/30">
+              {selectedCategory && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedCategory(null)}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
               <div className="w-10 h-10 rounded-full overflow-hidden border border-primary/20">
                 <img
                   src={fofyAvatar}
@@ -223,6 +336,15 @@ const FofyChat = () => {
                   {i18n.language === "fr" ? "Assistant IA Inopay" : "Inopay AI Assistant"}
                 </p>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowFAQ(!showFAQ)}
+                className={`h-8 w-8 ${showFAQ ? 'text-primary' : 'text-muted-foreground'}`}
+                title={i18n.language === "fr" ? "FAQ" : "FAQ"}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
               {messages.length > 0 && (
                 <Button
                   variant="ghost"
@@ -244,12 +366,121 @@ const FofyChat = () => {
               </Button>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              <div className="space-y-4">
-                {/* Initial greeting */}
-                {messages.length === 0 && (
-                  <>
+            {/* FAQ Mode */}
+            {showFAQ ? (
+              <ScrollArea className="flex-1 p-4">
+                {selectedCategory ? (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                      <span>{selectedCategory.icon}</span>
+                      {selectedCategory.name}
+                    </h4>
+                    {selectedCategory.questions.map((question, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setShowFAQ(false);
+                          setSelectedCategory(null);
+                          handleSend(question);
+                        }}
+                        className="w-full text-left text-sm px-4 py-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-colors"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-foreground mb-3">
+                      {i18n.language === "fr" ? "Questions fréquentes" : "Frequently Asked Questions"}
+                    </h4>
+                    {faqCategories.map((category, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedCategory(category)}
+                        className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 hover:border-primary/30 transition-colors"
+                      >
+                        <span className="text-xl">{category.icon}</span>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">{category.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {category.questions.length} {i18n.language === "fr" ? "questions" : "questions"}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            ) : (
+              /* Messages */
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                <div className="space-y-4">
+                  {/* Initial greeting */}
+                  {messages.length === 0 && (
+                    <>
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
+                          <img
+                            src={fofyAvatar}
+                            alt="FOFY"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
+                          <p className="text-sm text-foreground">{greeting}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Quick suggestions */}
+                      <div className="flex flex-wrap gap-2 mt-3 pl-11">
+                        {quickSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSend(suggestion)}
+                            className="text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setShowFAQ(true)}
+                          className="text-xs px-3 py-1.5 rounded-full border border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                          {i18n.language === "fr" ? "Voir la FAQ" : "View FAQ"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
+                    >
+                      {msg.role === "assistant" && (
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
+                          <img
+                            src={fofyAvatar}
+                            alt="FOFY"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div
+                        className={`rounded-2xl px-4 py-2 max-w-[80%] ${
+                          msg.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                            : "bg-muted/50 rounded-tl-sm"
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {isLoading && messages[messages.length - 1]?.role === "user" && (
                     <div className="flex gap-3">
                       <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
                         <img
@@ -258,84 +489,30 @@ const FofyChat = () => {
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
-                        <p className="text-sm text-foreground">{greeting}</p>
+                      <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-3">
+                        <div className="flex gap-1">
+                          <motion.div
+                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
+                          />
+                          <motion.div
+                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
+                          />
+                          <motion.div
+                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    
-                    {/* Suggestions */}
-                    <div className="flex flex-wrap gap-2 mt-3 pl-11">
-                      {suggestions.map((suggestion, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleSend(suggestion)}
-                          className="text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
-                  >
-                    {msg.role === "assistant" && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
-                        <img
-                          src={fofyAvatar}
-                          alt="FOFY"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div
-                      className={`rounded-2xl px-4 py-2 max-w-[80%] ${
-                        msg.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-tr-sm"
-                          : "bg-muted/50 rounded-tl-sm"
-                      }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    </div>
-                  </div>
-                ))}
-
-                {isLoading && messages[messages.length - 1]?.role === "user" && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
-                      <img
-                        src={fofyAvatar}
-                        alt="FOFY"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-3">
-                      <div className="flex gap-1">
-                        <motion.div
-                          className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
-                        />
-                        <motion.div
-                          className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                        />
-                        <motion.div
-                          className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                          animate={{ y: [0, -4, 0] }}
-                          transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
 
             {/* Input */}
             <div className="p-4 border-t border-border bg-muted/10">

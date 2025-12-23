@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Shield, Zap, Target, Server, RefreshCw, Lock } from "lucide-react";
 import Layout from "@/components/layout/Layout";
+import FofyChat from "@/components/FofyChat";
 import { useTranslation } from "react-i18next";
 
 const About = () => {
@@ -123,6 +124,7 @@ const About = () => {
           </div>
         </div>
       </section>
+      <FofyChat />
     </Layout>
   );
 };
