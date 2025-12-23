@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import Layout from "@/components/layout/Layout";
 import FofyChat from "@/components/FofyChat";
+import PackComparison from "@/components/pricing/PackComparison";
+import PricingFAQ from "@/components/pricing/PricingFAQ";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -624,6 +626,16 @@ const Pricing = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
+
+          {/* Pack Comparison Table */}
+          <div className="max-w-4xl mx-auto mb-16">
+            <PackComparison />
+          </div>
+
+          {/* FAQ Section */}
+          <div className="mb-16">
+            <PricingFAQ />
           </div>
 
           {/* CTA Section */}

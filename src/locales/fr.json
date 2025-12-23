@@ -469,17 +469,81 @@
       "cta": "Ajouter un serveur"
     },
     "comparison": {
-      "title": "Comparez et économisez",
-      "subtitle": "Passez de l'abonnement mensuel au paiement unique",
-      "solution": "Solution",
-      "price": "Prix",
-      "ownership": "Ownership",
-      "time": "Temps",
-      "devops": "DevOps Freelance",
-      "heroku": "Heroku / Railway",
-      "manual": "Config manuelle",
-      "yourTime": "Votre temps",
-      "days": "1-2 jours"
+      "badge": "Comparatif détaillé",
+      "title": "Tableau comparatif des fonctionnalités",
+      "feature": "Fonctionnalité",
+      "unlimited": "Illimité",
+      "included": "Inclus",
+      "yourTokens": "Vos tokens",
+      "features": {
+        "aiCleaning": {
+          "name": "Nettoyage IA automatique",
+          "desc": "Suppression des dépendances propriétaires"
+        },
+        "fileLimit": {
+          "name": "Limite de fichiers",
+          "desc": "Nombre maximum de fichiers par libération"
+        },
+        "ownApiKey": {
+          "name": "Clé API personnelle",
+          "desc": "Utilisez votre propre compte IA"
+        },
+        "tokenCost": {
+          "name": "Coût des tokens IA",
+          "desc": "Qui paie les tokens de nettoyage"
+        },
+        "zeroDoor": {
+          "name": "Audit Zero Shadow Door",
+          "desc": "Certificat de souveraineté"
+        },
+        "advancedAudit": {
+          "name": "Audit avancé détaillé",
+          "desc": "Rapport complet avec recommandations"
+        },
+        "encryption": {
+          "name": "Chiffrement AES-256",
+          "desc": "Protection des secrets et clés"
+        },
+        "deployment": {
+          "name": "Déploiement VPS automatique",
+          "desc": "IONOS, Hetzner, etc."
+        },
+        "volumeDiscount": {
+          "name": "Réduction volume",
+          "desc": "Économies sur gros projets"
+        }
+      }
+    },
+    "faq": {
+      "badge": "Questions fréquentes",
+      "title": "Confort vs Souverain : vos questions",
+      "subtitle": "Tout ce que vous devez savoir pour choisir le bon pack",
+      "items": {
+        "difference": {
+          "question": "Quelle est la différence principale entre les deux packs ?",
+          "answer": "Le Pack Confort est une solution tout-en-un où Inopay gère les coûts IA (49$/mois). Le Pack Souverain (29$/mois) vous permet d'utiliser votre propre clé API (BYOK) et de payer les tokens IA directement à votre fournisseur, ce qui est plus économique pour les gros volumes."
+        },
+        "byok": {
+          "question": "Qu'est-ce que BYOK (Bring Your Own Key) ?",
+          "answer": "BYOK signifie 'Apportez Votre Propre Clé'. Avec le Pack Souverain, vous connectez votre propre compte API (OpenAI, Anthropic, DeepSeek) et vous payez les tokens au prix du fournisseur, souvent 50-70% moins cher que via Inopay."
+        },
+        "tokens": {
+          "question": "Comment sont calculés les coûts de tokens ?",
+          "answer": "Environ 0.018$/fichier avec BYOK vs 0.04$/fichier avec le Pack Confort. Pour un projet de 2000 fichiers : ~36$ en tokens BYOK vs ~80$ tout inclus avec Confort. Plus votre projet est gros, plus le BYOK est avantageux."
+        },
+        "switch": {
+          "question": "Puis-je changer de pack après inscription ?",
+          "answer": "Oui, vous pouvez passer du Pack Confort au Pack Souverain à tout moment via les paramètres. Il suffit d'ajouter votre clé API pour activer le mode BYOK et bénéficier des tarifs réduits."
+        },
+        "volume": {
+          "question": "À partir de combien de fichiers le Pack Souverain est-il rentable ?",
+          "answer": "Généralement à partir de 1000+ fichiers par mois. Utilisez notre calculateur de coûts ci-dessus pour comparer selon votre volume exact. Pour les petits projets ponctuels, le Pack Confort reste plus simple."
+        },
+        "security": {
+          "question": "Mes clés API sont-elles sécurisées ?",
+          "answer": "Absolument. Les clés sont chiffrées avec AES-256 et stockées via Supabase Vault. Elles ne sont jamais exposées dans le code et sont utilisées uniquement pendant le nettoyage puis immédiatement effacées de la mémoire."
+        }
+      }
     },
     "included": {
       "title": "Ce qui est inclus",

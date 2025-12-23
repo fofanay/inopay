@@ -469,17 +469,81 @@
       "cta": "Add a server"
     },
     "comparison": {
-      "title": "Compare and save",
-      "subtitle": "Switch from monthly subscription to one-time payment",
-      "solution": "Solution",
-      "price": "Price",
-      "ownership": "Ownership",
-      "time": "Time",
-      "devops": "DevOps Freelance",
-      "heroku": "Heroku / Railway",
-      "manual": "Manual config",
-      "yourTime": "Your time",
-      "days": "1-2 days"
+      "badge": "Detailed comparison",
+      "title": "Feature comparison table",
+      "feature": "Feature",
+      "unlimited": "Unlimited",
+      "included": "Included",
+      "yourTokens": "Your tokens",
+      "features": {
+        "aiCleaning": {
+          "name": "Automatic AI cleaning",
+          "desc": "Removes proprietary dependencies"
+        },
+        "fileLimit": {
+          "name": "File limit",
+          "desc": "Maximum files per liberation"
+        },
+        "ownApiKey": {
+          "name": "Personal API key",
+          "desc": "Use your own AI account"
+        },
+        "tokenCost": {
+          "name": "AI token cost",
+          "desc": "Who pays for cleaning tokens"
+        },
+        "zeroDoor": {
+          "name": "Zero Shadow Door Audit",
+          "desc": "Sovereignty certificate"
+        },
+        "advancedAudit": {
+          "name": "Advanced detailed audit",
+          "desc": "Complete report with recommendations"
+        },
+        "encryption": {
+          "name": "AES-256 encryption",
+          "desc": "Protection of secrets and keys"
+        },
+        "deployment": {
+          "name": "Automatic VPS deployment",
+          "desc": "IONOS, Hetzner, etc."
+        },
+        "volumeDiscount": {
+          "name": "Volume discount",
+          "desc": "Savings on large projects"
+        }
+      }
+    },
+    "faq": {
+      "badge": "Frequently asked questions",
+      "title": "Comfort vs Sovereign: your questions",
+      "subtitle": "Everything you need to know to choose the right pack",
+      "items": {
+        "difference": {
+          "question": "What is the main difference between the two packs?",
+          "answer": "The Comfort Pack is an all-in-one solution where Inopay handles AI costs ($49/month). The Sovereign Pack ($29/month) lets you use your own API key (BYOK) and pay AI tokens directly to your provider, which is more economical for large volumes."
+        },
+        "byok": {
+          "question": "What is BYOK (Bring Your Own Key)?",
+          "answer": "BYOK means 'Bring Your Own Key'. With the Sovereign Pack, you connect your own API account (OpenAI, Anthropic, DeepSeek) and pay for tokens at the provider's price, often 50-70% cheaper than through Inopay."
+        },
+        "tokens": {
+          "question": "How are token costs calculated?",
+          "answer": "About $0.018/file with BYOK vs $0.04/file with Comfort Pack. For a 2000-file project: ~$36 in BYOK tokens vs ~$80 all-inclusive with Comfort. The bigger your project, the more advantageous BYOK becomes."
+        },
+        "switch": {
+          "question": "Can I switch packs after signing up?",
+          "answer": "Yes, you can switch from Comfort Pack to Sovereign Pack anytime via settings. Just add your API key to activate BYOK mode and benefit from reduced rates."
+        },
+        "volume": {
+          "question": "At how many files does the Sovereign Pack become worth it?",
+          "answer": "Generally from 1000+ files per month. Use our cost calculator above to compare based on your exact volume. For small one-off projects, the Comfort Pack remains simpler."
+        },
+        "security": {
+          "question": "Are my API keys secure?",
+          "answer": "Absolutely. Keys are encrypted with AES-256 and stored via Supabase Vault. They are never exposed in code and are used only during cleaning, then immediately cleared from memory."
+        }
+      }
     },
     "included": {
       "title": "What's included",
