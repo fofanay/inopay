@@ -1,0 +1,139 @@
+{
+  "common": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "savings": "Savings",
+    "pricing": "Pricing",
+    "upgrade": "Upgrade",
+    "history": "History",
+    "settings": "Settings",
+    "about": "About",
+    "login": "Login",
+    "logout": "Logout",
+    "start": "Get Started",
+    "loginSignup": "Login / Sign Up",
+    "support247": "24/7 Support",
+    "ourMission": "Our mission",
+    "liberateCode": "Liberate your AI code",
+    "contact": "Contact",
+    "admin": "Admin",
+    "adminDashboard": "Admin Dashboard",
+    "free": "Free",
+    "credits": "credit | credits",
+    "new": "NEW",
+    "byok": "BYOK"
+  },
+  "hero": {
+    "badge": "Vibe-Friendly",
+    "titleLine1": "Keep the Vibe.",
+    "titleLine2": "Own the Code.",
+    "subtitle": "From AI prototype to real business.",
+    "description": "You've spent nights iterating with Lovable, Bolt, or Cursor. You've built something great.",
+    "descriptionBold": "Inopay sets it free.",
+    "cta": "Free my project",
+    "ctaSubtext": "Free analysis, no credit card required",
+    "deploymentIn": "Deployment in",
+    "tenMinutes": "10 minutes flat",
+    "benefits": {
+      "noTerminal": "Zero command line required",
+      "divideCosts": "Cut your bills by 3x",
+      "realIP": "Real Intellectual Property",
+      "prototypeToEnterprise": "From AI prototype to real business"
+    }
+  },
+  "platforms": {
+    "title": "Compatible with all AI platforms"
+  },
+  "process": {
+    "step1": {
+      "title": "Upload",
+      "description": "Drop your ZIP"
+    },
+    "step2": {
+      "title": "AI Cleaning",
+      "description": "We free the code"
+    },
+    "step3": {
+      "title": "Deployment",
+      "description": "Your IONOS VPS"
+    }
+  },
+  "features": {
+    "title": "Why Inopay?",
+    "subtitle": "Everything you need to go from prototype to product.",
+    "noTerminal": {
+      "title": "Zero command line",
+      "description": "If you can copy-paste a URL, you can deploy with Inopay. We handle Docker, SSH, and SSL.",
+      "badge": "Vibe-Friendly"
+    },
+    "divideCosts": {
+      "title": "Cut your bills by 3x",
+      "description": "Why pay for a Pro subscription + hidden fees? Switch to your own hosting and keep your profits."
+    },
+    "realIP": {
+      "title": "Real Intellectual Property",
+      "description": "Code on Lovable is borrowed. Inopay code on your VPS is an asset you can sell."
+    }
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about Inopay.",
+    "q1": {
+      "question": "How does automatic deployment work?",
+      "answer": "You provide your VPS IP and SSH credentials. Inopay installs Docker, configures PostgreSQL, provisions SSL, and deploys your app. Everything is automatic, no commands to type."
+    },
+    "q2": {
+      "question": "Are my secrets safe? (Zero-Knowledge)",
+      "answer": "Your SSH credentials and API keys are used only during deployment and then deleted. We store no secrets after installation."
+    },
+    "q3": {
+      "question": "How long does deployment take?",
+      "answer": "About 10 minutes: analysis, AI cleaning, VPS configuration, and going live. Your app is in production with SSL and database in under fifteen minutes."
+    },
+    "q4": {
+      "question": "Which AI platforms are compatible?",
+      "answer": "Lovable, Bolt, v0, Cursor, Replit, and all platforms generating modern React/Vue/JavaScript code. AI cleaning adapts the code to your infrastructure."
+    }
+  },
+  "cta": {
+    "title": "Ready to own your code?",
+    "description": "Join developers who've taken back control of their projects.",
+    "button": "Get started now",
+    "subtext": "Free analysis • Deployment in 10 minutes"
+  },
+  "pulse": {
+    "title": "Sovereignty Pulse",
+    "diagnostic": "System Diagnostic",
+    "refreshDiagnostic": "Refresh Diagnostic",
+    "refreshing": "Refreshing...",
+    "aiCleaner": "AI Cleaner",
+    "operational": "Operational",
+    "githubConnection": "GitHub Connection",
+    "connected": "Connected",
+    "notConfigured": "Not configured",
+    "infrastructure": "Infrastructure",
+    "reactive": "Reactive",
+    "latency": "Latency",
+    "noServer": "No server",
+    "sovereigntyStatus": "Sovereignty Status",
+    "score": "Score",
+    "noDependencyDetected": "No proprietary dependency detected",
+    "status": {
+      "nominal": "All systems nominal",
+      "processing": "Process in progress",
+      "actionRequired": "Action required"
+    }
+  },
+  "errors": {
+    "ERROR_GITHUB_TOKEN_EXPIRED": "Your GitHub token has expired. Please renew it in settings.",
+    "ERROR_API_UNAVAILABLE": "The API is temporarily unavailable. Please try again shortly.",
+    "ERROR_INSUFFICIENT_CREDITS": "Insufficient credits. Please purchase additional credits.",
+    "ERROR_VPS_UNREACHABLE": "Cannot reach your VPS. Check the IP address and ports.",
+    "ERROR_CLEANING_FAILED": "AI cleaning failed. Please try again.",
+    "ERROR_DEPLOYMENT_FAILED": "Deployment failed. Check the logs for more details."
+  },
+  "meta": {
+    "title": "Inopay - Free your AI code",
+    "description": "Go from AI prototype to real business. Deploy your Lovable, Bolt, or Cursor code to your own VPS in 10 minutes."
+  }
+}

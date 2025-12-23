@@ -1,0 +1,139 @@
+{
+  "common": {
+    "home": "Accueil",
+    "dashboard": "Dashboard",
+    "savings": "Économies",
+    "pricing": "Tarifs",
+    "upgrade": "Upgrade",
+    "history": "Historique",
+    "settings": "Paramètres",
+    "about": "À propos",
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "start": "Commencer",
+    "loginSignup": "Connexion / Inscription",
+    "support247": "Support 24/7",
+    "ourMission": "Notre mission",
+    "liberateCode": "Libérer votre code IA",
+    "contact": "Contact",
+    "admin": "Admin",
+    "adminDashboard": "Admin Dashboard",
+    "free": "Gratuit",
+    "credits": "crédit | crédits",
+    "new": "NEW",
+    "byok": "BYOK"
+  },
+  "hero": {
+    "badge": "Vibe-Friendly",
+    "titleLine1": "Gardez le Vibe.",
+    "titleLine2": "Reprenez le Code.",
+    "subtitle": "Du prototype IA à la vraie entreprise.",
+    "description": "Vous avez passé des nuits à itérer avec Lovable, Bolt ou Cursor. Vous avez créé quelque chose de grand.",
+    "descriptionBold": "Inopay le rend libre.",
+    "cta": "Libérer mon projet",
+    "ctaSubtext": "Analyse gratuite, sans carte bancaire",
+    "deploymentIn": "Déploiement en",
+    "tenMinutes": "10 minutes chrono",
+    "benefits": {
+      "noTerminal": "Zéro ligne de commande requise",
+      "divideCosts": "Divisez vos factures par 3",
+      "realIP": "Propriété intellectuelle réelle",
+      "prototypeToEnterprise": "Du prototype IA à la vraie entreprise"
+    }
+  },
+  "platforms": {
+    "title": "Compatible avec toutes les plateformes IA"
+  },
+  "process": {
+    "step1": {
+      "title": "Upload",
+      "description": "Déposez votre ZIP"
+    },
+    "step2": {
+      "title": "Nettoyage IA",
+      "description": "On libère le code"
+    },
+    "step3": {
+      "title": "Déploiement",
+      "description": "Votre VPS IONOS"
+    }
+  },
+  "features": {
+    "title": "Pourquoi Inopay ?",
+    "subtitle": "Tout ce dont vous avez besoin pour passer du prototype au produit.",
+    "noTerminal": {
+      "title": "Zéro ligne de commande",
+      "description": "Si vous savez copier-coller une URL, vous savez déployer avec Inopay. On s'occupe de Docker, SSH et SSL.",
+      "badge": "Vibe-Friendly"
+    },
+    "divideCosts": {
+      "title": "Divisez vos factures par 3",
+      "description": "Pourquoi payer un abonnement Pro + des frais cachés ? Passez sur votre hébergement et gardez vos profits."
+    },
+    "realIP": {
+      "title": "Propriété Intellectuelle Réelle",
+      "description": "Un code sur Lovable est emprunté. Un code Inopay sur votre VPS est un actif que vous pouvez revendre."
+    }
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "subtitle": "Tout ce que vous devez savoir sur Inopay.",
+    "q1": {
+      "question": "Comment fonctionne le déploiement automatique ?",
+      "answer": "Vous fournissez l'IP de votre VPS et vos identifiants SSH. Inopay installe Docker, configure PostgreSQL, provisionne SSL et déploie votre app. Tout est automatique, aucune commande à taper."
+    },
+    "q2": {
+      "question": "Mes secrets sont-ils en sécurité ? (Zero-Knowledge)",
+      "answer": "Vos credentials SSH et clés API sont utilisés uniquement pendant le déploiement puis effacés. Nous ne stockons aucun secret après l'installation."
+    },
+    "q3": {
+      "question": "Combien de temps prend le déploiement ?",
+      "answer": "Environ 10 minutes : analyse, nettoyage IA, configuration VPS et mise en ligne. Votre app est en production avec SSL et base de données en moins d'un quart d'heure."
+    },
+    "q4": {
+      "question": "Quelles plateformes IA sont compatibles ?",
+      "answer": "Lovable, Bolt, v0, Cursor, Replit et toutes les plateformes générant du code React/Vue/JavaScript moderne. Le nettoyage IA adapte le code à votre infrastructure."
+    }
+  },
+  "cta": {
+    "title": "Prêt à libérer votre code ?",
+    "description": "Rejoignez les développeurs qui ont repris le contrôle de leur projet.",
+    "button": "Commencer maintenant",
+    "subtext": "Analyse gratuite • Déploiement en 10 minutes"
+  },
+  "pulse": {
+    "title": "Pouls de Souveraineté",
+    "diagnostic": "Diagnostic Système",
+    "refreshDiagnostic": "Relancer le Diagnostic",
+    "refreshing": "Rafraîchissement...",
+    "aiCleaner": "Nettoyeur IA",
+    "operational": "Opérationnel",
+    "githubConnection": "Liaison GitHub",
+    "connected": "Connectée",
+    "notConfigured": "Non configuré",
+    "infrastructure": "Infrastructure",
+    "reactive": "Réactif",
+    "latency": "Latence",
+    "noServer": "Aucun serveur",
+    "sovereigntyStatus": "Statut Souveraineté",
+    "score": "Score",
+    "noDependencyDetected": "Aucune dépendance propriétaire détectée",
+    "status": {
+      "nominal": "Tout est nominal",
+      "processing": "Processus en cours",
+      "actionRequired": "Action requise"
+    }
+  },
+  "errors": {
+    "ERROR_GITHUB_TOKEN_EXPIRED": "Votre token GitHub a expiré. Veuillez le renouveler dans les paramètres.",
+    "ERROR_API_UNAVAILABLE": "L'API est temporairement indisponible. Réessayez dans quelques instants.",
+    "ERROR_INSUFFICIENT_CREDITS": "Crédits insuffisants. Veuillez acheter des crédits supplémentaires.",
+    "ERROR_VPS_UNREACHABLE": "Impossible de joindre votre VPS. Vérifiez l'adresse IP et les ports.",
+    "ERROR_CLEANING_FAILED": "Le nettoyage IA a échoué. Veuillez réessayer.",
+    "ERROR_DEPLOYMENT_FAILED": "Le déploiement a échoué. Consultez les logs pour plus de détails."
+  },
+  "meta": {
+    "title": "Inopay - Libérez votre code IA",
+    "description": "Passez du prototype IA à la vraie entreprise. Déployez votre code Lovable, Bolt ou Cursor sur votre propre VPS en 10 minutes."
+  }
+}

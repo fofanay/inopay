@@ -3,6 +3,7 @@ import { RefreshCw, CheckCircle2, AlertTriangle, Loader2, Zap } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 interface DiagnosticResult {
   aiCleaner: { status: "ok" | "warning" | "error"; message: string };
@@ -14,6 +15,7 @@ interface DiagnosticResult {
 type PulseStatus = "nominal" | "processing" | "action-required";
 
 export function SovereigntyPulse() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<PulseStatus>("nominal");
   const [diagnostic, setDiagnostic] = useState<DiagnosticResult | null>(null);
   const [loading, setLoading] = useState(false);
