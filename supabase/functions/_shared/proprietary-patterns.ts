@@ -111,11 +111,43 @@ export const HIDDEN_PLUGIN_PATTERNS: RegExp[] = [
   /hidden.*tracker/i,
 ];
 
-// Standard hook replacements
-export const HOOK_REPLACEMENTS: Record<string, { standard: string; import: string }> = {
+// ============= LOCK FILES TO EXCLUDE =============
+
+export const LOCK_FILES: string[] = [
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'bun.lockb',
+  'shrinkwrap.json',
+  'npm-shrinkwrap.json',
+];
+
+// ============= ASSET CDN DOMAINS (for sovereignty check) =============
+
+export const PROPRIETARY_ASSET_CDNS: string[] = [
+  'cdn.lovable.app',
+  'cdn.lovable.dev',
+  'bolt-assets',
+  'assets.bolt.new',
+  'cdn.bolt.new',
+  'assets.gptengineer.app',
+  'cdn.gptengineer.app',
+  'storage.lovable.app',
+  'storage.lovable.dev',
+];
+
+// ============= AUTO-POLYFILL DEFINITIONS =============
+
+// Standard hook replacements with full implementations
+export const HOOK_REPLACEMENTS: Record<string, { standard: string; import: string; filename: string }> = {
   'use-mobile': {
+    filename: 'use-mobile.ts',
     standard: `import { useState, useEffect } from 'react';
 
+/**
+ * Hook to detect mobile viewport
+ * Auto-generated polyfill by Inopay Liberation
+ */
 export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
@@ -127,8 +159,90 @@ export function useIsMobile() {
   }, []);
 
   return isMobile;
-}`,
-    import: "import { useIsMobile } from '@/hooks/use-mobile';",
+}
+
+export default useIsMobile;`,
+    import: "import { useIsMobile } from '@/lib/inopay-compat/use-mobile';",
+  },
+  'use-toast': {
+    filename: 'use-toast.ts',
+    standard: `import { useState, useCallback } from 'react';
+
+/**
+ * Simple toast notification hook
+ * Auto-generated polyfill by Inopay Liberation
+ */
+export interface Toast {
+  id: string;
+  title?: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+}
+
+let toastCount = 0;
+
+export function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const toast = useCallback(({ title, description, variant = 'default' }: Omit<Toast, 'id'>) => {
+    const id = String(++toastCount);
+    const newToast: Toast = { id, title, description, variant };
+    setToasts(prev => [...prev, newToast]);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+    
+    return { id, dismiss: () => setToasts(prev => prev.filter(t => t.id !== id)) };
+  }, []);
+
+  const dismiss = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  return { toast, toasts, dismiss };
+}
+
+export default useToast;`,
+    import: "import { useToast } from '@/lib/inopay-compat/use-toast';",
+  },
+  'use-sidebar': {
+    filename: 'use-sidebar.ts',
+    standard: `import { useState, useCallback, createContext, useContext } from 'react';
+
+/**
+ * Sidebar state management hook
+ * Auto-generated polyfill by Inopay Liberation
+ */
+export interface SidebarState {
+  isOpen: boolean;
+  toggle: () => void;
+  open: () => void;
+  close: () => void;
+}
+
+const SidebarContext = createContext<SidebarState | null>(null);
+
+export function useSidebar(): SidebarState {
+  const context = useContext(SidebarContext);
+  
+  // Fallback if not in provider
+  const [isOpen, setIsOpen] = useState(true);
+  
+  if (context) return context;
+  
+  return {
+    isOpen,
+    toggle: () => setIsOpen(prev => !prev),
+    open: () => setIsOpen(true),
+    close: () => setIsOpen(false),
+  };
+}
+
+export { SidebarContext };
+export default useSidebar;`,
+    import: "import { useSidebar } from '@/lib/inopay-compat/use-sidebar';",
   },
 };
 
@@ -405,3 +519,149 @@ export const SECURITY_LIMITS = {
   MAX_API_COST_CENTS: 5000, // $50
   CACHE_TTL_HOURS: 24,
 };
+
+// ============= LOCK FILE EXCLUSION =============
+
+/**
+ * Check if file is a lock file that should be excluded from push
+ */
+export function isLockFile(filePath: string): boolean {
+  const fileName = filePath.split('/').pop() || filePath;
+  return LOCK_FILES.includes(fileName);
+}
+
+// ============= ASSET SOVEREIGNTY CHECK =============
+
+export interface AssetSovereigntyResult {
+  hasExternalAssets: boolean;
+  externalUrls: { url: string; domain: string; filePath: string }[];
+  cleanedContent?: string;
+}
+
+/**
+ * Detect and optionally replace proprietary CDN URLs
+ */
+export function checkAssetSovereignty(
+  filePath: string, 
+  content: string, 
+  replaceWithPlaceholder = false
+): AssetSovereigntyResult {
+  const externalUrls: { url: string; domain: string; filePath: string }[] = [];
+  let cleanedContent = content;
+  
+  // Match URLs in strings
+  const urlPatterns = [
+    /['"`](https?:\/\/[^'"`\s]+)['"`]/g,
+    /url\(['"]?(https?:\/\/[^'"`)\s]+)['"]?\)/g,
+    /src=['"]?(https?:\/\/[^'"`\s>]+)['"]?/g,
+    /href=['"]?(https?:\/\/[^'"`\s>]+)['"]?/g,
+  ];
+  
+  for (const pattern of urlPatterns) {
+    let match;
+    pattern.lastIndex = 0;
+    while ((match = pattern.exec(content)) !== null) {
+      const url = match[1];
+      for (const cdnDomain of PROPRIETARY_ASSET_CDNS) {
+        if (url.includes(cdnDomain)) {
+          externalUrls.push({ url, domain: cdnDomain, filePath });
+          
+          if (replaceWithPlaceholder) {
+            // Replace with placeholder or local path
+            const placeholder = `/assets/external-resource-${externalUrls.length}.placeholder`;
+            cleanedContent = cleanedContent.replace(url, placeholder);
+          }
+        }
+      }
+    }
+  }
+  
+  return {
+    hasExternalAssets: externalUrls.length > 0,
+    externalUrls,
+    cleanedContent: replaceWithPlaceholder ? cleanedContent : undefined,
+  };
+}
+
+// ============= AUTO-POLYFILL GENERATION =============
+
+export interface PolyfillResult {
+  generated: { path: string; content: string }[];
+  importUpdates: { filePath: string; oldImport: string; newImport: string }[];
+}
+
+/**
+ * Detect removed hooks and generate polyfill files
+ */
+export function generatePolyfills(
+  originalFiles: { path: string; content: string }[],
+  cleanedFiles: { path: string; content: string }[]
+): PolyfillResult {
+  const generated: { path: string; content: string }[] = [];
+  const importUpdates: { filePath: string; oldImport: string; newImport: string }[] = [];
+  const hooksNeeded = new Set<string>();
+  
+  // Find hooks that were referenced but might be broken after cleaning
+  for (const file of cleanedFiles) {
+    // Skip non-JS/TS files
+    if (!file.path.match(/\.(js|jsx|ts|tsx)$/)) continue;
+    
+    for (const [hookName, hookDef] of Object.entries(HOOK_REPLACEMENTS)) {
+      // Check if this hook is used in the file
+      const hookUsagePattern = new RegExp(`use${hookName.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')}|from.*['"].*${hookName}['"]`, 'i');
+      
+      if (hookUsagePattern.test(file.content)) {
+        // Check if the original import from @lovable or similar was removed
+        const originalFile = originalFiles.find(f => f.path === file.path);
+        if (originalFile) {
+          const hadProprietaryImport = /@lovable|lovable-|@gptengineer/i.test(originalFile.content);
+          const stillHasImport = new RegExp(`from.*['"].*${hookName}['"]`).test(file.content);
+          
+          if (hadProprietaryImport || !stillHasImport) {
+            hooksNeeded.add(hookName);
+            
+            // Track import update needed
+            importUpdates.push({
+              filePath: file.path,
+              oldImport: `@lovable/${hookName}`,
+              newImport: `@/lib/inopay-compat/${hookName}`,
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  // Generate polyfill files for needed hooks
+  for (const hookName of hooksNeeded) {
+    const hookDef = HOOK_REPLACEMENTS[hookName];
+    if (hookDef) {
+      generated.push({
+        path: `src/lib/inopay-compat/${hookDef.filename}`,
+        content: hookDef.standard,
+      });
+    }
+  }
+  
+  // Add index.ts if any polyfills were generated
+  if (generated.length > 0) {
+    const exports = Array.from(hooksNeeded).map(hookName => {
+      const hookDef = HOOK_REPLACEMENTS[hookName];
+      return `export * from './${hookDef.filename.replace('.ts', '')}';`;
+    }).join('\n');
+    
+    generated.push({
+      path: 'src/lib/inopay-compat/index.ts',
+      content: `/**
+ * Inopay Compatibility Layer
+ * Auto-generated polyfills for removed proprietary hooks
+ * Generated on: ${new Date().toISOString()}
+ */
+
+${exports}
+`,
+    });
+  }
+  
+  return { generated, importUpdates };
+}
