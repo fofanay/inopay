@@ -26,7 +26,8 @@ import {
   Server,
   Zap,
   Layers,
-  LayoutGrid
+  LayoutGrid,
+  Flame
 } from "lucide-react";
 import { SovereignExport } from "@/components/SovereignExport";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
+import { LiberationPipeline } from "@/components/dashboard/LiberationPipeline";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -77,6 +79,7 @@ import inopayLogo from "@/assets/inopay-logo-admin.png";
 const TAB_LABELS: Record<string, string> = {
   "overview": "Vue d'ensemble",
   "fleet": "Fleet Dashboard",
+  "liberation": "Libérer & Déployer",
   "import": "Importer",
   "batch-import": "Import Batch",
   "projects": "Mes Projets",
@@ -91,9 +94,9 @@ const TAB_LABELS: Record<string, string> = {
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror";
+type DashboardTab = "overview" | "liberation" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "migration", "services"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "migration", "services"];
 
 interface GitHubRepo {
   id: number;
@@ -608,6 +611,7 @@ const Dashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
+    { id: "liberation", label: "Libérer & Déployer", icon: Flame, badge: "Pipeline" },
     { id: "fleet", label: "Fleet Dashboard", icon: LayoutGrid, badge: "Portfolio" },
     { id: "import", label: "Importer", icon: Upload },
     { id: "batch-import", label: "Import Batch", icon: Layers, badge: "New" },
@@ -636,6 +640,7 @@ const Dashboard = () => {
   const getPageDescription = () => {
     switch (activeTab) {
       case "overview": return "Statistiques de vos projets et actions rapides";
+      case "liberation": return "Pipeline complet: nettoyage IA → GitHub → VPS en un clic";
       case "fleet": return "Vue Kanban de tous vos projets et métriques globales";
       case "import": return "Importez un projet depuis GitHub ou un fichier ZIP";
       case "batch-import": return "Analysez plusieurs projets GitHub en une seule opération";
@@ -907,6 +912,43 @@ const Dashboard = () => {
                 }}
                 onNavigate={(tab) => setActiveTab(tab as DashboardTab)}
               />
+            )}
+
+            {/* Tab: Liberation Pipeline */}
+            {activeTab === "liberation" && (
+              <div className="space-y-6">
+                <LiberationPipeline
+                  files={extractedFiles}
+                  projectName={fileName || "Projet"}
+                  projectId={result?.id}
+                  onComplete={(liberationResult) => {
+                    if (liberationResult.success) {
+                      toast({
+                        title: "Libération réussie",
+                        description: "Votre projet a été nettoyé et poussé sur GitHub",
+                      });
+                      fetchHistory();
+                    }
+                  }}
+                />
+
+                {/* Instructions si pas de fichiers chargés */}
+                {extractedFiles.size === 0 && (
+                  <Card className="border-dashed border-2 border-primary/30">
+                    <CardContent className="py-12 text-center">
+                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Aucun projet chargé</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Importez d'abord un projet depuis l'onglet "Importer" pour utiliser le pipeline de libération.
+                      </p>
+                      <Button onClick={() => setActiveTab("import")} variant="outline">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Aller à l'import
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {/* Tab: Import */}

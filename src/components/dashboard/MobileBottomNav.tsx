@@ -1,7 +1,7 @@
-import { Home, FolderOpen, Upload, History, Server } from "lucide-react";
+import { Home, FolderOpen, Upload, History, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type DashboardTab = "overview" | "fleet" | "import" | "batch-import" | "projects" | 
+type DashboardTab = "overview" | "liberation" | "fleet" | "import" | "batch-import" | "projects" | 
   "deploy-choice" | "sovereign-deploy" | "sync-mirror" | "deployments" | "servers" | "migration" | "services";
 
 interface MobileBottomNavProps {
@@ -11,10 +11,10 @@ interface MobileBottomNavProps {
 
 const NAV_ITEMS: { tab: DashboardTab; label: string; icon: typeof Home }[] = [
   { tab: "overview", label: "Accueil", icon: Home },
+  { tab: "liberation", label: "Libérer", icon: Flame },
   { tab: "projects", label: "Projets", icon: FolderOpen },
   { tab: "import", label: "Importer", icon: Upload },
   { tab: "deployments", label: "Historique", icon: History },
-  { tab: "servers", label: "Serveurs", icon: Server },
 ];
 
 export function MobileBottomNav({ currentTab, onTabChange }: MobileBottomNavProps) {
