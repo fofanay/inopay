@@ -230,6 +230,34 @@ serve(async (req) => {
         const session = event.data.object;
         logStep("Checkout session completed", { sessionId: session.id, mode: session.mode });
 
+        // Check if this is a liberation supplement payment
+        if (session.metadata?.type === 'liberation_supplement') {
+          const pendingPaymentId = session.metadata.pending_payment_id;
+          const projectName = session.metadata.project_name;
+          
+          logStep("Liberation supplement payment received", { pendingPaymentId, projectName });
+
+          // Update pending payment status to 'paid'
+          const { error: updateError } = await supabaseClient
+            .from('pending_liberation_payments')
+            .update({
+              status: 'paid',
+              paid_at: new Date().toISOString(),
+              stripe_payment_intent_id: session.payment_intent as string,
+            })
+            .eq('id', pendingPaymentId);
+
+          if (updateError) {
+            logStep("Error updating liberation payment", { error: updateError });
+            await logCriticalError(supabaseClient, `Failed to update liberation payment: ${updateError.message}`, event.type, { pendingPaymentId });
+          } else {
+            logStep("Liberation payment unlocked", { pendingPaymentId, projectName });
+            await logWebhookSuccess(supabaseClient, 'liberation_supplement_paid', undefined, { pendingPaymentId, projectName });
+          }
+
+          break;
+        }
+
         const userId = session.metadata?.user_id;
         const serviceType = session.metadata?.service_type;
         const customerId = session.customer;

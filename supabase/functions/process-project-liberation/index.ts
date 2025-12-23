@@ -285,16 +285,94 @@ serve(async (req) => {
       });
     }
 
-    const { files, projectName, projectId, action } = await req.json() as ProcessRequest & { action?: string };
+    const { files, projectName, projectId, action, pendingPaymentId, selectedPaths } = await req.json() as ProcessRequest & { 
+      action?: string;
+      pendingPaymentId?: string;
+      selectedPaths?: string[];
+    };
 
-    // Security limits check
-    if (files.length > SECURITY_LIMITS.MAX_FILES_PER_LIBERATION) {
+    // Dynamic limits check - Calculate quote instead of blocking
+    let filesToProcess = files;
+    const isOverLimit = files.length > SECURITY_LIMITS.MAX_FILES_PER_LIBERATION;
+    
+    if (isOverLimit && !pendingPaymentId && !selectedPaths) {
+      // Return quote for large project instead of error
+      const totalChars = files.reduce((sum, f) => sum + f.content.length, 0);
+      const excessFiles = files.length - SECURITY_LIMITS.MAX_FILES_PER_LIBERATION;
+      
+      // Cost calculation
+      const COST_PER_TOKEN_CENTS = 0.003;
+      const CHARS_PER_TOKEN = 4;
+      const TOKENS_OVERHEAD_PER_FILE = 150;
+      const INOPAY_MARGIN = 2.5;
+      
+      const avgCharsPerFile = totalChars / files.length;
+      const excessChars = excessFiles * avgCharsPerFile;
+      const excessTokens = (excessChars / CHARS_PER_TOKEN) + (excessFiles * TOKENS_OVERHEAD_PER_FILE);
+      const baseTokenCost = Math.ceil(excessTokens * COST_PER_TOKEN_CENTS);
+      const supplementAmount = Math.max(500, Math.ceil(baseTokenCost * INOPAY_MARGIN));
+      
       return new Response(JSON.stringify({ 
-        error: `Limite de fichiers dépassée: ${files.length} > ${SECURITY_LIMITS.MAX_FILES_PER_LIBERATION}` 
+        requiresPayment: true,
+        quote: {
+          totalFiles: files.length,
+          maxFilesAllowed: SECURITY_LIMITS.MAX_FILES_PER_LIBERATION,
+          excessFiles,
+          baseTokenCostCents: baseTokenCost,
+          supplementAmountCents: supplementAmount,
+          supplementFormatted: `$${(supplementAmount / 100).toFixed(2)} CAD`,
+        },
+        message: 'Projet de grande envergure détecté. Paiement requis ou nettoyage partiel disponible.',
       }), {
-        status: 400,
+        status: 402, // Payment Required
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Handle partial cleaning (user selected specific folders)
+    if (selectedPaths && selectedPaths.length > 0) {
+      filesToProcess = files.filter(f => 
+        selectedPaths.some(path => f.path.startsWith(path + '/') || f.path === path || f.path.startsWith(path))
+      );
+      console.log(`[Liberation] Partial cleaning: ${filesToProcess.length}/${files.length} files from paths: ${selectedPaths.join(', ')}`);
+    }
+
+    // Handle paid liberation - verify payment and mark as processed
+    if (pendingPaymentId) {
+      const { data: pendingPayment, error: paymentError } = await supabase
+        .from('pending_liberation_payments')
+        .select('*')
+        .eq('id', pendingPaymentId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (paymentError || !pendingPayment) {
+        return new Response(JSON.stringify({ error: 'Paiement non trouvé' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Type assertion for the pending payment
+      const payment = pendingPayment as { status: string; id: string };
+
+      if (payment.status !== 'paid') {
+        return new Response(JSON.stringify({ 
+          error: 'Paiement en attente',
+          status: payment.status,
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Mark as processed
+      await supabase
+        .from('pending_liberation_payments')
+        .update({ processed_at: new Date().toISOString() })
+        .eq('id', pendingPaymentId);
+
+      console.log(`[Liberation] Paid liberation unlocked for payment ${pendingPaymentId}`);
     }
 
     // Get user settings for GitHub token
@@ -307,7 +385,7 @@ serve(async (req) => {
     const githubToken = settings?.github_token;
 
     // Phase 1: Clean files
-    console.log(`[Liberation] Starting cleaning for ${projectName}, ${files.length} files`);
+    console.log(`[Liberation] Starting cleaning for ${projectName}, ${filesToProcess.length} files (original: ${files.length})`);
     
     const cleaningResults: CleaningResult[] = [];
     const cleanedFiles: { path: string; content: string }[] = [];
@@ -315,7 +393,7 @@ serve(async (req) => {
     const assetAlerts: AssetSovereigntyResult['externalUrls'] = [];
     let totalChanges = 0;
 
-    for (const file of files) {
+    for (const file of filesToProcess) {
       // Skip lock files (Lock-file Purge)
       if (isLockFile(file.path)) {
         console.log(`[Liberation] Excluding lock file: ${file.path}`);

@@ -55,6 +55,7 @@ import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
 import AdminCleaningMargins from "@/components/admin/AdminCleaningMargins";
 import AdminNetworkDiagnostic from "@/components/admin/AdminNetworkDiagnostic";
 import AdminOperationsCenter from "@/components/admin/AdminOperationsCenter";
+import { AdminExcessPayments } from "@/components/admin/AdminExcessPayments";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
     { id: "kpis", label: "KPIs Business", icon: TrendingUp, section: "business" },
     { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart, section: "business" },
+    { id: "excess-payments", label: "Suppléments Volume", icon: TrendingUp, section: "business" },
     { id: "margins", label: "Marges Nettoyage", icon: Calculator, section: "business" },
     { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
     // 🖥️ Infrastructure
@@ -274,6 +276,7 @@ const AdminDashboard = () => {
             {activeTab === "stripe-logs" && <AdminStripeLogs />}
             {activeTab === "kpis" && <AdminKPIs />}
             {activeTab === "purchases" && <AdminPurchases />}
+            {activeTab === "excess-payments" && <AdminExcessPayments />}
             {activeTab === "margins" && <AdminCleaningMargins />}
             {activeTab === "security" && <AdminSecurityAudit />}
             {activeTab === "support" && <AdminSupportTools />}
