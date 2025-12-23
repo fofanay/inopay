@@ -113,6 +113,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error("[AUTH] Session refresh failed:", error);
         refreshingRef.current = false;
+        
+        // If refresh token is invalid, sign out the user
+        if (error.message?.includes("refresh_token") || 
+            error.message?.includes("Invalid") ||
+            error.message?.includes("not found")) {
+          console.log("[AUTH] Invalid refresh token, signing out user");
+          setSession(null);
+          setUser(null);
+          setSubscription({ subscribed: false, planType: "free" });
+          setRole(null);
+          await supabase.auth.signOut();
+        }
         return null;
       }
 
@@ -136,12 +148,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkSubscription = useCallback(async (accessToken?: string) => {
     let tokenToUse = accessToken || session?.access_token;
     
+    // Don't check if session is expired
+    if (session && isTokenExpired(session)) {
+      console.log("[AUTH] Token expired, skipping subscription check");
+      return;
+    }
+    
     // If token is expiring soon, refresh first
     if (session && isTokenExpiringSoon(session)) {
       console.log("[AUTH] Token expiring soon, refreshing before subscription check");
       const newSession = await refreshSession();
       if (newSession) {
         tokenToUse = newSession.access_token;
+      } else {
+        console.log("[AUTH] Refresh failed, skipping subscription check");
+        return;
       }
     }
 
@@ -161,27 +182,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Handle 401 errors by refreshing token and retrying
       if (response.error?.message?.includes("401") || 
-          response.data?.error?.includes("Authentication")) {
+          response.data?.error?.includes("Authentication") ||
+          response.data?.error?.includes("session missing")) {
         console.log("[AUTH] Got 401, attempting token refresh and retry");
         const newSession = await refreshSession();
         
-        if (newSession) {
-          // Retry with new token
-          const retryResponse = await supabase.functions.invoke("check-subscription", {
-            headers: {
-              Authorization: `Bearer ${newSession.access_token}`,
-            },
-          });
+        if (!newSession) {
+          // Session is truly invalid, user needs to re-login
+          console.log("[AUTH] Session invalid, user needs to re-login");
+          setSubscription({ subscribed: false, planType: "free" });
+          return;
+        }
+        
+        // Retry with new token
+        const retryResponse = await supabase.functions.invoke("check-subscription", {
+          headers: {
+            Authorization: `Bearer ${newSession.access_token}`,
+          },
+        });
 
-          if (retryResponse.data && !retryResponse.error) {
-            setSubscription({
-              subscribed: retryResponse.data.subscribed,
-              planType: retryResponse.data.plan_type || "free",
-              creditsRemaining: retryResponse.data.credits_remaining,
-              subscriptionEnd: retryResponse.data.subscription_end,
-            });
-            return;
-          }
+        if (retryResponse.data && !retryResponse.error && !retryResponse.data.error) {
+          setSubscription({
+            subscribed: retryResponse.data.subscribed,
+            planType: retryResponse.data.plan_type || "free",
+            creditsRemaining: retryResponse.data.credits_remaining,
+            subscriptionEnd: retryResponse.data.subscription_end,
+          });
+          return;
         }
         
         // If retry failed, set to free plan
@@ -189,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (response.data && !response.error) {
+      if (response.data && !response.error && !response.data.error) {
         setSubscription({
           subscribed: response.data.subscribed,
           planType: response.data.plan_type || "free",
