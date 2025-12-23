@@ -13,7 +13,6 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
 import Pricing from "./pages/Pricing";
-import Upgrade from "./pages/Upgrade";
 import Economies from "./pages/Economies";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import LiberationReport from "./pages/LiberationReport";
@@ -44,7 +43,6 @@ const App = () => (
             <Route path="/parametres" element={<Settings />} />
             <Route path="/historique" element={<History />} />
             <Route path="/tarifs" element={<Pricing />} />
-            <Route path="/upgrade" element={<Upgrade />} />
             <Route path="/economies" element={<Economies />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/rapport-liberation/:deploymentId" element={<LiberationReport />} />
