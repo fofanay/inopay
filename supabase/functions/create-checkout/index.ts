@@ -76,9 +76,17 @@ serve(async (req) => {
       redeploy: "redeploy",
       monitoring: "monitoring",
       server: "server",
+      confort: "confort",
+      souverain: "souverain",
     };
 
     const planType = planTypeMap[serviceType] || (mode === "subscription" ? "monitoring" : "deploy");
+
+    // Build success URL with plan parameter for subscription plans
+    const isSubscriptionPlan = serviceType === "confort" || serviceType === "souverain";
+    const successUrl = isSubscriptionPlan
+      ? `${origin}/payment-success?plan=${serviceType}&session_id={CHECKOUT_SESSION_ID}`
+      : `${origin}/payment-success?service=${serviceType || "deploy"}&session_id={CHECKOUT_SESSION_ID}`;
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -91,8 +99,8 @@ serve(async (req) => {
         },
       ],
       mode: mode || "payment",
-      success_url: `${origin}/payment-success?service=${serviceType || "deploy"}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/tarifs`,
+      success_url: successUrl,
+      cancel_url: `${origin}/upgrade`,
       metadata: {
         user_id: user.id,
         service_type: serviceType || "deploy",
