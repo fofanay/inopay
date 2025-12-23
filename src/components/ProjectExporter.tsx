@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save, Server, Shield } from "lucide-react";
+import { Loader2, Package, Download, CheckCircle2, ExternalLink, Github, PartyPopper, Rocket, Zap, Cloud, Settings, AlertTriangle, RefreshCw, Save, Server, Shield, Hammer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import PostDeploymentAssistant from "./PostDeploymentAssistant";
 import { DirectDeployment } from "./dashboard/DirectDeployment";
 import { CleaningCostEstimator } from "./dashboard/CleaningCostEstimator";
 import { SecurityAuditReport } from "./dashboard/SecurityAuditReport";
+import { BuildValidator, BuildValidationReport } from "./dashboard/BuildValidator";
 
 type DeployPlatform = "vercel" | "netlify" | "railway" | "none";
 type ExportType = "zip" | "github" | "vps";
@@ -83,6 +84,11 @@ const ProjectExporter = ({
   const [auditedFiles, setAuditedFiles] = useState<{ path: string; content: string }[] | null>(null);
   const [securityCertification, setSecurityCertification] = useState<string | null>(null);
   const [estimationData, setEstimationData] = useState<any>(null);
+  
+  // Build validation (sovereignty check)
+  const [showBuildValidator, setShowBuildValidator] = useState(false);
+  const [buildValidationComplete, setBuildValidationComplete] = useState(false);
+  const [buildValidationReport, setBuildValidationReport] = useState<BuildValidationReport | null>(null);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -489,6 +495,16 @@ const ProjectExporter = ({
     setShowAssistant(false);
     setVpsCleanedFiles(null);
     setShowVPSSetup(false);
+    // Reset pipeline steps
+    setShowEstimator(true);
+    setEstimationApproved(false);
+    setShowSecurityAudit(false);
+    setSecurityAuditComplete(false);
+    setAuditedFiles(null);
+    setSecurityCertification(null);
+    setShowBuildValidator(false);
+    setBuildValidationComplete(false);
+    setBuildValidationReport(null);
     onClose();
   };
 
@@ -555,6 +571,39 @@ const ProjectExporter = ({
         </DialogHeader>
 
         <div className="py-4">
+          {/* Pipeline Progress Indicator */}
+          {status === "idle" && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className={`flex items-center gap-1 text-xs ${!estimationApproved ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${!estimationApproved ? 'bg-primary text-primary-foreground' : 'bg-green-500 text-white'}`}>
+                  {estimationApproved ? '✓' : '1'}
+                </span>
+                Estimation
+              </div>
+              <div className="w-8 h-px bg-border" />
+              <div className={`flex items-center gap-1 text-xs ${estimationApproved && !securityAuditComplete ? 'text-primary font-medium' : estimationApproved ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${securityAuditComplete ? 'bg-green-500 text-white' : estimationApproved ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {securityAuditComplete ? '✓' : '2'}
+                </span>
+                Sécurité
+              </div>
+              <div className="w-8 h-px bg-border" />
+              <div className={`flex items-center gap-1 text-xs ${securityAuditComplete && !buildValidationComplete ? 'text-primary font-medium' : securityAuditComplete ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${buildValidationComplete ? 'bg-green-500 text-white' : securityAuditComplete ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {buildValidationComplete ? '✓' : '3'}
+                </span>
+                Build
+              </div>
+              <div className="w-8 h-px bg-border" />
+              <div className={`flex items-center gap-1 text-xs ${buildValidationComplete ? 'text-primary font-medium' : 'text-muted-foreground/50'}`}>
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${buildValidationComplete ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  4
+                </span>
+                Export
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Cost Estimation */}
           {showEstimator && !estimationApproved && status === "idle" && (
             <div className="space-y-4">
@@ -587,18 +636,38 @@ const ProjectExporter = ({
                   setShowSecurityAudit(false);
                   setAuditedFiles(cleanedFiles);
                   setSecurityCertification(result.certificationMessage);
+                  setShowBuildValidator(true); // Move to build validation step
                 }}
                 onSkip={() => {
                   setSecurityAuditComplete(true);
                   setShowSecurityAudit(false);
+                  setShowBuildValidator(true); // Move to build validation step
                 }}
               />
             </div>
           )}
 
-          {/* Export Options - shown after estimation is approved */}
-          {/* Step 3: Export Options - shown after security audit is complete */}
-          {securityAuditComplete && status === "idle" ? (
+          {/* Step 3: Build Validation (Sovereignty Check) */}
+          {showBuildValidator && !buildValidationComplete && status === "idle" && (
+            <div className="space-y-4">
+              <BuildValidator
+                files={extractedFiles}
+                projectName={projectName}
+                onValidationComplete={(isValid, report) => {
+                  setBuildValidationComplete(true);
+                  setShowBuildValidator(false);
+                  setBuildValidationReport(report);
+                }}
+                onSkip={() => {
+                  setBuildValidationComplete(true);
+                  setShowBuildValidator(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Step 4: Export Options - shown after build validation is complete */}
+          {buildValidationComplete && status === "idle" ? (
             <Tabs 
               value={exportType} 
               onValueChange={(v) => {
