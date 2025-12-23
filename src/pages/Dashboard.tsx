@@ -63,6 +63,7 @@ import { UserMigrationTools } from "@/components/dashboard/UserMigrationTools";
 import { UserExportsHistory } from "@/components/dashboard/UserExportsHistory";
 import { UserSecurityStatus } from "@/components/dashboard/UserSecurityStatus";
 import { UserWidgetStatus } from "@/components/dashboard/UserWidgetStatus";
+import { UserDashboardOverview } from "@/components/dashboard/UserDashboardOverview";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
@@ -909,7 +910,10 @@ const Dashboard = () => {
             
             {/* Tab: Overview */}
             {activeTab === "overview" && (
-              <EnhancedOverview onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
+              <div className="space-y-6">
+                <UserDashboardOverview />
+                <EnhancedOverview onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
+              </div>
             )}
 
             {/* Tab: Fleet Dashboard */}
