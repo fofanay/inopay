@@ -7,8 +7,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Rocket, 
@@ -18,7 +16,6 @@ import {
   Loader2,
   CheckCircle2,
   FileCode,
-  Zap,
   Shield,
   Server,
   ArrowLeft,
@@ -28,6 +25,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FileSelectorTree } from './FileSelectorTree';
 
 interface LargeProjectModalProps {
   open: boolean;
@@ -49,10 +47,12 @@ interface Quote {
   supplementFormatted: string;
 }
 
+// Noisy folders to auto-deselect
+const NOISY_FOLDERS = ['node_modules', 'dist', '.git', 'build', 'out', '.next', '.cache', 'coverage', '.turbo', '.vercel'];
+
 // Utility to round up to professional pricing
 const formatProfessionalPrice = (cents: number): string => {
   const dollars = cents / 100;
-  // Round up to .49 or .99 for professional appearance
   const baseAmount = Math.ceil(dollars);
   if (baseAmount <= 10) {
     return `${baseAmount - 0.01}`;
@@ -76,20 +76,37 @@ export function LargeProjectModal({
 }: LargeProjectModalProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(['src']));
   const [mode, setMode] = useState<'choice' | 'partial' | 'processing'>('choice');
   const [processingStep, setProcessingStep] = useState(0);
 
-  // Extract unique root folders from files
-  const folders = Array.from(new Set(
-    Array.from(files.keys())
-      .map(path => path.split('/')[0])
-      .filter(Boolean)
-  )).sort();
+  // Initialize selectedPaths excluding noisy folders
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    files.forEach((_, path) => {
+      const pathParts = path.split('/');
+      const isInNoisyFolder = pathParts.some(part => NOISY_FOLDERS.includes(part));
+      if (!isInNoisyFolder) {
+        initial.add(path);
+      }
+    });
+    return initial;
+  });
 
-  const selectedFilesCount = Array.from(files.keys()).filter(path => 
-    Array.from(selectedFolders).some(folder => path.startsWith(folder + '/') || path === folder)
-  ).length;
+  // Reset selectedPaths when files change
+  useEffect(() => {
+    const initial = new Set<string>();
+    files.forEach((_, path) => {
+      const pathParts = path.split('/');
+      const isInNoisyFolder = pathParts.some(part => NOISY_FOLDERS.includes(part));
+      if (!isInNoisyFolder) {
+        initial.add(path);
+      }
+    });
+    setSelectedPaths(initial);
+  }, [files]);
+
+  const selectedFilesCount = selectedPaths.size;
+  const isUnderLimit = selectedFilesCount <= maxFilesAllowed;
 
   // Calculate quote on modal open
   useEffect(() => {
@@ -105,13 +122,11 @@ export function LargeProjectModal({
       if (!session) return;
 
       const excessFiles = totalFiles - maxFilesAllowed;
-      // Average token cost per file (estimated at ~500 tokens per file, $0.003/1K tokens)
-      const avgCostPerFile = 0.15; // cents
+      const avgCostPerFile = 0.15;
       const baseCost = excessFiles * avgCostPerFile;
       const marginMultiplier = 2.5;
       const supplement = Math.ceil(baseCost * marginMultiplier);
       
-      // Round up to professional pricing
       const professionalPrice = formatProfessionalPrice(supplement);
       
       setQuote({
@@ -166,7 +181,6 @@ export function LargeProjectModal({
       setQuote(data.quote);
 
       if (data.paymentUrl) {
-        // Open Stripe checkout in new tab
         window.open(data.paymentUrl, '_blank');
         toast.success('Fenêtre de paiement ouverte', {
           description: 'Complétez le paiement pour débloquer la libération complète.',
@@ -183,24 +197,11 @@ export function LargeProjectModal({
   };
 
   const handlePartialClean = () => {
-    const selectedPaths = Array.from(selectedFolders);
-    onPartialClean(selectedPaths);
+    const paths = Array.from(selectedPaths);
+    onPartialClean(paths);
     onOpenChange(false);
   };
 
-  const toggleFolder = (folder: string) => {
-    setSelectedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(folder)) {
-        next.delete(folder);
-      } else {
-        next.add(folder);
-      }
-      return next;
-    });
-  };
-
-  // Simulated post-payment processing animation
   const processingSteps = [
     'Paiement confirmé',
     'Allocation des ressources de nettoyage étendue',
@@ -225,7 +226,7 @@ export function LargeProjectModal({
       }, 1500);
       return () => clearInterval(interval);
     }
-  }, [mode]);
+  }, [mode, onOpenChange, onPaymentComplete, processingSteps.length]);
 
   const excessFiles = totalFiles - maxFilesAllowed;
 
@@ -237,7 +238,7 @@ export function LargeProjectModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 text-white overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[90vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 text-white overflow-hidden">
         <AnimatePresence mode="wait">
           {mode === 'processing' ? (
             <motion.div
@@ -309,67 +310,49 @@ export function LargeProjectModal({
                   Retour
                 </Button>
                 <DialogTitle className="text-xl pt-8 text-white">
-                  Sélection manuelle des dossiers
+                  🗂️ Explorateur de fichiers
                 </DialogTitle>
+                <p className="text-sm text-slate-400 mt-1">
+                  Sélectionnez les dossiers et fichiers à nettoyer. Les dossiers bruyants sont automatiquement exclus.
+                </p>
               </DialogHeader>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-400">Fichiers sélectionnés:</span>
-                  <Badge 
-                    variant={selectedFilesCount <= maxFilesAllowed ? 'default' : 'destructive'}
-                    className={selectedFilesCount <= maxFilesAllowed ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}
+              <FileSelectorTree
+                files={files}
+                selectedPaths={selectedPaths}
+                onSelectionChange={setSelectedPaths}
+                maxFilesAllowed={maxFilesAllowed}
+              />
+
+              <div className="flex gap-3 pt-2">
+                {isUnderLimit ? (
+                  <Button 
+                    onClick={handlePartialClean}
+                    disabled={selectedFilesCount === 0}
+                    className="flex-1 bg-green-600 hover:bg-green-500"
                   >
-                    {selectedFilesCount} / {maxFilesAllowed}
-                  </Badge>
-                </div>
-
-                <ScrollArea className="h-56 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
-                  <div className="space-y-1">
-                    {folders.map(folder => {
-                      const folderFileCount = Array.from(files.keys()).filter(
-                        path => path.startsWith(folder + '/') || path === folder
-                      ).length;
-                      
-                      return (
-                        <div 
-                          key={folder}
-                          className="flex items-center space-x-3 p-2 rounded hover:bg-slate-700/50 cursor-pointer transition-colors"
-                          onClick={() => toggleFolder(folder)}
-                        >
-                          <Checkbox 
-                            checked={selectedFolders.has(folder)}
-                            onCheckedChange={() => toggleFolder(folder)}
-                            className="border-slate-500 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <FolderOpen className="h-4 w-4 text-amber-400" />
-                          <span className="flex-1 font-mono text-sm text-slate-200">{folder}/</span>
-                          <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
-                            {folderFileCount}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-
-                {selectedFilesCount > maxFilesAllowed && (
-                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/30">
-                    <AlertDescription className="text-red-400">
-                      Désélectionnez des dossiers pour rester sous {maxFilesAllowed} fichiers.
-                    </AlertDescription>
-                  </Alert>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Poursuivre la libération gratuite ({selectedFilesCount} fichiers)
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handlePartialClean}
+                    disabled={selectedFilesCount === 0}
+                    className="flex-1 bg-slate-700 hover:bg-slate-600"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Nettoyer {selectedFilesCount} fichiers sélectionnés
+                  </Button>
                 )}
-
-                <Button 
-                  onClick={handlePartialClean}
-                  disabled={selectedFilesCount > maxFilesAllowed || selectedFilesCount === 0}
-                  className="w-full bg-slate-700 hover:bg-slate-600"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Nettoyer {selectedFilesCount} fichiers sélectionnés
-                </Button>
               </div>
+
+              {!isUnderLimit && (
+                <Alert className="bg-amber-500/10 border-amber-500/30">
+                  <AlertDescription className="text-amber-300 text-sm">
+                    Désélectionnez encore {selectedFilesCount - maxFilesAllowed} fichiers pour repasser sous la limite gratuite.
+                  </AlertDescription>
+                </Alert>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -458,21 +441,26 @@ export function LargeProjectModal({
                       <FolderOpen className="h-5 w-5 text-slate-400" />
                     </div>
                     <div>
-                      <span className="font-medium text-slate-300 group-hover:text-white transition-colors">
-                        Sélectionner manuellement les dossiers à nettoyer
-                      </span>
+                      <span className="font-medium text-slate-200">Sélectionner manuellement les dossiers</span>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Restez dans la limite de {maxFilesAllowed} fichiers
+                        Choisissez uniquement les dossiers essentiels à nettoyer
                       </p>
                     </div>
                   </div>
                 </button>
               </div>
 
-              {/* Footer */}
-              <p className="text-xs text-slate-500 text-center">
-                Notre philosophie : « Oui, moyennant un coût juste » — Jamais de refus.
-              </p>
+              {/* Stats */}
+              <div className="flex items-center justify-center gap-6 pt-2 text-xs text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <FileCode className="h-3.5 w-3.5" />
+                  <span>{totalFiles} fichiers détectés</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-amber-400">+{excessFiles}</span>
+                  <span>au-dessus de la limite</span>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
