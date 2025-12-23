@@ -78,6 +78,7 @@ import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { LiberationPipeline } from "@/components/dashboard/LiberationPipeline";
+import { LiberationWizard } from "@/components/dashboard/LiberationWizard";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -930,36 +931,36 @@ const Dashboard = () => {
             {/* Tab: Liberation Pipeline */}
             {activeTab === "liberation" && (
               <div className="space-y-6">
-                <LiberationPipeline
-                  files={extractedFiles}
-                  projectName={fileName || "Projet"}
-                  projectId={result?.id}
-                  onComplete={(liberationResult) => {
-                    if (liberationResult.success) {
-                      toast({
-                        title: "Libération réussie",
-                        description: "Votre projet a été nettoyé et poussé sur GitHub",
-                      });
-                      fetchHistory();
-                    }
-                  }}
-                />
-
-                {/* Instructions si pas de fichiers chargés */}
-                {extractedFiles.size === 0 && (
-                  <Card className="border-dashed border-2 border-primary/30">
-                    <CardContent className="py-12 text-center">
-                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Aucun projet chargé</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Importez d'abord un projet depuis l'onglet "Importer" pour utiliser le pipeline de libération.
-                      </p>
-                      <Button onClick={() => setActiveTab("import")} variant="outline">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Aller à l'import
-                      </Button>
-                    </CardContent>
-                  </Card>
+                {/* Liberation Wizard - Assistant guidé */}
+                <LiberationWizard />
+                
+                {/* Pipeline avancé si fichiers déjà chargés */}
+                {extractedFiles.size > 0 && (
+                  <>
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">ou utilisez le pipeline avancé</span>
+                      </div>
+                    </div>
+                    
+                    <LiberationPipeline
+                      files={extractedFiles}
+                      projectName={fileName || "Projet"}
+                      projectId={result?.id}
+                      onComplete={(liberationResult) => {
+                        if (liberationResult.success) {
+                          toast({
+                            title: "Libération réussie",
+                            description: "Votre projet a été nettoyé et poussé sur GitHub",
+                          });
+                          fetchHistory();
+                        }
+                      }}
+                    />
+                  </>
                 )}
               </div>
             )}
