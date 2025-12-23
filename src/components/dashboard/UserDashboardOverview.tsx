@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ManifesteBanner } from "./ManifesteBanner";
 
 interface DashboardStats {
   // Exports
@@ -116,6 +117,9 @@ export function UserDashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Manifeste Banner */}
+      <ManifesteBanner />
+
       {/* Security Alert */}
       {stats?.hasSecurityIssues && (
         <Card className="bg-amber-500/10 border-amber-500/30">
