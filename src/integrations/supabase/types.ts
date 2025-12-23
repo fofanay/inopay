@@ -684,6 +684,72 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_liberation_payments: {
+        Row: {
+          base_token_cost_cents: number
+          created_at: string
+          excess_files: number
+          files_data: Json | null
+          id: string
+          inopay_margin_multiplier: number
+          max_files_allowed: number
+          paid_at: string | null
+          processed_at: string | null
+          project_id: string | null
+          project_name: string
+          selected_paths: string[] | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          supplement_amount_cents: number
+          total_files: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_token_cost_cents: number
+          created_at?: string
+          excess_files: number
+          files_data?: Json | null
+          id?: string
+          inopay_margin_multiplier?: number
+          max_files_allowed?: number
+          paid_at?: string | null
+          processed_at?: string | null
+          project_id?: string | null
+          project_name: string
+          selected_paths?: string[] | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          supplement_amount_cents: number
+          total_files: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_token_cost_cents?: number
+          created_at?: string
+          excess_files?: number
+          files_data?: Json | null
+          id?: string
+          inopay_margin_multiplier?: number
+          max_files_allowed?: number
+          paid_at?: string | null
+          processed_at?: string | null
+          project_id?: string | null
+          project_name?: string
+          selected_paths?: string[] | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          supplement_amount_cents?: number
+          total_files?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects_analysis: {
         Row: {
           created_at: string
