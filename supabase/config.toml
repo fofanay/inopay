@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.validate-api-key]
 verify_jwt = false
+
+[functions.fofy-chat]
+verify_jwt = false
