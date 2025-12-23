@@ -1,12 +1,14 @@
 import { ReactNode } from "react";
+import { SovereigntyPulse } from "./SovereigntyPulse";
 
 interface MobileHeaderProps {
   title: string;
   description?: string;
   actions?: ReactNode;
+  showPulse?: boolean;
 }
 
-export function MobileHeader({ title, description, actions }: MobileHeaderProps) {
+export function MobileHeader({ title, description, actions, showPulse = true }: MobileHeaderProps) {
   return (
     <header className="bg-card border-b border-border px-4 py-4 md:px-8 md:py-6">
       <div className="flex items-start justify-between gap-4">
@@ -16,11 +18,10 @@ export function MobileHeader({ title, description, actions }: MobileHeaderProps)
             <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{description}</p>
           )}
         </div>
-        {actions && (
-          <div className="shrink-0">
-            {actions}
-          </div>
-        )}
+        <div className="shrink-0 flex items-center gap-3">
+          {showPulse && <SovereigntyPulse />}
+          {actions}
+        </div>
       </div>
     </header>
   );
