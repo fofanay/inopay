@@ -15,7 +15,9 @@ import {
   AlertCircle,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  FileCode,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,17 @@ interface MigrationData {
   destinationUsername: string;
   destinationRepo: string;
   exportedUrl: string | null;
+}
+
+interface CleaningProgress {
+  total: number;
+  completed: number;
+  currentFile: string;
+}
+
+interface FetchedFile {
+  path: string;
+  content: string;
 }
 
 export function LiberationWizard() {
@@ -71,6 +83,12 @@ export function LiberationWizard() {
   const [showTokens, setShowTokens] = useState({ source: false, destination: false });
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Real processing states
+  const [fetchedFiles, setFetchedFiles] = useState<FetchedFile[]>([]);
+  const [cleanedFiles, setCleanedFiles] = useState<Record<string, string>>({});
+  const [cleaningProgress, setCleaningProgress] = useState<CleaningProgress>({ total: 0, completed: 0, currentFile: "" });
+  const [cleaningStats, setCleaningStats] = useState({ filesProcessed: 0, changesCount: 0 });
 
   useEffect(() => {
     if (user) loadExistingConfig();
@@ -87,9 +105,11 @@ export function LiberationWizard() {
     
     if (data) {
       if (data.github_source_token) {
+        setSourceToken(""); // Don't display existing token
         setStepStatus(prev => ({ ...prev, source: "completed" }));
       }
       if (data.github_destination_token && data.github_destination_username) {
+        setDestinationToken(""); // Don't display existing token
         setStepStatus(prev => ({ ...prev, destination: "completed" }));
         setMigrationData(prev => ({ 
           ...prev, 
@@ -130,36 +150,44 @@ export function LiberationWizard() {
     setStepStatus(prev => ({ ...prev, source: "in_progress" }));
     
     try {
-      // Test if repo is accessible
       const parsed = parseGitHubUrl(migrationData.sourceUrl);
       if (!parsed) throw new Error("URL invalide");
       
-      const headers: Record<string, string> = { Accept: "application/vnd.github.v3+json" };
-      if (sourceToken) headers.Authorization = `Bearer ${sourceToken}`;
+      // Fetch repository files using the edge function
+      console.log("[LiberationWizard] Fetching repo:", migrationData.sourceUrl);
       
-      const response = await fetch(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`, { headers });
-      
-      if (response.ok) {
-        // Save source token if provided
-        if (sourceToken && user) {
-          await supabase
-            .from("user_settings")
-            .upsert({ 
-              user_id: user.id, 
-              github_source_token: sourceToken,
-              updated_at: new Date().toISOString()
-            }, { onConflict: "user_id" });
+      const { data, error } = await supabase.functions.invoke("fetch-github-repo", {
+        body: { 
+          repoUrl: migrationData.sourceUrl,
+          token: sourceToken || undefined
         }
-        
-        setStepStatus(prev => ({ ...prev, source: "completed" }));
-        setCurrentStep(2);
-        toast({ title: "Source validée", description: `Dépôt ${parsed.owner}/${parsed.repo} accessible` });
-      } else if (response.status === 404) {
-        throw new Error("Dépôt non trouvé ou privé (token requis)");
-      } else {
-        throw new Error("Erreur d'accès au dépôt");
+      });
+      
+      if (error) throw new Error(error.message);
+      if (!data?.files || data.files.length === 0) throw new Error("Aucun fichier trouvé dans le dépôt");
+      
+      console.log(`[LiberationWizard] Fetched ${data.files.length} files`);
+      setFetchedFiles(data.files);
+      
+      // Save source token if provided
+      if (sourceToken && user) {
+        await supabase
+          .from("user_settings")
+          .upsert({ 
+            user_id: user.id, 
+            github_source_token: sourceToken,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "user_id" });
       }
+      
+      setStepStatus(prev => ({ ...prev, source: "completed" }));
+      setCurrentStep(2);
+      toast({ 
+        title: "Source validée", 
+        description: `${data.files.length} fichiers récupérés depuis ${parsed.owner}/${parsed.repo}` 
+      });
     } catch (error: any) {
+      console.error("[LiberationWizard] Source error:", error);
       setStepStatus(prev => ({ ...prev, source: "error" }));
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     } finally {
@@ -212,43 +240,148 @@ export function LiberationWizard() {
   };
 
   const startCleaning = async () => {
+    if (fetchedFiles.length === 0) {
+      toast({ title: "Erreur", description: "Aucun fichier à nettoyer", variant: "destructive" });
+      return;
+    }
+    
     setLoading(true);
     setStepStatus(prev => ({ ...prev, cleaning: "in_progress" }));
     
+    const filesToClean = fetchedFiles.filter(f => 
+      f.path.endsWith('.ts') || 
+      f.path.endsWith('.tsx') || 
+      f.path.endsWith('.js') || 
+      f.path.endsWith('.jsx')
+    );
+    
+    const otherFiles = fetchedFiles.filter(f => 
+      !f.path.endsWith('.ts') && 
+      !f.path.endsWith('.tsx') && 
+      !f.path.endsWith('.js') && 
+      !f.path.endsWith('.jsx')
+    );
+    
+    setCleaningProgress({ total: filesToClean.length, completed: 0, currentFile: "" });
+    
     try {
-      // Simulate cleaning process (in real app, this would call the clean-code function)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const cleaned: Record<string, string> = {};
+      let changesCount = 0;
       
+      // Add non-code files directly
+      for (const file of otherFiles) {
+        cleaned[file.path] = file.content;
+      }
+      
+      // Clean code files using the edge function
+      for (let i = 0; i < filesToClean.length; i++) {
+        const file = filesToClean[i];
+        setCleaningProgress({ total: filesToClean.length, completed: i, currentFile: file.path });
+        
+        try {
+          const { data, error } = await supabase.functions.invoke("clean-code", {
+            body: { 
+              code: file.content, 
+              fileName: file.path,
+              projectId: null
+            }
+          });
+          
+          if (error) {
+            console.warn(`[LiberationWizard] Error cleaning ${file.path}:`, error);
+            cleaned[file.path] = file.content; // Keep original on error
+          } else if (data?.cleanedCode) {
+            cleaned[file.path] = data.cleanedCode;
+            if (data.cleanedCode !== file.content) {
+              changesCount++;
+            }
+          } else {
+            cleaned[file.path] = file.content;
+          }
+        } catch (cleanError) {
+          console.warn(`[LiberationWizard] Exception cleaning ${file.path}:`, cleanError);
+          cleaned[file.path] = file.content;
+        }
+        
+        // Small delay to avoid rate limiting
+        if (i < filesToClean.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      setCleanedFiles(cleaned);
+      setCleaningStats({ filesProcessed: filesToClean.length, changesCount });
+      setCleaningProgress({ total: filesToClean.length, completed: filesToClean.length, currentFile: "" });
       setStepStatus(prev => ({ ...prev, cleaning: "completed" }));
       setCurrentStep(4);
-      toast({ title: "Nettoyage terminé", description: "Code débarrassé des dépendances propriétaires" });
+      
+      toast({ 
+        title: "Nettoyage terminé", 
+        description: `${changesCount} fichiers modifiés sur ${filesToClean.length}` 
+      });
     } catch (error: any) {
+      console.error("[LiberationWizard] Cleaning error:", error);
       setStepStatus(prev => ({ ...prev, cleaning: "error" }));
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Erreur de nettoyage", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const startExport = async () => {
+    if (Object.keys(cleanedFiles).length === 0) {
+      toast({ title: "Erreur", description: "Aucun fichier à exporter", variant: "destructive" });
+      return;
+    }
+    
     setLoading(true);
     setStepStatus(prev => ({ ...prev, export: "in_progress" }));
     
     try {
-      // In real app, this would call export-to-github with destination token
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      console.log(`[LiberationWizard] Exporting ${Object.keys(cleanedFiles).length} files to ${migrationData.destinationRepo}`);
       
-      const exportedUrl = `https://github.com/${migrationData.destinationUsername}/${migrationData.destinationRepo}`;
+      const { data, error } = await supabase.functions.invoke("export-to-github", {
+        body: {
+          repoName: migrationData.destinationRepo,
+          description: `🚀 Projet libéré depuis ${migrationData.sourceOwner}/${migrationData.sourceRepo} via Inopay`,
+          files: cleanedFiles,
+          isPrivate: true,
+          github_token: destinationToken || undefined
+        }
+      });
+      
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || "Échec de l'export");
+      
+      const exportedUrl = data.repoUrl;
       setMigrationData(prev => ({ ...prev, exportedUrl }));
       setStepStatus(prev => ({ ...prev, export: "completed" }));
       
+      // Log activity
+      try {
+        await supabase.from("deployment_history").insert({
+          user_id: user?.id,
+          project_name: migrationData.destinationRepo,
+          provider: "github",
+          deployment_type: "liberation",
+          status: "success",
+          deployed_url: exportedUrl,
+          portability_score_before: 50,
+          portability_score_after: 100,
+          files_uploaded: Object.keys(cleanedFiles).length
+        });
+      } catch (logError) {
+        console.warn("[LiberationWizard] Failed to log deployment:", logError);
+      }
+      
       toast({ 
         title: "🎉 Libération réussie!", 
-        description: `Votre code est maintenant sur votre compte personnel`
+        description: `Code exporté vers ${data.repoFullName}`
       });
     } catch (error: any) {
+      console.error("[LiberationWizard] Export error:", error);
       setStepStatus(prev => ({ ...prev, export: "error" }));
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Erreur d'export", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -268,6 +401,10 @@ export function LiberationWizard() {
     setMigrationData({ sourceUrl: "", sourceOwner: "", sourceRepo: "", destinationUsername: "", destinationRepo: "", exportedUrl: null });
     setSourceToken("");
     setDestinationToken("");
+    setFetchedFiles([]);
+    setCleanedFiles({});
+    setCleaningProgress({ total: 0, completed: 0, currentFile: "" });
+    setCleaningStats({ filesProcessed: 0, changesCount: 0 });
   };
 
   const getStepIcon = (status: string, stepNum: number) => {
@@ -354,6 +491,9 @@ export function LiberationWizard() {
                     {migrationData.sourceOwner}/{migrationData.sourceRepo}
                   </span>
                   {stepStatus.source === "completed" && <CheckCircle2 className="h-4 w-4 text-success" />}
+                  {fetchedFiles.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">{fetchedFiles.length} fichiers</Badge>
+                  )}
                 </div>
               )}
               
@@ -362,6 +502,9 @@ export function LiberationWizard() {
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
                   <div className="px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg">
                     <span className="text-sm font-medium">🧹 Inopay</span>
+                    {cleaningStats.changesCount > 0 && (
+                      <Badge variant="default" className="ml-2 text-xs">{cleaningStats.changesCount} modifiés</Badge>
+                    )}
                   </div>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 </>
@@ -399,7 +542,7 @@ export function LiberationWizard() {
               <Alert>
                 <Github className="h-4 w-4" />
                 <AlertDescription>
-                  Entrez l'URL du dépôt GitHub créé par Lovable pour votre projet.
+                  Entrez l'URL du dépôt GitHub créé par Lovable pour votre projet. Tous les fichiers seront récupérés automatiquement.
                 </AlertDescription>
               </Alert>
               
@@ -436,7 +579,7 @@ export function LiberationWizard() {
               
               <Button onClick={validateSource} disabled={loading || !migrationData.sourceUrl}>
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                Valider la source
+                Récupérer les fichiers
               </Button>
             </div>
           )}
@@ -517,16 +660,32 @@ export function LiberationWizard() {
               <Alert>
                 <Sparkles className="h-4 w-4" />
                 <AlertDescription>
-                  Inopay va analyser et nettoyer votre code pour supprimer toutes les dépendances Lovable, GPTEngineer et autres services propriétaires.
+                  Inopay va nettoyer <strong>{fetchedFiles.filter(f => f.path.match(/\.(tsx?|jsx?)$/)).length}</strong> fichiers code pour supprimer les dépendances propriétaires.
                 </AlertDescription>
               </Alert>
               
+              {stepStatus.cleaning === "in_progress" && cleaningProgress.total > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Nettoyage en cours...</span>
+                    <span>{cleaningProgress.completed}/{cleaningProgress.total}</span>
+                  </div>
+                  <Progress value={(cleaningProgress.completed / cleaningProgress.total) * 100} />
+                  {cleaningProgress.currentFile && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileCode className="h-3 w-3" />
+                      {cleaningProgress.currentFile}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
                 <p>✓ Suppression des imports lovable/gptengineer</p>
-                <p>✓ Nettoyage des hooks propriétaires</p>
-                <p>✓ Mise à jour des dépendances package.json</p>
-                <p>✓ Génération du .env.example</p>
-                <p>✓ Ajout des configs Vercel/Netlify</p>
+                <p>✓ Remplacement des hooks propriétaires</p>
+                <p>✓ Optimisation des services cloud → Open Source</p>
+                <p>✓ Mise à jour des dépendances</p>
+                <p>✓ Génération des configs de déploiement</p>
               </div>
               
               <div className="flex gap-2">
@@ -559,9 +718,16 @@ export function LiberationWizard() {
               <Alert className="border-purple-500/50 bg-purple-500/5">
                 <Rocket className="h-4 w-4" />
                 <AlertDescription>
-                  Le code nettoyé va être poussé vers un nouveau dépôt sur votre compte : <strong>@{migrationData.destinationUsername}/{migrationData.destinationRepo}</strong>
+                  <strong>{Object.keys(cleanedFiles).length}</strong> fichiers nettoyés prêts à être exportés vers <strong>@{migrationData.destinationUsername}/{migrationData.destinationRepo}</strong>
                 </AlertDescription>
               </Alert>
+              
+              {cleaningStats.changesCount > 0 && (
+                <div className="bg-success/10 border border-success/30 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-success">✓ {cleaningStats.changesCount} fichiers optimisés</p>
+                  <p className="text-muted-foreground">Code nettoyé des dépendances propriétaires</p>
+                </div>
+              )}
               
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setCurrentStep(3)}>Retour</Button>
@@ -594,6 +760,17 @@ export function LiberationWizard() {
                 <p className="text-muted-foreground">
                   Votre code est maintenant 100% souverain sur votre propre compte GitHub
                 </p>
+              </div>
+              
+              <div className="bg-muted rounded-lg p-4 max-w-md mx-auto space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Fichiers exportés:</span>
+                  <Badge>{Object.keys(cleanedFiles).length}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Fichiers modifiés:</span>
+                  <Badge variant="secondary">{cleaningStats.changesCount}</Badge>
+                </div>
               </div>
               
               <div className="flex items-center justify-center gap-2 p-4 bg-muted rounded-lg max-w-md mx-auto">
