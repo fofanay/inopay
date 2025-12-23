@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 interface ROICalculatorProps {
   currency?: "CAD" | "USD" | "EUR";
@@ -17,6 +18,7 @@ const CURRENCY_CONFIG = {
 };
 
 export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) {
+  const { t } = useTranslation();
   const [appCount, setAppCount] = useState(10);
   const [devHoursPerWeek, setDevHoursPerWeek] = useState(5);
   const [currentMonthlyCost, setCurrentMonthlyCost] = useState(50);
@@ -48,13 +50,13 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
         <div className="text-center mb-12">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
             <Calculator className="h-3 w-3 mr-1" />
-            Calculateur ROI
+            {t("roiCalculator.badge")}
           </Badge>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
-            Combien pourriez-vous économiser ?
+            {t("roiCalculator.title")}
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Estimez vos économies annuelles avec le Plan Portfolio Inopay
+            {t("roiCalculator.subtitle")}
           </p>
         </div>
 
@@ -64,7 +66,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                Votre situation actuelle
+                {t("roiCalculator.yourSituation")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -72,7 +74,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-foreground">
-                    Nombre d'applications
+                    {t("roiCalculator.appCount")}
                   </label>
                   <Badge variant="secondary" className="text-lg font-bold px-3">
                     {appCount}
@@ -87,7 +89,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Apps Lovable, Bolt, Replit, etc.
+                  {t("roiCalculator.appCountHelp")}
                 </p>
               </div>
 
@@ -95,7 +97,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-foreground">
-                    Heures DevOps par semaine
+                    {t("roiCalculator.devHours")}
                   </label>
                   <Badge variant="secondary" className="text-lg font-bold px-3">
                     {devHoursPerWeek}h
@@ -110,7 +112,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Déploiements, debugging, configuration serveur
+                  {t("roiCalculator.devHoursHelp")}
                 </p>
               </div>
 
@@ -118,7 +120,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-foreground">
-                    Coût hosting mensuel par app
+                    {t("roiCalculator.monthlyCost")}
                   </label>
                   <Badge variant="secondary" className="text-lg font-bold px-3">
                     {config.symbol}{currentMonthlyCost}
@@ -133,7 +135,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Vercel Pro, Heroku, Railway, etc.
+                  {t("roiCalculator.monthlyCostHelp")}
                 </p>
               </div>
             </CardContent>
@@ -146,7 +148,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Économies annuelles estimées
+                    {t("roiCalculator.yearlySavings")}
                   </p>
                   <div className="flex items-center justify-center gap-2 mb-4">
                     <TrendingDown className="h-8 w-8 text-primary" />
@@ -156,7 +158,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                     <span className="text-lg text-muted-foreground">/{config.suffix}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Soit ~{config.symbol}{Math.round(totalYearlySavings / 12).toLocaleString()}/mois
+                    {t("roiCalculator.monthlyEquivalent")}{config.symbol}{Math.round(totalYearlySavings / 12).toLocaleString()}{t("roiCalculator.perMonth")}
                   </p>
                 </div>
               </CardContent>
@@ -171,7 +173,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                     {config.symbol}{Math.round(hostingSavings).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Économies hosting/an
+                    {t("roiCalculator.hostingSavingsYear")}
                   </p>
                 </CardContent>
               </Card>
@@ -182,7 +184,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
                     {hoursRecoveredPerMonth}h
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Récupérées/mois
+                    {t("roiCalculator.recoveredMonth")}
                   </p>
                 </CardContent>
               </Card>
@@ -193,20 +195,20 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
               <CardContent className="pt-6">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Coût actuel (PaaS)</span>
+                    <span className="text-muted-foreground">{t("roiCalculator.currentCost")}</span>
                     <span className="font-medium text-destructive line-through">
                       {config.symbol}{yearlyHostingCostBefore.toLocaleString()}/an
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Avec Plan Portfolio</span>
+                    <span className="text-muted-foreground">{t("roiCalculator.withPortfolio")}</span>
                     <span className="font-medium text-success">
                       {config.symbol}{yearlyPortfolioCost.toLocaleString()}/an
                     </span>
                   </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center">
-                      <span className="font-medium">Vous gardez</span>
+                      <span className="font-medium">{t("roiCalculator.youKeep")}</span>
                       <Badge className="bg-success text-success-foreground">
                         {config.symbol}{hostingSavings.toLocaleString()}/an
                       </Badge>
@@ -219,7 +221,7 @@ export default function ROICalculator({ currency = "CAD" }: ROICalculatorProps) 
             {/* CTA */}
             <Button asChild size="lg" className="w-full">
               <Link to="/tarifs">
-                Voir le Plan Portfolio
+                {t("roiCalculator.viewPlan")}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
