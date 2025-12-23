@@ -1,10 +1,10 @@
 {
   "common": {
     "home": "Accueil",
-    "dashboard": "Dashboard",
+    "dashboard": "Tableau de bord",
     "savings": "Économies",
     "pricing": "Tarifs",
-    "upgrade": "Upgrade",
+    "upgrade": "Passer Pro",
     "history": "Historique",
     "settings": "Paramètres",
     "about": "À propos",
@@ -17,11 +17,17 @@
     "liberateCode": "Libérer votre code IA",
     "contact": "Contact",
     "admin": "Admin",
-    "adminDashboard": "Admin Dashboard",
+    "adminDashboard": "Tableau de bord Admin",
     "free": "Gratuit",
     "credits": "crédit | crédits",
-    "new": "NEW",
-    "byok": "BYOK"
+    "new": "NOUVEAU",
+    "byok": "BYOK",
+    "save": "Sauvegarder",
+    "saving": "Sauvegarde...",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès"
   },
   "hero": {
     "badge": "Vibe-Friendly",
@@ -47,19 +53,19 @@
   "process": {
     "step1": {
       "title": "Upload",
-      "description": "Déposez votre ZIP"
+      "description": "Votre code"
     },
     "step2": {
       "title": "Nettoyage IA",
-      "description": "On libère le code"
+      "description": "Inopay"
     },
     "step3": {
       "title": "Déploiement",
-      "description": "Votre VPS IONOS"
+      "description": "Votre VPS"
     }
   },
   "features": {
-    "title": "Pourquoi Inopay ?",
+    "title": "Pourquoi les Vibecoders choisissent Inopay",
     "subtitle": "Tout ce dont vous avez besoin pour passer du prototype au produit.",
     "noTerminal": {
       "title": "Zéro ligne de commande",
@@ -112,7 +118,7 @@
     "aiCleaner": "Nettoyeur IA",
     "operational": "Opérationnel",
     "githubConnection": "Liaison GitHub",
-    "connected": "Connectée",
+    "connected": "Connecté",
     "notConfigured": "Non configuré",
     "infrastructure": "Infrastructure",
     "reactive": "Réactif",
@@ -127,13 +133,147 @@
       "actionRequired": "Action requise"
     }
   },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "overview": "Vue d'ensemble",
+    "fleet": "Fleet Dashboard",
+    "liberation": "Libérer & Déployer",
+    "import": "Importer",
+    "batchImport": "Import Batch",
+    "projects": "Mes Projets",
+    "deployChoice": "Déployer",
+    "sovereignDeploy": "Déploiement Souverain",
+    "syncMirror": "Sync Mirror",
+    "deployments": "Historique",
+    "servers": "Mes Serveurs",
+    "security": "Sécurité",
+    "migration": "Outils Migration",
+    "services": "Mes Services",
+    "exports": "Mes Exports",
+    "analysisComplete": "Analyse terminée",
+    "portabilityScore": "Score de portabilité",
+    "analyzing": "Analyse en cours...",
+    "uploadZip": "Déposez votre fichier ZIP ici",
+    "orClick": "ou cliquez pour sélectionner",
+    "githubImport": "Importer depuis GitHub",
+    "enterGithubUrl": "Entrez l'URL de votre dépôt GitHub"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Configurez votre moteur IA pour le nettoyage de code",
+    "defaultEngine": "Moteur par défaut : DeepSeek V3",
+    "defaultEngineDesc": "Inopay utilise DeepSeek par défaut pour le nettoyage de code. C'est l'un des modèles les plus performants avec un excellent rapport qualité/prix. Avec fallback automatique sur Claude Sonnet en cas de surcharge.",
+    "apiKey": "Votre Clé API IA (Optionnel)",
+    "apiKeyDesc": "Apportez votre propre clé API pour utiliser votre propre compte et bénéficier d'une réduction",
+    "byokDiscount": "Utilisation de votre clé personnelle : Vous bénéficiez d'une réduction de 30% sur le tarif de libération !",
+    "provider": "Fournisseur d'IA",
+    "recommended": "Recommandé",
+    "getKeyAt": "Obtenez votre clé sur",
+    "keyConfigured": "Clé API configurée (mode BYOK actif)",
+    "deleteKey": "Supprimer",
+    "keyDeleted": "Clé supprimée",
+    "keyDeletedDesc": "Inopay utilisera désormais son propre moteur IA",
+    "fallback": "Fallback automatique",
+    "fallbackDesc": "Si DeepSeek est surchargé ou indisponible, Inopay bascule automatiquement sur Claude Sonnet 4 pour garantir que votre libération aboutit toujours. L'équipe Inovaq est automatiquement notifiée.",
+    "manageSubscription": "Gérer mon abonnement",
+    "manageSubscriptionDesc": "Gérez votre abonnement, vos moyens de paiement et vos factures",
+    "currentPlan": "Plan actuel",
+    "renewalDate": "Renouvellement le",
+    "creditsRemaining": "crédit(s) restant(s)",
+    "openPortal": "Gérer sur Stripe",
+    "openingPortal": "Ouverture..."
+  },
+  "pricing": {
+    "title": "Passez du prototype IA à votre infrastructure",
+    "subtitle": "Sans abonnement piège. Sans ligne de commande. Sans complications.",
+    "features": "Analyse gratuite • Tarification transparente • Propriété totale",
+    "currency": "Devise",
+    "portfolio": {
+      "name": "Plan Portfolio",
+      "description": "Pour les créateurs en série",
+      "badge": "💎 Illimité",
+      "feature1": "Déploiements illimités",
+      "feature2": "Jusqu'à 50 repositories",
+      "feature3": "Import batch GitHub",
+      "feature4": "Fleet Dashboard centralisé",
+      "feature5": "Sync Mirror sur tous les projets",
+      "feature6": "Support prioritaire 24/7",
+      "cta": "Passer Pro Portfolio"
+    },
+    "deploy": {
+      "name": "Déploiement VPS",
+      "description": "Du prototype IA à la production",
+      "badge": "Vibe-to-Prod",
+      "feature1": "Zéro ligne de commande",
+      "feature2": "Docker + Coolify installés",
+      "feature3": "PostgreSQL configuré",
+      "feature4": "SSL Let's Encrypt inclus",
+      "feature5": "Monitoring 7 jours inclus",
+      "feature6": "Nettoyage IA du code",
+      "cta": "Libérer mon projet"
+    },
+    "redeploy": {
+      "name": "Re-déploiement",
+      "description": "Mise à jour d'une app existante",
+      "feature1": "Mise à jour du code source",
+      "feature2": "Rebuild automatique",
+      "feature3": "Zero-downtime deployment",
+      "feature4": "Rollback si erreur",
+      "feature5": "Logs de déploiement",
+      "cta": "Mettre à jour"
+    },
+    "monitoring": {
+      "name": "Extension Monitoring",
+      "description": "Surveillance continue après 7 jours",
+      "badge": "Récurrent",
+      "feature1": "Monitoring 24/7 permanent",
+      "feature2": "Auto-restart prioritaire",
+      "feature3": "Alertes en temps réel",
+      "feature4": "Historique des pannes",
+      "feature5": "Support prioritaire",
+      "cta": "Étendre le monitoring"
+    },
+    "server": {
+      "name": "Serveur Supplémentaire",
+      "description": "Ajoutez un VPS à votre compte",
+      "feature1": "Configuration complète",
+      "feature2": "Docker + Coolify",
+      "feature3": "PostgreSQL optionnel",
+      "feature4": "SSL automatique",
+      "feature5": "Monitoring 7 jours",
+      "cta": "Ajouter un serveur"
+    },
+    "comparison": {
+      "title": "Comparez et économisez",
+      "subtitle": "Passez de l'abonnement mensuel au paiement unique",
+      "solution": "Solution",
+      "price": "Prix",
+      "ownership": "Ownership",
+      "time": "Temps",
+      "devops": "DevOps Freelance",
+      "heroku": "Heroku / Railway",
+      "manual": "Config manuelle",
+      "yourTime": "Votre temps"
+    },
+    "included": {
+      "title": "Ce qui est inclus",
+      "subtitle": "Toutes nos fonctionnalités principales",
+      "feature": "Fonctionnalité",
+      "free": "Gratuit",
+      "deployment": "Déploiement",
+      "withMonitoring": "+ Monitoring"
+    }
+  },
   "errors": {
     "ERROR_GITHUB_TOKEN_EXPIRED": "Votre token GitHub a expiré. Veuillez le renouveler dans les paramètres.",
     "ERROR_API_UNAVAILABLE": "L'API est temporairement indisponible. Réessayez dans quelques instants.",
     "ERROR_INSUFFICIENT_CREDITS": "Crédits insuffisants. Veuillez acheter des crédits supplémentaires.",
     "ERROR_VPS_UNREACHABLE": "Impossible de joindre votre VPS. Vérifiez l'adresse IP et les ports.",
     "ERROR_CLEANING_FAILED": "Le nettoyage IA a échoué. Veuillez réessayer.",
-    "ERROR_DEPLOYMENT_FAILED": "Le déploiement a échoué. Consultez les logs pour plus de détails."
+    "ERROR_DEPLOYMENT_FAILED": "Le déploiement a échoué. Consultez les logs pour plus de détails.",
+    "saveFailed": "Impossible de sauvegarder les paramètres",
+    "checkoutFailed": "Impossible de créer la session de paiement",
+    "portalFailed": "Impossible d'ouvrir le portail de gestion"
   },
   "meta": {
     "title": "Inopay - Libérez votre code IA",

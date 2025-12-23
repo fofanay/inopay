@@ -7,6 +7,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const languages = [
   { code: "fr", name: "Français", flag: "🇫🇷" },
@@ -18,13 +21,43 @@ interface LanguageSwitcherProps {
 }
 
 const LanguageSwitcher = ({ variant = "default" }: LanguageSwitcherProps) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const currentLang = languages.find((l) => l.code === i18n.language) || languages[0];
 
-  const handleLanguageChange = (langCode: string) => {
+  const handleLanguageChange = async (langCode: string) => {
+    // Update i18next language
     i18n.changeLanguage(langCode);
     // Update document lang attribute for SEO
     document.documentElement.lang = langCode;
+    
+    // Save to user_settings if user is logged in
+    if (user) {
+      try {
+        // Check if user has existing settings
+        const { data: existingSettings } = await supabase
+          .from("user_settings")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingSettings) {
+          // Update existing settings
+          await supabase
+            .from("user_settings")
+            .update({ language: langCode })
+            .eq("id", existingSettings.id);
+        } else {
+          // Create new settings with language
+          await supabase
+            .from("user_settings")
+            .insert([{ user_id: user.id, language: langCode }]);
+        }
+      } catch (error) {
+        console.error("Error saving language preference:", error);
+      }
+    }
   };
 
   if (variant === "navbar") {

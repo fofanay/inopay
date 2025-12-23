@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useCurrencyDetection, type Currency } from "@/hooks/useCurrencyDetection";
+import { useTranslation } from "react-i18next";
 
 // Stripe Price IDs par devise - Services à l'acte + Portfolio
 const STRIPE_PRICES = {
@@ -71,6 +72,7 @@ const Pricing = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [loadingService, setLoadingService] = useState<string | null>(null);
   const { currency, setCurrency } = useCurrencyDetection();
 
@@ -108,8 +110,8 @@ const Pricing = () => {
     } catch (error) {
       console.error("Checkout error:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de créer la session de paiement",
+        title: t('common.error'),
+        description: t('errors.checkoutFailed'),
         variant: "destructive",
       });
     } finally {
@@ -120,41 +122,41 @@ const Pricing = () => {
   const services = [
     {
       id: "portfolio" as ServiceType,
-      name: "Plan Portfolio",
-      description: "Pour les créateurs en série",
+      name: t('pricing.portfolio.name'),
+      description: t('pricing.portfolio.description'),
       price: PRICES[currency].portfolio,
-      period: `${PRICES[currency].symbol} / mois`,
+      period: `${PRICES[currency].symbol} / ${t('common.month') || 'mois'}`,
       icon: Briefcase,
-      badge: "💎 Illimité",
+      badge: t('pricing.portfolio.badge'),
       popular: true,
       features: [
-        "Déploiements illimités",
-        "Jusqu'à 50 repositories",
-        "Import batch GitHub",
-        "Fleet Dashboard centralisé",
-        "Sync Mirror sur tous les projets",
-        "Support prioritaire 24/7",
+        t('pricing.portfolio.feature1'),
+        t('pricing.portfolio.feature2'),
+        t('pricing.portfolio.feature3'),
+        t('pricing.portfolio.feature4'),
+        t('pricing.portfolio.feature5'),
+        t('pricing.portfolio.feature6'),
       ],
-      buttonText: "Passer Pro Portfolio",
+      buttonText: t('pricing.portfolio.cta'),
     },
     {
       id: "deploy" as ServiceType,
-      name: "Déploiement VPS",
-      description: "Du prototype IA à la production",
+      name: t('pricing.deploy.name'),
+      description: t('pricing.deploy.description'),
       price: PRICES[currency].deploy,
-      period: `${PRICES[currency].symbol} / déploiement`,
+      period: `${PRICES[currency].symbol} / ${t('pricing.perDeployment') || 'déploiement'}`,
       icon: Rocket,
-      badge: "Vibe-to-Prod",
+      badge: t('pricing.deploy.badge'),
       popular: false,
       features: [
-        "Zéro ligne de commande",
-        "Docker + Coolify installés",
-        "PostgreSQL configuré",
-        "SSL Let's Encrypt inclus",
-        "Monitoring 7 jours inclus",
-        "Nettoyage IA du code",
+        t('pricing.deploy.feature1'),
+        t('pricing.deploy.feature2'),
+        t('pricing.deploy.feature3'),
+        t('pricing.deploy.feature4'),
+        t('pricing.deploy.feature5'),
+        t('pricing.deploy.feature6'),
       ],
-      buttonText: "Libérer mon projet",
+      buttonText: t('pricing.deploy.cta'),
     },
     {
       id: "redeploy" as ServiceType,
@@ -223,13 +225,13 @@ const Pricing = () => {
               🎨 Vibe-to-Production
             </Badge>
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-foreground">
-              Passez du prototype IA à votre infrastructure
+              {t('pricing.title')}
             </h1>
             <p className="text-base md:text-xl text-muted-foreground max-w-2xl mx-auto mb-3 md:mb-4">
-              Sans abonnement piège. Sans ligne de commande. Sans complications.
+              {t('pricing.subtitle')}
             </p>
             <p className="text-sm md:text-lg text-primary font-medium">
-              Analyse gratuite • Tarification transparente • Propriété totale
+              {t('pricing.features')}
             </p>
             
             {/* Currency Selector */}
@@ -325,13 +327,13 @@ const Pricing = () => {
             <div className="text-center mb-8 md:mb-10">
               <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
                 <Sparkles className="h-3 w-3 mr-1" />
-                Divisez vos factures par 3
+                {t('hero.benefits.divideCosts')}
               </Badge>
               <h2 className="text-xl md:text-3xl font-bold mb-3 md:mb-4 text-foreground">
-                Comparez et économisez
+                {t('pricing.comparison.title')}
               </h2>
               <p className="text-sm md:text-base text-muted-foreground">
-                Passez de l'abonnement mensuel au paiement unique
+                {t('pricing.comparison.subtitle')}
               </p>
             </div>
 
@@ -339,10 +341,10 @@ const Pricing = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[150px] md:w-[200px] text-xs md:text-sm">Solution</TableHead>
-                    <TableHead className="text-center text-xs md:text-sm">Prix</TableHead>
-                    <TableHead className="text-center text-xs md:text-sm hidden sm:table-cell">Ownership</TableHead>
-                    <TableHead className="text-center text-xs md:text-sm">Temps</TableHead>
+                    <TableHead className="w-[150px] md:w-[200px] text-xs md:text-sm">{t('pricing.comparison.solution')}</TableHead>
+                    <TableHead className="text-center text-xs md:text-sm">{t('pricing.comparison.price')}</TableHead>
+                    <TableHead className="text-center text-xs md:text-sm hidden sm:table-cell">{t('pricing.comparison.ownership')}</TableHead>
+                    <TableHead className="text-center text-xs md:text-sm">{t('pricing.comparison.time')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -359,20 +361,20 @@ const Pricing = () => {
                     <TableCell className="text-center text-success font-medium text-xs md:text-sm">~10 min</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium text-xs md:text-sm">DevOps Freelance</TableCell>
+                    <TableCell className="font-medium text-xs md:text-sm">{t('pricing.comparison.devops')}</TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">150-300 $/h</TableCell>
                     <TableCell className="text-center hidden sm:table-cell"><Check className="h-3 w-3 md:h-4 md:w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">4-8h</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium text-xs md:text-sm">Heroku / Railway</TableCell>
+                    <TableCell className="font-medium text-xs md:text-sm">{t('pricing.comparison.heroku')}</TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">20-50 $/mois</TableCell>
                     <TableCell className="text-center text-destructive hidden sm:table-cell text-xs md:text-sm">Non</TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">Variable</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium text-xs md:text-sm">Config manuelle</TableCell>
-                    <TableCell className="text-center text-muted-foreground text-xs md:text-sm">Votre temps</TableCell>
+                    <TableCell className="font-medium text-xs md:text-sm">{t('pricing.comparison.manual')}</TableCell>
+                    <TableCell className="text-center text-muted-foreground text-xs md:text-sm">{t('pricing.comparison.yourTime')}</TableCell>
                     <TableCell className="text-center hidden sm:table-cell"><Check className="h-3 w-3 md:h-4 md:w-4 text-success mx-auto" /></TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">1-2 jours</TableCell>
                   </TableRow>
@@ -385,10 +387,10 @@ const Pricing = () => {
           <div className="mt-20 max-w-5xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold mb-4 text-foreground">
-                Ce qui est inclus
+                {t('pricing.included.title')}
               </h2>
               <p className="text-muted-foreground">
-                Toutes nos fonctionnalités principales
+                {t('pricing.included.subtitle')}
               </p>
             </div>
 
@@ -396,10 +398,10 @@ const Pricing = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[200px]">Fonctionnalité</TableHead>
-                    <TableHead className="text-center">Gratuit</TableHead>
-                    <TableHead className="text-center bg-primary/5">Déploiement</TableHead>
-                    <TableHead className="text-center">+ Monitoring</TableHead>
+                    <TableHead className="w-[200px]">{t('pricing.included.feature')}</TableHead>
+                    <TableHead className="text-center">{t('pricing.included.free')}</TableHead>
+                    <TableHead className="text-center bg-primary/5">{t('pricing.included.deployment')}</TableHead>
+                    <TableHead className="text-center">{t('pricing.included.withMonitoring')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -492,19 +494,19 @@ const Pricing = () => {
               Vibe-to-Production
             </Badge>
             <h2 className="text-3xl font-bold mb-6 text-foreground">
-              Prêt à libérer votre création ?
+              {t('cta.title')}
             </h2>
             <p className="text-lg text-muted-foreground mb-10">
-              Analysez votre projet gratuitement et découvrez votre <span className="text-primary font-semibold">Vibe-Score™</span>.
+              {t('cta.description')}
             </p>
             <Link to={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
                 <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
                   <Terminal className="h-3 w-3 mr-1" />
-                  Zéro Terminal
+                  {t('features.noTerminal.badge')}
                 </Badge>
                 <Rocket className="mr-2 h-5 w-5" />
-                {user ? "Libérer mon projet" : "Commencer gratuitement"}
+                {user ? t('cta.buttonLoggedIn') : t('cta.button')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
