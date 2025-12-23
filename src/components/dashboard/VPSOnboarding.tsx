@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { HetznerAutoProvision } from './HetznerAutoProvision';
+import { useTranslation } from 'react-i18next';
 import { 
   Server, 
   Copy, 
@@ -50,7 +51,8 @@ interface UserServer {
 }
 
 export function VPSOnboarding() {
-  const [step, setStep] = useState(0); // Start at step 0 now
+  const { t } = useTranslation();
+  const [step, setStep] = useState(0);
   const [hasExistingVPS, setHasExistingVPS] = useState<boolean | null>(null);
   const [showCreationGuide, setShowCreationGuide] = useState(false);
   const [showAutoProvision, setShowAutoProvision] = useState(false);
@@ -64,7 +66,6 @@ export function VPSOnboarding() {
   const [checkingStatus, setCheckingStatus] = useState(false);
   const { toast } = useToast();
 
-  // Poll server status when installing
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -82,8 +83,8 @@ export function VPSOnboarding() {
           if (!error && data.status === 'ready') {
             setCurrentServer(prev => prev ? { ...prev, status: 'ready', coolify_url: data.coolify_url } : null);
             toast({
-              title: "Serveur prêt !",
-              description: "Coolify est installé et opérationnel.",
+              title: t('vpsOnboarding.serverReady'),
+              description: t('vpsOnboarding.serverReadyDesc'),
             });
             clearInterval(interval);
           }
@@ -92,30 +93,29 @@ export function VPSOnboarding() {
         } finally {
           setCheckingStatus(false);
         }
-      }, 10000); // Check every 10 seconds
+      }, 10000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [currentServer, toast]);
+  }, [currentServer, toast, t]);
 
   const handleSetupServer = async () => {
     if (!serverName || !ipAddress) {
       toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs.",
+        title: t('common.error'),
+        description: t('vpsOnboarding.fillAllFields'),
         variant: "destructive"
       });
       return;
     }
 
-    // Validate IP address format
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipRegex.test(ipAddress)) {
       toast({
-        title: "Erreur",
-        description: "Adresse IP invalide.",
+        title: t('common.error'),
+        description: t('vpsOnboarding.invalidIp'),
         variant: "destructive"
       });
       return;
@@ -126,8 +126,8 @@ export function VPSOnboarding() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({
-          title: "Erreur",
-          description: "Vous devez être connecté.",
+          title: t('common.error'),
+          description: t('vpsOnboarding.mustBeLoggedIn'),
           variant: "destructive"
         });
         return;
@@ -144,14 +144,14 @@ export function VPSOnboarding() {
       setStep(3);
 
       toast({
-        title: "Serveur enregistré",
-        description: "Exécutez la commande sur votre VPS pour continuer.",
+        title: t('vpsOnboarding.serverRegistered'),
+        description: t('vpsOnboarding.serverRegisteredDesc'),
       });
     } catch (error: any) {
       console.error('Setup error:', error);
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de configurer le serveur.",
+        title: t('common.error'),
+        description: error.message,
         variant: "destructive"
       });
     } finally {
@@ -164,23 +164,21 @@ export function VPSOnboarding() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-      title: "Copié !",
-      description: "Collez cette commande dans votre terminal SSH.",
+      title: t('vpsOnboarding.copied'),
+      description: t('vpsOnboarding.copyDesc'),
     });
   };
 
-  // New Step 0: Ask if user has existing VPS
   const renderStep0 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Comment souhaitez-vous configurer votre VPS ?</h3>
+        <h3 className="text-lg font-semibold">{t('vpsOnboarding.configQuestion')}</h3>
         <p className="text-sm text-muted-foreground">
-          Choisissez l'option qui correspond le mieux à votre situation
+          {t('vpsOnboarding.configSubtitle')}
         </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        {/* Option: Existing VPS */}
         <Card 
           className={`cursor-pointer transition-all hover:border-primary/50 ${
             hasExistingVPS === true ? 'border-primary ring-2 ring-primary/20' : ''
@@ -195,14 +193,13 @@ export function VPSOnboarding() {
             <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mx-auto">
               <Check className="w-6 h-6 text-success" />
             </div>
-            <h4 className="font-medium">J'ai déjà un VPS</h4>
+            <h4 className="font-medium">{t('vpsOnboarding.existingVps')}</h4>
             <p className="text-sm text-muted-foreground">
-              J'ai un serveur Ubuntu avec son adresse IP
+              {t('vpsOnboarding.existingVpsDesc')}
             </p>
           </CardContent>
         </Card>
 
-        {/* Option: Auto Provision with Hetzner */}
         <Card 
           className="cursor-pointer transition-all hover:border-primary/50 border-primary/30 relative"
           onClick={() => {
@@ -214,21 +211,20 @@ export function VPSOnboarding() {
           <div className="absolute -top-2 left-1/2 -translate-x-1/2">
             <Badge className="bg-primary text-primary-foreground text-xs">
               <Sparkles className="w-3 h-3 mr-1" />
-              Recommandé
+              {t('vpsOnboarding.recommended')}
             </Badge>
           </div>
           <CardContent className="pt-8 text-center space-y-3">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
               <Zap className="w-6 h-6 text-primary" />
             </div>
-            <h4 className="font-medium">Création automatique</h4>
+            <h4 className="font-medium">{t('vpsOnboarding.autoProvision')}</h4>
             <p className="text-sm text-muted-foreground">
-              Créer un VPS Hetzner en 2 clics (~5€/mois)
+              {t('vpsOnboarding.autoProvisionDesc')}
             </p>
           </CardContent>
         </Card>
 
-        {/* Option: Manual Guide */}
         <Card 
           className="cursor-pointer transition-all hover:border-primary/50"
           onClick={() => {
@@ -242,9 +238,9 @@ export function VPSOnboarding() {
             <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto">
               <Server className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h4 className="font-medium">Guide manuel</h4>
+            <h4 className="font-medium">{t('vpsOnboarding.manualGuide')}</h4>
             <p className="text-sm text-muted-foreground">
-              Je préfère créer mon VPS manuellement
+              {t('vpsOnboarding.manualGuideDesc')}
             </p>
           </CardContent>
         </Card>
@@ -253,13 +249,13 @@ export function VPSOnboarding() {
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         <h4 className="font-medium flex items-center gap-2">
           <Shield className="w-4 h-4 text-primary" />
-          Pourquoi un VPS ?
+          {t('vpsOnboarding.whyVps')}
         </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• <strong>Contrôle total</strong> : Vous êtes propriétaire de votre infrastructure</li>
-          <li>• <strong>Économique</strong> : À partir de 5€/mois pour des déploiements illimités</li>
-          <li>• <strong>Performance</strong> : Ressources dédiées pour vos applications</li>
-          <li>• <strong>Souveraineté</strong> : Vos données restent sur votre serveur</li>
+          <li>• <strong>{t('vpsOnboarding.whyVpsReasons.control').split(':')[0]}</strong>: {t('vpsOnboarding.whyVpsReasons.control').split(':')[1]}</li>
+          <li>• <strong>{t('vpsOnboarding.whyVpsReasons.economic').split(':')[0]}</strong>: {t('vpsOnboarding.whyVpsReasons.economic').split(':')[1]}</li>
+          <li>• <strong>{t('vpsOnboarding.whyVpsReasons.performance').split(':')[0]}</strong>: {t('vpsOnboarding.whyVpsReasons.performance').split(':')[1]}</li>
+          <li>• <strong>{t('vpsOnboarding.whyVpsReasons.sovereignty').split(':')[0]}</strong>: {t('vpsOnboarding.whyVpsReasons.sovereignty').split(':')[1]}</li>
         </ul>
       </div>
     </div>
@@ -268,9 +264,9 @@ export function VPSOnboarding() {
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Choisissez votre hébergeur VPS</h3>
+        <h3 className="text-lg font-semibold">{t('vpsOnboarding.chooseProvider')}</h3>
         <p className="text-sm text-muted-foreground">
-          Sélectionnez où vous souhaitez héberger votre application
+          {t('vpsOnboarding.chooseProviderDesc')}
         </p>
       </div>
 
@@ -292,7 +288,7 @@ export function VPSOnboarding() {
 
       <div className="flex items-center justify-between pt-4">
         <Button variant="outline" size="sm" onClick={() => setStep(0)}>
-          Retour
+          {t('vpsOnboarding.back')}
         </Button>
 
         <div className="flex gap-2">
@@ -308,12 +304,12 @@ export function VPSOnboarding() {
               }}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Créer un compte {VPS_PROVIDERS.find(p => p.id === provider)?.name}
+              {t('vpsOnboarding.createAccount')} {VPS_PROVIDERS.find(p => p.id === provider)?.name}
             </Button>
           )}
 
           <Button onClick={() => setStep(2)}>
-            Continuer
+            {t('vpsOnboarding.continue')}
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
@@ -324,33 +320,33 @@ export function VPSOnboarding() {
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Informations du serveur</h3>
+        <h3 className="text-lg font-semibold">{t('vpsOnboarding.serverInfo')}</h3>
         <p className="text-sm text-muted-foreground">
-          Entrez les détails de votre VPS Ubuntu 22.04
+          {t('vpsOnboarding.serverInfoDesc')}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="serverName">Nom du serveur</Label>
+          <Label htmlFor="serverName">{t('vpsOnboarding.serverName')}</Label>
           <Input
             id="serverName"
-            placeholder="Mon serveur de production"
+            placeholder={t('vpsOnboarding.serverNamePlaceholder')}
             value={serverName}
             onChange={(e) => setServerName(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ipAddress">Adresse IP du serveur</Label>
+          <Label htmlFor="ipAddress">{t('vpsOnboarding.ipAddress')}</Label>
           <Input
             id="ipAddress"
-            placeholder="123.45.67.89"
+            placeholder={t('vpsOnboarding.ipAddressPlaceholder')}
             value={ipAddress}
             onChange={(e) => setIpAddress(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            L'adresse IP publique de votre VPS
+            {t('vpsOnboarding.ipAddressDesc')}
           </p>
         </div>
       </div>
@@ -358,29 +354,29 @@ export function VPSOnboarding() {
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         <h4 className="font-medium flex items-center gap-2">
           <Shield className="w-4 h-4 text-green-500" />
-          Configuration requise
+          {t('vpsOnboarding.requirements')}
         </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Ubuntu 22.04 LTS (recommandé)</li>
-          <li>• Minimum 2 Go RAM, 2 vCPU</li>
-          <li>• Accès root via SSH</li>
-          <li>• Ports 80, 443 et 8000 ouverts</li>
+          <li>• {t('vpsOnboarding.requirementsList.ubuntu')}</li>
+          <li>• {t('vpsOnboarding.requirementsList.minSpecs')}</li>
+          <li>• {t('vpsOnboarding.requirementsList.rootAccess')}</li>
+          <li>• {t('vpsOnboarding.requirementsList.portsOpen')}</li>
         </ul>
       </div>
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep(1)}>
-          Retour
+          {t('vpsOnboarding.back')}
         </Button>
         <Button onClick={handleSetupServer} disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Configuration...
+              {t('vpsOnboarding.configuring')}
             </>
           ) : (
             <>
-              Configurer
+              {t('vpsOnboarding.configure')}
               <ChevronRight className="w-4 h-4 ml-2" />
             </>
           )}
@@ -392,9 +388,9 @@ export function VPSOnboarding() {
   const renderStep3 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Installez Coolify sur votre serveur</h3>
+        <h3 className="text-lg font-semibold">{t('vpsOnboarding.installCoolify')}</h3>
         <p className="text-sm text-muted-foreground">
-          Exécutez cette commande sur votre VPS pour installer automatiquement Docker et Coolify
+          {t('vpsOnboarding.installCoolifyDesc')}
         </p>
       </div>
 
@@ -415,7 +411,7 @@ export function VPSOnboarding() {
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Terminal className="w-4 h-4" />
-          <span>Connectez-vous via SSH : <code className="bg-muted px-1 rounded">ssh root@{ipAddress}</code></span>
+          <span>{t('vpsOnboarding.sshConnect')} <code className="bg-muted px-1 rounded">ssh root@{ipAddress}</code></span>
         </div>
       </div>
 
@@ -430,15 +426,15 @@ export function VPSOnboarding() {
             <div className="space-y-1 flex-1">
               <p className="font-medium">
                 {currentServer?.status === 'ready' 
-                  ? "✅ Coolify est opérationnel !" 
+                  ? t('vpsOnboarding.serverReady')
                   : currentServer?.status === 'installing'
-                    ? "Installation en cours..."
-                    : "En attente de l'installation..."}
+                    ? t('vpsOnboarding.installing')
+                    : t('vpsOnboarding.waitingInstall')}
               </p>
               <p className="text-sm text-muted-foreground">
                 {currentServer?.status === 'ready' 
-                  ? "Votre serveur est prêt pour les déploiements"
-                  : "Inopay détectera automatiquement quand Coolify sera installé"}
+                  ? t('vpsOnboarding.serverReadyDesc')
+                  : t('vpsOnboarding.waitingInstallDesc')}
               </p>
               {currentServer?.coolify_url && (
                 <Button
@@ -446,13 +442,13 @@ export function VPSOnboarding() {
                   className="p-0 h-auto text-sm"
                   onClick={() => window.open(currentServer.coolify_url!, '_blank')}
                 >
-                  Ouvrir Coolify <ExternalLink className="w-3 h-3 ml-1" />
+                  {t('coolifyConfig.openCoolify')} <ExternalLink className="w-3 h-3 ml-1" />
                 </Button>
               )}
             </div>
             {checkingStatus && (
               <Badge variant="secondary" className="shrink-0">
-                Vérification...
+                {t('vpsOnboarding.checking')}
               </Badge>
             )}
           </div>
@@ -462,23 +458,23 @@ export function VPSOnboarding() {
       <div className="bg-muted/50 rounded-lg p-4 space-y-2">
         <h4 className="font-medium flex items-center gap-2">
           <Zap className="w-4 h-4 text-yellow-500" />
-          Ce que fait ce script
+          {t('vpsOnboarding.scriptDoes')}
         </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>1. Met à jour le système</li>
-          <li>2. Installe Docker</li>
-          <li>3. Installe Coolify avec SSL automatique</li>
-          <li>4. Configure le callback vers Inopay</li>
+          <li>1. {t('vpsOnboarding.scriptSteps.update')}</li>
+          <li>2. {t('vpsOnboarding.scriptSteps.docker')}</li>
+          <li>3. {t('vpsOnboarding.scriptSteps.coolify')}</li>
+          <li>4. {t('vpsOnboarding.scriptSteps.callback')}</li>
         </ul>
       </div>
 
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={() => setStep(2)}>
-          Retour
+          {t('vpsOnboarding.back')}
         </Button>
         {currentServer?.status === 'ready' && (
           <Button onClick={() => setStep(4)}>
-            Continuer vers le déploiement
+            {t('vpsOnboarding.continueDeployment')}
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         )}
@@ -492,9 +488,9 @@ export function VPSOnboarding() {
         <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check className="w-8 h-8 text-green-600" />
         </div>
-        <h3 className="text-lg font-semibold">Configuration terminée !</h3>
+        <h3 className="text-lg font-semibold">{t('common.success')}!</h3>
         <p className="text-sm text-muted-foreground">
-          Votre serveur <strong>{serverName}</strong> est prêt pour les déploiements
+          {t('vpsOnboarding.serverReadyDesc')}
         </p>
       </div>
 
@@ -508,11 +504,11 @@ export function VPSOnboarding() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Statut</span>
-            <Badge variant="default" className="bg-green-500">Prêt</Badge>
+            <span className="text-sm text-muted-foreground">{t('analyzedProjects.columns.status')}</span>
+            <Badge variant="default" className="bg-green-500">{t('serverManagement.status.ready')}</Badge>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Provider</span>
+            <span className="text-sm text-muted-foreground">{t('serverManagement.provider')}</span>
             <span className="text-sm">{VPS_PROVIDERS.find(p => p.id === provider)?.name}</span>
           </div>
           {currentServer?.coolify_url && (
@@ -523,20 +519,15 @@ export function VPSOnboarding() {
                 className="p-0 h-auto text-sm"
                 onClick={() => window.open(currentServer.coolify_url!, '_blank')}
               >
-                Ouvrir <ExternalLink className="w-3 h-3 ml-1" />
+                {t('coolifyConfig.openCoolify')} <ExternalLink className="w-3 h-3 ml-1" />
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
-
-      <p className="text-sm text-center text-muted-foreground">
-        Vous pouvez maintenant déployer vos applications sur ce serveur depuis l'onglet "Déploiement"
-      </p>
     </div>
   );
 
-  // Handle auto provision success
   const handleAutoProvisionSuccess = (serverData: {
     id: string;
     name: string;
@@ -558,10 +549,9 @@ export function VPSOnboarding() {
       created_at: new Date().toISOString(),
     });
     setShowAutoProvision(false);
-    setStep(3); // Go directly to installation step
+    setStep(3);
   };
 
-  // If showing auto provision, render that instead
   if (showAutoProvision) {
     return (
       <Card className="w-full max-w-2xl mx-auto">
@@ -586,14 +576,13 @@ export function VPSOnboarding() {
             <Server className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <CardTitle>Ajouter un serveur VPS</CardTitle>
+            <CardTitle>{t('serverManagement.addServer')}</CardTitle>
             <CardDescription>
-              Configurez votre propre serveur pour des déploiements illimités
+              {t('serverManagement.subtitle')}
             </CardDescription>
           </div>
         </div>
         
-        {/* Progress indicator */}
         {step > 0 && !showAutoProvision && (
           <div className="flex items-center gap-2 pt-4">
             {[1, 2, 3, 4].map((s) => (

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CoolifyGuide } from './CoolifyGuide';
+import { useTranslation } from 'react-i18next';
 import { 
   Key, 
   Loader2, 
@@ -33,6 +34,7 @@ export function CoolifyTokenConfig({
   currentToken,
   onSuccess 
 }: CoolifyTokenConfigProps) {
+  const { t } = useTranslation();
   const [token, setToken] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
@@ -44,8 +46,8 @@ export function CoolifyTokenConfig({
   const handleValidateAndSave = async () => {
     if (!token.trim()) {
       toast({
-        title: "Token requis",
-        description: "Veuillez entrer votre token API Coolify.",
+        title: t('coolifyConfig.tokenRequired'),
+        description: t('coolifyConfig.tokenRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -69,8 +71,8 @@ export function CoolifyTokenConfig({
       if (data.valid) {
         setIsValid(true);
         toast({
-          title: isEditing ? "Token mis à jour !" : "Token validé !",
-          description: "Votre connexion à Coolify est configurée.",
+          title: isEditing ? t('coolifyConfig.tokenUpdated') : t('coolifyConfig.tokenValidated'),
+          description: t('coolifyConfig.connectionConfigured'),
         });
         if (isEditing) {
           handleEditSuccess();
@@ -80,8 +82,8 @@ export function CoolifyTokenConfig({
       } else {
         setIsValid(false);
         toast({
-          title: "Token invalide",
-          description: data.error || "Impossible de se connecter à Coolify avec ce token.",
+          title: t('coolifyConfig.tokenInvalid'),
+          description: data.error || t('coolifyConfig.tokenInvalidDesc'),
           variant: "destructive"
         });
       }
@@ -89,8 +91,8 @@ export function CoolifyTokenConfig({
       console.error('Validation error:', error);
       setIsValid(false);
       toast({
-        title: "Erreur de validation",
-        description: error.message || "Impossible de valider le token.",
+        title: t('coolifyConfig.validationError'),
+        description: error.message || t('coolifyConfig.validationErrorDesc'),
         variant: "destructive"
       });
     } finally {
@@ -101,8 +103,8 @@ export function CoolifyTokenConfig({
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copié !",
-      description: "URL copiée dans le presse-papier.",
+      title: t('coolifyConfig.copied'),
+      description: t('coolifyConfig.copiedDesc'),
     });
   };
 
@@ -128,9 +130,9 @@ export function CoolifyTokenConfig({
               <CheckCircle2 className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="font-medium">Coolify configuré</p>
+              <p className="font-medium">{t('coolifyConfig.configured')}</p>
               <p className="text-sm text-muted-foreground">
-                Votre serveur est prêt pour les déploiements
+                {t('coolifyConfig.configuredDesc')}
               </p>
             </div>
             <div className="flex gap-2">
@@ -140,7 +142,7 @@ export function CoolifyTokenConfig({
                 onClick={() => setIsEditing(true)}
               >
                 <Key className="w-4 h-4 mr-2" />
-                Modifier le token
+                {t('coolifyConfig.modifyToken')}
               </Button>
               <Button
                 variant="outline"
@@ -148,7 +150,7 @@ export function CoolifyTokenConfig({
                 onClick={() => window.open(coolifyDashboardUrl, '_blank')}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Ouvrir Coolify
+                {t('coolifyConfig.openCoolify')}
               </Button>
             </div>
           </div>
@@ -164,13 +166,13 @@ export function CoolifyTokenConfig({
           <div className="flex items-center gap-2">
             <Key className={isEditing ? "w-5 h-5 text-primary" : "w-5 h-5 text-warning"} />
             <CardTitle className="text-lg">
-              {isEditing ? "Modifier le token Coolify" : "Configurer Coolify"}
+              {isEditing ? t('coolifyConfig.titleEdit') : t('coolifyConfig.title')}
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
             {isEditing && (
               <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                Annuler
+                {t('coolifyConfig.cancel')}
               </Button>
             )}
             <CoolifyGuide serverIp={serverIp} coolifyUrl={coolifyUrl || undefined} />
@@ -178,8 +180,8 @@ export function CoolifyTokenConfig({
         </div>
         <CardDescription>
           {isEditing 
-            ? "Entrez votre nouveau token API Coolify avec les permissions de lecture et écriture"
-            : "Connectez Inopay à Coolify pour activer les déploiements automatiques"
+            ? t('coolifyConfig.descriptionEdit')
+            : t('coolifyConfig.description')
           }
         </CardDescription>
       </CardHeader>
@@ -188,7 +190,7 @@ export function CoolifyTokenConfig({
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription className="space-y-3">
-            <p className="font-medium">Comment obtenir votre token API Coolify :</p>
+            <p className="font-medium">{t('coolifyConfig.howToGet')}</p>
             <ol className="list-decimal list-inside space-y-2 text-sm">
               <li>
                 <Button
@@ -196,20 +198,20 @@ export function CoolifyTokenConfig({
                   className="p-0 h-auto text-primary"
                   onClick={() => window.open(coolifyDashboardUrl, '_blank')}
                 >
-                  Ouvrir Coolify <ExternalLink className="w-3 h-3 ml-1 inline" />
+                  {t('coolifyConfig.openCoolify')} <ExternalLink className="w-3 h-3 ml-1 inline" />
                 </Button>
-                {' '}et créez votre compte admin si c'est la première connexion
+                {' '}{t('coolifyConfig.step1')}
               </li>
-              <li>Allez dans <Badge variant="outline" className="text-xs">Settings</Badge> → <Badge variant="outline" className="text-xs">API</Badge></li>
-              <li>Cliquez sur <Badge variant="outline" className="text-xs">Create new token</Badge></li>
-              <li>Copiez le token et collez-le ci-dessous</li>
+              <li>{t('coolifyConfig.step2')} <Badge variant="outline" className="text-xs">Settings</Badge> → <Badge variant="outline" className="text-xs">API</Badge></li>
+              <li>{t('coolifyConfig.step3')} <Badge variant="outline" className="text-xs">Create new token</Badge></li>
+              <li>{t('coolifyConfig.step4')}</li>
             </ol>
           </AlertDescription>
         </Alert>
 
         {/* Coolify URL display */}
         <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-          <span className="text-sm text-muted-foreground">URL Coolify:</span>
+          <span className="text-sm text-muted-foreground">{t('coolifyConfig.coolifyUrl')}</span>
           <code className="text-sm font-mono flex-1">{coolifyDashboardUrl}</code>
           <Button
             variant="ghost"
@@ -231,12 +233,12 @@ export function CoolifyTokenConfig({
 
         {/* Token input */}
         <div className="space-y-2">
-          <Label htmlFor="coolify-token">Token API Coolify</Label>
+          <Label htmlFor="coolify-token">{t('coolifyConfig.tokenLabel')}</Label>
           <div className="flex gap-2">
             <Input
               id="coolify-token"
               type="password"
-              placeholder="Collez votre token API ici..."
+              placeholder={t('coolifyConfig.tokenPlaceholder')}
               value={token}
               onChange={(e) => setToken(e.target.value)}
               className={isValid === false ? 'border-destructive' : isValid === true ? 'border-primary' : ''}
@@ -248,12 +250,12 @@ export function CoolifyTokenConfig({
               {isValidating ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Validation...
+                  {t('coolifyConfig.validating')}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Valider
+                  {t('coolifyConfig.validate')}
                 </>
               )}
             </Button>
@@ -261,7 +263,7 @@ export function CoolifyTokenConfig({
           {isValid === false && (
             <p className="text-sm text-destructive flex items-center gap-1">
               <AlertCircle className="w-4 h-4" />
-              Token invalide ou Coolify non accessible
+              {t('coolifyConfig.tokenInvalidOrUnreachable')}
             </p>
           )}
         </div>
