@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 import { 
   Rocket, 
   Loader2, 
@@ -37,6 +38,7 @@ export function FirstDeploymentWizard({
   serverName,
   onDeploymentComplete 
 }: FirstDeploymentWizardProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<'source' | 'config' | 'deploying' | 'complete'>('source');
   const [sourceType, setSourceType] = useState<'github' | 'analyzed' | null>(null);
   const [githubUrl, setGithubUrl] = useState('');
@@ -83,8 +85,8 @@ export function FirstDeploymentWizard({
   const handleDeploy = async () => {
     if (!projectName.trim()) {
       toast({
-        title: "Nom requis",
-        description: "Veuillez entrer un nom pour votre projet.",
+        title: t('firstDeployment.nameRequired'),
+        description: t('firstDeployment.enterProjectName'),
         variant: "destructive"
       });
       return;
@@ -92,8 +94,8 @@ export function FirstDeploymentWizard({
 
     if (sourceType === 'github' && !githubUrl.trim()) {
       toast({
-        title: "URL GitHub requise",
-        description: "Veuillez entrer l'URL de votre dépôt GitHub.",
+        title: t('firstDeployment.githubUrlRequired'),
+        description: t('firstDeployment.enterGithubUrl'),
         variant: "destructive"
       });
       return;
@@ -121,8 +123,8 @@ export function FirstDeploymentWizard({
         setDeploymentResult({ url: data.deployed_url });
         setStep('complete');
         toast({
-          title: "Déploiement lancé !",
-          description: "Votre application est en cours de construction.",
+          title: t('firstDeployment.deploymentStarted'),
+          description: t('firstDeployment.appBuilding'),
         });
         onDeploymentComplete();
       } else {
@@ -133,7 +135,7 @@ export function FirstDeploymentWizard({
       setDeploymentResult({ error: error.message });
       setStep('complete');
       toast({
-        title: "Erreur de déploiement",
+        title: t('serverManagement.deploymentError'),
         description: error.message,
         variant: "destructive"
       });
@@ -147,27 +149,27 @@ export function FirstDeploymentWizard({
       <CardHeader>
         <div className="flex items-center gap-2">
           <Rocket className="w-5 h-5 text-primary" />
-          <CardTitle className="text-lg">Premier déploiement</CardTitle>
+          <CardTitle className="text-lg">{t('firstDeployment.title')}</CardTitle>
         </div>
         <CardDescription>
-          Déployez votre première application sur {serverName}
+          {t('firstDeployment.description')} {serverName}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Step indicator */}
         <div className="flex items-center gap-2 text-sm">
-          <Badge variant={step === 'source' ? 'default' : 'secondary'}>1. Source</Badge>
+          <Badge variant={step === 'source' ? 'default' : 'secondary'}>1. {t('firstDeployment.source')}</Badge>
           <span className="text-muted-foreground">→</span>
-          <Badge variant={step === 'config' ? 'default' : 'secondary'}>2. Configuration</Badge>
+          <Badge variant={step === 'config' ? 'default' : 'secondary'}>2. {t('firstDeployment.config')}</Badge>
           <span className="text-muted-foreground">→</span>
-          <Badge variant={step === 'deploying' || step === 'complete' ? 'default' : 'secondary'}>3. Déploiement</Badge>
+          <Badge variant={step === 'deploying' || step === 'complete' ? 'default' : 'secondary'}>3. {t('firstDeployment.deployment')}</Badge>
         </div>
 
         {/* Step 1: Source selection */}
         {step === 'source' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Choisissez la source de votre projet :
+              {t('firstDeployment.chooseSource')}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Button
@@ -176,8 +178,8 @@ export function FirstDeploymentWizard({
                 onClick={() => handleSelectSource('github')}
               >
                 <Github className="w-6 h-6" />
-                <span>Dépôt GitHub</span>
-                <span className="text-xs text-muted-foreground">Depuis une URL GitHub</span>
+                <span>{t('firstDeployment.githubRepo')}</span>
+                <span className="text-xs text-muted-foreground">{t('firstDeployment.githubRepoDesc')}</span>
               </Button>
               {analyzedProjects.length > 0 && (
                 <Button
@@ -186,8 +188,8 @@ export function FirstDeploymentWizard({
                   onClick={() => setSourceType('analyzed')}
                 >
                   <FolderOpen className="w-6 h-6" />
-                  <span>Projet analysé</span>
-                  <span className="text-xs text-muted-foreground">{analyzedProjects.length} projets disponibles</span>
+                  <span>{t('firstDeployment.analyzedProject')}</span>
+                  <span className="text-xs text-muted-foreground">{analyzedProjects.length} {t('firstDeployment.analyzedProjectDesc')}</span>
                 </Button>
               )}
             </div>
@@ -195,7 +197,7 @@ export function FirstDeploymentWizard({
             {/* Show analyzed projects list */}
             {sourceType === 'analyzed' && (
               <div className="space-y-2 mt-4">
-                <Label>Sélectionner un projet analysé :</Label>
+                <Label>{t('firstDeployment.selectAnalyzed')}</Label>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {analyzedProjects.map((project) => (
                     <Button
@@ -212,7 +214,7 @@ export function FirstDeploymentWizard({
                         </div>
                         {project.portability_score && (
                           <Badge variant="outline" className="text-xs">
-                            {project.portability_score}% portable
+                            {project.portability_score}% {t('firstDeployment.portable')}
                           </Badge>
                         )}
                       </div>
@@ -229,10 +231,10 @@ export function FirstDeploymentWizard({
           <div className="space-y-4">
             {sourceType === 'github' && (
               <div className="space-y-2">
-                <Label htmlFor="github-url">URL du dépôt GitHub</Label>
+                <Label htmlFor="github-url">{t('firstDeployment.githubUrl')}</Label>
                 <Input
                   id="github-url"
-                  placeholder="https://github.com/user/repo"
+                  placeholder={t('firstDeployment.githubUrlPlaceholder')}
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
                 />
@@ -240,35 +242,35 @@ export function FirstDeploymentWizard({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="project-name">Nom du projet</Label>
+              <Label htmlFor="project-name">{t('firstDeployment.projectName')}</Label>
               <Input
                 id="project-name"
-                placeholder="mon-application"
+                placeholder={t('firstDeployment.projectNamePlaceholder')}
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="domain">Domaine personnalisé (optionnel)</Label>
+              <Label htmlFor="domain">{t('firstDeployment.customDomain')}</Label>
               <Input
                 id="domain"
-                placeholder="app.mondomaine.com"
+                placeholder={t('firstDeployment.customDomainPlaceholder')}
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Laissez vide pour utiliser un sous-domaine automatique
+                {t('firstDeployment.customDomainDesc')}
               </p>
             </div>
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep('source')}>
-                Retour
+                {t('liberation.step2.back')}
               </Button>
               <Button onClick={handleDeploy} className="flex-1">
                 <Rocket className="w-4 h-4 mr-2" />
-                Lancer le déploiement
+                {t('firstDeployment.launchDeployment')}
               </Button>
             </div>
           </div>
@@ -279,9 +281,9 @@ export function FirstDeploymentWizard({
           <div className="flex flex-col items-center py-8 space-y-4">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
             <div className="text-center">
-              <p className="font-medium">Déploiement en cours...</p>
+              <p className="font-medium">{t('firstDeployment.deploying')}</p>
               <p className="text-sm text-muted-foreground">
-                Construction et déploiement de {projectName}
+                {t('firstDeployment.building')} {projectName}
               </p>
             </div>
           </div>
@@ -294,9 +296,9 @@ export function FirstDeploymentWizard({
               <Alert className="border-primary/30 bg-primary/5">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 <AlertDescription className="space-y-3">
-                  <p className="font-medium">Déploiement réussi !</p>
+                  <p className="font-medium">{t('firstDeployment.deploySuccess')}</p>
                   <p className="text-sm">
-                    Votre application est en cours de construction. Elle sera disponible sous peu à :
+                    {t('firstDeployment.deploySuccessDesc')}
                   </p>
                   <Button
                     variant="outline"
@@ -313,8 +315,8 @@ export function FirstDeploymentWizard({
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <p className="font-medium">Erreur de déploiement</p>
-                  <p className="text-sm">{deploymentResult?.error || 'Une erreur inconnue est survenue'}</p>
+                  <p className="font-medium">{t('firstDeployment.deployError')}</p>
+                  <p className="text-sm">{deploymentResult?.error || t('firstDeployment.unknownError')}</p>
                 </AlertDescription>
               </Alert>
             )}
@@ -331,7 +333,7 @@ export function FirstDeploymentWizard({
                 setDeploymentResult(null);
               }}
             >
-              Déployer un autre projet
+              {t('firstDeployment.deployAnother')}
             </Button>
           </div>
         )}
