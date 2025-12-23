@@ -3,8 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { 
   cleanFileContent, 
   validateSyntax,
+  isLockFile,
+  checkAssetSovereignty,
+  generatePolyfills,
   SECURITY_LIMITS,
-  type CleaningResult 
+  type CleaningResult,
+  type AssetSovereigntyResult,
+  type PolyfillResult
 } from "../_shared/proprietary-patterns.ts";
 
 const corsHeaders = {
@@ -307,16 +312,32 @@ serve(async (req) => {
     const cleaningResults: CleaningResult[] = [];
     const cleanedFiles: { path: string; content: string }[] = [];
     const validationErrors: { path: string; error: string }[] = [];
+    const assetAlerts: AssetSovereigntyResult['externalUrls'] = [];
     let totalChanges = 0;
 
     for (const file of files) {
+      // Skip lock files (Lock-file Purge)
+      if (isLockFile(file.path)) {
+        console.log(`[Liberation] Excluding lock file: ${file.path}`);
+        continue;
+      }
+
       // Skip files that are too large
       if (file.content.length > SECURITY_LIMITS.MAX_FILE_SIZE_CHARS) {
         console.log(`[Liberation] Skipping large file: ${file.path} (${file.content.length} chars)`);
         continue;
       }
 
-      const result = cleanFileContent(file.path, file.content);
+      // Asset Sovereignty check
+      const assetCheck = checkAssetSovereignty(file.path, file.content, true);
+      if (assetCheck.hasExternalAssets) {
+        assetAlerts.push(...assetCheck.externalUrls);
+        console.log(`[Liberation] External assets detected in ${file.path}: ${assetCheck.externalUrls.length} URLs`);
+      }
+
+      // Use cleaned content if assets were replaced
+      const contentToClean = assetCheck.cleanedContent || file.content;
+      const result = cleanFileContent(file.path, contentToClean);
       cleaningResults.push(result);
       
       if (!result.removed && result.cleanedContent) {
@@ -335,7 +356,18 @@ serve(async (req) => {
       totalChanges += result.changes.length;
     }
 
-    console.log(`[Liberation] Cleaned ${cleanedFiles.length} files, ${totalChanges} changes made, ${validationErrors.length} validation errors`);
+    // Auto-Polyfill: Generate compatibility layer for removed hooks
+    const polyfillResult: PolyfillResult = generatePolyfills(files, cleanedFiles);
+    
+    if (polyfillResult.generated.length > 0) {
+      console.log(`[Liberation] Generated ${polyfillResult.generated.length} polyfill files`);
+      for (const polyfill of polyfillResult.generated) {
+        cleanedFiles.push(polyfill);
+      }
+      totalChanges += polyfillResult.generated.length;
+    }
+
+    console.log(`[Liberation] Cleaned ${cleanedFiles.length} files, ${totalChanges} changes made, ${validationErrors.length} validation errors, ${assetAlerts.length} external assets`);
 
     // If only cleaning requested, return here
     if (action === 'clean-only') {
@@ -346,6 +378,8 @@ serve(async (req) => {
         cleanedFiles: cleanedFiles.length,
         totalChanges,
         validationErrors,
+        assetAlerts,
+        polyfillsGenerated: polyfillResult.generated.map(p => p.path),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -437,6 +471,18 @@ serve(async (req) => {
           totalChanges,
           validationErrors,
           results: cleaningResults.filter(r => r.changes.length > 0),
+          // New security features
+          lockFilesExcluded: files.filter(f => isLockFile(f.path)).map(f => f.path),
+          assetAlerts: assetAlerts.length > 0 ? {
+            count: assetAlerts.length,
+            message: 'Ressources externes détectées - URLs remplacées par des placeholders',
+            details: assetAlerts,
+          } : null,
+          polyfills: polyfillResult.generated.length > 0 ? {
+            count: polyfillResult.generated.length,
+            files: polyfillResult.generated.map(p => p.path),
+            importUpdates: polyfillResult.importUpdates,
+          } : null,
         },
         github: {
           success: githubResult.success,
