@@ -6,8 +6,10 @@ import inopayLogo from "@/assets/inopay-logo.png";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 const Footer = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +26,7 @@ const Footer = () => {
 
       if (insertError) {
         if (insertError.code === '23505') {
-          toast.info("Vous êtes déjà inscrit à notre newsletter !");
+          toast.info(t("footer.alreadySubscribed"));
         } else {
           throw insertError;
         }
@@ -39,12 +41,12 @@ const Footer = () => {
           // Still show success since subscription worked
         }
 
-        toast.success("Merci ! Vous êtes inscrit à notre newsletter.");
+        toast.success(t("footer.subscribeSuccess"));
       }
       setEmail("");
     } catch (error) {
       console.error('Newsletter subscription error:', error);
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+      toast.error(t("footer.subscribeError"));
     } finally {
       setIsLoading(false);
     }
@@ -61,8 +63,7 @@ const Footer = () => {
               <img src={inopayLogo} alt="Inopay" className="h-12 w-auto brightness-0 invert" />
             </Link>
             <p className="text-white/70 text-sm leading-relaxed mb-6">
-              Du code IA à la production en 10 minutes. Nettoyage automatique, 
-              déploiement VPS, SSL et monitoring 24/7 inclus.
+              {t("footer.tagline")}
             </p>
             {/* Social icons */}
             <div className="flex gap-3">
@@ -95,37 +96,37 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-primary" />
-              Liens Rapides
+              {t("footer.quickLinks")}
             </h4>
             <ul className="space-y-3">
               <li>
                 <Link to="/" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                  Accueil
+                  {t("common.home")}
                 </Link>
               </li>
               <li>
                 <Link to="/dashboard" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                  Dashboard
+                  {t("common.dashboard")}
                 </Link>
               </li>
               <li>
                 <Link to="/economies" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                  Économies
+                  {t("common.savings")}
                 </Link>
               </li>
               <li>
                 <Link to="/tarifs" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                  Tarifs
+                  {t("common.pricing")}
                 </Link>
               </li>
               <li>
                 <Link to="/historique" className="text-white/70 hover:text-primary transition-colors flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                  Historique
+                  {t("common.history")}
                 </Link>
               </li>
             </ul>
@@ -135,7 +136,7 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
               <Phone className="h-4 w-4 text-primary" />
-              Contact
+              {t("footer.contact")}
             </h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
@@ -143,8 +144,8 @@ const Footer = () => {
                   <MapPin className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">Notre mission</p>
-                  <p className="text-white/70 text-sm">Libérer votre code IA</p>
+                  <p className="text-white font-medium">{t("footer.ourMission")}</p>
+                  <p className="text-white/70 text-sm">{t("footer.liberateCode")}</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -152,7 +153,7 @@ const Footer = () => {
                   <Mail className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">Email</p>
+                  <p className="text-white font-medium">{t("footer.email")}</p>
                   <a href="mailto:contact@getinopay.com" className="text-white/70 text-sm hover:text-primary transition-colors">
                     contact@getinopay.com
                   </a>
@@ -163,8 +164,8 @@ const Footer = () => {
                   <Clock className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-white font-medium">Support</p>
-                  <p className="text-white/70 text-sm">24/7 disponible</p>
+                  <p className="text-white font-medium">{t("footer.support")}</p>
+                  <p className="text-white/70 text-sm">{t("footer.supportAvailable")}</p>
                 </div>
               </li>
             </ul>
@@ -174,15 +175,15 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-lg mb-6 flex items-center gap-2">
               <Send className="h-4 w-4 text-primary" />
-              Newsletter
+              {t("footer.newsletter")}
             </h4>
             <p className="text-white/70 text-sm mb-4">
-              Recevez les dernières actualités et conseils pour libérer votre code IA.
+              {t("footer.newsletterDesc")}
             </p>
             <form onSubmit={handleNewsletterSubmit} className="space-y-3">
               <Input
                 type="email"
-                placeholder="Votre email"
+                placeholder={t("footer.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-primary focus:ring-primary"
@@ -196,18 +197,18 @@ const Footer = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Inscription...
+                    {t("footer.subscribing")}
                   </>
                 ) : (
                   <>
-                    S'inscrire
+                    {t("footer.subscribe")}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
             </form>
             <p className="text-white/50 text-xs mt-3">
-              En vous inscrivant, vous acceptez notre politique de confidentialité.
+              {t("footer.privacyNotice")}
             </p>
           </div>
         </div>
@@ -218,17 +219,17 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-white/60 text-sm">
-              © 2025 Inovaq Canada Inc. Fait avec passion au Québec. 🍁
+              {t("footer.copyright")}
             </p>
             <div className="flex items-center gap-6">
               <Link to="/legal/terms" className="text-white/60 text-sm hover:text-primary transition-colors">
-                Conditions de Service
+                {t("footer.terms")}
               </Link>
               <Link to="/legal/privacy" className="text-white/60 text-sm hover:text-primary transition-colors">
-                Confidentialité
+                {t("footer.privacy")}
               </Link>
               <Link to="/legal/imprint" className="text-white/60 text-sm hover:text-primary transition-colors">
-                Mentions légales
+                {t("footer.legal")}
               </Link>
             </div>
           </div>
