@@ -49,9 +49,19 @@ export function GettingStartedChecklist({ onNavigate, onGitHubConnect }: Getting
       
       setLoading(true);
       try {
-        // Check GitHub connection
+        // Check GitHub connection (OAuth OR PAT)
         const { data: sessionData } = await supabase.auth.getSession();
-        const hasGitHubToken = !!sessionData.session?.provider_token;
+        const hasOAuthToken = !!sessionData.session?.provider_token;
+        
+        // Also check for PAT in user_settings
+        const { data: settings } = await supabase
+          .from("user_settings")
+          .select("github_token")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        const hasPAT = !!settings?.github_token;
+        const hasGitHubToken = hasOAuthToken || hasPAT;
 
         // Check servers
         const { data: servers } = await supabase

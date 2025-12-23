@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Github, CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Github, CheckCircle2, AlertCircle, Loader2, ExternalLink, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -12,8 +13,9 @@ interface GitHubConnectionStatusProps {
 }
 
 export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHubConnectionStatusProps) {
-  const [status, setStatus] = useState<"loading" | "connected" | "disconnected" | "expired">("loading");
+  const [status, setStatus] = useState<"loading" | "connected" | "connected_pat" | "disconnected" | "expired">("loading");
   const [username, setUsername] = useState<string | null>(null);
+  const [connectionType, setConnectionType] = useState<"oauth" | "pat" | null>(null);
 
   const checkGitHubConnection = async () => {
     setStatus("loading");
@@ -25,29 +27,47 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
         return;
       }
 
+      const userId = sessionData.session.user.id;
       const githubToken = sessionData.session.provider_token;
       
-      if (!githubToken) {
-        setStatus("disconnected");
+      // Check for PAT in user_settings
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("github_token")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      const hasPAT = !!settings?.github_token;
+      
+      // Try OAuth first
+      if (githubToken) {
+        const response = await fetch("https://api.github.com/user", {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUsername(userData.login);
+          setConnectionType("oauth");
+          setStatus("connected");
+          return;
+        } else if (response.status === 401 && !hasPAT) {
+          setStatus("expired");
+          return;
+        }
+      }
+      
+      // If no OAuth or OAuth expired, check PAT
+      if (hasPAT) {
+        setConnectionType("pat");
+        setStatus("connected_pat");
+        setUsername(null); // PAT doesn't provide username easily
         return;
       }
-
-      // Try to fetch user info to verify token is valid
-      const response = await fetch("https://api.github.com/user", {
-        headers: {
-          Authorization: `Bearer ${githubToken}`,
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUsername(userData.login);
-        setStatus("connected");
-      } else if (response.status === 401) {
-        setStatus("expired");
-      } else {
-        setStatus("disconnected");
-      }
+      
+      setStatus("disconnected");
     } catch (error) {
       console.error("Error checking GitHub connection:", error);
       setStatus("disconnected");
@@ -62,9 +82,9 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
     if (onConnect) {
       onConnect();
     }
-    // If no onConnect provided, the button will be disabled or hidden
-    // GitHub connection is now handled via PAT in SovereigntyWizard
   };
+  
+  const isConnected = status === "connected" || status === "connected_pat";
 
   if (status === "loading") {
     return (
@@ -79,41 +99,74 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
     return (
       <div className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm",
-        status === "connected" 
+        isConnected 
           ? "bg-success/10 text-success" 
           : status === "expired"
             ? "bg-warning/10 text-warning"
             : "bg-muted text-muted-foreground"
       )}>
-        {status === "connected" ? (
+        {isConnected ? (
           <>
             <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>@{username}</span>
+            {status === "connected_pat" ? (
+              <span className="flex items-center gap-1">
+                <Key className="h-3 w-3" />
+                PAT
+              </span>
+            ) : (
+              <span>@{username}</span>
+            )}
           </>
         ) : status === "expired" ? (
           <>
             <AlertCircle className="h-3.5 w-3.5" />
             <span>Token expiré</span>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-6 px-2 text-warning hover:text-warning"
-              onClick={handleConnect}
-            >
-              Reconnecter
-            </Button>
+            {onConnect ? (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-6 px-2 text-warning hover:text-warning"
+                onClick={handleConnect}
+              >
+                Reconnecter
+              </Button>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs opacity-70 cursor-help">Configurez via Déploiement Souverain</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Allez dans "Déploiement Souverain" pour configurer GitHub</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </>
         ) : (
           <>
             <Github className="h-3.5 w-3.5" />
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-6 px-2"
-              onClick={handleConnect}
-            >
-              Connecter GitHub
-            </Button>
+            {onConnect ? (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-6 px-2"
+                onClick={handleConnect}
+              >
+                Connecter GitHub
+              </Button>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs opacity-70 cursor-help">Non configuré</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Allez dans "Déploiement Souverain" pour configurer GitHub</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </>
         )}
       </div>
@@ -124,7 +177,7 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
   return (
     <Card className={cn(
       "border shadow-sm",
-      status === "connected" 
+      isConnected 
         ? "border-success/30 bg-success/5" 
         : status === "expired"
           ? "border-warning/30 bg-warning/5"
@@ -135,7 +188,7 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
           <div className="flex items-center gap-3">
             <div className={cn(
               "p-2.5 rounded-lg",
-              status === "connected" 
+              isConnected 
                 ? "bg-success/10" 
                 : status === "expired"
                   ? "bg-warning/10"
@@ -143,7 +196,7 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
             )}>
               <Github className={cn(
                 "h-5 w-5",
-                status === "connected" 
+                isConnected 
                   ? "text-success" 
                   : status === "expired"
                     ? "text-warning"
@@ -157,15 +210,15 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
                   variant="outline" 
                   className={cn(
                     "text-xs",
-                    status === "connected" 
+                    isConnected 
                       ? "bg-success/10 text-success border-success/30" 
                       : status === "expired"
                         ? "bg-warning/10 text-warning border-warning/30"
                         : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {status === "connected" 
-                    ? "Connecté" 
+                  {isConnected 
+                    ? (status === "connected_pat" ? "Connecté (PAT)" : "Connecté") 
                     : status === "expired" 
                       ? "Expiré" 
                       : "Non connecté"}
@@ -174,14 +227,16 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
               <p className="text-sm text-muted-foreground">
                 {status === "connected" 
                   ? `Connecté en tant que @${username}` 
-                  : status === "expired"
-                    ? "Votre connexion GitHub a expiré"
-                    : "Connectez GitHub pour importer vos projets"}
+                  : status === "connected_pat"
+                    ? "Connecté via Personal Access Token"
+                    : status === "expired"
+                      ? "Votre connexion GitHub a expiré"
+                      : "Connectez GitHub pour importer vos projets"}
               </p>
             </div>
           </div>
 
-          {status !== "connected" && (
+          {!isConnected && onConnect && (
             <Button 
               onClick={handleConnect}
               className={cn(
@@ -195,8 +250,28 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
               {status === "expired" ? "Reconnecter" : "Connecter"}
             </Button>
           )}
+          
+          {!isConnected && !onConnect && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    disabled
+                    className="gap-2 opacity-50"
+                  >
+                    <Github className="h-4 w-4" />
+                    Connecter
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Configurez GitHub via "Déploiement Souverain"</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
-          {status === "connected" && (
+          {status === "connected" && username && (
             <a 
               href={`https://github.com/${username}`}
               target="_blank"
