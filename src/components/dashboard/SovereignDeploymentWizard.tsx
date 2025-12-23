@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   Github, 
   Database, 
@@ -24,28 +25,28 @@ type WizardStep = "connections" | "clean-migrate" | "deploy";
 
 interface StepConfig {
   id: WizardStep;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const STEPS: StepConfig[] = [
   {
     id: "connections",
-    title: "Connecter GitHub/Supabase",
-    description: "Configurez vos identifiants souverains",
+    titleKey: "sovereignDeployment.steps.connections.title",
+    descriptionKey: "sovereignDeployment.steps.connections.description",
     icon: Shield,
   },
   {
     id: "clean-migrate",
-    title: "Nettoyer & Migrer",
-    description: "Nettoyage du code et migration du schéma DB",
+    titleKey: "sovereignDeployment.steps.cleanMigrate.title",
+    descriptionKey: "sovereignDeployment.steps.cleanMigrate.description",
     icon: Database,
   },
   {
     id: "deploy",
-    title: "Déployer sur VPS",
-    description: "Déploiement via GitHub → Coolify → VPS",
+    titleKey: "sovereignDeployment.steps.deploy.title",
+    descriptionKey: "sovereignDeployment.steps.deploy.description",
     icon: Rocket,
   },
 ];
@@ -63,6 +64,7 @@ export function SovereignDeploymentWizard({
   extractedFiles,
   onComplete 
 }: SovereignDeploymentWizardProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -109,8 +111,8 @@ export function SovereignDeploymentWizard({
   const handleCleanAndMigrate = async () => {
     if (!user || !extractedFiles) {
       toast({
-        title: "Projet requis",
-        description: "Veuillez d'abord analyser un projet",
+        title: t('sovereignDeployment.errors.projectRequired'),
+        description: t('sovereignDeployment.errors.analyzeFirst'),
         variant: "destructive",
       });
       return;
@@ -118,7 +120,7 @@ export function SovereignDeploymentWizard({
     
     setIsDeploying(true);
     setDeploymentProgress(10);
-    setDeploymentStatus("Nettoyage du code en cours...");
+    setDeploymentStatus(t('sovereignDeployment.status.cleaningCode'));
     
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -128,7 +130,7 @@ export function SovereignDeploymentWizard({
       
       // Step 2: Migrate schema if Supabase is connected
       if (connectionStatus.supabase) {
-        setDeploymentStatus("Migration du schéma vers votre Supabase...");
+        setDeploymentStatus(t('sovereignDeployment.status.migratingSchema'));
         setDeploymentProgress(50);
         
         const { data: migrateResult, error: migrateError } = await supabase.functions.invoke(
@@ -147,28 +149,28 @@ export function SovereignDeploymentWizard({
         if (migrateError) {
           console.error("Migration error:", migrateError);
           toast({
-            title: "Avertissement",
-            description: "Migration du schéma en partie échouée. Continuez le déploiement.",
+            title: t('sovereignDeployment.toasts.warning'),
+            description: t('sovereignDeployment.toasts.migrationPartiallyFailed'),
             variant: "default",
           });
         } else {
           setMigratedSchema(true);
           toast({
-            title: "Schéma migré",
-            description: "Les tables et politiques RLS ont été créées sur votre Supabase",
+            title: t('sovereignDeployment.toasts.schemaMigrated'),
+            description: t('sovereignDeployment.toasts.tablesCreated'),
           });
         }
       }
       
       setDeploymentProgress(70);
-      setDeploymentStatus("Préparation terminée");
+      setDeploymentStatus(t('sovereignDeployment.status.preparationDone'));
       setCurrentStep("deploy");
       
     } catch (error) {
       console.error("Clean and migrate error:", error);
       toast({
-        title: "Erreur",
-        description: "Erreur lors du nettoyage ou de la migration",
+        title: t('common.error'),
+        description: t('sovereignDeployment.errors.cleanMigrateFailed'),
         variant: "destructive",
       });
     } finally {
@@ -179,8 +181,8 @@ export function SovereignDeploymentWizard({
   const handleSovereignDeploy = async () => {
     if (!user || !extractedFiles || !projectName) {
       toast({
-        title: "Projet requis",
-        description: "Veuillez d'abord analyser un projet",
+        title: t('sovereignDeployment.errors.projectRequired'),
+        description: t('sovereignDeployment.errors.analyzeFirst'),
         variant: "destructive",
       });
       return;
@@ -188,7 +190,7 @@ export function SovereignDeploymentWizard({
     
     setIsDeploying(true);
     setDeploymentProgress(0);
-    setDeploymentStatus("Création du dépôt sur votre GitHub...");
+    setDeploymentStatus(t('sovereignDeployment.status.creatingRepo'));
     
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -201,7 +203,7 @@ export function SovereignDeploymentWizard({
         .maybeSingle();
         
       if (!settings?.github_token) {
-        throw new Error("Token GitHub non configuré");
+        throw new Error(t('sovereignDeployment.errors.githubTokenNotConfigured'));
       }
       
       // Convert Map to object
@@ -221,7 +223,7 @@ export function SovereignDeploymentWizard({
           },
           body: {
             repoName: `${projectName}-sovereign`,
-            description: `Projet souverain exporté depuis Inopay - 100% autonome`,
+            description: t('sovereignDeployment.repoDescription'),
             files: filesObj,
             isPrivate: true,
             github_token: settings.github_token,
@@ -233,7 +235,7 @@ export function SovereignDeploymentWizard({
       
       setDeploymentProgress(60);
       setDeployedRepoUrl(exportResult.repoUrl);
-      setDeploymentStatus("Dépôt créé, déclenchement du déploiement Coolify...");
+      setDeploymentStatus(t('sovereignDeployment.status.triggeringCoolify'));
       
       // Get user's server with Coolify
       const { data: server } = await supabase
@@ -264,30 +266,30 @@ export function SovereignDeploymentWizard({
         
         if (!deployError) {
           setDeploymentProgress(100);
-          setDeploymentStatus("Déploiement lancé sur votre VPS!");
+          setDeploymentStatus(t('sovereignDeployment.status.deploymentLaunched'));
           
           toast({
-            title: "Déploiement souverain réussi!",
-            description: "Votre projet est en cours de déploiement sur votre VPS",
+            title: t('sovereignDeployment.toasts.sovereignDeploymentSuccess'),
+            description: t('sovereignDeployment.toasts.deployingToVPS'),
           });
           
           onComplete?.();
         }
       } else {
         setDeploymentProgress(100);
-        setDeploymentStatus("Dépôt créé - Configurez Coolify pour finaliser");
+        setDeploymentStatus(t('sovereignDeployment.status.repoCreatedConfigureCoolify'));
         
         toast({
-          title: "Dépôt créé",
-          description: "Connectez ce dépôt à Coolify pour le déploiement automatique",
+          title: t('sovereignDeployment.toasts.repoCreated'),
+          description: t('sovereignDeployment.toasts.connectToCoolify'),
         });
       }
       
     } catch (error) {
       console.error("Sovereign deploy error:", error);
       toast({
-        title: "Erreur de déploiement",
-        description: error instanceof Error ? error.message : "Erreur inconnue",
+        title: t('sovereignDeployment.errors.deploymentError'),
+        description: error instanceof Error ? error.message : t('sovereignDeployment.errors.unknownError'),
         variant: "destructive",
       });
     } finally {
@@ -325,10 +327,10 @@ export function SovereignDeploymentWizard({
                 </div>
                 <div className="text-center mt-2">
                   <p className={`text-sm font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                    {step.title}
+                    {t(step.titleKey)}
                   </p>
                   <p className="text-xs text-muted-foreground hidden md:block">
-                    {step.description}
+                    {t(step.descriptionKey)}
                   </p>
                 </div>
               </div>
@@ -350,7 +352,7 @@ export function SovereignDeploymentWizard({
               onClick={() => setCurrentStep("clean-migrate")}
               disabled={!connectionStatus.github}
             >
-              Continuer
+              {t('sovereignDeployment.continue')}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -362,10 +364,10 @@ export function SovereignDeploymentWizard({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              Nettoyage & Migration
+              {t('sovereignDeployment.cleanMigrate.title')}
             </CardTitle>
             <CardDescription>
-              Le code sera nettoyé des dépendances Lovable et le schéma sera migré vers votre Supabase
+              {t('sovereignDeployment.cleanMigrate.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -382,13 +384,13 @@ export function SovereignDeploymentWizard({
                       <Github className="h-5 w-5" />
                       <span className="font-medium">GitHub</span>
                       {connectionStatus.github ? (
-                        <Badge variant="default" className="ml-auto bg-success">Connecté</Badge>
+                        <Badge variant="default" className="ml-auto bg-success">{t('sovereignDeployment.connected')}</Badge>
                       ) : (
-                        <Badge variant="outline" className="ml-auto">Non configuré</Badge>
+                        <Badge variant="outline" className="ml-auto">{t('sovereignDeployment.notConfigured')}</Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Le code nettoyé sera poussé sur votre compte
+                      {t('sovereignDeployment.cleanMigrate.githubDescription')}
                     </p>
                   </div>
                   
@@ -397,23 +399,23 @@ export function SovereignDeploymentWizard({
                       <Database className="h-5 w-5" />
                       <span className="font-medium">Supabase</span>
                       {connectionStatus.supabase ? (
-                        <Badge variant="default" className="ml-auto bg-success">Connecté</Badge>
+                        <Badge variant="default" className="ml-auto bg-success">{t('sovereignDeployment.connected')}</Badge>
                       ) : (
-                        <Badge variant="outline" className="ml-auto">Optionnel</Badge>
+                        <Badge variant="outline" className="ml-auto">{t('sovereignDeployment.optional')}</Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Le schéma DB sera migré vers votre instance
+                      {t('sovereignDeployment.cleanMigrate.supabaseDescription')}
                     </p>
                   </div>
                 </div>
                 
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={() => setCurrentStep("connections")}>
-                    Retour
+                    {t('sovereignDeployment.back')}
                   </Button>
                   <Button onClick={handleCleanAndMigrate} disabled={!extractedFiles}>
-                    {extractedFiles ? "Nettoyer & Migrer" : "Analysez d'abord un projet"}
+                    {extractedFiles ? t('sovereignDeployment.cleanMigrate.action') : t('sovereignDeployment.errors.analyzeFirst')}
                     <RefreshCw className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -428,10 +430,10 @@ export function SovereignDeploymentWizard({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Rocket className="h-5 w-5" />
-              Déploiement Souverain
+              {t('sovereignDeployment.deploy.title')}
             </CardTitle>
             <CardDescription>
-              Flux: Code Lovable → Nettoyage Inopay → GitHub Client → Webhook Coolify → VPS
+              {t('sovereignDeployment.deploy.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -446,7 +448,7 @@ export function SovereignDeploymentWizard({
                   <div className="p-4 border rounded-lg bg-success/10 border-success/30">
                     <div className="flex items-center gap-2 mb-2">
                       <Check className="h-5 w-5 text-success" />
-                      <span className="font-medium">Dépôt créé avec succès</span>
+                      <span className="font-medium">{t('sovereignDeployment.deploy.repoCreatedSuccess')}</span>
                     </div>
                     <a 
                       href={deployedRepoUrl} 
@@ -464,18 +466,18 @@ export function SovereignDeploymentWizard({
                   <div className="p-4 border rounded-lg bg-success/10 border-success/30">
                     <div className="flex items-center gap-2">
                       <Check className="h-5 w-5 text-success" />
-                      <span className="font-medium">Schéma DB migré</span>
+                      <span className="font-medium">{t('sovereignDeployment.deploy.schemaMigrated')}</span>
                     </div>
                   </div>
                 )}
                 
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={() => setCurrentStep("clean-migrate")}>
-                    Retour
+                    {t('sovereignDeployment.back')}
                   </Button>
                   <Button onClick={handleSovereignDeploy} disabled={!extractedFiles}>
                     <Rocket className="mr-2 h-4 w-4" />
-                    Déployer sur mon VPS
+                    {t('sovereignDeployment.deploy.action')}
                   </Button>
                 </div>
               </>
