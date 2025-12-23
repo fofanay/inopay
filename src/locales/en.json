@@ -133,14 +133,14 @@
       "actionRequired": "Action required"
     }
   },
-  "dashboard": {
+"dashboard": {
     "title": "Dashboard",
     "overview": "Overview",
-    "fleet": "Fleet Dashboard",
+    "fleet": "My Portfolio",
     "liberation": "Liberate & Deploy",
     "import": "Import",
     "batchImport": "Batch Import",
-    "projects": "My Projects",
+    "projects": "Analyzed Projects",
     "deployChoice": "Deploy",
     "sovereignDeploy": "Sovereign Deployment",
     "syncMirror": "Sync Mirror",
@@ -156,16 +156,151 @@
     "uploadZip": "Drop your ZIP file here",
     "orClick": "or click to select",
     "githubImport": "Import from GitHub",
-    "enterGithubUrl": "Enter your GitHub repository URL"
+    "enterGithubUrl": "Enter your GitHub repository URL",
+    "descriptions": {
+      "overview": "Project statistics and quick actions",
+      "liberation": "Complete pipeline: AI cleaning → GitHub → VPS in one click",
+      "fleet": "Kanban view of all your projects and global metrics",
+      "import": "Import a project from GitHub or a ZIP file",
+      "batchImport": "Analyze multiple GitHub projects in one operation",
+      "projects": "Manage and deploy your analyzed projects",
+      "deployChoice": "Choose your deployment method",
+      "syncMirror": "Automatic sync between Lovable and your server",
+      "deployments": "Your deployment history",
+      "servers": "Manage your VPS and Coolify servers",
+      "migration": "Export your data to migrate to your own infrastructure",
+      "services": "Your credits and active subscriptions"
+    },
+    "menu": {
+      "myProjects": "My projects",
+      "pipeline": "Pipeline",
+      "new": "New"
+    },
+    "plan": {
+      "free": "Free",
+      "pro": "Pro",
+      "liberty": "Liberty Pack"
+    },
+    "analysis": {
+      "inProgress": "In progress",
+      "portabilityAnalysis": "Portability analysis",
+      "scanningCode": "We're scanning your code to identify proprietary dependencies.",
+      "completed": "Completed",
+      "scanComplete": "Scan complete – here's your project diagnostic",
+      "freedomScore": "Freedom score",
+      "projectAnalyzed": "Project analyzed",
+      "file": "File",
+      "detectedPlatform": "Detected platform",
+      "totalFiles": "Total files",
+      "analyzedFiles": "Analyzed files",
+      "dependencies": "Dependencies",
+      "easyPortable": "Easily portable project",
+      "migrationPossible": "Migration possible with modifications",
+      "complexMigration": "Complex migration required"
+    },
+    "cleaning": {
+      "title": "Step 3: Smart Cleaning",
+      "subtitle": "Our AI replaces locked components with universal Open Source standards.",
+      "codeUnchanged": "Your original code remains unchanged on GitHub, we create an optimized version.",
+      "premiumFeature": "Premium Feature",
+      "premiumDesc": "AI cleaning requires a subscription. Unlock this feature to free your code.",
+      "viewPricing": "View pricing",
+      "cleanWithAI": "Clean with AI",
+      "pattern": "Pattern",
+      "severity": "Severity",
+      "action": "Action",
+      "line": "Line",
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "dbConfig": {
+      "title": "Database Configuration",
+      "step": "Step 3.5: Database Assistant",
+      "subtitle": "Configure your database for your new host",
+      "advancedConfig": "Advanced configuration",
+      "advancedConfigDesc": "Configure your database with a subscription.",
+      "configComplete": "Configuration complete",
+      "keepCurrent": "Current database kept",
+      "newDbConfigured": "New database configured"
+    },
+    "deployment": {
+      "readyForDeployment": "Ready for deployment",
+      "step": "Step 4: Smart Deployment Assistant",
+      "subtitle": "Choose how and where to deploy your freed project",
+      "unlockExport": "Unlock export",
+      "unlockExportDesc": "Download your 100% autonomous project with a Pro subscription or Liberty Pack.",
+      "analyzeAnother": "Analyze another project"
+    },
+    "import": {
+      "zipTitle": "Drag and drop your .zip file",
+      "dropHere": "Drop the file here",
+      "clickToSelect": "or click to select a file",
+      "format": "Accepted format: .zip (max 50MB)",
+      "backToUrl": "Back to URL import",
+      "backToGithubUrl": "Back to URL import",
+      "urlRequired": "URL required",
+      "enterUrl": "Please enter your GitHub repository URL"
+    },
+    "batch": {
+      "complete": "Batch analysis complete",
+      "projectsAnalyzed": "projects analyzed successfully"
+    },
+    "toast": {
+      "projectLoaded": "Project loaded",
+      "readyForDeployment": "is ready for deployment",
+      "analysisComplete": "Analysis complete",
+      "analysisError": "Analysis error",
+      "unableToAnalyze": "Unable to analyze the ZIP file",
+      "importError": "Import error",
+      "timeoutTitle": "Timeout exceeded",
+      "tooLargeTitle": "Repository too large",
+      "partialAnalysis": "Partial analysis",
+      "partialAnalysisDesc": "files analyzed (limit:",
+      "liberationSuccess": "Liberation successful",
+      "liberationSuccessDesc": "Your project has been cleaned and pushed to GitHub",
+      "sovereignComplete": "Sovereign deployment complete",
+      "sovereignCompleteDesc": "Your project is now on your infrastructure",
+      "fileUnavailable": "File unavailable",
+      "fileUnavailableDesc": "The content of this file is not available for cleaning",
+      "unableToLoad": "Unable to load project",
+      "exportZip": "ZIP Export",
+      "exportZipDesc": "First import your project to generate the cleaned archive",
+      "ftpHosting": "FTP Hosting",
+      "ftpHostingDesc": "Import your project then use the FTP deployment assistant",
+      "unableToSave": "Unable to save analysis"
+    },
+    "status": {
+      "compatible": "Compatible",
+      "toModify": "To modify",
+      "incompatible": "Incompatible"
+    },
+    "messages": {
+      "connecting": "Connecting to GitHub repository...",
+      "retrying": "Retrying connection...",
+      "downloading": "Downloading repository...",
+      "extracting": "Extracting",
+      "files": "files...",
+      "detecting": "Detecting proprietary dependencies...",
+      "selectProjectForDeploy": "Select a project to access deployment options directly",
+      "orUseAdvancedPipeline": "or use the advanced pipeline",
+      "timeout": "Timeout: The operation took too long",
+      "repoTooLarge": "The repository might be too large. Try with a smaller one.",
+      "retry": "Retry",
+      "noFilesFound": "No files found in the repository",
+      "rateLimited": "GitHub API limit reached. Please try again in a few minutes."
+    }
   },
-  "settings": {
+"settings": {
     "title": "Settings",
     "subtitle": "Configure your AI engine for code cleaning",
     "defaultEngine": "Default engine: DeepSeek V3",
     "defaultEngineDesc": "Inopay uses DeepSeek by default for code cleaning. It's one of the most performant models with an excellent price-to-quality ratio. With automatic fallback to Claude Sonnet when overloaded.",
     "apiKey": "Your AI API Key (Optional)",
     "apiKeyDesc": "Bring your own API key to use your own account and get a discount",
-    "byokDiscount": "Using your personal key: You get a 30% discount on liberation pricing!",
+    "byokDiscount": "Using your personal key:",
+    "byokDiscountValue": "30% discount",
+    "byokDiscountSuffix": "on liberation pricing!",
     "provider": "AI Provider",
     "recommended": "Recommended",
     "getKeyAt": "Get your key at",
@@ -180,8 +315,18 @@
     "currentPlan": "Current plan",
     "renewalDate": "Renewal on",
     "creditsRemaining": "credit(s) remaining",
-    "openPortal": "Manage on Stripe",
-    "openingPortal": "Opening..."
+    "openPortal": "Manage my Stripe subscription",
+    "openingPortal": "Opening...",
+    "modifyPayment": "Change your payment method, download invoices, or cancel your subscription",
+    "howItWorks": "How does it work?",
+    "howItWorksDefault": "Without a key (default):",
+    "howItWorksDefaultDesc": "Inopay uses DeepSeek V3 to clean your code",
+    "howItWorksByok": "With your key (BYOK):",
+    "howItWorksByokDesc": "Use your own AI account and save 30%",
+    "howItWorksFallback": "Fallback:",
+    "howItWorksFallbackDesc": "If DeepSeek fails, Claude takes over automatically",
+    "settingsSaved": "Settings saved successfully",
+    "unableToDeleteKey": "Unable to delete API key"
   },
   "pricing": {
     "title": "Go from AI prototype to your own infrastructure",
