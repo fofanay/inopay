@@ -255,16 +255,16 @@ const Dashboard = () => {
     if (error) {
       console.error("Error saving analysis:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder l'analyse",
+        title: t("common.error"),
+        description: t("dashboard.toast.unableToSave"),
         variant: "destructive",
       });
     } else {
       setResult({ ...analysisResult, id: data.id });
       fetchHistory();
       toast({
-        title: "Analyse terminée",
-        description: `Score de portabilité: ${analysisResult.score}/100`,
+        title: t("dashboard.toast.analysisComplete"),
+        description: `${t("dashboard.portabilityScore")}: ${analysisResult.score}/100`,
       });
     }
   };
@@ -289,13 +289,13 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Analysis error:", error);
       toast({
-        title: "Erreur d'analyse",
-        description: "Impossible d'analyser le fichier ZIP",
+        title: t("dashboard.toast.analysisError"),
+        description: t("dashboard.toast.unableToAnalyze"),
         variant: "destructive",
       });
       setState("idle");
     }
-  }, [user, fileName, toast]);
+  }, [user, fileName, toast, t]);
 
   const runGitHubAnalysis = useCallback(async (url: string, isRetry = false) => {
     if (!user) return;
@@ -303,7 +303,7 @@ const Dashboard = () => {
     setState("uploading");
     setProgress(0);
     setAnalysisStep("connecting");
-    setProgressMessage(isRetry ? "Nouvelle tentative de connexion..." : "Connexion au dépôt GitHub...");
+    setProgressMessage(isRetry ? t("dashboard.messages.retrying") : t("dashboard.messages.connecting"));
 
     const startTime = Date.now();
     const updateElapsedTime = setInterval(() => {
@@ -323,7 +323,7 @@ const Dashboard = () => {
       
       setProgress(5);
       setAnalysisStep("downloading");
-      setProgressMessage("Téléchargement du dépôt en cours...");
+      setProgressMessage(t("dashboard.messages.downloading"));
       setProgress(10);
       
       const response = await supabase.functions.invoke("fetch-github-repo", {
@@ -360,25 +360,25 @@ const Dashboard = () => {
       const { repository, files, totalFilesInRepo, isPartialAnalysis, partialReason, planType, planLimit } = response.data;
       
       if (!files || files.length === 0) {
-        throw new Error("Aucun fichier trouvé dans le dépôt");
+        throw new Error(t("dashboard.messages.noFilesFound"));
       }
 
       setAnalysisStep("extracting");
-      setProgressMessage(`Extraction de ${files.length} fichiers...`);
+      setProgressMessage(`${t("dashboard.messages.extracting")} ${files.length} ${t("dashboard.messages.files")}`);
       setProgress(25);
       setFileName(repository.name);
       
       if (isPartialAnalysis) {
         toast({
-          title: "Analyse partielle",
-          description: `${files.length} fichiers sur ${totalFilesInRepo} analysés (limite: ${planLimit} fichiers). ${partialReason === "plan_limit" ? "Passez à un plan supérieur pour analyser plus de fichiers." : ""}`,
+          title: t("dashboard.toast.partialAnalysis"),
+          description: `${files.length} ${t("dashboard.toast.partialAnalysisDesc")} ${planLimit})`,
           variant: "default",
         });
       }
       
       setState("analyzing");
       setAnalysisStep("analyzing");
-      setProgressMessage("Détection des dépendances propriétaires...");
+      setProgressMessage(t("dashboard.messages.detecting"));
 
       const analysisResult = await analyzeFromGitHub(files, repository.name, (progress, message) => {
         setProgress(25 + (progress * 0.75));
@@ -404,7 +404,7 @@ const Dashboard = () => {
       const isTooLarge = errorMessage.includes("volumineux") || errorMessage.includes("trop");
       
       toast({
-        title: isTimeout ? "Délai dépassé" : isTooLarge ? "Dépôt trop volumineux" : "Erreur d'importation",
+        title: isTimeout ? t("dashboard.toast.timeoutTitle") : isTooLarge ? t("dashboard.toast.tooLargeTitle") : t("dashboard.toast.importError"),
         description: errorMessage,
         variant: "destructive",
         action: isTimeout ? (
@@ -415,19 +415,19 @@ const Dashboard = () => {
             className="ml-2"
           >
             <RefreshCw className="h-4 w-4 mr-1" />
-            Réessayer
+            {t("dashboard.messages.retry")}
           </Button>
         ) : undefined,
       });
       setState("idle");
     }
-  }, [user, toast, state]);
+  }, [user, toast, state, t]);
 
   const handleGitHubImport = () => {
     if (!githubUrl.trim()) {
       toast({
-        title: "URL requise",
-        description: "Veuillez entrer l'URL de votre dépôt GitHub",
+        title: t("dashboard.import.urlRequired"),
+        description: t("dashboard.import.enterUrl"),
         variant: "destructive",
       });
       return;
@@ -517,14 +517,14 @@ const Dashboard = () => {
       setDbConfigComplete(true);
       
       toast({
-        title: "Projet chargé",
-        description: `${project.project_name} est prêt pour le déploiement`,
+        title: t("dashboard.toast.projectLoaded"),
+        description: `${project.project_name} ${t("dashboard.toast.readyForDeployment")}`,
       });
     } catch (error) {
       console.error("Error loading project:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger le projet",
+        title: t("common.error"),
+        description: t("dashboard.toast.unableToLoad"),
         variant: "destructive",
       });
     } finally {
@@ -539,8 +539,8 @@ const Dashboard = () => {
       setCleanerOpen(true);
     } else {
       toast({
-        title: "Fichier non disponible",
-        description: "Le contenu de ce fichier n'est pas disponible pour le nettoyage",
+        title: t("dashboard.toast.fileUnavailable"),
+        description: t("dashboard.toast.fileUnavailableDesc"),
         variant: "destructive",
       });
     }
@@ -915,7 +915,7 @@ const Dashboard = () => {
                         <span className="w-full border-t" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">ou utilisez le pipeline avancé</span>
+                        <span className="bg-background px-2 text-muted-foreground">{t("dashboard.messages.orUseAdvancedPipeline")}</span>
                       </div>
                     </div>
                     
@@ -926,8 +926,8 @@ const Dashboard = () => {
                       onComplete={(liberationResult) => {
                         if (liberationResult.success) {
                           toast({
-                            title: "Libération réussie",
-                            description: "Votre projet a été nettoyé et poussé sur GitHub",
+                            title: t("dashboard.toast.liberationSuccess"),
+                            description: t("dashboard.toast.liberationSuccessDesc"),
                           });
                           fetchHistory();
                         }
@@ -995,13 +995,13 @@ const Dashboard = () => {
                             <Upload className="h-8 w-8" />
                           </div>
                           <h3 className="text-xl font-semibold mb-2 text-foreground">
-                            {isDragActive ? "Déposez le fichier ici" : "Glissez-déposez votre fichier .zip"}
+                            {isDragActive ? t("dashboard.import.dropHere") : t("dashboard.import.zipTitle")}
                           </h3>
                           <p className="text-muted-foreground mb-4">
-                            ou cliquez pour sélectionner un fichier
+                            {t("dashboard.import.clickToSelect")}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Format accepté : .zip (max 50MB)
+                            {t("dashboard.import.format")}
                           </p>
                         </div>
                       </CardContent>
@@ -1015,7 +1015,7 @@ const Dashboard = () => {
                         className="gap-2"
                       >
                         <Github className="h-4 w-4" />
-                        Retour à l'import par URL
+                        {t("dashboard.import.backToUrl")}
                       </Button>
                     </div>
                   </div>
@@ -1032,11 +1032,11 @@ const Dashboard = () => {
                   <Card className="animate-fade-in card-shadow border border-border status-border-blue">
                     <CardHeader className="text-center pb-2">
                       <Badge className="mx-auto mb-4 bg-info/10 text-info border-info/20">
-                        En cours
+                        {t("dashboard.analysis.inProgress")}
                       </Badge>
-                      <CardTitle className="text-xl text-foreground">Analyse de portabilité</CardTitle>
+                      <CardTitle className="text-xl text-foreground">{t("dashboard.analysis.portabilityAnalysis")}</CardTitle>
                       <CardDescription className="max-w-md mx-auto">
-                        Nous scannons votre code pour identifier les dépendances propriétaires.
+                        {t("dashboard.analysis.scanningCode")}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="py-8 px-8">
@@ -1058,11 +1058,11 @@ const Dashboard = () => {
                       <CardHeader className="text-center pb-2 bg-muted/30">
                         <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
                           <CheckCircle2 className="h-3 w-3" />
-                          Complété
+                          {t("dashboard.analysis.completed")}
                         </Badge>
-                        <CardTitle className="text-xl text-foreground">Étape 2 : Analyse de portabilité</CardTitle>
+                        <CardTitle className="text-xl text-foreground">{t("dashboard.analysis.portabilityAnalysis")}</CardTitle>
                         <CardDescription>
-                          Scan terminé – voici le diagnostic de votre projet
+                          {t("dashboard.analysis.scanComplete")}
                         </CardDescription>
                       </CardHeader>
                       <div className="grid md:grid-cols-2">
@@ -1097,7 +1097,7 @@ const Dashboard = () => {
                               <span className="text-muted-foreground">/100</span>
                             </div>
                           </div>
-                          <p className="text-lg font-medium mt-4 text-foreground">Score de liberté</p>
+                          <p className="text-lg font-medium mt-4 text-foreground">{t("dashboard.analysis.freedomScore")}</p>
                           <p className={`text-sm mt-1 ${getScoreColor(result.score)}`}>
                             {getScoreMessage(result.score)}
                           </p>
@@ -1105,28 +1105,28 @@ const Dashboard = () => {
 
                         {/* Info */}
                         <CardContent className="flex flex-col justify-center py-8 bg-card">
-                          <h3 className="text-2xl font-bold mb-4 text-foreground">Projet analysé</h3>
+                          <h3 className="text-2xl font-bold mb-4 text-foreground">{t("dashboard.analysis.projectAnalyzed")}</h3>
                           <div className="space-y-4">
                             <div className="flex justify-between items-center py-2 border-b border-border">
-                              <span className="text-muted-foreground">Fichier</span>
+                              <span className="text-muted-foreground">{t("dashboard.analysis.file")}</span>
                               <span className="font-medium text-foreground">{fileName}</span>
                             </div>
                             {result.platform && (
                               <div className="flex justify-between items-center py-2 border-b border-border">
-                                <span className="text-muted-foreground">Plateforme détectée</span>
+                                <span className="text-muted-foreground">{t("dashboard.analysis.detectedPlatform")}</span>
                                 <Badge className="bg-accent/10 text-accent border-0">{result.platform}</Badge>
                               </div>
                             )}
                             <div className="flex justify-between items-center py-2 border-b border-border">
-                              <span className="text-muted-foreground">Fichiers totaux</span>
+                              <span className="text-muted-foreground">{t("dashboard.analysis.totalFiles")}</span>
                               <span className="font-medium text-foreground">{result.totalFiles}</span>
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-border">
-                              <span className="text-muted-foreground">Fichiers analysés</span>
+                              <span className="text-muted-foreground">{t("dashboard.analysis.analyzedFiles")}</span>
                               <span className="font-medium text-foreground">{result.analyzedFiles}</span>
                             </div>
                             <div className="flex justify-between items-center py-2">
-                              <span className="text-muted-foreground">Dépendances</span>
+                              <span className="text-muted-foreground">{t("dashboard.analysis.dependencies")}</span>
                               <span className="font-medium text-foreground">{result.dependencies.length}</span>
                             </div>
                           </div>
@@ -1142,14 +1142,14 @@ const Dashboard = () => {
                             <div className="h-16 w-16 rounded-2xl bg-warning/10 flex items-center justify-center mb-4">
                               <Lock className="h-8 w-8 text-warning" />
                             </div>
-                            <h3 className="text-xl font-bold text-foreground mb-2">Fonctionnalité Premium</h3>
+                            <h3 className="text-xl font-bold text-foreground mb-2">{t("dashboard.cleaning.premiumFeature")}</h3>
                             <p className="text-muted-foreground text-center mb-6 max-w-md">
-                              Le nettoyage IA nécessite un abonnement. Débloquez cette fonctionnalité pour libérer votre code.
+                              {t("dashboard.cleaning.premiumDesc")}
                             </p>
                             <Link to="/tarifs">
                               <Button className="gap-2 rounded-lg shadow-lg">
                                 <Crown className="h-4 w-4" />
-                                Voir les tarifs
+                                {t("dashboard.cleaning.viewPricing")}
                               </Button>
                             </Link>
                           </div>
@@ -1159,10 +1159,10 @@ const Dashboard = () => {
                             <div>
                               <CardTitle className="flex items-center gap-2 text-foreground">
                                 <Sparkles className="h-5 w-5 text-warning" />
-                                Étape 3 : Nettoyage Intelligent
+                                {t("dashboard.cleaning.title")}
                               </CardTitle>
                               <CardDescription className="mt-1">
-                                Notre IA remplace les composants verrouillés par des standards Open Source universels.
+                                {t("dashboard.cleaning.subtitle")}
                               </CardDescription>
                             </div>
                           </div>
@@ -1171,17 +1171,17 @@ const Dashboard = () => {
                           <div className="bg-muted/50 rounded-lg p-4 mb-6 border border-border">
                             <p className="text-sm text-muted-foreground flex items-center gap-2">
                               <Shield className="h-4 w-4 text-success" />
-                              Votre code original reste inchangé sur GitHub, nous créons une version optimisée.
+                              {t("dashboard.cleaning.codeUnchanged")}
                             </p>
                           </div>
                           <Table>
                             <TableHeader>
                               <TableRow className="border-border hover:bg-transparent">
-                                <TableHead className="text-muted-foreground">Fichier</TableHead>
-                                <TableHead className="text-muted-foreground">Ligne</TableHead>
-                                <TableHead className="text-muted-foreground">Pattern</TableHead>
-                                <TableHead className="text-muted-foreground">Sévérité</TableHead>
-                                <TableHead className="text-muted-foreground">Action</TableHead>
+                                <TableHead className="text-muted-foreground">{t("dashboard.analysis.file")}</TableHead>
+                                <TableHead className="text-muted-foreground">{t("dashboard.cleaning.line")}</TableHead>
+                                <TableHead className="text-muted-foreground">{t("dashboard.cleaning.pattern")}</TableHead>
+                                <TableHead className="text-muted-foreground">{t("dashboard.cleaning.severity")}</TableHead>
+                                <TableHead className="text-muted-foreground">{t("dashboard.cleaning.action")}</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1207,7 +1207,7 @@ const Dashboard = () => {
                                       disabled={!subscription.subscribed}
                                     >
                                       <Sparkles className="h-3 w-3" />
-                                      Démarrer la libération
+                                      {t("dashboard.cleaning.cleanWithAI")}
                                     </Button>
                                   </TableCell>
                                 </TableRow>
@@ -1282,14 +1282,14 @@ const Dashboard = () => {
                             <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
                               <Lock className="h-8 w-8 text-accent" />
                             </div>
-                            <h3 className="text-xl font-bold text-foreground mb-2">Configuration avancée</h3>
+                            <h3 className="text-xl font-bold text-foreground mb-2">{t("dashboard.dbConfig.advancedConfig")}</h3>
                             <p className="text-muted-foreground text-center mb-6 max-w-md">
-                              Configurez votre base de données avec un abonnement.
+                              {t("dashboard.dbConfig.advancedConfigDesc")}
                             </p>
                             <Link to="/tarifs">
                               <Button className="gap-2 rounded-lg shadow-lg">
                                 <Crown className="h-4 w-4" />
-                                Voir les tarifs
+                                {t("dashboard.cleaning.viewPricing")}
                               </Button>
                             </Link>
                           </div>
@@ -1297,11 +1297,11 @@ const Dashboard = () => {
                         <CardHeader className="text-center border-b border-border">
                           <Badge className="mx-auto mb-2 bg-accent/10 text-accent border-accent/20 gap-1">
                             <Cloud className="h-3 w-3" />
-                            Configuration Base de Données
+                            {t("dashboard.dbConfig.title")}
                           </Badge>
-                          <CardTitle className="text-xl text-foreground">Étape 3.5 : Assistant Base de Données</CardTitle>
+                          <CardTitle className="text-xl text-foreground">{t("dashboard.dbConfig.step")}</CardTitle>
                           <CardDescription className="max-w-md mx-auto">
-                            Configurez votre base de données pour votre nouvel hébergeur
+                            {t("dashboard.dbConfig.subtitle")}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6 pb-8">
@@ -1311,8 +1311,8 @@ const Dashboard = () => {
                             onConfigComplete={(config) => {
                               setDbConfigComplete(true);
                               toast({
-                                title: "Configuration terminée",
-                                description: config.type === "keep" ? "Base de données actuelle conservée" : "Nouvelle base de données configurée",
+                                title: t("dashboard.dbConfig.configComplete"),
+                                description: config.type === "keep" ? t("dashboard.dbConfig.keepCurrent") : t("dashboard.dbConfig.newDbConfigured"),
                               });
                             }}
                             onSkip={() => setDbConfigComplete(true)}
@@ -1329,14 +1329,14 @@ const Dashboard = () => {
                           <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                             <Lock className="h-8 w-8 text-primary" />
                           </div>
-                          <h3 className="text-xl font-bold text-foreground mb-2">Débloquez l'export</h3>
+                          <h3 className="text-xl font-bold text-foreground mb-2">{t("dashboard.deployment.unlockExport")}</h3>
                           <p className="text-muted-foreground text-center mb-6 max-w-md">
-                            Téléchargez votre projet 100% autonome avec un abonnement Pro ou un Pack Liberté.
+                            {t("dashboard.deployment.unlockExportDesc")}
                           </p>
                           <Link to="/tarifs">
                             <Button className="gap-2 rounded-lg shadow-lg">
                               <Crown className="h-4 w-4" />
-                              Voir les tarifs
+                              {t("dashboard.cleaning.viewPricing")}
                             </Button>
                           </Link>
                         </div>
@@ -1344,11 +1344,11 @@ const Dashboard = () => {
                       <CardHeader className="text-center border-b border-border">
                         <Badge className="mx-auto mb-2 bg-success/10 text-success border-success/20 gap-1">
                           <Rocket className="h-3 w-3" />
-                          Prêt pour le déploiement
+                          {t("dashboard.deployment.readyForDeployment")}
                         </Badge>
-                        <CardTitle className="text-xl text-foreground">Étape 4 : Assistant de Déploiement Intelligent</CardTitle>
+                        <CardTitle className="text-xl text-foreground">{t("dashboard.deployment.step")}</CardTitle>
                         <CardDescription className="max-w-md mx-auto">
-                          Choisissez comment et où déployer votre projet libéré
+                          {t("dashboard.deployment.subtitle")}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-6 pb-8">
@@ -1369,7 +1369,7 @@ const Dashboard = () => {
                             onClick={resetAnalysis}
                           >
                             <RefreshCw className="mr-2 h-4 w-4" />
-                            Analyser un autre projet
+                            {t("dashboard.deployment.analyzeAnother")}
                           </Button>
                         </div>
                       </CardContent>
@@ -1394,8 +1394,8 @@ const Dashboard = () => {
                     results={batchResults}
                     onComplete={() => {
                       toast({
-                        title: "Analyse batch terminée",
-                        description: `${batchResults.filter(r => r.status === "complete").length} projets analysés avec succès`,
+                        title: t("dashboard.batch.complete"),
+                        description: `${batchResults.filter(r => r.status === "complete").length} ${t("dashboard.batch.projectsAnalyzed")}`,
                       });
                     }}
                     onReset={resetBatchAnalysis}
@@ -1411,7 +1411,7 @@ const Dashboard = () => {
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <FolderOpen className="h-4 w-4" />
-                      Sélectionnez un projet pour accéder directement aux options de déploiement
+                      {t("dashboard.messages.selectProjectForDeploy")}
                     </p>
                   </CardContent>
                 </Card>
@@ -1430,14 +1430,13 @@ const Dashboard = () => {
                   if (option === 'zip') {
                     setActiveTab('import');
                     toast({
-                      title: "Export ZIP",
-                      description: "Importez d'abord votre projet pour générer l'archive nettoyée",
+                      title: t("dashboard.toast.exportZip"),
+                      description: t("dashboard.toast.exportZipDesc"),
                     });
                   } else if (option === 'ftp') {
-                    // Show FTP onboarding
                     toast({
-                      title: "Hébergement FTP",
-                      description: "Importez votre projet puis utilisez l'assistant de déploiement FTP",
+                      title: t("dashboard.toast.ftpHosting"),
+                      description: t("dashboard.toast.ftpHostingDesc"),
                     });
                     setActiveTab('import');
                   } else if (option === 'vps') {
@@ -1481,8 +1480,8 @@ const Dashboard = () => {
                   extractedFiles={extractedFiles}
                   onComplete={() => {
                     toast({
-                      title: "Déploiement souverain terminé",
-                      description: "Votre projet est maintenant sur votre infrastructure",
+                      title: t("dashboard.toast.sovereignComplete"),
+                      description: t("dashboard.toast.sovereignCompleteDesc"),
                     });
                     fetchHistory();
                   }}
