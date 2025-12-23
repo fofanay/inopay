@@ -156,6 +156,14 @@ const Dashboard = () => {
   const [batchResults, setBatchResults] = useState<BatchAnalysisResult[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
 
+  // Swipe navigation for mobile - must be called unconditionally before any early returns
+  const swipeHandlers = useSwipeNavigation(
+    DASHBOARD_TABS,
+    activeTab,
+    (tab) => setActiveTab(tab),
+    { threshold: 80, allowedTime: 400 }
+  );
+
   // Keyboard shortcut for Sovereign Export (Ctrl+Shift+S)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -624,13 +632,7 @@ const Dashboard = () => {
     { id: "services", label: "Mes Services", icon: Crown },
   ];
 
-  // Swipe navigation for mobile
-  const swipeHandlers = useSwipeNavigation(
-    DASHBOARD_TABS,
-    activeTab,
-    (tab) => setActiveTab(tab),
-    { threshold: 80, allowedTime: 400 }
-  );
+  // Swipe handlers are now initialized at the top of the component (before early returns)
 
   const getPageTitle = () => {
     const item = menuItems.find(m => m.id === activeTab);
