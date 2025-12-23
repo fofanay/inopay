@@ -23,16 +23,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Shield,
   AlertTriangle,
-  Settings2,
-  Rocket
+  Settings2
 } from 'lucide-react';
 import { VPSOnboarding } from './VPSOnboarding';
 import { ServerSetupWizard } from './ServerSetupWizard';
 import { CoolifyTokenConfig } from './CoolifyTokenConfig';
 import { FirstDeploymentWizard } from './FirstDeploymentWizard';
 import { ServerSettingsDialog } from './ServerSettingsDialog';
+import { useTranslation } from 'react-i18next';
 
 interface UserServer {
   id: string;
@@ -59,14 +58,8 @@ interface ServerDeployment {
   server_id: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<{ className?: string }> }> = {
-  ready: { label: 'Prêt', variant: 'default', icon: CheckCircle2 },
-  installing: { label: 'Installation...', variant: 'secondary', icon: Clock },
-  pending: { label: 'En attente', variant: 'outline', icon: Clock },
-  error: { label: 'Erreur', variant: 'destructive', icon: AlertCircle },
-};
-
 export function ServerManagement() {
+  const { t, i18n } = useTranslation();
   const [servers, setServers] = useState<UserServer[]>([]);
   const [deployments, setDeployments] = useState<Record<string, ServerDeployment[]>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +69,13 @@ export function ServerManagement() {
   const [settingsServer, setSettingsServer] = useState<UserServer | null>(null);
   const [retryingDeploymentId, setRetryingDeploymentId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<{ className?: string }> }> = {
+    ready: { label: t('serverManagement.status.ready'), variant: 'default', icon: CheckCircle2 },
+    installing: { label: t('serverManagement.status.installing'), variant: 'secondary', icon: Clock },
+    pending: { label: t('serverManagement.status.pending'), variant: 'outline', icon: Clock },
+    error: { label: t('serverManagement.status.error'), variant: 'destructive', icon: AlertCircle },
+  };
 
   const fetchServers = async () => {
     try {
@@ -110,8 +110,8 @@ export function ServerManagement() {
     } catch (error: any) {
       console.error('Error fetching servers:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les serveurs.",
+        title: t('common.error'),
+        description: t('serverManagement.loadError'),
         variant: "destructive"
       });
     } finally {
@@ -137,14 +137,14 @@ export function ServerManagement() {
 
       setServers(prev => prev.filter(s => s.id !== deleteServerId));
       toast({
-        title: "Serveur supprimé",
-        description: "Le serveur a été retiré de votre compte.",
+        title: t('serverManagement.serverDeleted'),
+        description: t('serverManagement.serverDeletedDesc'),
       });
     } catch (error: any) {
       console.error('Delete error:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le serveur.",
+        title: t('common.error'),
+        description: t('serverManagement.deleteError'),
         variant: "destructive"
       });
     } finally {
@@ -174,8 +174,8 @@ export function ServerManagement() {
 
       if (data.success) {
         toast({
-          title: "Déploiement relancé !",
-          description: "Votre application est en cours de construction.",
+          title: t('serverManagement.deploymentRetried'),
+          description: t('serverManagement.appBuilding'),
         });
         fetchServers();
       } else {
@@ -184,7 +184,7 @@ export function ServerManagement() {
     } catch (error: any) {
       console.error('Retry deployment error:', error);
       toast({
-        title: "Erreur de déploiement",
+        title: t('serverManagement.deploymentError'),
         description: error.message,
         variant: "destructive"
       });
@@ -197,7 +197,7 @@ export function ServerManagement() {
     return (
       <div className="space-y-4">
         <Button variant="outline" onClick={() => setShowAddServer(false)}>
-          ← Retour à la liste
+          ← {t('serverManagement.backToList')}
         </Button>
         <VPSOnboarding />
       </div>
@@ -208,9 +208,9 @@ export function ServerManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Mes serveurs VPS</h2>
+          <h2 className="text-2xl font-bold">{t('serverManagement.title')}</h2>
           <p className="text-muted-foreground">
-            Gérez vos serveurs pour des déploiements illimités
+            {t('serverManagement.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -219,7 +219,7 @@ export function ServerManagement() {
           </Button>
           <Button onClick={() => setShowAddServer(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Ajouter un serveur
+            {t('serverManagement.addServer')}
           </Button>
         </div>
       </div>
@@ -232,13 +232,13 @@ export function ServerManagement() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Server className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Aucun serveur configuré</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('serverManagement.noServers')}</h3>
             <p className="text-muted-foreground text-center mb-6 max-w-md">
-              Ajoutez votre propre serveur VPS pour déployer vos applications sans limites
+              {t('serverManagement.noServersDesc')}
             </p>
             <Button onClick={() => setShowAddServer(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Ajouter mon premier serveur
+              {t('serverManagement.addFirstServer')}
             </Button>
           </CardContent>
         </Card>
@@ -273,7 +273,7 @@ export function ServerManagement() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setSettingsServer(server)}
-                          title="Paramètres du serveur"
+                          title={t('settings.title')}
                         >
                           <Settings2 className="w-4 h-4" />
                         </Button>
@@ -283,7 +283,7 @@ export function ServerManagement() {
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteServerId(server.id)}
-                        title="Supprimer ce serveur"
+                        title={t('serverManagement.deleteServer')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -301,14 +301,14 @@ export function ServerManagement() {
                     <div className="flex flex-wrap gap-4 text-sm">
                       {server.provider && (
                         <div>
-                          <span className="text-muted-foreground">Provider:</span>{' '}
+                          <span className="text-muted-foreground">{t('serverManagement.provider')}:</span>{' '}
                           <span className="font-medium capitalize">{server.provider}</span>
                         </div>
                       )}
                       <div>
-                        <span className="text-muted-foreground">Ajouté le:</span>{' '}
+                        <span className="text-muted-foreground">{t('serverManagement.addedOn')}:</span>{' '}
                         <span className="font-medium">
-                          {new Date(server.created_at).toLocaleDateString('fr-FR')}
+                          {new Date(server.created_at).toLocaleDateString(i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
                         </span>
                       </div>
                       {server.coolify_url && (
@@ -317,7 +317,7 @@ export function ServerManagement() {
                           className="p-0 h-auto"
                           onClick={() => window.open(server.coolify_url!, '_blank')}
                         >
-                          Ouvrir Coolify <ExternalLink className="w-3 h-3 ml-1" />
+                          {t('serverManagement.openCoolify')} <ExternalLink className="w-3 h-3 ml-1" />
                         </Button>
                       )}
                     </div>
@@ -342,7 +342,7 @@ export function ServerManagement() {
 
                     {serverDeployments.length > 0 && (
                       <div className="border-t pt-4">
-                        <h4 className="text-sm font-medium mb-2">Déploiements récents</h4>
+                        <h4 className="text-sm font-medium mb-2">{t('serverManagement.recentDeployments')}</h4>
                         <div className="space-y-2">
                           {serverDeployments.slice(0, 3).map((deployment) => (
                             <div 
@@ -357,7 +357,7 @@ export function ServerManagement() {
                                 ) : deployment.status !== 'failed' && (
                                   <Badge variant="outline" className="text-xs gap-1 text-warning border-warning/30 bg-warning/10">
                                     <AlertTriangle className="h-3 w-3" />
-                                    Secrets temporaires
+                                    {t('serverManagement.temporarySecrets')}
                                   </Badge>
                                 )}
                               </div>
@@ -366,7 +366,7 @@ export function ServerManagement() {
                                   variant={deployment.status === 'failed' ? 'destructive' : 'outline'} 
                                   className="text-xs"
                                 >
-                                  {deployment.status === 'failed' ? 'Échec' : deployment.status}
+                                  {deployment.status === 'failed' ? t('serverManagement.failed') : deployment.status}
                                 </Badge>
                                 {deployment.status === 'failed' && (
                                   <Button
@@ -381,7 +381,7 @@ export function ServerManagement() {
                                     ) : (
                                       <>
                                         <RefreshCw className="w-3 h-3 mr-1" />
-                                        Réessayer
+                                        {t('serverManagement.retry')}
                                       </>
                                     )}
                                   </Button>
@@ -414,15 +414,14 @@ export function ServerManagement() {
       <Dialog open={!!deleteServerId} onOpenChange={() => setDeleteServerId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer ce serveur ?</DialogTitle>
+            <DialogTitle>{t('serverManagement.deleteServer')}</DialogTitle>
             <DialogDescription>
-              Cette action est irréversible. Le serveur sera retiré de votre compte Inopay,
-              mais Coolify restera installé sur votre VPS.
+              {t('serverManagement.deleteServerDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteServerId(null)}>
-              Annuler
+              {t('serverManagement.cancel')}
             </Button>
             <Button 
               variant="destructive" 
@@ -432,10 +431,10 @@ export function ServerManagement() {
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Suppression...
+                  {t('serverManagement.deleting')}
                 </>
               ) : (
-                'Supprimer'
+                t('serverManagement.delete')
               )}
             </Button>
           </DialogFooter>
