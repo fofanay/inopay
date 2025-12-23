@@ -5,9 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { RoleIndicator } from "@/components/ui/role-indicator";
 import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, Twitter, Github, ArrowDownRight } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const Header = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, subscription, signOut, isAdmin } = useAuth();
@@ -38,7 +41,7 @@ const Header = () => {
     }
     return (
       <Badge variant="outline" className="text-muted-foreground border-border gap-1">
-        Gratuit
+        {t("common.free")}
       </Badge>
     );
   };
@@ -55,12 +58,12 @@ const Header = () => {
             </span>
             <span className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Support 24/7
+              {t("common.support247")}
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/a-propos" className="hover:text-white/80 transition-colors">À propos</Link>
-            <Link to="/tarifs" className="hover:text-white/80 transition-colors">Tarifs</Link>
+            <Link to="/a-propos" className="hover:text-white/80 transition-colors">{t("common.about")}</Link>
+            <Link to="/tarifs" className="hover:text-white/80 transition-colors">{t("common.pricing")}</Link>
           </div>
         </div>
       </div>
@@ -80,8 +83,8 @@ const Header = () => {
                 <MapPin className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Notre mission</p>
-                <p className="text-sm font-medium text-foreground">Libérer votre code IA</p>
+                <p className="text-xs text-muted-foreground">{t("common.ourMission")}</p>
+                <p className="text-sm font-medium text-foreground">{t("common.liberateCode")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -89,7 +92,7 @@ const Header = () => {
                 <Mail className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Contact</p>
+                <p className="text-xs text-muted-foreground">{t("common.contact")}</p>
                 <p className="text-sm font-medium text-foreground">contact@getinopay.com</p>
               </div>
             </div>
@@ -139,7 +142,7 @@ const Header = () => {
                 isActive("/") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Accueil
+              {t("common.home")}
             </Link>
             <Link 
               to="/dashboard" 
@@ -147,7 +150,7 @@ const Header = () => {
                 isActive("/dashboard") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Dashboard
+              {t("common.dashboard")}
             </Link>
             <Link 
               to="/economies" 
@@ -155,9 +158,9 @@ const Header = () => {
                 isActive("/economies") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Économies
+              {t("common.savings")}
               <Badge className="bg-white/20 text-white border-white/30 text-xs px-1.5 py-0">
-                NEW
+                {t("common.new")}
               </Badge>
             </Link>
             <Link 
@@ -166,7 +169,7 @@ const Header = () => {
                 isActive("/tarifs") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Tarifs
+              {t("common.pricing")}
             </Link>
             <Link 
               to="/upgrade" 
@@ -174,9 +177,9 @@ const Header = () => {
                 isActive("/upgrade") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Upgrade
+              {t("common.upgrade")}
               <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs px-1.5 py-0">
-                BYOK
+                {t("common.byok")}
               </Badge>
             </Link>
             <Link 
@@ -185,12 +188,13 @@ const Header = () => {
                 isActive("/historique") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              Historique
+              {t("common.history")}
             </Link>
           </div>
           
           {/* Auth section */}
           <div className="flex items-center gap-4">
+            <LanguageSwitcher variant="navbar" />
             {user ? (
               <>
                 {/* Role Indicator */}
@@ -203,7 +207,7 @@ const Header = () => {
                   <Link to="/admin-dashboard">
                     <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 gap-2">
                       <Shield className="h-4 w-4" />
-                      Admin
+                      {t("common.admin")}
                     </Button>
                   </Link>
                 )}
@@ -223,7 +227,7 @@ const Header = () => {
                   className="bg-white text-accent hover:bg-white/90 rounded-full px-4"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Déconnexion
+                  {t("common.logout")}
                 </Button>
               </>
             ) : (
@@ -232,7 +236,7 @@ const Header = () => {
                   size="sm" 
                   className="bg-white text-accent hover:bg-white/90 rounded-full px-6 font-semibold"
                 >
-                  Commencer
+                  {t("common.start")}
                   <ArrowDownRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -253,7 +257,7 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Accueil
+                {t("common.home")}
               </Link>
               <Link 
                 to="/dashboard" 
@@ -262,7 +266,7 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Dashboard
+                {t("common.dashboard")}
               </Link>
               <Link 
                 to="/economies" 
@@ -271,9 +275,9 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Économies
+                {t("common.savings")}
                 <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5 py-0">
-                  NEW
+                  {t("common.new")}
                 </Badge>
               </Link>
               <Link 
@@ -283,7 +287,7 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Tarifs
+                {t("common.pricing")}
               </Link>
               <Link 
                 to="/upgrade" 
@@ -292,9 +296,9 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Upgrade
+                {t("common.upgrade")}
                 <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs px-1.5 py-0">
-                  BYOK
+                  {t("common.byok")}
                 </Badge>
               </Link>
               <Link 
@@ -304,13 +308,16 @@ const Header = () => {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Historique
+                {t("common.history")}
               </Link>
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t("common.settings")}</span>
+                <LanguageSwitcher />
+              </div>
+              <div className="pt-2 border-t border-border">
                 {user ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2">
-                      {/* Role Indicator for Mobile */}
                       {isAdmin ? (
                         <RoleIndicator role="admin" size="sm" />
                       ) : (
@@ -326,25 +333,25 @@ const Header = () => {
                       <Link to="/admin-dashboard" onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="outline" size="sm" className="w-full gap-2 border-destructive/50 text-destructive">
                           <Shield className="h-4 w-4" />
-                          Admin Dashboard
+                          {t("common.adminDashboard")}
                         </Button>
                       </Link>
                     )}
                     <Link to="/parametres" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="outline" size="sm" className="w-full">
                         <Settings className="h-4 w-4 mr-2" />
-                        Paramètres
+                        {t("common.settings")}
                       </Button>
                     </Link>
                     <Button variant="outline" size="sm" onClick={handleSignOut}>
                       <LogOut className="h-4 w-4 mr-2" />
-                      Déconnexion
+                      {t("common.logout")}
                     </Button>
                   </div>
                 ) : (
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full rounded-full gradient-inopay">
-                      Connexion / Inscription
+                      {t("common.loginSignup")}
                     </Button>
                   </Link>
                 )}
