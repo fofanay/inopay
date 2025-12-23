@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +25,10 @@ interface DeploymentChoiceProps {
 interface OptionCard {
   id: DeploymentOption;
   icon: React.ElementType;
-  title: string;
-  description: string;
-  features: string[];
-  badge?: string;
+  titleKey: string;
+  descriptionKey: string;
+  featuresKeys: string[];
+  badgeKey?: string;
   badgeVariant?: 'default' | 'secondary' | 'outline';
   recommended?: boolean;
   price?: string;
@@ -37,45 +38,45 @@ const OPTIONS: OptionCard[] = [
   {
     id: 'zip',
     icon: Download,
-    title: 'Archive ZIP',
-    description: 'Téléchargez votre projet nettoyé prêt à déployer manuellement',
-    features: [
-      'Code nettoyé des dépendances Lovable',
-      'Dockerfile inclus',
-      'Instructions de déploiement',
-      'Déploiement manuel requis'
+    titleKey: 'deploymentChoice.options.zip.title',
+    descriptionKey: 'deploymentChoice.options.zip.description',
+    featuresKeys: [
+      'deploymentChoice.options.zip.features.0',
+      'deploymentChoice.options.zip.features.1',
+      'deploymentChoice.options.zip.features.2',
+      'deploymentChoice.options.zip.features.3'
     ],
-    badge: 'Gratuit',
+    badgeKey: 'deploymentChoice.options.zip.badge',
     badgeVariant: 'secondary',
     price: '0€'
   },
   {
     id: 'ftp',
     icon: Globe,
-    title: 'Hébergement mutualisé',
-    description: 'Déployez sur un hébergement web classique via FTP/SFTP',
-    features: [
-      'Compatible OVH, Hostinger, etc.',
-      'Pas de VPS requis',
-      'Simple et rapide',
-      'Idéal pour sites vitrines'
+    titleKey: 'deploymentChoice.options.ftp.title',
+    descriptionKey: 'deploymentChoice.options.ftp.description',
+    featuresKeys: [
+      'deploymentChoice.options.ftp.features.0',
+      'deploymentChoice.options.ftp.features.1',
+      'deploymentChoice.options.ftp.features.2',
+      'deploymentChoice.options.ftp.features.3'
     ],
-    badge: 'Simple',
+    badgeKey: 'deploymentChoice.options.ftp.badge',
     badgeVariant: 'outline',
     price: '~3€/mois'
   },
   {
     id: 'vps',
     icon: Server,
-    title: 'VPS avec Coolify',
-    description: 'Déployez sur votre propre serveur avec gestion automatisée',
-    features: [
-      'Contrôle total du serveur',
-      'Déploiements illimités',
-      'SSL automatique',
-      'Idéal pour apps complexes'
+    titleKey: 'deploymentChoice.options.vps.title',
+    descriptionKey: 'deploymentChoice.options.vps.description',
+    featuresKeys: [
+      'deploymentChoice.options.vps.features.0',
+      'deploymentChoice.options.vps.features.1',
+      'deploymentChoice.options.vps.features.2',
+      'deploymentChoice.options.vps.features.3'
     ],
-    badge: 'Recommandé',
+    badgeKey: 'deploymentChoice.options.vps.badge',
     badgeVariant: 'default',
     recommended: true,
     price: '~5€/mois'
@@ -83,14 +84,15 @@ const OPTIONS: OptionCard[] = [
 ];
 
 export function DeploymentChoice({ onSelect, hasExistingVPS = false }: DeploymentChoiceProps) {
+  const { t } = useTranslation();
   const [hoveredOption, setHoveredOption] = useState<DeploymentOption | null>(null);
 
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">Comment souhaitez-vous déployer ?</h2>
+        <h2 className="text-2xl font-bold text-foreground">{t('deploymentChoice.title')}</h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          Choisissez la méthode de déploiement adaptée à vos besoins et à votre niveau technique
+          {t('deploymentChoice.subtitle')}
         </p>
       </div>
 
@@ -111,7 +113,7 @@ export function DeploymentChoice({ onSelect, hasExistingVPS = false }: Deploymen
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-primary text-primary-foreground shadow-md">
                   <Zap className="w-3 h-3 mr-1" />
-                  Recommandé
+                  {t('deploymentChoice.recommended')}
                 </Badge>
               </div>
             )}
@@ -125,22 +127,22 @@ export function DeploymentChoice({ onSelect, hasExistingVPS = false }: Deploymen
                 <option.icon className="w-7 h-7" />
               </div>
               <div className="flex items-center justify-center gap-2">
-                <CardTitle className="text-lg">{option.title}</CardTitle>
-                {option.badge && !option.recommended && (
-                  <Badge variant={option.badgeVariant}>{option.badge}</Badge>
+                <CardTitle className="text-lg">{t(option.titleKey)}</CardTitle>
+                {option.badgeKey && !option.recommended && (
+                  <Badge variant={option.badgeVariant}>{t(option.badgeKey)}</Badge>
                 )}
               </div>
               <CardDescription className="min-h-[40px]">
-                {option.description}
+                {t(option.descriptionKey)}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <ul className="space-y-2">
-                {option.features.map((feature, idx) => (
+                {option.featuresKeys.map((featureKey, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <span>{feature}</span>
+                    <span>{t(featureKey)}</span>
                   </li>
                 ))}
               </ul>
@@ -149,7 +151,7 @@ export function DeploymentChoice({ onSelect, hasExistingVPS = false }: Deploymen
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <DollarSign className="w-3 h-3" />
-                    Coût estimé
+                    {t('deploymentChoice.estimatedCost')}
                   </span>
                   <span className="font-medium text-foreground">{option.price}</span>
                 </div>
@@ -159,14 +161,14 @@ export function DeploymentChoice({ onSelect, hasExistingVPS = false }: Deploymen
                 className="w-full" 
                 variant={option.recommended ? 'default' : 'outline'}
               >
-                Choisir
+                {t('deploymentChoice.choose')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
 
               {option.id === 'vps' && hasExistingVPS && (
                 <p className="text-xs text-center text-success flex items-center justify-center gap-1">
                   <Check className="w-3 h-3" />
-                  Vous avez déjà un VPS configuré
+                  {t('deploymentChoice.vpsConfigured')}
                 </p>
               )}
             </CardContent>
@@ -177,11 +179,11 @@ export function DeploymentChoice({ onSelect, hasExistingVPS = false }: Deploymen
       <div className="flex justify-center gap-6 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-primary" />
-          <span>100% souverain</span>
+          <span>{t('deploymentChoice.sovereign')}</span>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
-          <span>Déploiement en minutes</span>
+          <span>{t('deploymentChoice.deploymentInMinutes')}</span>
         </div>
       </div>
     </div>

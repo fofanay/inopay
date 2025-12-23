@@ -768,5 +768,89 @@
     "economicFreedom": "Liberté Économique",
     "economicFreedomDesc": "Divisez vos coûts par 3.",
     "readManifeste": "Lire le manifeste"
+  },
+  "deploymentChoice": {
+    "title": "Comment souhaitez-vous déployer ?",
+    "subtitle": "Choisissez la méthode de déploiement adaptée à vos besoins et à votre niveau technique",
+    "recommended": "Recommandé",
+    "estimatedCost": "Coût estimé",
+    "choose": "Choisir",
+    "vpsConfigured": "Vous avez déjà un VPS configuré",
+    "sovereign": "100% souverain",
+    "deploymentInMinutes": "Déploiement en minutes",
+    "options": {
+      "zip": {
+        "title": "Archive ZIP",
+        "description": "Téléchargez votre projet nettoyé prêt à déployer manuellement",
+        "badge": "Gratuit",
+        "features": ["Code nettoyé des dépendances Lovable", "Dockerfile inclus", "Instructions de déploiement", "Déploiement manuel requis"]
+      },
+      "ftp": {
+        "title": "Hébergement mutualisé",
+        "description": "Déployez sur un hébergement web classique via FTP/SFTP",
+        "badge": "Simple",
+        "features": ["Compatible OVH, Hostinger, etc.", "Pas de VPS requis", "Simple et rapide", "Idéal pour sites vitrines"]
+      },
+      "vps": {
+        "title": "VPS avec Coolify",
+        "description": "Déployez sur votre propre serveur avec gestion automatisée",
+        "badge": "Recommandé",
+        "features": ["Contrôle total du serveur", "Déploiements illimités", "SSL automatique", "Idéal pour apps complexes"]
+      }
+    }
+  },
+  "sovereignDeployment": {
+    "steps": {
+      "connections": { "title": "Connecter GitHub/Supabase", "description": "Configurez vos identifiants souverains" },
+      "cleanMigrate": { "title": "Nettoyer & Migrer", "description": "Nettoyage du code et migration du schéma DB" },
+      "deploy": { "title": "Déployer sur VPS", "description": "Déploiement via GitHub → Coolify → VPS" }
+    },
+    "continue": "Continuer",
+    "back": "Retour",
+    "connected": "Connecté",
+    "notConfigured": "Non configuré",
+    "optional": "Optionnel",
+    "repoDescription": "Projet souverain exporté depuis Inopay - 100% autonome",
+    "cleanMigrate": {
+      "title": "Nettoyage & Migration",
+      "description": "Le code sera nettoyé des dépendances Lovable et le schéma sera migré vers votre Supabase",
+      "githubDescription": "Le code nettoyé sera poussé sur votre compte",
+      "supabaseDescription": "Le schéma DB sera migré vers votre instance",
+      "action": "Nettoyer & Migrer"
+    },
+    "deploy": {
+      "title": "Déploiement Souverain",
+      "description": "Flux: Code Lovable → Nettoyage Inopay → GitHub Client → Webhook Coolify → VPS",
+      "repoCreatedSuccess": "Dépôt créé avec succès",
+      "schemaMigrated": "Schéma DB migré",
+      "action": "Déployer sur mon VPS"
+    },
+    "status": {
+      "cleaningCode": "Nettoyage du code en cours...",
+      "migratingSchema": "Migration du schéma vers votre Supabase...",
+      "preparationDone": "Préparation terminée",
+      "creatingRepo": "Création du dépôt sur votre GitHub...",
+      "triggeringCoolify": "Dépôt créé, déclenchement du déploiement Coolify...",
+      "deploymentLaunched": "Déploiement lancé sur votre VPS!",
+      "repoCreatedConfigureCoolify": "Dépôt créé - Configurez Coolify pour finaliser"
+    },
+    "toasts": {
+      "warning": "Avertissement",
+      "migrationPartiallyFailed": "Migration du schéma en partie échouée. Continuez le déploiement.",
+      "schemaMigrated": "Schéma migré",
+      "tablesCreated": "Les tables et politiques RLS ont été créées sur votre Supabase",
+      "sovereignDeploymentSuccess": "Déploiement souverain réussi!",
+      "deployingToVPS": "Votre projet est en cours de déploiement sur votre VPS",
+      "repoCreated": "Dépôt créé",
+      "connectToCoolify": "Connectez ce dépôt à Coolify pour le déploiement automatique"
+    },
+    "errors": {
+      "projectRequired": "Projet requis",
+      "analyzeFirst": "Veuillez d'abord analyser un projet",
+      "cleanMigrateFailed": "Erreur lors du nettoyage ou de la migration",
+      "githubTokenNotConfigured": "Token GitHub non configuré",
+      "deploymentError": "Erreur de déploiement",
+      "unknownError": "Erreur inconnue"
+    }
   }
 }

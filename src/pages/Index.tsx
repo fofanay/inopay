@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
 import ROICalculator from "@/components/landing/ROICalculator";
 import { useTranslation } from "react-i18next";
+import FloatingLanguageSwitcher from "@/components/FloatingLanguageSwitcher";
 
 // Import platform logos
 import lovableLogo from "@/assets/platforms/lovable-logo.png";
@@ -88,6 +89,7 @@ const Index = () => {
   ];
 
   return (
+    <>
     <Layout>
       {/* Hero Section - Style Mexlife avec couleurs Inopay + Parallax */}
       <section className="relative overflow-hidden pt-6 pb-12 md:pt-8 md:pb-20 lg:pt-12 lg:pb-28">
@@ -522,6 +524,10 @@ const Index = () => {
         </div>
       </section>
     </Layout>
+    
+    {/* Floating language switcher for non-logged-in visitors */}
+    {!user && <FloatingLanguageSwitcher />}
+    </>
   );
 };
 
