@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -20,6 +20,7 @@ interface AuthContextType {
   isAdmin: boolean;
   checkSubscription: () => Promise<void>;
   checkRole: () => Promise<void>;
+  refreshSession: () => Promise<Session | null>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -35,6 +36,20 @@ export const useAuth = () => {
   return context;
 };
 
+// Check if token is about to expire (within 5 minutes)
+const isTokenExpiringSoon = (session: Session | null): boolean => {
+  if (!session?.expires_at) return false;
+  const expiresAt = session.expires_at * 1000; // Convert to milliseconds
+  const fiveMinutes = 5 * 60 * 1000;
+  return Date.now() > expiresAt - fiveMinutes;
+};
+
+// Check if token is expired
+const isTokenExpired = (session: Session | null): boolean => {
+  if (!session?.expires_at) return true;
+  return Date.now() > session.expires_at * 1000;
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -44,6 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     planType: "free",
   });
   const [role, setRole] = useState<UserRole>(null);
+  const refreshingRef = useRef(false);
+  const lastRefreshRef = useRef<number>(0);
 
   const checkRole = async () => {
     if (!user) {
@@ -71,8 +88,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const checkSubscription = async (accessToken?: string) => {
-    const tokenToUse = accessToken || session?.access_token;
+  // Refresh session and get new tokens
+  const refreshSession = useCallback(async (): Promise<Session | null> => {
+    // Prevent concurrent refresh attempts
+    if (refreshingRef.current) {
+      console.log("[AUTH] Refresh already in progress, skipping");
+      return session;
+    }
+
+    // Prevent too frequent refreshes (minimum 10 seconds between refreshes)
+    const now = Date.now();
+    if (now - lastRefreshRef.current < 10000) {
+      console.log("[AUTH] Refresh attempted too soon, skipping");
+      return session;
+    }
+
+    refreshingRef.current = true;
+    lastRefreshRef.current = now;
+
+    try {
+      console.log("[AUTH] Refreshing session...");
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error("[AUTH] Session refresh failed:", error);
+        refreshingRef.current = false;
+        return null;
+      }
+
+      if (data.session) {
+        console.log("[AUTH] Session refreshed successfully");
+        setSession(data.session);
+        setUser(data.session.user);
+        refreshingRef.current = false;
+        return data.session;
+      }
+
+      refreshingRef.current = false;
+      return null;
+    } catch (error) {
+      console.error("[AUTH] Session refresh error:", error);
+      refreshingRef.current = false;
+      return null;
+    }
+  }, [session]);
+
+  const checkSubscription = useCallback(async (accessToken?: string) => {
+    let tokenToUse = accessToken || session?.access_token;
+    
+    // If token is expiring soon, refresh first
+    if (session && isTokenExpiringSoon(session)) {
+      console.log("[AUTH] Token expiring soon, refreshing before subscription check");
+      const newSession = await refreshSession();
+      if (newSession) {
+        tokenToUse = newSession.access_token;
+      }
+    }
+
     if (!tokenToUse) {
       console.log("[AUTH] checkSubscription: No token available");
       return;
@@ -87,6 +159,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
 
+      // Handle 401 errors by refreshing token and retrying
+      if (response.error?.message?.includes("401") || 
+          response.data?.error?.includes("Authentication")) {
+        console.log("[AUTH] Got 401, attempting token refresh and retry");
+        const newSession = await refreshSession();
+        
+        if (newSession) {
+          // Retry with new token
+          const retryResponse = await supabase.functions.invoke("check-subscription", {
+            headers: {
+              Authorization: `Bearer ${newSession.access_token}`,
+            },
+          });
+
+          if (retryResponse.data && !retryResponse.error) {
+            setSubscription({
+              subscribed: retryResponse.data.subscribed,
+              planType: retryResponse.data.plan_type || "free",
+              creditsRemaining: retryResponse.data.credits_remaining,
+              subscriptionEnd: retryResponse.data.subscription_end,
+            });
+            return;
+          }
+        }
+        
+        // If retry failed, set to free plan
+        setSubscription({ subscribed: false, planType: "free" });
+        return;
+      }
+
       if (response.data && !response.error) {
         setSubscription({
           subscribed: response.data.subscribed,
@@ -98,7 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error checking subscription:", error);
     }
-  };
+  }, [session, refreshSession]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -136,6 +238,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => authSubscription.unsubscribe();
   }, []);
 
+  // Proactive token refresh - check every 30 seconds if token is expiring soon
+  useEffect(() => {
+    if (!session) return;
+
+    const checkAndRefresh = async () => {
+      if (isTokenExpiringSoon(session)) {
+        console.log("[AUTH] Token expiring soon, proactively refreshing");
+        await refreshSession();
+      }
+    };
+
+    const interval = setInterval(checkAndRefresh, 30000); // Check every 30 seconds
+    
+    // Also check immediately
+    checkAndRefresh();
+
+    return () => clearInterval(interval);
+  }, [session, refreshSession]);
+
   // Periodic subscription refresh every 60 seconds
   useEffect(() => {
     if (!session?.access_token) return;
@@ -146,7 +267,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 60000); // 60 seconds
 
     return () => clearInterval(interval);
-  }, [session?.access_token]);
+  }, [session?.access_token, checkSubscription]);
 
   // Check role when user changes
   useEffect(() => {
@@ -196,6 +317,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAdmin,
       checkSubscription,
       checkRole,
+      refreshSession,
       signUp, 
       signIn, 
       signOut 
