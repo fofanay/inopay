@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRateLimit } from "../_shared/rate-limiter.ts";
+import { needsCleaning, SECURITY_LIMITS } from "../_shared/proprietary-patterns.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,20 +106,47 @@ serve(async (req) => {
       });
     }
 
+    // Security check: file size limit
+    if (code.length > SECURITY_LIMITS.MAX_FILE_SIZE_CHARS) {
+      return new Response(JSON.stringify({ 
+        error: `Fichier trop volumineux: ${code.length} > ${SECURITY_LIMITS.MAX_FILE_SIZE_CHARS} caractères` 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Quick check if cleaning is needed
+    if (!needsCleaning(code)) {
+      console.log(`[CLEAN-CODE] File ${fileName} does not need cleaning, returning as-is`);
+      return new Response(JSON.stringify({ 
+        cleanedCode: code,
+        fromCache: false,
+        noCleaningNeeded: true,
+        tokensUsed: 0,
+        apiCostCents: 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Generate hash for cache lookup
     const fileHash = await hashContent(code);
     console.log(`[CLEAN-CODE] File: ${fileName}, Hash: ${fileHash.substring(0, 8)}...`);
 
-    // Check cache first
+    // Check cache first (with TTL check)
     if (userId) {
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       
+      const ttlHoursAgo = new Date(Date.now() - SECURITY_LIMITS.CACHE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+      
       const { data: cachedResult } = await supabaseAdmin
         .from('cleaning_cache')
-        .select('cleaned_content, tokens_used')
+        .select('cleaned_content, tokens_used, cleaned_at')
         .eq('user_id', userId)
         .eq('file_path', fileName || 'unknown')
         .eq('file_hash', fileHash)
+        .gte('cleaned_at', ttlHoursAgo) // Only return if within TTL
         .maybeSingle();
 
       if (cachedResult?.cleaned_content) {
@@ -280,7 +308,7 @@ serve(async (req) => {
     const outputTokens = Math.ceil(cleanedCode.length / 4);
     const apiCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000); // $3/$15 per 1M tokens
 
-    // Store in cache
+    // Store in cache with timestamp
     if (userId) {
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
       

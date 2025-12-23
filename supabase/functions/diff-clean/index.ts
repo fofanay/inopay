@@ -1,24 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { needsCleaning } from "../_shared/proprietary-patterns.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Patterns for proprietary code that needs cleaning
-const PROPRIETARY_PATTERNS = [
-  /@lovable\//,
-  /@gptengineer\//,
-  /use-mobile/,
-  /lovable-tagger/,
-  /\.lovable/,
-  /\.gptengineer/,
-];
-
-function needsCleaning(content: string): boolean {
-  return PROPRIETARY_PATTERNS.some(pattern => pattern.test(content));
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -39,10 +26,11 @@ serve(async (req) => {
       github_repo_url, 
       commit_sha, 
       files_changed,
-      deployment_id 
+      deployment_id,
+      branch = 'main' // Dynamic branch from webhook
     } = await req.json();
 
-    console.log(`[diff-clean] Processing ${files_changed?.length || 0} files for commit ${commit_sha}`);
+    console.log(`[diff-clean] Processing ${files_changed?.length || 0} files for commit ${commit_sha} on branch ${branch}`);
 
     if (!files_changed || files_changed.length === 0) {
       console.log('[diff-clean] No files to process');
@@ -125,7 +113,7 @@ serve(async (req) => {
         const data = await response.json();
         const content = atob(data.content.replace(/\n/g, ''));
 
-        // Check if file needs cleaning
+        // Check if file needs cleaning (using shared patterns)
         if (needsCleaning(content)) {
           filesToClean.push({
             path: filePath,
@@ -142,6 +130,7 @@ serve(async (req) => {
 
     // Clean files using existing clean-code function
     const cleanedFiles: string[] = [];
+    const failedFiles: { path: string; error: string }[] = [];
 
     for (const file of filesToClean) {
       try {
@@ -163,7 +152,7 @@ serve(async (req) => {
         if (cleanResponse.ok) {
           const { cleanedCode } = await cleanResponse.json();
           
-          // Commit cleaned code back to repo
+          // Commit cleaned code back to repo using dynamic branch
           const updateResponse = await fetch(
             `https://api.github.com/repos/${owner}/${repoName}/contents/${file.path}`,
             {
@@ -177,7 +166,7 @@ serve(async (req) => {
                 message: `[Inopay Sync] Clean ${file.path}`,
                 content: btoa(cleanedCode),
                 sha: file.sha,
-                branch: 'main', // TODO: Use the branch from the push event
+                branch: branch, // Use dynamic branch from webhook
               }),
             }
           );
@@ -186,11 +175,19 @@ serve(async (req) => {
             cleanedFiles.push(file.path);
             console.log(`[diff-clean] Cleaned and committed: ${file.path}`);
           } else {
-            console.error(`[diff-clean] Failed to commit ${file.path}:`, await updateResponse.text());
+            const errorText = await updateResponse.text();
+            console.error(`[diff-clean] Failed to commit ${file.path}:`, errorText);
+            failedFiles.push({ path: file.path, error: `GitHub commit failed: ${updateResponse.status}` });
           }
+        } else {
+          const errorText = await cleanResponse.text();
+          console.error(`[diff-clean] Failed to clean ${file.path}:`, errorText);
+          failedFiles.push({ path: file.path, error: `Clean failed: ${cleanResponse.status}` });
         }
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
         console.error(`[diff-clean] Error cleaning ${file.path}:`, err);
+        failedFiles.push({ path: file.path, error: errorMsg });
       }
     }
 
@@ -202,8 +199,9 @@ serve(async (req) => {
         .from('sync_history')
         .update({
           files_cleaned: cleanedFiles,
-          status: 'deploying',
+          status: failedFiles.length > 0 ? 'partial' : 'deploying',
           duration_ms: duration,
+          error_message: failedFiles.length > 0 ? JSON.stringify(failedFiles) : null,
         })
         .eq('id', history_id);
     }
@@ -215,7 +213,9 @@ serve(async (req) => {
       success: true, 
       files_cleaned: cleanedFiles.length,
       cleaned_files: cleanedFiles,
+      failed_files: failedFiles,
       duration_ms: duration,
+      branch,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

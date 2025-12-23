@@ -1,50 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  TELEMETRY_DOMAINS,
+  SUSPICIOUS_PACKAGES,
+  HIDDEN_PLUGIN_PATTERNS,
+} from "../_shared/proprietary-patterns.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// ====== SECURITY PATTERNS TO DETECT ======
-
-// Telemetry domains to block
-const TELEMETRY_DOMAINS = [
-  'lovable.app',
-  'lovable.dev',
-  'events.lovable',
-  'telemetry.lovable',
-  'gptengineer.app',
-  'gpt-engineer',
-  'analytics.lovable',
-  'tracking.lovable',
-  'amplitude.com',
-  'mixpanel.com',
-  'segment.io',
-  'hotjar.com',
-  'fullstory.com',
-  'heap.io',
-  'plausible.io',
-  'posthog.com',
-  'lovable-tagger',
-];
-
-// Suspicious package names in dependencies
-const SUSPICIOUS_PACKAGES = [
-  'lovable-tagger',
-  '@lovable/',
-  '@gptengineer/',
-  'lovable-analytics',
-  'gpt-engineer-tracker',
-];
-
-// Hidden plugin patterns
-const HIDDEN_PLUGIN_PATTERNS = [
-  /lovable.*plugin/i,
-  /gptengineer.*plugin/i,
-  /inject.*telemetry/i,
-  /hidden.*tracker/i,
-];
 
 // CDN proprietary patterns
 const PROPRIETARY_CDNS = [
@@ -137,7 +102,6 @@ function detectBase64Obfuscation(content: string, filePath: string): SecurityFin
 // Detect hex-encoded strings
 function detectHexObfuscation(content: string, filePath: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
-  // Match hex strings like \x48\x65\x6c\x6c\x6f or 0x48656c6c6f
   const hexPattern = /((?:\\x[0-9a-fA-F]{2}){10,}|0x[0-9a-fA-F]{20,})/g;
   let match;
   
@@ -204,7 +168,7 @@ function detectEvalUsage(content: string, filePath: string): SecurityFinding[] {
   return findings;
 }
 
-// Detect telemetry endpoints and tracker URLs
+// Detect telemetry endpoints and tracker URLs (using shared TELEMETRY_DOMAINS)
 function detectTelemetryEndpoints(content: string, filePath: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
   
@@ -252,7 +216,7 @@ function detectTelemetryEndpoints(content: string, filePath: string): SecurityFi
   return findings;
 }
 
-// Detect ghost hooks in config files
+// Detect ghost hooks in config files (using shared SUSPICIOUS_PACKAGES)
 function detectGhostHooks(content: string, filePath: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
   const fileName = filePath.split('/').pop()?.toLowerCase() || '';
@@ -281,7 +245,7 @@ function detectGhostHooks(content: string, filePath: string): SecurityFinding[] 
         }
       }
       
-      // Check scripts for suspicious commands
+      // Check scripts for suspicious commands (using TELEMETRY_DOMAINS)
       for (const [scriptName, scriptCmd] of Object.entries(pkg.scripts || {})) {
         if (typeof scriptCmd === 'string' && TELEMETRY_DOMAINS.some(domain => scriptCmd.includes(domain))) {
           findings.push({
@@ -300,7 +264,7 @@ function detectGhostHooks(content: string, filePath: string): SecurityFinding[] 
     }
   }
   
-  // Check vite.config for hidden plugins
+  // Check vite.config for hidden plugins (using shared HIDDEN_PLUGIN_PATTERNS)
   if (fileName.includes('vite.config')) {
     for (const pattern of HIDDEN_PLUGIN_PATTERNS) {
       if (pattern.test(content)) {
@@ -338,8 +302,8 @@ function detectGhostHooks(content: string, filePath: string): SecurityFinding[] 
   return findings;
 }
 
-// Clean the code by removing detected issues
-function cleanCode(content: string, findings: SecurityFinding[]): string {
+// Clean the code by removing detected issues (using shared TELEMETRY_DOMAINS)
+function cleanCode(content: string, _findings: SecurityFinding[]): string {
   let cleanedContent = content;
   
   // Remove telemetry imports and calls
@@ -498,10 +462,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[verify-zero-shadow-door] Error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false,
-      }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
