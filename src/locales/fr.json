@@ -756,5 +756,17 @@
   "meta": {
     "title": "Inopay - Libérez votre code IA",
     "description": "Passez du prototype IA à la vraie entreprise. Déployez votre code Lovable, Bolt ou Cursor sur votre propre VPS en 10 minutes."
+  },
+  "manifeste": {
+    "badge": "Manifeste",
+    "title": "Reprenez les clés de votre royaume",
+    "quote": "Le code est une propriété, pas un abonnement.",
+    "zeroDependency": "Zéro Dépendance",
+    "zeroDependencyDesc": "Code pur, sans marqueurs propriétaires.",
+    "totalSovereignty": "Souveraineté Totale",
+    "totalSovereigntyDesc": "Votre GitHub, votre VPS, vos clés.",
+    "economicFreedom": "Liberté Économique",
+    "economicFreedomDesc": "Divisez vos coûts par 3.",
+    "readManifeste": "Lire le manifeste"
   }
 }
