@@ -1242,6 +1242,9 @@ export type Database = {
           api_provider: string
           created_at: string
           default_repo_private: boolean | null
+          github_destination_token: string | null
+          github_destination_username: string | null
+          github_source_token: string | null
           github_token: string | null
           id: string
           preferred_deploy_platform: string | null
@@ -1253,6 +1256,9 @@ export type Database = {
           api_provider?: string
           created_at?: string
           default_repo_private?: boolean | null
+          github_destination_token?: string | null
+          github_destination_username?: string | null
+          github_source_token?: string | null
           github_token?: string | null
           id?: string
           preferred_deploy_platform?: string | null
@@ -1264,6 +1270,9 @@ export type Database = {
           api_provider?: string
           created_at?: string
           default_repo_private?: boolean | null
+          github_destination_token?: string | null
+          github_destination_username?: string | null
+          github_source_token?: string | null
           github_token?: string | null
           id?: string
           preferred_deploy_platform?: string | null

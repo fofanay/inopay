@@ -36,13 +36,21 @@ serve(async (req) => {
 
     const { repoName, description, files, isPrivate = true, github_token } = await req.json();
 
-    // Prioriser le token utilisateur, sinon fallback au token serveur
-    const userGithubToken = github_token || null;
-    const serverGithubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
-    const githubToken = userGithubToken || serverGithubToken;
-    const usingUserToken = !!userGithubToken;
+    // Fetch user's destination token from user_settings
+    const { data: userSettings } = await supabase
+      .from("user_settings")
+      .select("github_destination_token, github_destination_username, github_token")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    console.log(`[EXPORT-TO-GITHUB] Using ${usingUserToken ? "user" : "server"} token for user ${user.email}`);
+    // Priority: 1) explicit github_token param, 2) user destination token, 3) legacy github_token, 4) server fallback
+    const destinationToken = github_token || userSettings?.github_destination_token || userSettings?.github_token;
+    const serverGithubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
+    const githubToken = destinationToken || serverGithubToken;
+    const usingUserToken = !!destinationToken;
+    const destinationUsername = userSettings?.github_destination_username;
+
+    console.log(`[EXPORT-TO-GITHUB] Using ${usingUserToken ? `user destination token${destinationUsername ? ` (@${destinationUsername})` : ''}` : "server fallback token"} for user ${user.email}`);
 
     if (!githubToken) {
       return new Response(JSON.stringify({ 
