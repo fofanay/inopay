@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { RoleIndicator } from "@/components/ui/role-indicator";
 import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, Twitter, Github, ArrowDownRight } from "lucide-react";
 import { useState } from "react";
 import inopayLogo from "@/assets/inopay-logo.png";
@@ -181,6 +182,12 @@ const Header = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <>
+                {/* Role Indicator */}
+                {isAdmin ? (
+                  <RoleIndicator role="admin" size="sm" />
+                ) : (
+                  <RoleIndicator role="client" size="sm" />
+                )}
                 {isAdmin && (
                   <Link to="/admin-dashboard">
                     <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 gap-2">
@@ -280,6 +287,12 @@ const Header = () => {
                 {user ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2">
+                      {/* Role Indicator for Mobile */}
+                      {isAdmin ? (
+                        <RoleIndicator role="admin" size="sm" />
+                      ) : (
+                        <RoleIndicator role="client" size="sm" />
+                      )}
                       {getPlanBadge()}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

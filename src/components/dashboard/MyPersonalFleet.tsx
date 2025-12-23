@@ -108,12 +108,12 @@ const estimateSavings = (detectedIssues: Json): number => {
   return savings;
 };
 
-interface FleetDashboardProps {
+interface MyPersonalFleetProps {
   onSelectProject?: (project: FleetProject) => void;
   onNavigate?: (tab: string) => void;
 }
 
-export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardProps) {
+export function MyPersonalFleet({ onSelectProject, onNavigate }: MyPersonalFleetProps) {
   const { user } = useAuth();
   const [projects, setProjects] = useState<FleetProject[]>([]);
   const [deployments, setDeployments] = useState<DeploymentRecord[]>([]);
@@ -650,4 +650,4 @@ export function FleetDashboard({ onSelectProject, onNavigate }: FleetDashboardPr
   );
 }
 
-export default FleetDashboard;
+export default MyPersonalFleet;
