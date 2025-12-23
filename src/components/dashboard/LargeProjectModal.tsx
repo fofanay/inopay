@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -12,17 +11,23 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  AlertTriangle, 
+  Rocket, 
   Sparkles, 
   CreditCard, 
   FolderOpen,
   Loader2,
   CheckCircle2,
   FileCode,
-  Zap
+  Zap,
+  Shield,
+  Server,
+  ArrowLeft,
+  Check,
+  Star
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface LargeProjectModalProps {
   open: boolean;
@@ -44,6 +49,20 @@ interface Quote {
   supplementFormatted: string;
 }
 
+// Utility to round up to professional pricing
+const formatProfessionalPrice = (cents: number): string => {
+  const dollars = cents / 100;
+  // Round up to .49 or .99 for professional appearance
+  const baseAmount = Math.ceil(dollars);
+  if (baseAmount <= 10) {
+    return `${baseAmount - 0.01}`;
+  } else if (baseAmount <= 25) {
+    return `${Math.ceil(dollars / 5) * 5 - 0.01}`;
+  } else {
+    return `${Math.ceil(dollars / 10) * 10 - 0.01}`;
+  }
+};
+
 export function LargeProjectModal({
   open,
   onOpenChange,
@@ -58,7 +77,8 @@ export function LargeProjectModal({
   const [isCalculating, setIsCalculating] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set(['src']));
-  const [mode, setMode] = useState<'choice' | 'partial'>('choice');
+  const [mode, setMode] = useState<'choice' | 'partial' | 'processing'>('choice');
+  const [processingStep, setProcessingStep] = useState(0);
 
   // Extract unique root folders from files
   const folders = Array.from(new Set(
@@ -71,7 +91,44 @@ export function LargeProjectModal({
     Array.from(selectedFolders).some(folder => path.startsWith(folder + '/') || path === folder)
   ).length;
 
-  const handleCalculateQuote = async () => {
+  // Calculate quote on modal open
+  useEffect(() => {
+    if (open && !quote) {
+      calculateQuoteOnly();
+    }
+  }, [open]);
+
+  const calculateQuoteOnly = async () => {
+    setIsCalculating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const excessFiles = totalFiles - maxFilesAllowed;
+      // Average token cost per file (estimated at ~500 tokens per file, $0.003/1K tokens)
+      const avgCostPerFile = 0.15; // cents
+      const baseCost = excessFiles * avgCostPerFile;
+      const marginMultiplier = 2.5;
+      const supplement = Math.ceil(baseCost * marginMultiplier);
+      
+      // Round up to professional pricing
+      const professionalPrice = formatProfessionalPrice(supplement);
+      
+      setQuote({
+        id: crypto.randomUUID(),
+        excessFiles,
+        baseTokenCost: Math.round(baseCost),
+        supplementAmount: parseFloat(professionalPrice) * 100,
+        supplementFormatted: `$${professionalPrice}`,
+      });
+    } catch (error) {
+      console.error('Error calculating quote:', error);
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const handleFullLiberation = async () => {
     setIsCalculating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -111,13 +168,13 @@ export function LargeProjectModal({
       if (data.paymentUrl) {
         // Open Stripe checkout in new tab
         window.open(data.paymentUrl, '_blank');
-        toast.info('Fenêtre de paiement ouverte', {
+        toast.success('Fenêtre de paiement ouverte', {
           description: 'Complétez le paiement pour débloquer la libération complète.',
         });
       }
     } catch (error) {
-      console.error('Error calculating quote:', error);
-      toast.error('Erreur de calcul', {
+      console.error('Error creating checkout:', error);
+      toast.error('Erreur de paiement', {
         description: error instanceof Error ? error.message : 'Erreur inconnue',
       });
     } finally {
@@ -143,106 +200,132 @@ export function LargeProjectModal({
     });
   };
 
+  // Simulated post-payment processing animation
+  const processingSteps = [
+    'Paiement confirmé',
+    'Allocation des ressources de nettoyage étendue',
+    'Initialisation du moteur IA haute capacité',
+    'Lancement du pipeline de libération',
+  ];
+
+  useEffect(() => {
+    if (mode === 'processing') {
+      const interval = setInterval(() => {
+        setProcessingStep(prev => {
+          if (prev >= processingSteps.length - 1) {
+            clearInterval(interval);
+            setTimeout(() => {
+              onPaymentComplete();
+              onOpenChange(false);
+            }, 1000);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [mode]);
+
   const excessFiles = totalFiles - maxFilesAllowed;
+
+  const valuePropositions = [
+    { icon: FileCode, text: 'Nettoyage profond de chaque ligne de code' },
+    { icon: Shield, text: 'Garantie zéro dépendance propriétaire sur l\'ensemble du volume' },
+    { icon: Server, text: 'Optimisation de l\'infrastructure VPS pour les larges dépôts' },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-gradient-to-br from-background to-muted/50">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
-            </div>
-            Projet de Grande Envergure Détecté
-          </DialogTitle>
-          <DialogDescription>
-            <span className="font-semibold text-foreground">{projectName}</span> contient{' '}
-            <Badge variant="secondary" className="mx-1">{totalFiles} fichiers</Badge>
-            (limite standard: {maxFilesAllowed})
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {mode === 'choice' ? (
-            <>
-              {/* Volume Supplement Info */}
-              <Alert className="border-amber-500/30 bg-amber-500/5">
-                <Zap className="h-4 w-4 text-amber-500" />
-                <AlertDescription>
-                  <span className="font-medium">+{excessFiles} fichiers</span> dépassent le quota inclus.
-                  Un supplément de volume s'applique pour couvrir les coûts IA additionnels.
-                </AlertDescription>
-              </Alert>
-
-              {/* Quote Display */}
-              {quote && (
-                <div className="p-4 rounded-lg border border-primary/30 bg-primary/5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Supplément calculé:</span>
-                    <span className="text-2xl font-bold text-primary">{quote.supplementFormatted}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Basé sur {quote.excessFiles} fichiers excédentaires • Coût IA: ${(quote.baseTokenCost / 100).toFixed(2)} • Marge Inopay: 2.5x
-                  </p>
-                </div>
-              )}
-
-              {/* Option A: Partial Cleaning */}
-              <div 
-                className="p-4 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-all"
-                onClick={() => setMode('partial')}
+      <DialogContent className="max-w-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 text-white overflow-hidden">
+        <AnimatePresence mode="wait">
+          {mode === 'processing' ? (
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="py-12 flex flex-col items-center justify-center space-y-8"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                className="relative"
               >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <FolderOpen className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      Option A: Nettoyer Partiellement
-                      <Badge variant="outline">Gratuit</Badge>
-                    </h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Sélectionnez uniquement les dossiers essentiels (ex: /src) pour rester dans la limite.
-                    </p>
-                  </div>
+                <div className="absolute inset-0 bg-primary/30 blur-xl rounded-full" />
+                <div className="relative p-6 bg-gradient-to-br from-primary to-primary/70 rounded-full">
+                  <Rocket className="h-12 w-12 text-white" />
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Option B: Full Liberation */}
-              <div 
-                className="p-4 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 cursor-pointer transition-all hover:border-primary"
-                onClick={handleCalculateQuote}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-primary/20">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      Option B: Libération Complète
-                      {quote && <Badge className="bg-primary">{quote.supplementFormatted}</Badge>}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Débloquez le nettoyage complet des {totalFiles} fichiers avec un supplément volume.
-                    </p>
-                  </div>
-                  {isCalculating && <Loader2 className="h-5 w-5 animate-spin" />}
-                </div>
+              <div className="space-y-4 w-full max-w-sm">
+                {processingSteps.map((step, index) => (
+                  <motion.div
+                    key={step}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ 
+                      opacity: index <= processingStep ? 1 : 0.3,
+                      x: 0 
+                    }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center gap-3"
+                  >
+                    <div className={`p-1 rounded-full transition-colors ${
+                      index <= processingStep ? 'bg-green-500' : 'bg-slate-600'
+                    }`}>
+                      {index < processingStep ? (
+                        <Check className="h-4 w-4 text-white" />
+                      ) : index === processingStep ? (
+                        <Loader2 className="h-4 w-4 text-white animate-spin" />
+                      ) : (
+                        <div className="h-4 w-4" />
+                      )}
+                    </div>
+                    <span className={`text-sm ${
+                      index <= processingStep ? 'text-white' : 'text-slate-500'
+                    }`}>
+                      {step}...
+                    </span>
+                  </motion.div>
+                ))}
               </div>
-            </>
-          ) : (
-            <>
-              {/* Partial Mode - Folder Selection */}
+            </motion.div>
+          ) : mode === 'partial' ? (
+            <motion.div
+              key="partial"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4"
+            >
+              <DialogHeader>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setMode('choice')}
+                  className="absolute left-4 top-4 text-slate-400 hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour
+                </Button>
+                <DialogTitle className="text-xl pt-8 text-white">
+                  Sélection manuelle des dossiers
+                </DialogTitle>
+              </DialogHeader>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Sélectionnez les dossiers à nettoyer:</h4>
-                  <Badge variant={selectedFilesCount <= maxFilesAllowed ? 'default' : 'destructive'}>
-                    {selectedFilesCount} / {maxFilesAllowed} fichiers
+                  <span className="text-sm text-slate-400">Fichiers sélectionnés:</span>
+                  <Badge 
+                    variant={selectedFilesCount <= maxFilesAllowed ? 'default' : 'destructive'}
+                    className={selectedFilesCount <= maxFilesAllowed ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}
+                  >
+                    {selectedFilesCount} / {maxFilesAllowed}
                   </Badge>
                 </div>
 
-                <ScrollArea className="h-48 rounded-lg border p-3">
-                  <div className="space-y-2">
+                <ScrollArea className="h-56 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                  <div className="space-y-1">
                     {folders.map(folder => {
                       const folderFileCount = Array.from(files.keys()).filter(
                         path => path.startsWith(folder + '/') || path === folder
@@ -251,16 +334,18 @@ export function LargeProjectModal({
                       return (
                         <div 
                           key={folder}
-                          className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50"
+                          className="flex items-center space-x-3 p-2 rounded hover:bg-slate-700/50 cursor-pointer transition-colors"
+                          onClick={() => toggleFolder(folder)}
                         >
                           <Checkbox 
                             checked={selectedFolders.has(folder)}
                             onCheckedChange={() => toggleFolder(folder)}
+                            className="border-slate-500 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="flex-1 font-mono text-sm">{folder}/</span>
-                          <Badge variant="outline" className="text-xs">
-                            {folderFileCount} fichiers
+                          <FolderOpen className="h-4 w-4 text-amber-400" />
+                          <span className="flex-1 font-mono text-sm text-slate-200">{folder}/</span>
+                          <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
+                            {folderFileCount}
                           </Badge>
                         </div>
                       );
@@ -269,43 +354,128 @@ export function LargeProjectModal({
                 </ScrollArea>
 
                 {selectedFilesCount > maxFilesAllowed && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      Sélection trop grande. Désélectionnez des dossiers pour rester sous {maxFilesAllowed} fichiers.
+                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/30">
+                    <AlertDescription className="text-red-400">
+                      Désélectionnez des dossiers pour rester sous {maxFilesAllowed} fichiers.
                     </AlertDescription>
                   </Alert>
                 )}
-              </div>
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setMode('choice')} className="flex-1">
-                  Retour
-                </Button>
                 <Button 
                   onClick={handlePartialClean}
                   disabled={selectedFilesCount > maxFilesAllowed || selectedFilesCount === 0}
-                  className="flex-1"
+                  className="w-full bg-slate-700 hover:bg-slate-600"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Nettoyer {selectedFilesCount} fichiers
+                  Nettoyer {selectedFilesCount} fichiers sélectionnés
                 </Button>
               </div>
-            </>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="choice"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-6"
+            >
+              {/* Header */}
+              <DialogHeader className="text-center space-y-3">
+                <div className="mx-auto p-3 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-2xl w-fit">
+                  <Rocket className="h-10 w-10 text-amber-400" />
+                </div>
+                <DialogTitle className="text-2xl font-bold text-white">
+                  🚀 Votre projet voit grand !
+                </DialogTitle>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Nous avons détecté <span className="text-white font-semibold">{totalFiles} fichiers</span> et 
+                  une structure complexe. Pour garantir un nettoyage 100% souverain et minutieux par notre 
+                  moteur d'IA, une puissance de calcul supplémentaire est requise.
+                </p>
+              </DialogHeader>
+
+              {/* Value Propositions */}
+              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 space-y-3">
+                {valuePropositions.map((prop, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="p-1.5 bg-green-500/20 rounded-lg">
+                      <Check className="h-4 w-4 text-green-400" />
+                    </div>
+                    <span className="text-sm text-slate-300">{prop.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Options */}
+              <div className="space-y-3">
+                {/* Option A - Primary: Full Liberation */}
+                <button
+                  onClick={handleFullLiberation}
+                  disabled={isCalculating}
+                  className="relative w-full group"
+                >
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-amber-500 to-primary rounded-xl opacity-60 group-hover:opacity-100 blur transition-opacity" />
+                  <div className="relative flex items-center justify-between p-4 bg-slate-900 rounded-xl border border-primary/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/20 rounded-lg">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">Libérer le projet complet</span>
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
+                            <Star className="h-3 w-3 mr-1" />
+                            Recommandé
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Nettoyage intégral des {totalFiles} fichiers
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isCalculating ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      ) : (
+                        <>
+                          <span className="text-2xl font-bold text-primary">
+                            {quote?.supplementFormatted || '...'}
+                          </span>
+                          <CreditCard className="h-5 w-5 text-slate-400" />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Option B - Secondary: Partial Cleaning */}
+                <button
+                  onClick={() => setMode('partial')}
+                  className="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-800/30 hover:bg-slate-800/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-700/50 rounded-lg group-hover:bg-slate-700">
+                      <FolderOpen className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-300 group-hover:text-white transition-colors">
+                        Sélectionner manuellement les dossiers à nettoyer
+                      </span>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Restez dans la limite de {maxFilesAllowed} fichiers
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Footer */}
+              <p className="text-xs text-slate-500 text-center">
+                Notre philosophie : « Oui, moyennant un coût juste » — Jamais de refus.
+              </p>
+            </motion.div>
           )}
-        </div>
-
-        {mode === 'choice' && (
-          <div className="flex justify-end">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-          </div>
-        )}
-
-        <p className="text-xs text-muted-foreground text-center">
-          Notre philosophie: "Oui, moyennant un coût juste" - Jamais de refus.
-        </p>
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );
