@@ -54,6 +54,7 @@ import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring"
 import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
 import AdminCleaningMargins from "@/components/admin/AdminCleaningMargins";
 import AdminNetworkDiagnostic from "@/components/admin/AdminNetworkDiagnostic";
+import AdminOperationsCenter from "@/components/admin/AdminOperationsCenter";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -61,7 +62,7 @@ import inopayLogo from "@/assets/inopay-logo-admin.png";
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("operations");
 
   useEffect(() => {
     if (!authLoading) {
@@ -100,6 +101,7 @@ const AdminDashboard = () => {
     { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
     { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "users" },
     // 💰 Business
+    { id: "operations", label: "Centre Opérations", icon: Eye, section: "business" },
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "business" },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp, section: "business" },
     { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
@@ -130,6 +132,7 @@ const AdminDashboard = () => {
 
   const getPageDescription = () => {
     switch (activeTab) {
+      case "operations": return "Surveillance en temps réel du processus de libération";
       case "overview": return "Statistiques globales de la plateforme Inopay";
       case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
@@ -262,6 +265,7 @@ const AdminDashboard = () => {
         {/* Content Area */}
         <div className="p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
+            {activeTab === "operations" && <AdminOperationsCenter />}
             {activeTab === "overview" && <AdminStats />}
             {activeTab === "diagnostic" && <AdminNetworkDiagnostic />}
             {activeTab === "fleet" && <AdminServerFleet />}
