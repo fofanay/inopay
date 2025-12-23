@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Download,
   Upload,
@@ -73,6 +74,7 @@ interface AIConfig {
 }
 
 export function LiberationWizard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -179,7 +181,7 @@ export function LiberationWizard() {
 
   const validateSource = async () => {
     if (!migrationData.sourceUrl) {
-      toast({ title: "URL requise", description: "Entrez l'URL de votre dépôt Lovable", variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.urlRequired"), description: t("liberationWizard.toast.enterLovableUrl"), variant: "destructive" });
       return;
     }
     
@@ -188,7 +190,7 @@ export function LiberationWizard() {
     
     try {
       const parsed = parseGitHubUrl(migrationData.sourceUrl);
-      if (!parsed) throw new Error("URL invalide");
+      if (!parsed) throw new Error(t("liberationWizard.errors.invalidUrl"));
       
       console.log("[LiberationWizard] Fetching repo:", migrationData.sourceUrl);
       
@@ -200,7 +202,7 @@ export function LiberationWizard() {
       });
       
       if (error) throw new Error(error.message);
-      if (!data?.files || data.files.length === 0) throw new Error("Aucun fichier trouvé dans le dépôt");
+      if (!data?.files || data.files.length === 0) throw new Error(t("liberationWizard.errors.noFilesFound"));
       
       console.log(`[LiberationWizard] Fetched ${data.files.length} files`);
       setFetchedFiles(data.files);
@@ -218,13 +220,13 @@ export function LiberationWizard() {
       setStepStatus(prev => ({ ...prev, source: "completed" }));
       setCurrentStep(2);
       toast({ 
-        title: "Source validée", 
-        description: `${data.files.length} fichiers récupérés depuis ${parsed.owner}/${parsed.repo}` 
+        title: t("liberationWizard.toast.sourceValidated"), 
+        description: t("liberationWizard.toast.filesFetched", { count: data.files.length, owner: parsed.owner, repo: parsed.repo })
       });
     } catch (error: any) {
       console.error("[LiberationWizard] Source error:", error);
       setStepStatus(prev => ({ ...prev, source: "error" }));
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -232,7 +234,7 @@ export function LiberationWizard() {
 
   const validateDestination = async () => {
     if (!destinationToken) {
-      toast({ title: "Token requis", description: "Entrez votre Personal Access Token", variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.tokenRequired"), description: t("liberationWizard.toast.enterPAT"), variant: "destructive" });
       return;
     }
     
@@ -261,13 +263,13 @@ export function LiberationWizard() {
         setMigrationData(prev => ({ ...prev, destinationUsername: userData.login }));
         setStepStatus(prev => ({ ...prev, destination: "completed" }));
         setCurrentStep(3); // Go to AI config step
-        toast({ title: "Destination connectée", description: `Prêt à exporter vers @${userData.login}` });
+        toast({ title: t("liberationWizard.toast.destinationConnected"), description: t("liberationWizard.toast.readyToExport", { username: userData.login }) });
       } else {
-        throw new Error("Token invalide ou expiré");
+        throw new Error(t("liberationWizard.errors.invalidToken"));
       }
     } catch (error: any) {
       setStepStatus(prev => ({ ...prev, destination: "error" }));
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: t("common.error"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -275,7 +277,7 @@ export function LiberationWizard() {
 
   const validateAPIKey = async () => {
     if (!aiConfig.apiKey) {
-      toast({ title: "Clé requise", description: "Entrez votre clé API", variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.keyRequired"), description: t("liberationWizard.toast.enterApiKey"), variant: "destructive" });
       return;
     }
     
@@ -301,7 +303,7 @@ export function LiberationWizard() {
         setHasExistingKey(true);
         setStepStatus(prev => ({ ...prev, ai: "completed" }));
         toast({ 
-          title: "Clé validée !", 
+          title: t("liberationWizard.toast.keyValidated"), 
           description: `${data.provider} connecté - ${data.model}` 
         });
       } else {
@@ -309,7 +311,7 @@ export function LiberationWizard() {
       }
     } catch (error: any) {
       console.error("[LiberationWizard] API key validation error:", error);
-      toast({ title: "Clé invalide", description: error.message, variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.invalidKey"), description: error.message, variant: "destructive" });
     } finally {
       setValidatingKey(false);
     }
@@ -319,12 +321,12 @@ export function LiberationWizard() {
     setAIConfig(prev => ({ ...prev, mode: "inopay", isValidated: true }));
     setStepStatus(prev => ({ ...prev, ai: "completed" }));
     setCurrentStep(4);
-    toast({ title: "Moteur Inopay sélectionné", description: "DeepSeek V3 sera utilisé pour le nettoyage" });
+    toast({ title: t("liberationWizard.toast.inopaySelected"), description: t("liberationWizard.toast.deepseekUsed") });
   };
 
   const confirmBYOK = () => {
     if (!aiConfig.isValidated) {
-      toast({ title: "Validation requise", description: "Testez d'abord votre clé API", variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.validationRequired"), description: t("liberationWizard.toast.testKeyFirst"), variant: "destructive" });
       return;
     }
     setCurrentStep(4);
@@ -332,7 +334,7 @@ export function LiberationWizard() {
 
   const startCleaning = async () => {
     if (fetchedFiles.length === 0) {
-      toast({ title: "Erreur", description: "Aucun fichier à nettoyer", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("liberationWizard.errors.noFilesToClean"), variant: "destructive" });
       return;
     }
     
@@ -404,13 +406,13 @@ export function LiberationWizard() {
       setCurrentStep(5);
       
       toast({ 
-        title: "Nettoyage terminé", 
-        description: `${changesCount} fichiers modifiés sur ${filesToClean.length}` 
+        title: t("liberationWizard.toast.cleaningComplete"), 
+        description: t("liberationWizard.toast.filesModified", { changed: changesCount, total: filesToClean.length })
       });
     } catch (error: any) {
       console.error("[LiberationWizard] Cleaning error:", error);
       setStepStatus(prev => ({ ...prev, cleaning: "error" }));
-      toast({ title: "Erreur de nettoyage", description: error.message, variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.cleaningError"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -418,7 +420,7 @@ export function LiberationWizard() {
 
   const startExport = async () => {
     if (Object.keys(cleanedFiles).length === 0) {
-      toast({ title: "Erreur", description: "Aucun fichier à exporter", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("liberationWizard.errors.noFilesToExport"), variant: "destructive" });
       return;
     }
     
@@ -439,7 +441,7 @@ export function LiberationWizard() {
       });
       
       if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || "Échec de l'export");
+      if (!data?.success) throw new Error(data?.error || t("liberationWizard.errors.exportFailed"));
       
       const exportedUrl = data.repoUrl;
       setMigrationData(prev => ({ ...prev, exportedUrl }));
@@ -462,13 +464,13 @@ export function LiberationWizard() {
       }
       
       toast({ 
-        title: "🎉 Libération réussie!", 
-        description: `Code exporté vers ${data.repoFullName}`
+        title: t("liberationWizard.toast.liberationSuccess"), 
+        description: t("liberationWizard.toast.codeExported", { repo: data.repoFullName })
       });
     } catch (error: any) {
       console.error("[LiberationWizard] Export error:", error);
       setStepStatus(prev => ({ ...prev, export: "error" }));
-      toast({ title: "Erreur d'export", description: error.message, variant: "destructive" });
+      toast({ title: t("liberationWizard.toast.exportError"), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -507,11 +509,11 @@ export function LiberationWizard() {
   const progress = (completedSteps / 5) * 100;
 
   const steps = [
-    { num: 1, key: "source", label: "Source", icon: Download, color: "text-orange-500" },
-    { num: 2, key: "destination", label: "Destination", icon: Upload, color: "text-success" },
-    { num: 3, key: "ai", label: "Moteur IA", icon: Cpu, color: "text-amber-500" },
-    { num: 4, key: "cleaning", label: "Nettoyage", icon: Sparkles, color: "text-primary" },
-    { num: 5, key: "export", label: "Export", icon: Rocket, color: "text-purple-500" },
+    { num: 1, key: "source", label: t("liberationWizard.steps.source"), icon: Download, color: "text-orange-500" },
+    { num: 2, key: "destination", label: t("liberationWizard.steps.destination"), icon: Upload, color: "text-success" },
+    { num: 3, key: "ai", label: t("liberationWizard.steps.aiEngine"), icon: Cpu, color: "text-amber-500" },
+    { num: 4, key: "cleaning", label: t("liberationWizard.steps.cleaning"), icon: Sparkles, color: "text-primary" },
+    { num: 5, key: "export", label: t("liberationWizard.steps.export"), icon: Rocket, color: "text-purple-500" },
   ];
 
   return (
@@ -523,16 +525,16 @@ export function LiberationWizard() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                Assistant de Libération
+                {t("liberation.title")}
               </CardTitle>
               <CardDescription>
-                Exportez votre projet Lovable vers votre propre compte GitHub
+                {t("liberation.description")}
               </CardDescription>
             </div>
             {completedSteps === 5 && (
               <Button variant="outline" size="sm" onClick={resetWizard}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Recommencer
+                {t("liberation.restart")}
               </Button>
             )}
           </div>
@@ -581,7 +583,7 @@ export function LiberationWizard() {
                   </span>
                   {stepStatus.source === "completed" && <CheckCircle2 className="h-4 w-4 text-success" />}
                   {fetchedFiles.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">{fetchedFiles.length} fichiers</Badge>
+                    <Badge variant="secondary" className="text-xs">{fetchedFiles.length} {t("liberation.files")}</Badge>
                   )}
                 </div>
               )}
@@ -595,7 +597,7 @@ export function LiberationWizard() {
                       <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/30">BYOK</Badge>
                     )}
                     {cleaningStats.changesCount > 0 && (
-                      <Badge variant="default" className="text-xs">{cleaningStats.changesCount} modifiés</Badge>
+                      <Badge variant="default" className="text-xs">{cleaningStats.changesCount} {t("liberation.modified")}</Badge>
                     )}
                   </div>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
@@ -611,7 +613,7 @@ export function LiberationWizard() {
                 <span className="text-sm font-medium">
                   {migrationData.destinationUsername 
                     ? `@${migrationData.destinationUsername}/${migrationData.destinationRepo}` 
-                    : "Votre compte"}
+                    : t("liberation.yourAccount")}
                 </span>
                 {stepStatus.export === "completed" && <CheckCircle2 className="h-4 w-4 text-success" />}
               </div>
@@ -628,31 +630,31 @@ export function LiberationWizard() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Download className="h-5 w-5 text-orange-500" />
-                <h3 className="text-lg font-semibold">Étape 1 : Connecter la source Lovable</h3>
+                <h3 className="text-lg font-semibold">{t("liberationWizard.step1.title")}</h3>
               </div>
               
               <Alert>
                 <Github className="h-4 w-4" />
                 <AlertDescription>
-                  Entrez l'URL du dépôt GitHub créé par Lovable pour votre projet. Tous les fichiers seront récupérés automatiquement.
+                  {t("liberationWizard.step1.description")}
                 </AlertDescription>
               </Alert>
               
               <div className="space-y-2">
-                <Label>URL du dépôt Lovable</Label>
+                <Label>{t("liberationWizard.step1.urlLabel")}</Label>
                 <Input
-                  placeholder="https://github.com/lovable-org/mon-projet"
+                  placeholder={t("liberationWizard.step1.urlPlaceholder")}
                   value={migrationData.sourceUrl}
                   onChange={(e) => handleSourceUrlChange(e.target.value)}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label>Token (optionnel - dépôts privés)</Label>
+                <Label>{t("liberationWizard.step1.tokenLabel")}</Label>
                 <div className="relative">
                   <Input
                     type={showTokens.source ? "text" : "password"}
-                    placeholder="ghp_... (uniquement si dépôt privé)"
+                    placeholder={t("liberationWizard.step1.tokenPlaceholder")}
                     value={sourceToken}
                     onChange={(e) => setSourceToken(e.target.value)}
                     className="pr-10"
@@ -671,7 +673,7 @@ export function LiberationWizard() {
               
               <Button onClick={validateSource} disabled={loading || !migrationData.sourceUrl}>
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                Récupérer les fichiers
+                {t("liberationWizard.step1.fetchFiles")}
               </Button>
             </div>
           )}
@@ -681,18 +683,17 @@ export function LiberationWizard() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Upload className="h-5 w-5 text-success" />
-                <h3 className="text-lg font-semibold">Étape 2 : Connecter votre compte GitHub</h3>
+                <h3 className="text-lg font-semibold">{t("liberationWizard.step2.title")}</h3>
               </div>
               
               <Alert className="border-success/50 bg-success/5">
                 <Github className="h-4 w-4" />
-                <AlertDescription>
-                  Créez un Personal Access Token sur <strong>votre propre compte GitHub</strong> avec les permissions <code>repo</code> et <code>workflow</code>.
+                <AlertDescription dangerouslySetInnerHTML={{ __html: t("liberationWizard.step2.description") }}>
                 </AlertDescription>
               </Alert>
               
               <div className="space-y-2">
-                <Label>Personal Access Token (Classic)</Label>
+                <Label>{t("liberationWizard.step2.patLabel")}</Label>
                 <div className="relative">
                   <Input
                     type={showTokens.destination ? "text" : "password"}
@@ -718,24 +719,24 @@ export function LiberationWizard() {
                   className="text-xs text-primary flex items-center gap-1 hover:underline"
                 >
                   <ExternalLink className="h-3 w-3" />
-                  Créer un token sur GitHub
+                  {t("liberationWizard.step2.createToken")}
                 </a>
               </div>
               
               <div className="space-y-2">
-                <Label>Nom du nouveau dépôt</Label>
+                <Label>{t("liberationWizard.step2.repoNameLabel")}</Label>
                 <Input
                   value={migrationData.destinationRepo}
                   onChange={(e) => setMigrationData(prev => ({ ...prev, destinationRepo: e.target.value }))}
-                  placeholder="mon-projet-libre"
+                  placeholder={t("liberationWizard.step2.repoNamePlaceholder")}
                 />
               </div>
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(1)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(1)}>{t("liberationWizard.back")}</Button>
                 <Button onClick={validateDestination} disabled={loading || !destinationToken}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                  Connecter mon compte
+                  {t("liberationWizard.step2.connectAccount")}
                 </Button>
               </div>
             </div>
@@ -746,13 +747,13 @@ export function LiberationWizard() {
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
                 <Cpu className="h-5 w-5 text-amber-500" />
-                <h3 className="text-lg font-semibold">Étape 3 : Configuration de l'IA</h3>
+                <h3 className="text-lg font-semibold">{t("liberationWizard.step3.title")}</h3>
               </div>
               
               <Alert className="border-amber-500/30 bg-amber-500/5">
                 <Cpu className="h-4 w-4 text-amber-500" />
                 <AlertDescription>
-                  Choisissez le moteur d'intelligence artificielle pour le nettoyage de votre code.
+                  {t("liberationWizard.step3.description")}
                 </AlertDescription>
               </Alert>
 
@@ -772,15 +773,15 @@ export function LiberationWizard() {
                     <div className="flex-1">
                       <Label htmlFor="inopay" className="flex items-center gap-2 cursor-pointer">
                         <Zap className="h-5 w-5 text-emerald-500" />
-                        <span className="font-semibold">Moteur Inopay</span>
-                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Recommandé</Badge>
+                        <span className="font-semibold">{t("liberationWizard.step3.inopayEngine")}</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">{t("settings.recommended")}</Badge>
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Utilisez nos ressources optimisées (<strong>DeepSeek V3</strong>). Simple, rapide, inclus dans votre forfait.
+                        {t("liberationWizard.step3.inopayDesc")}
                       </p>
                       <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                         <Shield className="h-3 w-3" />
-                        <span>Fallback automatique sur Claude Sonnet si nécessaire</span>
+                        <span>{t("liberationWizard.step3.fallbackInfo")}</span>
                       </div>
                     </div>
                   </div>
@@ -797,15 +798,15 @@ export function LiberationWizard() {
                     <div className="flex-1">
                       <Label htmlFor="byok" className="flex items-center gap-2 cursor-pointer">
                         <Key className="h-5 w-5 text-amber-500" />
-                        <span className="font-semibold">Souveraineté Totale (BYOK)</span>
+                        <span className="font-semibold">{t("liberationWizard.step3.byokTitle")}</span>
                         <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30">-30%</Badge>
                       </Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Utilisez votre propre clé API (Anthropic, OpenAI ou DeepSeek). Idéal pour les très gros projets.
+                        {t("liberationWizard.step3.byokDesc")}
                       </p>
                       <div className="flex items-center gap-2 mt-2 text-xs text-amber-400">
                         <Sparkles className="h-3 w-3" />
-                        <span>Réduction de 30% sur les frais de service Inopay</span>
+                        <span>{t("liberationWizard.step3.byokDiscount")}</span>
                       </div>
                     </div>
                   </div>
@@ -816,7 +817,7 @@ export function LiberationWizard() {
               {aiConfig.mode === "byok" && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-amber-500/20">
                   <div className="space-y-3">
-                    <Label>Fournisseur</Label>
+                    <Label>{t("settings.provider")}</Label>
                     <RadioGroup
                       value={aiConfig.provider}
                       onValueChange={(value: AIProvider) => setAIConfig(prev => ({ ...prev, provider: value, isValidated: false }))}
@@ -842,7 +843,7 @@ export function LiberationWizard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Clé API</Label>
+                    <Label>{t("liberationWizard.step3.apiKeyLabel")}</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input
@@ -872,17 +873,17 @@ export function LiberationWizard() {
                         ) : aiConfig.isValidated ? (
                           <>
                             <CheckCircle2 className="h-4 w-4 mr-1 text-success" />
-                            Validé
+                            {t("liberationWizard.step3.validated")}
                           </>
                         ) : (
-                          "Tester"
+                          t("liberationWizard.step3.test")
                         )}
                       </Button>
                     </div>
                     {hasExistingKey && !aiConfig.apiKey && (
                       <p className="text-xs text-success flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
-                        Clé existante configurée - vous pouvez continuer
+                        {t("liberationWizard.step3.existingKey")}
                       </p>
                     )}
                   </div>
@@ -890,11 +891,11 @@ export function LiberationWizard() {
               )}
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(2)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>{t("liberationWizard.back")}</Button>
                 {aiConfig.mode === "inopay" ? (
                   <Button onClick={skipAIConfig}>
                     <Zap className="h-4 w-4 mr-2" />
-                    Utiliser Inopay
+                    {t("liberationWizard.step3.useInopay")}
                   </Button>
                 ) : (
                   <Button 
@@ -903,7 +904,7 @@ export function LiberationWizard() {
                     className="bg-amber-600 hover:bg-amber-700"
                   >
                     <Key className="h-4 w-4 mr-2" />
-                    Continuer avec ma clé
+                    {t("liberationWizard.step3.continueWithKey")}
                   </Button>
                 )}
               </div>
@@ -915,16 +916,16 @@ export function LiberationWizard() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Étape 4 : Nettoyage du code</h3>
+                <h3 className="text-lg font-semibold">{t("liberationWizard.step4.title")}</h3>
               </div>
               
               <Alert>
                 <Sparkles className="h-4 w-4" />
                 <AlertDescription>
-                  Inopay va nettoyer <strong>{fetchedFiles.filter(f => f.path.match(/\.(tsx?|jsx?)$/)).length}</strong> fichiers code pour supprimer les dépendances propriétaires.
+                  {t("liberationWizard.step4.description", { count: fetchedFiles.filter(f => f.path.match(/\.(tsx?|jsx?)$/)).length })}
                   {aiConfig.mode === "byok" && hasExistingKey && (
                     <span className="block mt-1 text-amber-400">
-                      Utilisation de votre clé {aiConfig.provider.toUpperCase()} • Réduction 30% appliquée
+                      {t("liberationWizard.step4.byokUsed", { provider: aiConfig.provider.toUpperCase() })}
                     </span>
                   )}
                 </AlertDescription>
@@ -933,7 +934,7 @@ export function LiberationWizard() {
               {stepStatus.cleaning === "in_progress" && cleaningProgress.total > 0 && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Nettoyage en cours...</span>
+                    <span>{t("liberationWizard.step4.cleaningInProgress")}</span>
                     <span>{cleaningProgress.completed}/{cleaningProgress.total}</span>
                   </div>
                   <Progress value={(cleaningProgress.completed / cleaningProgress.total) * 100} />
@@ -947,25 +948,25 @@ export function LiberationWizard() {
               )}
               
               <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
-                <p>✓ Suppression des imports lovable/gptengineer</p>
-                <p>✓ Remplacement des hooks propriétaires</p>
-                <p>✓ Optimisation des services cloud → Open Source</p>
-                <p>✓ Mise à jour des dépendances</p>
-                <p>✓ Génération des configs de déploiement</p>
+                <p>✓ {t("liberationWizard.step4.task1")}</p>
+                <p>✓ {t("liberationWizard.step4.task2")}</p>
+                <p>✓ {t("liberationWizard.step4.task3")}</p>
+                <p>✓ {t("liberationWizard.step4.task4")}</p>
+                <p>✓ {t("liberationWizard.step4.task5")}</p>
               </div>
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(3)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(3)}>{t("liberationWizard.back")}</Button>
                 <Button onClick={startCleaning} disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Nettoyage en cours...
+                      {t("liberationWizard.step4.cleaningInProgress")}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Lancer le nettoyage
+                      {t("liberationWizard.step4.startCleaning")}
                     </>
                   )}
                 </Button>
@@ -978,35 +979,34 @@ export function LiberationWizard() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Rocket className="h-5 w-5 text-purple-500" />
-                <h3 className="text-lg font-semibold">Étape 5 : Export vers votre compte</h3>
+                <h3 className="text-lg font-semibold">{t("liberationWizard.step5.title")}</h3>
               </div>
               
               <Alert className="border-purple-500/50 bg-purple-500/5">
                 <Rocket className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>{Object.keys(cleanedFiles).length}</strong> fichiers nettoyés prêts à être exportés vers <strong>@{migrationData.destinationUsername}/{migrationData.destinationRepo}</strong>
+                <AlertDescription dangerouslySetInnerHTML={{ __html: t("liberationWizard.step5.description", { count: Object.keys(cleanedFiles).length, username: migrationData.destinationUsername, repo: migrationData.destinationRepo }) }}>
                 </AlertDescription>
               </Alert>
               
               {cleaningStats.changesCount > 0 && (
                 <div className="bg-success/10 border border-success/30 rounded-lg p-3 text-sm">
-                  <p className="font-medium text-success">✓ {cleaningStats.changesCount} fichiers optimisés</p>
-                  <p className="text-muted-foreground">Code nettoyé des dépendances propriétaires</p>
+                  <p className="font-medium text-success">✓ {t("liberationWizard.step5.filesOptimized", { count: cleaningStats.changesCount })}</p>
+                  <p className="text-muted-foreground">{t("liberationWizard.step5.codeCleaned")}</p>
                 </div>
               )}
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(4)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(4)}>{t("liberationWizard.back")}</Button>
                 <Button onClick={startExport} disabled={loading} className="bg-purple-600 hover:bg-purple-700">
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Export en cours...
+                      {t("liberationWizard.step5.exportInProgress")}
                     </>
                   ) : (
                     <>
                       <Rocket className="h-4 w-4 mr-2" />
-                      Exporter maintenant
+                      {t("liberationWizard.step5.exportNow")}
                     </>
                   )}
                 </Button>
@@ -1022,24 +1022,24 @@ export function LiberationWizard() {
               </div>
               
               <div>
-                <h3 className="text-2xl font-bold text-success mb-2">🎉 Libération réussie !</h3>
+                <h3 className="text-2xl font-bold text-success mb-2">{t("liberationWizard.success.title")}</h3>
                 <p className="text-muted-foreground">
-                  Votre code est maintenant 100% souverain sur votre propre compte GitHub
+                  {t("liberationWizard.success.description")}
                 </p>
               </div>
               
               <div className="bg-muted rounded-lg p-4 max-w-md mx-auto space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Fichiers exportés:</span>
+                  <span className="text-sm text-muted-foreground">{t("liberationWizard.success.filesExported")}:</span>
                   <Badge>{Object.keys(cleanedFiles).length}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Fichiers modifiés:</span>
+                  <span className="text-sm text-muted-foreground">{t("liberationWizard.success.filesModified")}:</span>
                   <Badge variant="secondary">{cleaningStats.changesCount}</Badge>
                 </div>
                 {aiConfig.mode === "byok" && hasExistingKey && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Mode:</span>
+                    <span className="text-sm text-muted-foreground">{t("liberationWizard.success.mode")}:</span>
                     <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30">BYOK -30%</Badge>
                   </div>
                 )}
@@ -1057,12 +1057,12 @@ export function LiberationWizard() {
                 <Button variant="outline" asChild>
                   <a href={migrationData.exportedUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Voir sur GitHub
+                    {t("liberationWizard.success.viewOnGithub")}
                   </a>
                 </Button>
                 <Button onClick={resetWizard}>
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Nouveau projet
+                  {t("liberationWizard.success.newProject")}
                 </Button>
               </div>
             </div>
