@@ -22,7 +22,8 @@ import {
   ShoppingCart,
   Smartphone,
   Webhook,
-  HardDrive
+  HardDrive,
+  Calculator
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ import AdminPurchases from "@/components/admin/AdminPurchases";
 import AdminStripeLogs from "@/components/admin/AdminStripeLogs";
 import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
 import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
+import AdminCleaningMargins from "@/components/admin/AdminCleaningMargins";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -95,6 +97,7 @@ const AdminDashboard = () => {
     { id: "stripe-logs", label: "Logs Stripe", icon: Webhook },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart },
+    { id: "margins", label: "Marges Nettoyage", icon: Calculator },
     { id: "security", label: "Sécurité", icon: Shield },
     { id: "support", label: "Support Admin", icon: Wrench },
     { id: "users", label: "Utilisateurs", icon: Users },
@@ -250,6 +253,7 @@ const AdminDashboard = () => {
             {activeTab === "stripe-logs" && <AdminStripeLogs />}
             {activeTab === "kpis" && <AdminKPIs />}
             {activeTab === "purchases" && <AdminPurchases />}
+            {activeTab === "margins" && <AdminCleaningMargins />}
             {activeTab === "security" && <AdminSecurityAudit />}
             {activeTab === "support" && <AdminSupportTools />}
             {activeTab === "users" && <AdminUsersList />}

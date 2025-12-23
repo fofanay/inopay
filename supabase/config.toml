@@ -143,3 +143,15 @@ verify_jwt = false
 
 [functions.export-data]
 verify_jwt = false
+
+[functions.encrypt-secrets]
+verify_jwt = false
+
+[functions.decrypt-secret]
+verify_jwt = false
+
+[functions.migrate-db-schema]
+verify_jwt = false
+
+[functions.estimate-cleaning-cost]
+verify_jwt = false
