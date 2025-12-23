@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   Github, 
   Database, 
@@ -48,6 +49,7 @@ interface ConnectionStatus {
 }
 
 export function SovereignConnections() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -145,14 +147,14 @@ export function SovereignConnections() {
       if (credentials.github_source_url) {
         setConnectionStatus(prev => ({ ...prev, github_source: "connected" }));
         toast({
-          title: "URL source valide",
-          description: "L'URL du dépôt Lovable est accessible",
+          title: t('sovereignConnections.sourceUrlValid'),
+          description: t('sovereignConnections.lovableRepoAccessible'),
         });
         return;
       }
       toast({
-        title: "Information requise",
-        description: "Entrez l'URL du dépôt Lovable ou un token pour les dépôts privés",
+        title: t('sovereignConnections.infoRequired'),
+        description: t('sovereignConnections.enterUrlOrToken'),
         variant: "destructive",
       });
       return;
@@ -173,8 +175,8 @@ export function SovereignConnections() {
           const userData = await response.json();
           setConnectionStatus(prev => ({ ...prev, github_source: "connected" }));
           toast({
-            title: "Connexion source réussie",
-            description: `Accès au compte ${userData.login} pour lecture`,
+            title: t('sovereignConnections.sourceConnected'),
+            description: t('sovereignConnections.accessToAccount', { login: userData.login }),
           });
         } else {
           throw new Error("Token invalide");
@@ -182,15 +184,15 @@ export function SovereignConnections() {
       } else {
         setConnectionStatus(prev => ({ ...prev, github_source: "connected" }));
         toast({
-          title: "Source configurée",
-          description: "Token source déjà enregistré",
+          title: t('sovereignConnections.sourceConfigured'),
+          description: t('sovereignConnections.sourceTokenSaved'),
         });
       }
     } catch (error) {
       setConnectionStatus(prev => ({ ...prev, github_source: "disconnected" }));
       toast({
-        title: "Échec de connexion source",
-        description: "Vérifiez votre token ou l'URL du dépôt.",
+        title: t('sovereignConnections.sourceConnectionFailed'),
+        description: t('sovereignConnections.checkTokenOrUrl'),
         variant: "destructive",
       });
     }
@@ -199,8 +201,8 @@ export function SovereignConnections() {
   const testGitHubDestinationConnection = async () => {
     if (!credentials.github_destination_token && !hasExistingCredentials.github_destination) {
       toast({
-        title: "Token requis",
-        description: "Entrez votre Personal Access Token pour votre compte GitHub personnel",
+        title: t('sovereignConnections.tokenRequired'),
+        description: t('sovereignConnections.enterPatForPersonal'),
         variant: "destructive",
       });
       return;
@@ -231,8 +233,8 @@ export function SovereignConnections() {
           setConnectionStatus(prev => ({ ...prev, github_destination: "connected" }));
           
           toast({
-            title: "Compte destination connecté",
-            description: `Prêt à exporter vers @${userData.login}${hasRepoScope ? " ✓ permissions repo" : " ⚠️ vérifiez les permissions"}`,
+            title: t('sovereignConnections.destinationConnected'),
+            description: t('sovereignConnections.readyToExport', { login: userData.login }) + (hasRepoScope ? " ✓ permissions repo" : " ⚠️ " + t('sovereignConnections.checkPermissions')),
           });
         } else {
           throw new Error("Token invalide");
@@ -240,15 +242,15 @@ export function SovereignConnections() {
       } else {
         setConnectionStatus(prev => ({ ...prev, github_destination: "connected" }));
         toast({
-          title: "Destination configurée",
-          description: "Token destination déjà enregistré",
+          title: t('sovereignConnections.destinationConfigured'),
+          description: t('sovereignConnections.destinationTokenSaved'),
         });
       }
     } catch (error) {
       setConnectionStatus(prev => ({ ...prev, github_destination: "disconnected" }));
       toast({
-        title: "Échec de connexion destination",
-        description: "Vérifiez votre Personal Access Token.",
+        title: t('sovereignConnections.destinationConnectionFailed'),
+        description: t('sovereignConnections.checkPat'),
         variant: "destructive",
       });
     }
@@ -257,8 +259,8 @@ export function SovereignConnections() {
   const testSupabaseConnection = async () => {
     if (!credentials.supabase_url || !credentials.supabase_anon_key) {
       toast({
-        title: "Informations requises",
-        description: "Veuillez entrer l'URL et la clé Anon de votre projet Supabase",
+        title: t('sovereignConnections.infoRequired'),
+        description: t('sovereignConnections.enterSupabaseInfo'),
         variant: "destructive",
       });
       return;
@@ -277,8 +279,8 @@ export function SovereignConnections() {
       if (response.ok || response.status === 200) {
         setConnectionStatus(prev => ({ ...prev, supabase: "connected" }));
         toast({
-          title: "Connexion Supabase réussie",
-          description: "Votre instance Supabase personnelle est accessible",
+          title: t('sovereignConnections.supabaseConnected'),
+          description: t('sovereignConnections.supabaseAccessible'),
         });
       } else {
         throw new Error("Connexion échouée");
@@ -286,8 +288,8 @@ export function SovereignConnections() {
     } catch (error) {
       setConnectionStatus(prev => ({ ...prev, supabase: "disconnected" }));
       toast({
-        title: "Échec de connexion Supabase",
-        description: "Vérifiez l'URL et les clés de votre projet",
+        title: t('sovereignConnections.supabaseConnectionFailed'),
+        description: t('sovereignConnections.checkSupabaseInfo'),
         variant: "destructive",
       });
     }
@@ -358,8 +360,8 @@ export function SovereignConnections() {
       }
       
       toast({
-        title: "Connexions sauvegardées",
-        description: "Vos identifiants souverains sont configurés de manière sécurisée",
+        title: t('sovereignConnections.connectionsSaved'),
+        description: t('sovereignConnections.credentialsSecured'),
       });
       
       // Clear input fields after save
@@ -376,8 +378,8 @@ export function SovereignConnections() {
     } catch (error) {
       console.error("Error saving credentials:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les identifiants",
+        title: t('common.error'),
+        description: t('sovereignConnections.saveFailed'),
         variant: "destructive",
       });
     } finally {
@@ -398,11 +400,11 @@ export function SovereignConnections() {
   const getStatusBadge = (status: "connected" | "disconnected" | "testing") => {
     switch (status) {
       case "connected":
-        return <Badge variant="default" className="bg-success"><CheckCircle2 className="h-3 w-3 mr-1" />Connecté</Badge>;
+        return <Badge variant="default" className="bg-success"><CheckCircle2 className="h-3 w-3 mr-1" />{t('sovereignConnections.status.connected')}</Badge>;
       case "testing":
-        return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Test...</Badge>;
+        return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" />{t('sovereignConnections.status.testing')}</Badge>;
       default:
-        return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />Non connecté</Badge>;
+        return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />{t('sovereignConnections.status.notConnected')}</Badge>;
     }
   };
 
@@ -410,10 +412,10 @@ export function SovereignConnections() {
     <div className="space-y-6">
       <Alert className="border-primary/50 bg-primary/5">
         <Shield className="h-4 w-4" />
-        <AlertTitle>Double connexion GitHub : Source → Destination</AlertTitle>
+        <AlertTitle>{t('sovereignConnections.dualConnection')}</AlertTitle>
         <AlertDescription>
-          <strong>GitHub SOURCE</strong> = votre projet Lovable actuel (lecture).<br />
-          <strong>GitHub DESTINATION</strong> = votre compte personnel où le code nettoyé sera exporté (écriture).
+          <strong>{t('sovereignConnections.githubSource')}</strong> = {t('sovereignConnections.githubSourceDesc')}.<br />
+          <strong>{t('sovereignConnections.githubDestination')}</strong> = {t('sovereignConnections.githubDestinationDesc')}.
         </AlertDescription>
       </Alert>
       
@@ -421,16 +423,16 @@ export function SovereignConnections() {
       <div className="flex items-center justify-center gap-4 py-4 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
           <Download className="h-4 w-4 text-orange-500" />
-          <span className="font-medium text-sm">Source Lovable</span>
+          <span className="font-medium text-sm">{t('sovereignConnections.sourceLovable')}</span>
         </div>
         <ArrowRight className="h-5 w-5 text-muted-foreground" />
         <div className="px-4 py-2 bg-primary/10 border border-primary/30 rounded-lg">
-          <span className="font-medium text-sm">🧹 Nettoyage Inopay</span>
+          <span className="font-medium text-sm">🧹 {t('sovereignConnections.cleaningInopay')}</span>
         </div>
         <ArrowRight className="h-5 w-5 text-muted-foreground" />
         <div className="flex items-center gap-2 px-4 py-2 bg-success/10 border border-success/30 rounded-lg">
           <Upload className="h-4 w-4 text-success" />
-          <span className="font-medium text-sm">Destination Personnelle</span>
+          <span className="font-medium text-sm">{t('sovereignConnections.personalDestination')}</span>
         </div>
       </div>
       
@@ -440,17 +442,17 @@ export function SovereignConnections() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Download className="h-5 w-5 text-orange-500" />
-              <CardTitle className="text-lg">📥 GitHub SOURCE (Lovable)</CardTitle>
+              <CardTitle className="text-lg">📥 {t('sovereignConnections.githubSourceTitle')}</CardTitle>
             </div>
             {getStatusBadge(connectionStatus.github_source)}
           </div>
           <CardDescription>
-            Le dépôt GitHub où se trouve votre projet Lovable original
+            {t('sovereignConnections.githubSourceCardDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="github-source-url">URL du dépôt Lovable</Label>
+            <Label htmlFor="github-source-url">{t('sovereignConnections.lovableRepoUrl')}</Label>
             <Input
               id="github-source-url"
               type="url"
@@ -459,12 +461,12 @@ export function SovereignConnections() {
               onChange={(e) => setCredentials(prev => ({ ...prev, github_source_url: e.target.value }))}
             />
             <p className="text-xs text-muted-foreground">
-              L'URL du dépôt GitHub créé automatiquement par Lovable
+              {t('sovereignConnections.lovableRepoUrlHint')}
             </p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="github-source-token">Token (optionnel - dépôts privés)</Label>
+            <Label htmlFor="github-source-token">{t('sovereignConnections.tokenOptional')}</Label>
             <div className="relative">
               <Input
                 id="github-source-token"
@@ -487,7 +489,7 @@ export function SovereignConnections() {
             {hasExistingCredentials.github_source && (
               <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Token source configuré</span>
+                <span>{t('sovereignConnections.sourceTokenConfigured')}</span>
               </div>
             )}
           </div>
@@ -502,7 +504,7 @@ export function SovereignConnections() {
             ) : (
               <TestTube className="h-4 w-4 mr-2" />
             )}
-            Tester la source
+            {t('sovereignConnections.testSource')}
           </Button>
         </CardContent>
       </Card>
@@ -513,24 +515,24 @@ export function SovereignConnections() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-success" />
-              <CardTitle className="text-lg">📤 GitHub DESTINATION (Personnel)</CardTitle>
+              <CardTitle className="text-lg">📤 {t('sovereignConnections.githubDestinationTitle')}</CardTitle>
             </div>
             {getStatusBadge(connectionStatus.github_destination)}
           </div>
           <CardDescription>
-            Votre compte GitHub personnel où le code nettoyé sera exporté
+            {t('sovereignConnections.githubDestinationCardDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="default" className="border-info/50 bg-info/5">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              Ce token sera utilisé pour créer un nouveau dépôt sur <strong>votre propre compte GitHub</strong> et y pousser le code nettoyé, vous libérant ainsi de Lovable.
+              {t('sovereignConnections.destinationTokenInfo')}
             </AlertDescription>
           </Alert>
           
           <div className="space-y-2">
-            <Label htmlFor="github-dest-token">Personal Access Token (Classic)</Label>
+            <Label htmlFor="github-dest-token">{t('sovereignConnections.patClassic')}</Label>
             <div className="relative">
               <Input
                 id="github-dest-token"
@@ -554,7 +556,7 @@ export function SovereignConnections() {
             {hasExistingCredentials.github_destination && destinationUsername && (
               <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Exportation vers <strong>@{destinationUsername}</strong></span>
+                <span>{t('sovereignConnections.exportTo')} <strong>@{destinationUsername}</strong></span>
               </div>
             )}
             
@@ -566,7 +568,7 @@ export function SovereignConnections() {
                 rel="noopener noreferrer"
                 className="underline hover:text-primary"
               >
-                Créer un token avec les permissions <strong>repo</strong> et <strong>workflow</strong>
+                {t('sovereignConnections.createTokenLink')}
               </a>
             </p>
           </div>
@@ -582,7 +584,7 @@ export function SovereignConnections() {
             ) : (
               <TestTube className="h-4 w-4 mr-2" />
             )}
-            Tester la destination
+            {t('sovereignConnections.testDestination')}
           </Button>
         </CardContent>
       </Card>
@@ -593,17 +595,17 @@ export function SovereignConnections() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              <CardTitle className="text-lg">🗄️ Supabase Personnel (Optionnel)</CardTitle>
+              <CardTitle className="text-lg">🗄️ {t('sovereignConnections.supabaseTitle')}</CardTitle>
             </div>
             {getStatusBadge(connectionStatus.supabase)}
           </div>
           <CardDescription>
-            Connectez votre propre instance Supabase pour la migration des données
+            {t('sovereignConnections.supabaseCardDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="supabase-url">Project URL</Label>
+            <Label htmlFor="supabase-url">{t('sovereignConnections.projectUrl')}</Label>
             <Input
               id="supabase-url"
               type="url"
@@ -614,7 +616,7 @@ export function SovereignConnections() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="supabase-anon">Anon Key (Public)</Label>
+            <Label htmlFor="supabase-anon">{t('sovereignConnections.anonKey')}</Label>
             <div className="relative">
               <Input
                 id="supabase-anon"
@@ -637,7 +639,7 @@ export function SovereignConnections() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="supabase-service">Service Role Key (Secret)</Label>
+            <Label htmlFor="supabase-service">{t('sovereignConnections.serviceRoleKey')}</Label>
             <div className="relative">
               <Input
                 id="supabase-service"
@@ -660,11 +662,11 @@ export function SovereignConnections() {
             {hasExistingCredentials.supabase && (
               <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>Clés Supabase configurées</span>
+                <span>{t('sovereignConnections.supabaseKeysConfigured')}</span>
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Trouvez ces clés dans Settings → API de votre projet Supabase
+              {t('sovereignConnections.findKeysHint')}
             </p>
           </div>
           
@@ -678,7 +680,7 @@ export function SovereignConnections() {
             ) : (
               <TestTube className="h-4 w-4 mr-2" />
             )}
-            Tester la connexion
+            {t('sovereignConnections.testConnection')}
           </Button>
         </CardContent>
       </Card>
@@ -695,12 +697,12 @@ export function SovereignConnections() {
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sauvegarde...
+              {t('common.saving')}
             </>
           ) : (
             <>
               <Key className="mr-2 h-4 w-4" />
-              Sauvegarder les connexions
+              {t('sovereignConnections.saveConnections')}
             </>
           )}
         </Button>

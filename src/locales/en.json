@@ -873,5 +873,154 @@
     "economicFreedom": "Economic Freedom",
     "economicFreedomDesc": "Cut your costs by 3x.",
     "readManifeste": "Read the manifesto"
+  },
+  "deploymentChoice": {
+    "title": "How would you like to deploy?",
+    "subtitle": "Choose the deployment method that fits your needs and technical level",
+    "recommended": "Recommended",
+    "estimatedCost": "Estimated cost",
+    "choose": "Choose",
+    "vpsConfigured": "You already have a VPS configured",
+    "sovereign": "100% sovereign",
+    "deploymentInMinutes": "Deployment in minutes",
+    "options": {
+      "zip": {
+        "title": "ZIP Archive",
+        "description": "Download your cleaned project ready for manual deployment",
+        "badge": "Free",
+        "features": ["Code cleaned of Lovable dependencies", "Dockerfile included", "Deployment instructions", "Manual deployment required"]
+      },
+      "ftp": {
+        "title": "Shared Hosting",
+        "description": "Deploy to a classic web hosting via FTP/SFTP",
+        "badge": "Simple",
+        "features": ["Compatible with OVH, Hostinger, etc.", "No VPS required", "Simple and fast", "Ideal for showcase sites"]
+      },
+      "vps": {
+        "title": "VPS with Coolify",
+        "description": "Deploy to your own server with automated management",
+        "badge": "Recommended",
+        "features": ["Full server control", "Unlimited deployments", "Automatic SSL", "Ideal for complex apps"]
+      }
+    }
+  },
+  "sovereignDeployment": {
+    "steps": {
+      "connections": { "title": "Connect GitHub/Supabase", "description": "Configure your sovereign credentials" },
+      "cleanMigrate": { "title": "Clean & Migrate", "description": "Code cleaning and DB schema migration" },
+      "deploy": { "title": "Deploy to VPS", "description": "Deployment via GitHub → Coolify → VPS" }
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "connected": "Connected",
+    "notConfigured": "Not configured",
+    "optional": "Optional",
+    "repoDescription": "Sovereign project exported from Inopay - 100% autonomous",
+    "cleanMigrate": {
+      "title": "Cleaning & Migration",
+      "description": "The code will be cleaned of Lovable dependencies and the schema will be migrated to your Supabase",
+      "githubDescription": "The cleaned code will be pushed to your account",
+      "supabaseDescription": "The DB schema will be migrated to your instance",
+      "action": "Clean & Migrate"
+    },
+    "deploy": {
+      "title": "Sovereign Deployment",
+      "description": "Flow: Lovable Code → Inopay Cleaning → Client GitHub → Coolify Webhook → VPS",
+      "repoCreatedSuccess": "Repository created successfully",
+      "schemaMigrated": "DB schema migrated",
+      "action": "Deploy to my VPS"
+    },
+    "status": {
+      "cleaningCode": "Cleaning code in progress...",
+      "migratingSchema": "Migrating schema to your Supabase...",
+      "preparationDone": "Preparation complete",
+      "creatingRepo": "Creating repository on your GitHub...",
+      "triggeringCoolify": "Repository created, triggering Coolify deployment...",
+      "deploymentLaunched": "Deployment launched on your VPS!",
+      "repoCreatedConfigureCoolify": "Repository created - Configure Coolify to finalize"
+    },
+    "toasts": {
+      "warning": "Warning",
+      "migrationPartiallyFailed": "Schema migration partially failed. Continue deployment.",
+      "schemaMigrated": "Schema migrated",
+      "tablesCreated": "Tables and RLS policies have been created on your Supabase",
+      "sovereignDeploymentSuccess": "Sovereign deployment successful!",
+      "deployingToVPS": "Your project is being deployed to your VPS",
+      "repoCreated": "Repository created",
+      "connectToCoolify": "Connect this repo to Coolify for automatic deployment"
+    },
+    "errors": {
+      "projectRequired": "Project required",
+      "analyzeFirst": "Please analyze a project first",
+      "cleanMigrateFailed": "Error during cleaning or migration",
+      "githubTokenNotConfigured": "GitHub token not configured",
+      "deploymentError": "Deployment error",
+      "unknownError": "Unknown error"
+    }
+  },
+  "sovereignConnections": {
+    "dualConnection": "Dual GitHub connection: Source → Destination",
+    "githubSource": "GitHub SOURCE",
+    "githubSourceDesc": "your current Lovable project (read)",
+    "githubDestination": "GitHub DESTINATION",
+    "githubDestinationDesc": "your personal account where cleaned code will be exported (write)",
+    "sourceLovable": "Source Lovable",
+    "cleaningInopay": "Inopay Cleaning",
+    "personalDestination": "Personal Destination",
+    "githubSourceTitle": "GitHub SOURCE (Lovable)",
+    "githubSourceCardDesc": "The GitHub repository where your original Lovable project is located",
+    "lovableRepoUrl": "Lovable repository URL",
+    "lovableRepoUrlHint": "The GitHub repository URL automatically created by Lovable",
+    "tokenOptional": "Token (optional - private repos)",
+    "sourceTokenConfigured": "Source token configured",
+    "testSource": "Test source",
+    "githubDestinationTitle": "GitHub DESTINATION (Personal)",
+    "githubDestinationCardDesc": "Your personal GitHub account where cleaned code will be exported",
+    "destinationTokenInfo": "This token will be used to create a new repository on your own GitHub account and push the cleaned code, freeing you from Lovable.",
+    "patClassic": "Personal Access Token (Classic)",
+    "exportTo": "Exporting to",
+    "createTokenLink": "Create a token with repo and workflow permissions",
+    "testDestination": "Test destination",
+    "supabaseTitle": "Personal Supabase (Optional)",
+    "supabaseCardDesc": "Connect your own Supabase instance for data migration",
+    "projectUrl": "Project URL",
+    "anonKey": "Anon Key (Public)",
+    "serviceRoleKey": "Service Role Key (Secret)",
+    "supabaseKeysConfigured": "Supabase keys configured",
+    "findKeysHint": "Find these keys in Settings → API of your Supabase project",
+    "testConnection": "Test connection",
+    "saveConnections": "Save connections",
+    "sourceUrlValid": "Valid source URL",
+    "lovableRepoAccessible": "The Lovable repository URL is accessible",
+    "infoRequired": "Information required",
+    "enterUrlOrToken": "Enter the Lovable repository URL or a token for private repos",
+    "sourceConnected": "Source connection successful",
+    "accessToAccount": "Access to {{login}} account for reading",
+    "sourceConfigured": "Source configured",
+    "sourceTokenSaved": "Source token already saved",
+    "sourceConnectionFailed": "Source connection failed",
+    "checkTokenOrUrl": "Check your token or repository URL.",
+    "tokenRequired": "Token required",
+    "enterPatForPersonal": "Enter your Personal Access Token for your personal GitHub account",
+    "destinationConnected": "Destination account connected",
+    "readyToExport": "Ready to export to @{{login}}",
+    "checkPermissions": "check permissions",
+    "destinationConfigured": "Destination configured",
+    "destinationTokenSaved": "Destination token already saved",
+    "destinationConnectionFailed": "Destination connection failed",
+    "checkPat": "Check your Personal Access Token.",
+    "enterSupabaseInfo": "Please enter the URL and Anon key of your Supabase project",
+    "supabaseConnected": "Supabase connection successful",
+    "supabaseAccessible": "Your personal Supabase instance is accessible",
+    "supabaseConnectionFailed": "Supabase connection failed",
+    "checkSupabaseInfo": "Check the URL and keys of your project",
+    "connectionsSaved": "Connections saved",
+    "credentialsSecured": "Your sovereign credentials are securely configured",
+    "saveFailed": "Unable to save credentials",
+    "status": {
+      "connected": "Connected",
+      "testing": "Testing...",
+      "notConnected": "Not connected"
+    }
   }
 }
