@@ -42,6 +42,7 @@ import { SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RoleIndicator } from "@/components/ui/role-indicator";
 import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult, DependencyItem, AnalysisIssue } from "@/lib/zipAnalyzer";
 import CodeCleaner from "@/components/CodeCleaner";
 import CostSavingsReport from "@/components/dashboard/CostSavingsReport";
@@ -72,7 +73,7 @@ import { SovereigntySetupWizard } from "@/components/dashboard/SovereigntySetupW
 import { SovereigntyWizard } from "@/components/dashboard/SovereigntyWizard";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
-import { FleetDashboard } from "@/components/dashboard/FleetDashboard";
+import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
@@ -627,18 +628,18 @@ const Dashboard = () => {
   };
 
   const menuItems = [
-    { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
-    { id: "liberation", label: "Libérer & Déployer", icon: Flame, badge: "Pipeline" },
-    { id: "fleet", label: "Fleet Dashboard", icon: LayoutGrid, badge: "Portfolio" },
-    { id: "import", label: "Importer", icon: Upload },
-    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "New" },
-    { id: "projects", label: "Mes Projets", icon: Package },
-    { id: "deploy-choice", label: "Déployer", icon: Cloud },
-    { id: "sync-mirror", label: "Sync Mirror", icon: Zap },
-    { id: "deployments", label: "Historique", icon: History },
-    { id: "servers", label: "Mes Serveurs", icon: Server },
-    { id: "migration", label: "Outils Migration", icon: Database },
-    { id: "services", label: "Mes Services", icon: Crown },
+    { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "espace" },
+    { id: "fleet", label: "Mon Portfolio", icon: LayoutGrid, badge: "Mes projets", section: "espace" },
+    { id: "liberation", label: "Libérer & Déployer", icon: Flame, badge: "Pipeline", section: "liberer" },
+    { id: "import", label: "Importer", icon: Upload, section: "importer" },
+    { id: "batch-import", label: "Import Batch", icon: Layers, badge: "New", section: "importer" },
+    { id: "projects", label: "Projets Analysés", icon: Package, section: "espace" },
+    { id: "deploy-choice", label: "Déployer", icon: Cloud, section: "liberer" },
+    { id: "sync-mirror", label: "Sync Mirror", icon: Zap, section: "liberer" },
+    { id: "deployments", label: "Historique", icon: History, section: "espace" },
+    { id: "servers", label: "Mes Serveurs", icon: Server, section: "gestion" },
+    { id: "migration", label: "Outils Migration", icon: Database, section: "gestion" },
+    { id: "services", label: "Mes Services", icon: Crown, section: "gestion" },
   ];
 
   // Swipe handlers are now initialized at the top of the component (before early returns)
@@ -771,7 +772,9 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Client Context - No banner needed, just the sidebar indicator */}
+      <div className="flex flex-1">
       {/* Mobile Sidebar */}
       <MobileSidebar
         menuItems={menuItems}
@@ -830,7 +833,8 @@ const Dashboard = () => {
           <div className="flex items-center justify-center mb-3">
             <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
           </div>
-          <div className="text-center">
+          <div className="flex flex-col items-center gap-2">
+            <RoleIndicator role="client" size="md" />
             <Badge className={`${
               subscription.subscribed 
                 ? "bg-primary/20 text-primary-foreground border-primary/30" 
@@ -917,9 +921,9 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Tab: Fleet Dashboard */}
+            {/* Tab: Mon Portfolio Personnel */}
             {activeTab === "fleet" && (
-              <FleetDashboard 
+              <MyPersonalFleet 
                 onSelectProject={(project) => {
                   // Load project for deployment
                   loadProjectForDeployment(project);
@@ -1576,6 +1580,7 @@ const Dashboard = () => {
         currentTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}
       />
+      </div>
     </div>
   );
 };

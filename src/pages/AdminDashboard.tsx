@@ -24,13 +24,15 @@ import {
   Webhook,
   HardDrive,
   Calculator,
-  Network
+  Network,
+  Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { RoleIndicator, RoleContextBanner } from "@/components/ui/role-indicator";
 import AdminUsersList from "@/components/admin/AdminUsersList";
 import AdminExportsList from "@/components/admin/AdminExportsList";
 import AdminStats from "@/components/admin/AdminStats";
@@ -91,28 +93,34 @@ const AdminDashboard = () => {
     return null;
   }
 
+  // Menu groupé par domaine
   const menuItems = [
-    { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
-    { id: "diagnostic", label: "Diagnostic Réseau", icon: Network },
-    { id: "fleet", label: "Flotte Serveurs", icon: Server },
-    { id: "widgets", label: "Widgets & Sync", icon: Smartphone },
-    { id: "monitoring", label: "Monitoring", icon: Activity },
-    { id: "stripe-logs", label: "Logs Stripe", icon: Webhook },
-    { id: "kpis", label: "KPIs Business", icon: TrendingUp },
-    { id: "purchases", label: "Achats Services", icon: ShoppingCart },
-    { id: "margins", label: "Marges Nettoyage", icon: Calculator },
-    { id: "security", label: "Sécurité", icon: Shield },
-    { id: "support", label: "Support Admin", icon: Wrench },
-    { id: "users", label: "Utilisateurs", icon: Users },
-    { id: "payments", label: "Paiements", icon: CreditCard },
-    { id: "subscriptions", label: "Abonnements", icon: CalendarCheck },
-    { id: "analytics", label: "Analytics", icon: LineChart },
-    { id: "emails", label: "Emails (CMS)", icon: Mail },
-    { id: "reminders", label: "Relances", icon: Bell },
-    { id: "exports", label: "Exports & Qualité", icon: FileText },
-    { id: "migration", label: "Migration", icon: HardDrive },
-    { id: "testers", label: "Testeurs", icon: FlaskConical },
-    { id: "settings", label: "Paramètres", icon: Settings },
+    // 👥 Utilisateurs
+    { id: "users", label: "Utilisateurs", icon: Users, section: "users" },
+    { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
+    { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "users" },
+    // 💰 Business
+    { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "business" },
+    { id: "kpis", label: "KPIs Business", icon: TrendingUp, section: "business" },
+    { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
+    { id: "purchases", label: "Achats Services", icon: ShoppingCart, section: "business" },
+    { id: "margins", label: "Marges Nettoyage", icon: Calculator, section: "business" },
+    { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
+    // 🖥️ Infrastructure
+    { id: "fleet", label: "Flotte Serveurs", icon: Server, section: "infra" },
+    { id: "widgets", label: "Widgets & Sync", icon: Smartphone, section: "infra" },
+    { id: "monitoring", label: "Monitoring", icon: Activity, section: "infra" },
+    { id: "diagnostic", label: "Diagnostic Réseau", icon: Network, section: "infra" },
+    // 📧 Marketing
+    { id: "emails", label: "Emails (CMS)", icon: Mail, section: "marketing" },
+    { id: "reminders", label: "Relances", icon: Bell, section: "marketing" },
+    { id: "analytics", label: "Analytics", icon: LineChart, section: "marketing" },
+    // 🔐 Sécurité & Support
+    { id: "security", label: "Sécurité", icon: Shield, section: "security" },
+    { id: "support", label: "Support Admin", icon: Wrench, section: "security" },
+    { id: "exports", label: "Exports & Qualité", icon: FileText, section: "security" },
+    { id: "migration", label: "Migration", icon: HardDrive, section: "security" },
+    { id: "settings", label: "Paramètres", icon: Settings, section: "security" },
   ];
 
   const getPageTitle = () => {
@@ -147,8 +155,11 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Mobile Sidebar */}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Admin Context Banner */}
+      <RoleContextBanner role="admin" />
+      
+      <div className="flex flex-1">
       <MobileSidebar
         menuItems={menuItems}
         activeTab={activeTab}
@@ -192,10 +203,11 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-center mb-3">
             <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
           </div>
-          <div className="text-center">
-            <Badge className="bg-primary/20 text-primary-foreground border-primary/30 hover:bg-primary/30">
-              Administration
-            </Badge>
+          <div className="flex flex-col items-center gap-2">
+            <RoleIndicator role="admin" size="md" />
+            <span className="text-xs text-secondary-foreground/60">
+              Gestion plateforme Inopay
+            </span>
           </div>
         </div>
 
@@ -274,6 +286,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 };
