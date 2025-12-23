@@ -100,7 +100,7 @@ serve(async (req) => {
       ],
       mode: mode || "payment",
       success_url: successUrl,
-      cancel_url: `${origin}/upgrade`,
+      cancel_url: `${origin}/tarifs`,
       metadata: {
         user_id: user.id,
         service_type: serviceType || "deploy",
