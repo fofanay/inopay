@@ -60,6 +60,9 @@ import UserPurchases from "@/components/dashboard/UserPurchases";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import { UserMigrationTools } from "@/components/dashboard/UserMigrationTools";
+import { UserExportsHistory } from "@/components/dashboard/UserExportsHistory";
+import { UserSecurityStatus } from "@/components/dashboard/UserSecurityStatus";
+import { UserWidgetStatus } from "@/components/dashboard/UserWidgetStatus";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
@@ -90,15 +93,17 @@ const TAB_LABELS: Record<string, string> = {
   "sync-mirror": "Sync Mirror",
   "deployments": "Historique",
   "servers": "Mes Serveurs",
-  "migration": "Migration Wizard",
+  "security": "Sécurité",
+  "migration": "Outils Migration",
   "services": "Mes Services",
+  "exports": "Mes Exports",
 };
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "liberation" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror";
+type DashboardTab = "overview" | "liberation" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "security" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror" | "exports";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "migration", "services"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "security", "migration", "services", "exports"];
 
 interface GitHubRepo {
   id: number;
@@ -1484,7 +1489,10 @@ const Dashboard = () => {
 
             {/* Tab: Sync Mirror */}
             {activeTab === "sync-mirror" && (
-              <SyncMirror />
+              <div className="space-y-6">
+                <UserWidgetStatus />
+                <SyncMirror />
+              </div>
             )}
 
             {/* Tab: Sovereign Deployment */}
@@ -1506,7 +1514,20 @@ const Dashboard = () => {
 
             {/* Tab: Services */}
             {activeTab === "services" && (
-              <UserPurchases />
+              <div className="space-y-6">
+                <UserPurchases />
+                <UserExportsHistory />
+              </div>
+            )}
+
+            {/* Tab: Security */}
+            {activeTab === "security" && (
+              <UserSecurityStatus />
+            )}
+
+            {/* Tab: Exports */}
+            {activeTab === "exports" && (
+              <UserExportsHistory />
             )}
           </div>
           {/* Padding for mobile pagination dots */}
