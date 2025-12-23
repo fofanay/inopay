@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar } from "lucide-react";
+import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type ApiProvider = "openai" | "anthropic";
+type ApiProvider = "openai" | "anthropic" | "deepseek";
 
 interface UserSettings {
   id?: string;
@@ -162,6 +163,32 @@ const Settings = () => {
     }
   };
 
+  const handleClearKey = async () => {
+    if (!user || !settings.id) return;
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("user_settings")
+      .update({ api_key: null })
+      .eq("id", settings.id);
+
+    setSaving(false);
+
+    if (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la clé API",
+        variant: "destructive",
+      });
+    } else {
+      setHasExistingKey(false);
+      toast({
+        title: "Clé supprimée",
+        description: "Inopay utilisera désormais son propre moteur IA",
+      });
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <Layout>
@@ -181,22 +208,60 @@ const Settings = () => {
               Paramètres
             </h1>
             <p className="text-lg text-muted-foreground">
-              Configurez votre clé API pour activer le nettoyage IA du code
+              Configurez votre moteur IA pour le nettoyage de code
             </p>
           </div>
 
-          {/* AI API Key Card */}
+          {/* Default Engine Info */}
+          <Card className="mb-6 border-emerald-500/30 bg-emerald-500/5">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <Zap className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-emerald-400 mb-1">
+                    Moteur par défaut : DeepSeek V3
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Inopay utilise <strong>DeepSeek</strong> par défaut pour le nettoyage de code. 
+                    C'est l'un des modèles les plus performants avec un excellent rapport qualité/prix.
+                    Avec fallback automatique sur Claude Sonnet en cas de surcharge.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* BYOK Card */}
           <Card className="animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                Configuration de l'IA
+                Votre Clé API IA (Optionnel)
+                <Badge variant="outline" className="ml-2 bg-amber-500/10 text-amber-400 border-amber-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  BYOK
+                </Badge>
               </CardTitle>
               <CardDescription>
-                Choisissez votre fournisseur d'IA et entrez votre clé API pour activer le nettoyage automatique du code
+                Apportez votre propre clé API pour utiliser votre propre compte et bénéficier d'une réduction
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              
+              {/* BYOK Discount Banner */}
+              {hasExistingKey && (
+                <Alert className="bg-amber-500/10 border-amber-500/30">
+                  <Sparkles className="h-4 w-4 text-amber-400" />
+                  <AlertDescription className="text-amber-200">
+                    <strong>Utilisation de votre clé personnelle :</strong> Vous bénéficiez d'une 
+                    <span className="text-amber-400 font-bold"> réduction de 30% </span> 
+                    sur le tarif de libération !
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Provider Selection */}
               <div className="space-y-3">
                 <Label>Fournisseur d'IA</Label>
@@ -205,7 +270,7 @@ const Settings = () => {
                   onValueChange={(value: ApiProvider) => 
                     setSettings(prev => ({ ...prev, api_provider: value }))
                   }
-                  className="grid grid-cols-2 gap-4"
+                  className="grid grid-cols-3 gap-3"
                 >
                   <div>
                     <RadioGroupItem
@@ -218,7 +283,7 @@ const Settings = () => {
                       className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                       <span className="text-lg font-semibold">OpenAI</span>
-                      <span className="text-sm text-muted-foreground">GPT-4o</span>
+                      <span className="text-xs text-muted-foreground">GPT-4o</span>
                     </Label>
                   </div>
                   <div>
@@ -232,7 +297,21 @@ const Settings = () => {
                       className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                       <span className="text-lg font-semibold">Anthropic</span>
-                      <span className="text-sm text-muted-foreground">Claude Sonnet</span>
+                      <span className="text-xs text-muted-foreground">Claude 4</span>
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem
+                      value="deepseek"
+                      id="deepseek"
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor="deepseek"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-emerald-500 [&:has([data-state=checked])]:border-emerald-500 cursor-pointer"
+                    >
+                      <span className="text-lg font-semibold">DeepSeek</span>
+                      <span className="text-xs text-emerald-400">Recommandé</span>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -241,13 +320,13 @@ const Settings = () => {
               {/* API Key Input */}
               <div className="space-y-3">
                 <Label htmlFor="api-key">
-                  Clé API {settings.api_provider === "openai" ? "OpenAI" : "Anthropic"}
+                  Clé API {settings.api_provider === "openai" ? "OpenAI" : settings.api_provider === "anthropic" ? "Anthropic" : "DeepSeek"}
                 </Label>
                 <div className="relative">
                   <Input
                     id="api-key"
                     type={showApiKey ? "text" : "password"}
-                    placeholder={hasExistingKey ? "••••••••••••••••••••" : "sk-..."}
+                    placeholder={hasExistingKey ? "••••••••••••••••••••" : settings.api_provider === "deepseek" ? "sk-..." : "sk-..."}
                     value={settings.api_key}
                     onChange={(e) => setSettings(prev => ({ ...prev, api_key: e.target.value }))}
                     className="pr-10"
@@ -267,15 +346,27 @@ const Settings = () => {
                   </Button>
                 </div>
                 {hasExistingKey && (
-                  <div className="flex items-center gap-2 text-sm text-success">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Une clé API est déjà configurée</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Clé API configurée (mode BYOK actif)</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearKey}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      Supprimer
+                    </Button>
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
                   {settings.api_provider === "openai" 
                     ? "Obtenez votre clé sur platform.openai.com" 
-                    : "Obtenez votre clé sur console.anthropic.com"}
+                    : settings.api_provider === "anthropic"
+                    ? "Obtenez votre clé sur console.anthropic.com"
+                    : "Obtenez votre clé sur platform.deepseek.com"}
                 </p>
               </div>
 
@@ -297,6 +388,27 @@ const Settings = () => {
                   </>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Security Card */}
+          <Card className="mt-6 border-blue-500/20 bg-blue-500/5">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <Shield className="h-6 w-6 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-400 mb-1">
+                    Fallback automatique
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Si DeepSeek est surchargé ou indisponible, Inopay bascule automatiquement sur 
+                    Claude Sonnet 4 pour garantir que votre libération aboutit toujours.
+                    L'équipe Inovaq est automatiquement notifiée.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -367,14 +479,17 @@ const Settings = () => {
           {/* Info Card */}
           <Card className="mt-6 border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
-              <h4 className="font-semibold mb-2">Comment ça fonctionne ?</h4>
-              <ul className="text-sm text-muted-foreground space-y-2">
-                <li>1. Configurez votre clé API ci-dessus</li>
-                <li>2. Analysez un projet depuis le Dashboard</li>
-                <li>3. Cliquez sur "Générer le code autonome" pour chaque fichier à risque</li>
-                <li>4. L'IA réécrit le code en supprimant les dépendances propriétaires</li>
-                <li>5. Comparez et téléchargez le code nettoyé</li>
-              </ul>
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <h4 className="font-semibold mb-2">Comment ça fonctionne ?</h4>
+                  <ul className="text-sm text-muted-foreground space-y-2">
+                    <li><strong>Sans clé (par défaut) :</strong> Inopay utilise DeepSeek V3 pour nettoyer votre code</li>
+                    <li><strong>Avec votre clé (BYOK) :</strong> Utilisez votre propre compte IA et économisez 30%</li>
+                    <li><strong>Fallback :</strong> Si DeepSeek échoue, Claude prend le relais automatiquement</li>
+                  </ul>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
