@@ -27,7 +27,13 @@
     "cancel": "Cancel",
     "loading": "Loading...",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "month": "month",
+    "perDeployment": "deployment",
+    "perUpdate": "update",
+    "perApp": "app",
+    "perServer": "server",
+    "zeroTerminal": "Zero Terminal"
   },
   "hero": {
     "badge": "Vibe-Friendly",
@@ -40,6 +46,12 @@
     "ctaSubtext": "Free analysis, no credit card required",
     "deploymentIn": "Deployment in",
     "tenMinutes": "10 minutes flat",
+    "vibeScore": "Vibe-Score™",
+    "after": "After",
+    "monitoring": "Monitoring",
+    "zeroKnowledge": "Zero-Knowledge",
+    "vibeToProd": "Vibe-to-Prod",
+    "vibeToProduction": "Vibe-to-Production",
     "benefits": {
       "noTerminal": "Zero command line required",
       "divideCosts": "Cut your bills by 3x",
@@ -398,7 +410,8 @@
       "devops": "DevOps Freelance",
       "heroku": "Heroku / Railway",
       "manual": "Manual config",
-      "yourTime": "Your time"
+      "yourTime": "Your time",
+      "days": "1-2 days"
     },
     "included": {
       "title": "What's included",
@@ -1022,5 +1035,40 @@
       "testing": "Testing...",
       "notConnected": "Not connected"
     }
+  },
+  "about": {
+    "title": "About",
+    "heroTitle": "About",
+    "heroSubtitle": "The platform that automates the deployment of your AI projects on your own infrastructure.",
+    "missionTitle": "Our mission",
+    "missionP1": "AI platforms like Lovable, Bolt, and Cursor have revolutionized application creation. But putting this code into production remains a technical nightmare.",
+    "missionP2": "Docker configuration, database provisioning, SSL certificates, monitoring... So many obstacles between your idea and going live.",
+    "missionP3": "Inopay automates everything.",
+    "missionP3Bold": "From cleaning proprietary code to deploying on your own VPS, including 24/7 monitoring with auto-recovery.",
+    "missionStats": "10 minutes",
+    "missionStatsDesc": "From code to production",
+    "valuesTitle": "Our values",
+    "valuesSubtitle": "The principles that guide our development",
+    "values": {
+      "autonomy": {
+        "title": "Autonomy",
+        "description": "Your server, your data, your total control. No dependency on a third-party platform."
+      },
+      "automation": {
+        "title": "Automation",
+        "description": "Zero manual configuration. Docker, PostgreSQL, and SSL installed automatically."
+      },
+      "security": {
+        "title": "Zero-Knowledge Security",
+        "description": "Your credentials are deleted after deployment. We store no secrets."
+      },
+      "reliability": {
+        "title": "Reliability",
+        "description": "24/7 monitoring with auto-recovery. Your app stays online even in case of failure."
+      }
+    },
+    "ctaTitle": "Ready to deploy?",
+    "ctaDescription": "Analyze your project for free and put it into production on your VPS in 10 minutes.",
+    "ctaButton": "Deploy my project"
   }
 }

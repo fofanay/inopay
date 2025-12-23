@@ -145,7 +145,7 @@ const Index = () => {
                     <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-primary" />
-                        <span className="text-sm font-medium text-foreground">Vibe-Score™</span>
+                        <span className="text-sm font-medium text-foreground">{t('hero.vibeScore')}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-center">
@@ -159,7 +159,7 @@ const Index = () => {
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center">
                           <p className="text-lg font-bold text-success">100%</p>
-                          <p className="text-[10px] text-muted-foreground">After</p>
+                          <p className="text-[10px] text-muted-foreground">{t('hero.after')}</p>
                         </div>
                       </div>
                     </div>
@@ -209,7 +209,7 @@ const Index = () => {
                       </div>
                       <div className="flex-1 p-3 rounded-xl bg-primary/10 text-center">
                         <p className="text-2xl font-bold text-primary">24/7</p>
-                        <p className="text-xs text-muted-foreground">Monitoring</p>
+                        <p className="text-xs text-muted-foreground">{t('hero.monitoring')}</p>
                       </div>
                     </div>
                   </div>
@@ -224,7 +224,7 @@ const Index = () => {
                   }}
                 >
                   <Shield className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Zero-Knowledge</span>
+                  <span className="text-sm font-medium">{t('hero.zeroKnowledge')}</span>
                 </div>
                 
                 <div 
@@ -246,7 +246,7 @@ const Index = () => {
                   }}
                 >
                   <Zap className="h-4 w-4" />
-                  <span className="text-sm font-medium">Vibe-to-Prod</span>
+                  <span className="text-sm font-medium">{t('hero.vibeToProd')}</span>
                 </div>
               </div>
             </div>
@@ -502,7 +502,7 @@ const Index = () => {
 
             <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
               <Palette className="h-3 w-3 mr-1" />
-              Vibe-to-Production
+              {t('hero.vibeToProduction')}
             </Badge>
             
             <h2 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-foreground">

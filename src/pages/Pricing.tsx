@@ -160,57 +160,57 @@ const Pricing = () => {
     },
     {
       id: "redeploy" as ServiceType,
-      name: "Re-déploiement",
-      description: "Mise à jour d'une app existante",
+      name: t('pricing.redeploy.name'),
+      description: t('pricing.redeploy.description'),
       price: PRICES[currency].redeploy,
-      period: `${PRICES[currency].symbol} / mise à jour`,
+      period: `${PRICES[currency].symbol} / ${t('common.perUpdate')}`,
       icon: RefreshCw,
       badge: null,
       popular: false,
       features: [
-        "Mise à jour du code source",
-        "Rebuild automatique",
-        "Zero-downtime deployment",
-        "Rollback si erreur",
-        "Logs de déploiement",
+        t('pricing.redeploy.feature1'),
+        t('pricing.redeploy.feature2'),
+        t('pricing.redeploy.feature3'),
+        t('pricing.redeploy.feature4'),
+        t('pricing.redeploy.feature5'),
       ],
-      buttonText: "Mettre à jour",
+      buttonText: t('pricing.redeploy.cta'),
     },
     {
       id: "monitoring" as ServiceType,
-      name: "Extension Monitoring",
-      description: "Surveillance continue après 7 jours",
+      name: t('pricing.monitoring.name'),
+      description: t('pricing.monitoring.description'),
       price: PRICES[currency].monitoring,
-      period: `${PRICES[currency].symbol} / mois / app`,
+      period: `${PRICES[currency].symbol} / ${t('common.month')} / ${t('common.perApp')}`,
       icon: Activity,
-      badge: "Récurrent",
+      badge: t('pricing.monitoring.badge'),
       popular: false,
       features: [
-        "Monitoring 24/7 permanent",
-        "Auto-restart prioritaire",
-        "Alertes en temps réel",
-        "Historique des pannes",
-        "Support prioritaire",
+        t('pricing.monitoring.feature1'),
+        t('pricing.monitoring.feature2'),
+        t('pricing.monitoring.feature3'),
+        t('pricing.monitoring.feature4'),
+        t('pricing.monitoring.feature5'),
       ],
-      buttonText: "Étendre le monitoring",
+      buttonText: t('pricing.monitoring.cta'),
     },
     {
       id: "server" as ServiceType,
-      name: "Serveur Supplémentaire",
-      description: "Ajoutez un VPS à votre compte",
+      name: t('pricing.server.name'),
+      description: t('pricing.server.description'),
       price: PRICES[currency].server,
-      period: `${PRICES[currency].symbol} / serveur`,
+      period: `${PRICES[currency].symbol} / ${t('common.perServer')}`,
       icon: Plus,
       badge: null,
       popular: false,
       features: [
-        "Configuration complète",
-        "Docker + Coolify",
-        "PostgreSQL optionnel",
-        "SSL automatique",
-        "Monitoring 7 jours",
+        t('pricing.server.feature1'),
+        t('pricing.server.feature2'),
+        t('pricing.server.feature3'),
+        t('pricing.server.feature4'),
+        t('pricing.server.feature5'),
       ],
-      buttonText: "Ajouter un serveur",
+      buttonText: t('pricing.server.cta'),
     },
   ];
 
@@ -222,7 +222,7 @@ const Pricing = () => {
           <div className="text-center mb-10 md:mb-16">
             <Badge className="mb-4 md:mb-6 bg-primary/10 text-primary border-primary/20">
               <Palette className="h-3 w-3 mr-1" />
-              🎨 Vibe-to-Production
+              🎨 {t('hero.vibeToProduction')}
             </Badge>
             <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-foreground">
               {t('pricing.title')}
@@ -311,7 +311,7 @@ const Pricing = () => {
                     ) : service.popular ? (
                       <Badge variant="secondary" className="mr-1 md:mr-2 text-[10px] md:text-xs bg-primary-foreground/20 text-primary-foreground border-0 hidden sm:inline-flex">
                         <Terminal className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
-                        Zéro Terminal
+                        {t('common.zeroTerminal')}
                       </Badge>
                     ) : null}
                     <span className="truncate">{service.buttonText}</span>
@@ -376,7 +376,7 @@ const Pricing = () => {
                     <TableCell className="font-medium text-xs md:text-sm">{t('pricing.comparison.manual')}</TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs md:text-sm">{t('pricing.comparison.yourTime')}</TableCell>
                     <TableCell className="text-center hidden sm:table-cell"><Check className="h-3 w-3 md:h-4 md:w-4 text-success mx-auto" /></TableCell>
-                    <TableCell className="text-center text-muted-foreground text-xs md:text-sm">1-2 jours</TableCell>
+                    <TableCell className="text-center text-muted-foreground text-xs md:text-sm">{t('pricing.comparison.days')}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

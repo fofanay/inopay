@@ -27,7 +27,13 @@
     "cancel": "Annuler",
     "loading": "Chargement...",
     "error": "Erreur",
-    "success": "Succès"
+    "success": "Succès",
+    "month": "mois",
+    "perDeployment": "déploiement",
+    "perUpdate": "mise à jour",
+    "perApp": "app",
+    "perServer": "serveur",
+    "zeroTerminal": "Zéro Terminal"
   },
   "hero": {
     "badge": "Vibe-Friendly",
@@ -40,6 +46,12 @@
     "ctaSubtext": "Analyse gratuite, sans carte bancaire",
     "deploymentIn": "Déploiement en",
     "tenMinutes": "10 minutes chrono",
+    "vibeScore": "Vibe-Score™",
+    "after": "Après",
+    "monitoring": "Monitoring",
+    "zeroKnowledge": "Zero-Knowledge",
+    "vibeToProd": "Vibe-to-Prod",
+    "vibeToProduction": "Vibe-to-Production",
     "benefits": {
       "noTerminal": "Zéro ligne de commande requise",
       "divideCosts": "Divisez vos factures par 3",
@@ -398,7 +410,8 @@
       "devops": "DevOps Freelance",
       "heroku": "Heroku / Railway",
       "manual": "Config manuelle",
-      "yourTime": "Votre temps"
+      "yourTime": "Votre temps",
+      "days": "1-2 jours"
     },
     "included": {
       "title": "Ce qui est inclus",
@@ -917,5 +930,40 @@
       "testing": "Test...",
       "notConnected": "Non connecté"
     }
+  },
+  "about": {
+    "title": "À propos",
+    "heroTitle": "À propos d'",
+    "heroSubtitle": "La plateforme qui automatise le déploiement de vos projets IA sur votre propre infrastructure.",
+    "missionTitle": "Notre mission",
+    "missionP1": "Les plateformes IA comme Lovable, Bolt et Cursor ont révolutionné la création d'applications. Mais mettre ce code en production reste un cauchemar technique.",
+    "missionP2": "Configuration Docker, provisionnement de base de données, certificats SSL, monitoring... Autant d'obstacles entre votre idée et sa mise en ligne.",
+    "missionP3": "Inopay automatise tout.",
+    "missionP3Bold": "Du nettoyage du code propriétaire jusqu'au déploiement sur votre propre VPS, en passant par le monitoring 24/7 avec auto-recovery.",
+    "missionStats": "10 minutes",
+    "missionStatsDesc": "Du code à la production",
+    "valuesTitle": "Nos valeurs",
+    "valuesSubtitle": "Les principes qui guident notre développement",
+    "values": {
+      "autonomy": {
+        "title": "Autonomie",
+        "description": "Votre serveur, vos données, votre contrôle total. Aucune dépendance à une plateforme tierce."
+      },
+      "automation": {
+        "title": "Automatisation",
+        "description": "Zéro configuration manuelle. Docker, PostgreSQL et SSL installés automatiquement."
+      },
+      "security": {
+        "title": "Sécurité Zero-Knowledge",
+        "description": "Vos credentials sont effacés après déploiement. Nous ne stockons aucun secret."
+      },
+      "reliability": {
+        "title": "Fiabilité",
+        "description": "Monitoring 24/7 avec auto-recovery. Votre app reste en ligne même en cas de panne."
+      }
+    },
+    "ctaTitle": "Prêt à déployer ?",
+    "ctaDescription": "Analysez votre projet gratuitement et mettez-le en production sur votre VPS en 10 minutes.",
+    "ctaButton": "Déployer mon projet"
   }
 }
