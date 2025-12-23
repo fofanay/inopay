@@ -11,21 +11,23 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Mail, Lock, ArrowLeft, Github } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
 
-const authSchema = z.object({
-  email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
-});
-
-type AuthFormValues = z.infer<typeof authSchema>;
-
 const Auth = () => {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn, signUp } = useAuth();
+
+  const authSchema = z.object({
+    email: z.string().email(t("auth.invalidEmail")),
+    password: z.string().min(6, t("auth.passwordMinLength")),
+  });
+
+  type AuthFormValues = z.infer<typeof authSchema>;
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
@@ -44,21 +46,21 @@ const Auth = () => {
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
             toast({
-              title: "Erreur de connexion",
-              description: "Email ou mot de passe incorrect",
+              title: t("auth.loginError"),
+              description: t("auth.invalidCredentials"),
               variant: "destructive",
             });
           } else {
             toast({
-              title: "Erreur",
+              title: t("common.error"),
               description: error.message,
               variant: "destructive",
             });
           }
         } else {
           toast({
-            title: "Connexion réussie",
-            description: "Bienvenue sur Inopay !",
+            title: t("auth.loginSuccess"),
+            description: t("auth.welcomeBack"),
           });
           navigate("/dashboard");
         }
@@ -67,29 +69,29 @@ const Auth = () => {
         if (error) {
           if (error.message.includes("User already registered")) {
             toast({
-              title: "Compte existant",
-              description: "Cet email est déjà utilisé. Essayez de vous connecter.",
+              title: t("auth.accountExists"),
+              description: t("auth.emailAlreadyUsed"),
               variant: "destructive",
             });
           } else {
             toast({
-              title: "Erreur",
+              title: t("common.error"),
               description: error.message,
               variant: "destructive",
             });
           }
         } else {
           toast({
-            title: "Compte créé",
-            description: "Bienvenue sur Inopay !",
+            title: t("auth.signupSuccess"),
+            description: t("auth.welcomeNew"),
           });
           navigate("/dashboard");
         }
       }
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Une erreur inattendue s'est produite",
+        title: t("common.error"),
+        description: t("auth.unexpectedError"),
         variant: "destructive",
       });
     } finally {
@@ -109,7 +111,7 @@ const Auth = () => {
         {/* Back Link */}
         <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary mb-8 transition-colors">
           <ArrowLeft className="h-4 w-4" />
-          Retour à l'accueil
+          {t("auth.backToHome")}
         </Link>
 
         <Card className="border-border/50 bg-card/80 backdrop-blur-xl">
@@ -120,13 +122,10 @@ const Auth = () => {
             </div>
             <div>
               <CardTitle className="text-2xl">
-                {isLogin ? "Connexion" : "Créer un compte"}
+                {isLogin ? t("auth.login") : t("auth.signup")}
               </CardTitle>
               <CardDescription className="mt-2">
-                {isLogin 
-                  ? "Connectez-vous pour accéder à votre dashboard" 
-                  : "Inscrivez-vous pour analyser vos projets"
-                }
+                {isLogin ? t("auth.loginDesc") : t("auth.signupDesc")}
               </CardDescription>
             </div>
           </CardHeader>
@@ -138,12 +137,12 @@ const Auth = () => {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("auth.email")}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input 
-                            placeholder="vous@exemple.com" 
+                            placeholder={t("auth.emailPlaceholder")} 
                             className="pl-10" 
                             {...field} 
                           />
@@ -158,13 +157,13 @@ const Auth = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mot de passe</FormLabel>
+                      <FormLabel>{t("auth.password")}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input 
                             type="password" 
-                            placeholder="••••••••" 
+                            placeholder={t("auth.passwordPlaceholder")} 
                             className="pl-10" 
                             {...field} 
                           />
@@ -176,7 +175,7 @@ const Auth = () => {
                 />
                 <Button type="submit" className="w-full glow-sm" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLogin ? "Se connecter" : "S'inscrire"}
+                  {isLogin ? t("auth.submit") : t("auth.submitSignup")}
                 </Button>
               </form>
             </Form>
@@ -187,7 +186,7 @@ const Auth = () => {
                 <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Ou continuer avec</span>
+                <span className="bg-card px-2 text-muted-foreground">{t("auth.orContinueWith")}</span>
               </div>
             </div>
 
@@ -206,7 +205,7 @@ const Auth = () => {
                 });
                 if (error) {
                   toast({
-                    title: "Erreur",
+                    title: t("common.error"),
                     description: error.message,
                     variant: "destructive",
                   });
@@ -223,10 +222,7 @@ const Auth = () => {
                 onClick={() => setIsLogin(!isLogin)}
                 className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
-                {isLogin 
-                  ? "Pas encore de compte ? S'inscrire" 
-                  : "Déjà un compte ? Se connecter"
-                }
+                {isLogin ? t("auth.noAccount") : t("auth.hasAccount")}
               </button>
             </div>
           </CardContent>
