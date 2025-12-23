@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.send-liberation-success]
 verify_jwt = false
+
+[functions.validate-api-key]
+verify_jwt = false

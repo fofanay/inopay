@@ -17,7 +17,11 @@ import {
   Check,
   RefreshCw,
   FileCode,
-  AlertTriangle
+  AlertTriangle,
+  Cpu,
+  Key,
+  Shield,
+  Zap
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 interface StepStatus {
   source: "pending" | "in_progress" | "completed" | "error";
   destination: "pending" | "in_progress" | "completed" | "error";
+  ai: "pending" | "in_progress" | "completed" | "error";
   cleaning: "pending" | "in_progress" | "completed" | "error";
   export: "pending" | "in_progress" | "completed" | "error";
 }
@@ -57,6 +63,15 @@ interface FetchedFile {
   content: string;
 }
 
+type AIProvider = "inopay" | "openai" | "anthropic" | "deepseek";
+
+interface AIConfig {
+  mode: "inopay" | "byok";
+  provider: AIProvider;
+  apiKey: string;
+  isValidated: boolean;
+}
+
 export function LiberationWizard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -65,6 +80,7 @@ export function LiberationWizard() {
   const [stepStatus, setStepStatus] = useState<StepStatus>({
     source: "pending",
     destination: "pending",
+    ai: "pending",
     cleaning: "pending",
     export: "pending",
   });
@@ -80,9 +96,19 @@ export function LiberationWizard() {
   
   const [sourceToken, setSourceToken] = useState("");
   const [destinationToken, setDestinationToken] = useState("");
-  const [showTokens, setShowTokens] = useState({ source: false, destination: false });
+  const [showTokens, setShowTokens] = useState({ source: false, destination: false, ai: false });
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // AI Configuration state
+  const [aiConfig, setAIConfig] = useState<AIConfig>({
+    mode: "inopay",
+    provider: "inopay",
+    apiKey: "",
+    isValidated: false,
+  });
+  const [validatingKey, setValidatingKey] = useState(false);
+  const [hasExistingKey, setHasExistingKey] = useState(false);
   
   // Real processing states
   const [fetchedFiles, setFetchedFiles] = useState<FetchedFile[]>([]);
@@ -99,22 +125,33 @@ export function LiberationWizard() {
     
     const { data } = await supabase
       .from("user_settings")
-      .select("github_source_token, github_destination_token, github_destination_username")
+      .select("github_source_token, github_destination_token, github_destination_username, api_key, api_provider")
       .eq("user_id", user.id)
       .maybeSingle();
     
     if (data) {
       if (data.github_source_token) {
-        setSourceToken(""); // Don't display existing token
+        setSourceToken("");
         setStepStatus(prev => ({ ...prev, source: "completed" }));
       }
       if (data.github_destination_token && data.github_destination_username) {
-        setDestinationToken(""); // Don't display existing token
+        setDestinationToken("");
         setStepStatus(prev => ({ ...prev, destination: "completed" }));
         setMigrationData(prev => ({ 
           ...prev, 
           destinationUsername: data.github_destination_username || "" 
         }));
+      }
+      // Check for existing API key
+      if (data.api_key) {
+        setHasExistingKey(true);
+        setAIConfig(prev => ({
+          ...prev,
+          mode: "byok",
+          provider: data.api_provider as AIProvider || "anthropic",
+          isValidated: true,
+        }));
+        setStepStatus(prev => ({ ...prev, ai: "completed" }));
       }
     }
   };
@@ -153,7 +190,6 @@ export function LiberationWizard() {
       const parsed = parseGitHubUrl(migrationData.sourceUrl);
       if (!parsed) throw new Error("URL invalide");
       
-      // Fetch repository files using the edge function
       console.log("[LiberationWizard] Fetching repo:", migrationData.sourceUrl);
       
       const { data, error } = await supabase.functions.invoke("fetch-github-repo", {
@@ -169,7 +205,6 @@ export function LiberationWizard() {
       console.log(`[LiberationWizard] Fetched ${data.files.length} files`);
       setFetchedFiles(data.files);
       
-      // Save source token if provided
       if (sourceToken && user) {
         await supabase
           .from("user_settings")
@@ -212,7 +247,6 @@ export function LiberationWizard() {
       if (response.ok) {
         const userData = await response.json();
         
-        // Save destination config
         if (user) {
           await supabase
             .from("user_settings")
@@ -226,7 +260,7 @@ export function LiberationWizard() {
         
         setMigrationData(prev => ({ ...prev, destinationUsername: userData.login }));
         setStepStatus(prev => ({ ...prev, destination: "completed" }));
-        setCurrentStep(3);
+        setCurrentStep(3); // Go to AI config step
         toast({ title: "Destination connectée", description: `Prêt à exporter vers @${userData.login}` });
       } else {
         throw new Error("Token invalide ou expiré");
@@ -237,6 +271,63 @@ export function LiberationWizard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const validateAPIKey = async () => {
+    if (!aiConfig.apiKey) {
+      toast({ title: "Clé requise", description: "Entrez votre clé API", variant: "destructive" });
+      return;
+    }
+    
+    setValidatingKey(true);
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke("validate-api-key", {
+        body: { 
+          apiKey: aiConfig.apiKey,
+          provider: aiConfig.provider
+        },
+        headers: sessionData.session?.access_token 
+          ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+          : undefined
+      });
+      
+      if (error) throw new Error(error.message);
+      
+      if (data?.valid) {
+        setAIConfig(prev => ({ ...prev, isValidated: true }));
+        setHasExistingKey(true);
+        setStepStatus(prev => ({ ...prev, ai: "completed" }));
+        toast({ 
+          title: "Clé validée !", 
+          description: `${data.provider} connecté - ${data.model}` 
+        });
+      } else {
+        throw new Error(data?.error || "Clé invalide");
+      }
+    } catch (error: any) {
+      console.error("[LiberationWizard] API key validation error:", error);
+      toast({ title: "Clé invalide", description: error.message, variant: "destructive" });
+    } finally {
+      setValidatingKey(false);
+    }
+  };
+
+  const skipAIConfig = () => {
+    setAIConfig(prev => ({ ...prev, mode: "inopay", isValidated: true }));
+    setStepStatus(prev => ({ ...prev, ai: "completed" }));
+    setCurrentStep(4);
+    toast({ title: "Moteur Inopay sélectionné", description: "DeepSeek V3 sera utilisé pour le nettoyage" });
+  };
+
+  const confirmBYOK = () => {
+    if (!aiConfig.isValidated) {
+      toast({ title: "Validation requise", description: "Testez d'abord votre clé API", variant: "destructive" });
+      return;
+    }
+    setCurrentStep(4);
   };
 
   const startCleaning = async () => {
@@ -268,12 +359,10 @@ export function LiberationWizard() {
       const cleaned: Record<string, string> = {};
       let changesCount = 0;
       
-      // Add non-code files directly
       for (const file of otherFiles) {
         cleaned[file.path] = file.content;
       }
       
-      // Clean code files using the edge function
       for (let i = 0; i < filesToClean.length; i++) {
         const file = filesToClean[i];
         setCleaningProgress({ total: filesToClean.length, completed: i, currentFile: file.path });
@@ -289,7 +378,7 @@ export function LiberationWizard() {
           
           if (error) {
             console.warn(`[LiberationWizard] Error cleaning ${file.path}:`, error);
-            cleaned[file.path] = file.content; // Keep original on error
+            cleaned[file.path] = file.content;
           } else if (data?.cleanedCode) {
             cleaned[file.path] = data.cleanedCode;
             if (data.cleanedCode !== file.content) {
@@ -303,7 +392,6 @@ export function LiberationWizard() {
           cleaned[file.path] = file.content;
         }
         
-        // Small delay to avoid rate limiting
         if (i < filesToClean.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -313,7 +401,7 @@ export function LiberationWizard() {
       setCleaningStats({ filesProcessed: filesToClean.length, changesCount });
       setCleaningProgress({ total: filesToClean.length, completed: filesToClean.length, currentFile: "" });
       setStepStatus(prev => ({ ...prev, cleaning: "completed" }));
-      setCurrentStep(4);
+      setCurrentStep(5);
       
       toast({ 
         title: "Nettoyage terminé", 
@@ -357,7 +445,6 @@ export function LiberationWizard() {
       setMigrationData(prev => ({ ...prev, exportedUrl }));
       setStepStatus(prev => ({ ...prev, export: "completed" }));
       
-      // Log activity
       try {
         await supabase.from("deployment_history").insert({
           user_id: user?.id,
@@ -397,7 +484,7 @@ export function LiberationWizard() {
 
   const resetWizard = () => {
     setCurrentStep(1);
-    setStepStatus({ source: "pending", destination: "pending", cleaning: "pending", export: "pending" });
+    setStepStatus({ source: "pending", destination: "pending", ai: "pending", cleaning: "pending", export: "pending" });
     setMigrationData({ sourceUrl: "", sourceOwner: "", sourceRepo: "", destinationUsername: "", destinationRepo: "", exportedUrl: null });
     setSourceToken("");
     setDestinationToken("");
@@ -405,6 +492,7 @@ export function LiberationWizard() {
     setCleanedFiles({});
     setCleaningProgress({ total: 0, completed: 0, currentFile: "" });
     setCleaningStats({ filesProcessed: 0, changesCount: 0 });
+    // Keep AI config
   };
 
   const getStepIcon = (status: string, stepNum: number) => {
@@ -416,13 +504,14 @@ export function LiberationWizard() {
   };
 
   const completedSteps = Object.values(stepStatus).filter(s => s === "completed").length;
-  const progress = (completedSteps / 4) * 100;
+  const progress = (completedSteps / 5) * 100;
 
   const steps = [
-    { num: 1, key: "source", label: "Source Lovable", icon: Download, color: "text-orange-500" },
+    { num: 1, key: "source", label: "Source", icon: Download, color: "text-orange-500" },
     { num: 2, key: "destination", label: "Destination", icon: Upload, color: "text-success" },
-    { num: 3, key: "cleaning", label: "Nettoyage", icon: Sparkles, color: "text-primary" },
-    { num: 4, key: "export", label: "Export", icon: Rocket, color: "text-purple-500" },
+    { num: 3, key: "ai", label: "Moteur IA", icon: Cpu, color: "text-amber-500" },
+    { num: 4, key: "cleaning", label: "Nettoyage", icon: Sparkles, color: "text-primary" },
+    { num: 5, key: "export", label: "Export", icon: Rocket, color: "text-purple-500" },
   ];
 
   return (
@@ -440,7 +529,7 @@ export function LiberationWizard() {
                 Exportez votre projet Lovable vers votre propre compte GitHub
               </CardDescription>
             </div>
-            {completedSteps === 4 && (
+            {completedSteps === 5 && (
               <Button variant="outline" size="sm" onClick={resetWizard}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Recommencer
@@ -452,10 +541,10 @@ export function LiberationWizard() {
           <Progress value={progress} className="h-2 mb-4" />
           
           {/* Steps Indicator */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between overflow-x-auto pb-2">
             {steps.map((step, i) => (
               <div key={step.key} className="flex items-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center min-w-[60px]">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                     stepStatus[step.key as keyof StepStatus] === "completed" ? "border-success bg-success/10" :
                     stepStatus[step.key as keyof StepStatus] === "in_progress" ? "border-primary bg-primary/10" :
@@ -464,12 +553,12 @@ export function LiberationWizard() {
                   }`}>
                     {getStepIcon(stepStatus[step.key as keyof StepStatus], step.num)}
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${currentStep === step.num ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`text-xs mt-1 font-medium text-center ${currentStep === step.num ? "text-primary" : "text-muted-foreground"}`}>
                     {step.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`w-12 sm:w-20 h-0.5 mx-2 ${
+                  <div className={`w-8 sm:w-16 h-0.5 mx-1 ${
                     stepStatus[step.key as keyof StepStatus] === "completed" ? "bg-success" : "bg-muted"
                   }`} />
                 )}
@@ -500,10 +589,13 @@ export function LiberationWizard() {
               {migrationData.sourceRepo && (
                 <>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                  <div className="px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg">
+                  <div className="px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg flex items-center gap-2">
                     <span className="text-sm font-medium">🧹 Inopay</span>
+                    {aiConfig.mode === "byok" && hasExistingKey && (
+                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-400 border-amber-500/30">BYOK</Badge>
+                    )}
                     {cleaningStats.changesCount > 0 && (
-                      <Badge variant="default" className="ml-2 text-xs">{cleaningStats.changesCount} modifiés</Badge>
+                      <Badge variant="default" className="text-xs">{cleaningStats.changesCount} modifiés</Badge>
                     )}
                   </div>
                   <ArrowRight className="h-5 w-5 text-muted-foreground" />
@@ -649,18 +741,192 @@ export function LiberationWizard() {
             </div>
           )}
 
-          {/* Step 3: Cleaning */}
+          {/* Step 3: AI Configuration */}
           {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Cpu className="h-5 w-5 text-amber-500" />
+                <h3 className="text-lg font-semibold">Étape 3 : Configuration de l'IA</h3>
+              </div>
+              
+              <Alert className="border-amber-500/30 bg-amber-500/5">
+                <Cpu className="h-4 w-4 text-amber-500" />
+                <AlertDescription>
+                  Choisissez le moteur d'intelligence artificielle pour le nettoyage de votre code.
+                </AlertDescription>
+              </Alert>
+
+              <RadioGroup
+                value={aiConfig.mode}
+                onValueChange={(value: "inopay" | "byok") => setAIConfig(prev => ({ ...prev, mode: value, isValidated: value === "inopay" }))}
+                className="space-y-4"
+              >
+                {/* Option 1: Inopay Engine */}
+                <div className={`relative rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                  aiConfig.mode === "inopay" 
+                    ? "border-emerald-500 bg-emerald-500/5" 
+                    : "border-muted hover:border-muted-foreground/50"
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="inopay" id="inopay" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="inopay" className="flex items-center gap-2 cursor-pointer">
+                        <Zap className="h-5 w-5 text-emerald-500" />
+                        <span className="font-semibold">Moteur Inopay</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Recommandé</Badge>
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Utilisez nos ressources optimisées (<strong>DeepSeek V3</strong>). Simple, rapide, inclus dans votre forfait.
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <Shield className="h-3 w-3" />
+                        <span>Fallback automatique sur Claude Sonnet si nécessaire</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Option 2: BYOK */}
+                <div className={`relative rounded-lg border-2 p-4 cursor-pointer transition-all ${
+                  aiConfig.mode === "byok" 
+                    ? "border-amber-500 bg-amber-500/5" 
+                    : "border-muted hover:border-muted-foreground/50"
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="byok" id="byok" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="byok" className="flex items-center gap-2 cursor-pointer">
+                        <Key className="h-5 w-5 text-amber-500" />
+                        <span className="font-semibold">Souveraineté Totale (BYOK)</span>
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30">-30%</Badge>
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Utilisez votre propre clé API (Anthropic, OpenAI ou DeepSeek). Idéal pour les très gros projets.
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-amber-400">
+                        <Sparkles className="h-3 w-3" />
+                        <span>Réduction de 30% sur les frais de service Inopay</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+
+              {/* BYOK Configuration */}
+              {aiConfig.mode === "byok" && (
+                <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-amber-500/20">
+                  <div className="space-y-3">
+                    <Label>Fournisseur</Label>
+                    <RadioGroup
+                      value={aiConfig.provider}
+                      onValueChange={(value: AIProvider) => setAIConfig(prev => ({ ...prev, provider: value, isValidated: false }))}
+                      className="grid grid-cols-3 gap-3"
+                    >
+                      {[
+                        { value: "anthropic", label: "Anthropic", sub: "Claude 4" },
+                        { value: "openai", label: "OpenAI", sub: "GPT-4o" },
+                        { value: "deepseek", label: "DeepSeek", sub: "V3" }
+                      ].map(p => (
+                        <div key={p.value}>
+                          <RadioGroupItem value={p.value} id={`ai-${p.value}`} className="peer sr-only" />
+                          <Label
+                            htmlFor={`ai-${p.value}`}
+                            className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-amber-500 cursor-pointer"
+                          >
+                            <span className="text-sm font-semibold">{p.label}</span>
+                            <span className="text-xs text-muted-foreground">{p.sub}</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Clé API</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showTokens.ai ? "text" : "password"}
+                          placeholder={hasExistingKey ? "••••••••••••••••" : "sk-..."}
+                          value={aiConfig.apiKey}
+                          onChange={(e) => setAIConfig(prev => ({ ...prev, apiKey: e.target.value, isValidated: false }))}
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowTokens(prev => ({ ...prev, ai: !prev.ai }))}
+                        >
+                          {showTokens.ai ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <Button
+                        onClick={validateAPIKey}
+                        disabled={validatingKey || !aiConfig.apiKey}
+                        variant={aiConfig.isValidated ? "outline" : "default"}
+                      >
+                        {validatingKey ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : aiConfig.isValidated ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-1 text-success" />
+                            Validé
+                          </>
+                        ) : (
+                          "Tester"
+                        )}
+                      </Button>
+                    </div>
+                    {hasExistingKey && !aiConfig.apiKey && (
+                      <p className="text-xs text-success flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Clé existante configurée - vous pouvez continuer
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>Retour</Button>
+                {aiConfig.mode === "inopay" ? (
+                  <Button onClick={skipAIConfig}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Utiliser Inopay
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={confirmBYOK} 
+                    disabled={!aiConfig.isValidated && !hasExistingKey}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Continuer avec ma clé
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Cleaning */}
+          {currentStep === 4 && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Étape 3 : Nettoyage du code</h3>
+                <h3 className="text-lg font-semibold">Étape 4 : Nettoyage du code</h3>
               </div>
               
               <Alert>
                 <Sparkles className="h-4 w-4" />
                 <AlertDescription>
                   Inopay va nettoyer <strong>{fetchedFiles.filter(f => f.path.match(/\.(tsx?|jsx?)$/)).length}</strong> fichiers code pour supprimer les dépendances propriétaires.
+                  {aiConfig.mode === "byok" && hasExistingKey && (
+                    <span className="block mt-1 text-amber-400">
+                      Utilisation de votre clé {aiConfig.provider.toUpperCase()} • Réduction 30% appliquée
+                    </span>
+                  )}
                 </AlertDescription>
               </Alert>
               
@@ -689,7 +955,7 @@ export function LiberationWizard() {
               </div>
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(2)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(3)}>Retour</Button>
                 <Button onClick={startCleaning} disabled={loading}>
                   {loading ? (
                     <>
@@ -707,12 +973,12 @@ export function LiberationWizard() {
             </div>
           )}
 
-          {/* Step 4: Export */}
-          {currentStep === 4 && stepStatus.export !== "completed" && (
+          {/* Step 5: Export */}
+          {currentStep === 5 && stepStatus.export !== "completed" && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Rocket className="h-5 w-5 text-purple-500" />
-                <h3 className="text-lg font-semibold">Étape 4 : Export vers votre compte</h3>
+                <h3 className="text-lg font-semibold">Étape 5 : Export vers votre compte</h3>
               </div>
               
               <Alert className="border-purple-500/50 bg-purple-500/5">
@@ -730,7 +996,7 @@ export function LiberationWizard() {
               )}
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCurrentStep(3)}>Retour</Button>
+                <Button variant="outline" onClick={() => setCurrentStep(4)}>Retour</Button>
                 <Button onClick={startExport} disabled={loading} className="bg-purple-600 hover:bg-purple-700">
                   {loading ? (
                     <>
@@ -771,6 +1037,12 @@ export function LiberationWizard() {
                   <span className="text-sm text-muted-foreground">Fichiers modifiés:</span>
                   <Badge variant="secondary">{cleaningStats.changesCount}</Badge>
                 </div>
+                {aiConfig.mode === "byok" && hasExistingKey && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Mode:</span>
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30">BYOK -30%</Badge>
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-center gap-2 p-4 bg-muted rounded-lg max-w-md mx-auto">
