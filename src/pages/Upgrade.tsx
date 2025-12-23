@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Check, 
@@ -14,28 +14,54 @@ import {
   Infinity,
   FileCode,
   Rocket,
-  Lock
+  Lock,
+  SlidersHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Stripe Price IDs
+// Stripe Price IDs (actual IDs from Stripe)
 const STRIPE_PRICES = {
-  confort: "price_confort_49",  // TODO: Replace with actual Stripe price ID
-  souverain: "price_souverain_29", // TODO: Replace with actual Stripe price ID
+  confort: "price_1ShZJ0BYLQpzPb0yKitTVhTg",
+  souverain: "price_1ShZLLBYLQpzPb0yZIYAEbhA",
 };
+
+// Cost calculation constants
+const COST_PER_FILE_CONFORT = 0.04; // Cost per file for Confort plan (includes margin)
+const COST_PER_FILE_BYOK = 0.018; // Estimated token cost per file for BYOK
+const PLATFORM_FEE_SOUVERAIN = 29; // Monthly platform fee for Souverain
 
 const Upgrade = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [fileCount, setFileCount] = useState<number[]>([2000]);
+
+  // Calculate costs based on file count
+  const costs = useMemo(() => {
+    const files = fileCount[0];
+    const confortTotal = Math.max(49, Math.ceil(files * COST_PER_FILE_CONFORT));
+    const byokTokens = Math.ceil(files * COST_PER_FILE_BYOK);
+    const souverainTotal = PLATFORM_FEE_SOUVERAIN + byokTokens;
+    const savings = confortTotal - souverainTotal;
+    const savingsPercent = Math.round((savings / confortTotal) * 100);
+    
+    return {
+      confortTotal,
+      souverainTotal,
+      byokTokens,
+      savings: Math.max(0, savings),
+      savingsPercent: Math.max(0, savingsPercent),
+    };
+  }, [fileCount]);
 
   const handleSelectPlan = async (plan: "confort" | "souverain") => {
     if (!user) {
@@ -323,12 +349,38 @@ const Upgrade = () => {
                     <Calculator className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Comparateur de coûts</h3>
-                    <p className="text-sm text-muted-foreground">Exemple sur un projet de 2000 fichiers</p>
+                    <h3 className="font-semibold text-lg">Comparateur de coûts interactif</h3>
+                    <p className="text-sm text-muted-foreground">Ajustez le nombre de fichiers pour voir les économies en temps réel</p>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4 mt-6">
+                {/* Interactive File Count Slider */}
+                <div className="bg-background rounded-lg p-4 border mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Nombre de fichiers</span>
+                    </div>
+                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                      <FileCode className="h-4 w-4 mr-1" />
+                      {fileCount[0].toLocaleString()}
+                    </Badge>
+                  </div>
+                  <Slider
+                    value={fileCount}
+                    onValueChange={setFileCount}
+                    min={100}
+                    max={5000}
+                    step={100}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                    <span>100 fichiers</span>
+                    <span>5000 fichiers</span>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-background rounded-lg p-4 border">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-muted-foreground">Pack Confort</span>
@@ -337,8 +389,8 @@ const Upgrade = () => {
                         Simple
                       </Badge>
                     </div>
-                    <p className="text-2xl font-bold">~120$</p>
-                    <p className="text-xs text-muted-foreground">Prix fixe tout inclus</p>
+                    <p className="text-2xl font-bold">~{costs.confortTotal}$</p>
+                    <p className="text-xs text-muted-foreground">Prix tout inclus</p>
                   </div>
 
                   <div className="bg-background rounded-lg p-4 border border-amber-500/30">
@@ -349,16 +401,24 @@ const Upgrade = () => {
                         BYOK
                       </Badge>
                     </div>
-                    <p className="text-2xl font-bold">~80$</p>
-                    <p className="text-xs text-muted-foreground">29$ + vos tokens (~50$)</p>
+                    <p className="text-2xl font-bold">~{costs.souverainTotal}$</p>
+                    <p className="text-xs text-muted-foreground">29$ + vos tokens (~{costs.byokTokens}$)</p>
                   </div>
                 </div>
 
-                <div className="mt-4 p-3 bg-success/10 rounded-lg text-center">
-                  <p className="text-sm font-medium text-success">
-                    ✅ L'option BYOK vous fait économiser environ <strong>40$</strong> de frais de service
-                  </p>
-                </div>
+                {costs.savings > 0 ? (
+                  <div className="mt-4 p-3 bg-success/10 rounded-lg text-center">
+                    <p className="text-sm font-medium text-success">
+                      ✅ L'option BYOK vous fait économiser <strong>~{costs.savings}$</strong> ({costs.savingsPercent}% d'économie)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-3 bg-emerald-500/10 rounded-lg text-center">
+                    <p className="text-sm font-medium text-emerald-400">
+                      ✨ Pour ce volume, le Pack Confort est optimal !
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
