@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Sparkles } from "lucide-react";
+import { X, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,7 @@ interface Message {
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fofy-chat`;
+const STORAGE_KEY = "fofy-chat-history";
 
 const FofyChat = () => {
   const { t, i18n } = useTranslation();
@@ -22,11 +23,38 @@ const FofyChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load conversation from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved FOFY chat:", e);
+      }
+    }
+  }, []);
+
+  // Save conversation to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const clearHistory = () => {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   const streamChat = async (userMessages: Message[]) => {
     const resp = await fetch(CHAT_URL, {
@@ -91,10 +119,11 @@ const FofyChat = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (customMessage?: string) => {
+    const messageToSend = customMessage || input.trim();
+    if (!messageToSend || isLoading) return;
 
-    const userMessage: Message = { role: "user", content: input.trim() };
+    const userMessage: Message = { role: "user", content: messageToSend };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
@@ -128,6 +157,19 @@ const FofyChat = () => {
   const greeting = i18n.language === "fr"
     ? "Bonjour ! Je suis FOFY, votre assistant Inopay. Comment puis-je vous aider aujourd'hui ?"
     : "Hello! I'm FOFY, your Inopay assistant. How can I help you today?";
+
+  // Predefined questions based on language
+  const suggestions = i18n.language === "fr" ? [
+    "Comment fonctionne Inopay ?",
+    "Quels sont vos tarifs ?",
+    "Comment déployer mon projet ?",
+    "Quels hébergeurs supportez-vous ?",
+  ] : [
+    "How does Inopay work?",
+    "What are your prices?",
+    "How to deploy my project?",
+    "Which hosts do you support?",
+  ];
 
   return (
     <>
@@ -181,6 +223,17 @@ const FofyChat = () => {
                   {i18n.language === "fr" ? "Assistant IA Inopay" : "Inopay AI Assistant"}
                 </p>
               </div>
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearHistory}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  title={i18n.language === "fr" ? "Effacer l'historique" : "Clear history"}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -196,18 +249,33 @@ const FofyChat = () => {
               <div className="space-y-4">
                 {/* Initial greeting */}
                 {messages.length === 0 && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
-                      <img
-                        src={fofyAvatar}
-                        alt="FOFY"
-                        className="w-full h-full object-cover"
-                      />
+                  <>
+                    <div className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-primary/20">
+                        <img
+                          src={fofyAvatar}
+                          alt="FOFY"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
+                        <p className="text-sm text-foreground">{greeting}</p>
+                      </div>
                     </div>
-                    <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
-                      <p className="text-sm text-foreground">{greeting}</p>
+                    
+                    {/* Suggestions */}
+                    <div className="flex flex-wrap gap-2 mt-3 pl-11">
+                      {suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSend(suggestion)}
+                          className="text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
                     </div>
-                  </div>
+                  </>
                 )}
 
                 {messages.map((msg, idx) => (
@@ -285,7 +353,7 @@ const FofyChat = () => {
                   className="flex-1"
                 />
                 <Button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading}
                   size="icon"
                   className="shrink-0"
