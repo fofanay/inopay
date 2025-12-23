@@ -47,19 +47,19 @@
   "process": {
     "step1": {
       "title": "Upload",
-      "description": "Drop your ZIP"
+      "description": "Your code"
     },
     "step2": {
       "title": "AI Cleaning",
-      "description": "We free the code"
+      "description": "Inopay"
     },
     "step3": {
       "title": "Deployment",
-      "description": "Your IONOS VPS"
+      "description": "Your VPS"
     }
   },
   "features": {
-    "title": "Why Inopay?",
+    "title": "Why Vibecoders choose Inopay",
     "subtitle": "Everything you need to go from prototype to product.",
     "noTerminal": {
       "title": "Zero command line",
@@ -97,9 +97,12 @@
   },
   "cta": {
     "title": "Ready to own your code?",
-    "description": "Join developers who've taken back control of their projects.",
-    "button": "Get started now",
-    "subtext": "Free analysis • Deployment in 10 minutes"
+    "description": "Analyze your project for free and discover your Vibe-Score™.",
+    "button": "Get started for free",
+    "buttonLoggedIn": "Free my project",
+    "subtext": "Free analysis • Deployment in 10 minutes",
+    "testimonial": "Inopay let me migrate to my IONOS in 10 min. Now I pay $5/month instead of $50.",
+    "testimonialAuthor": "— Marie L."
   },
   "pulse": {
     "title": "Sovereignty Pulse",
