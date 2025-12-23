@@ -1,9 +1,11 @@
 // Centralized proprietary patterns for all cleaning functions
 // This file ensures consistency across all cleaning operations
+// SRE Audit: Updated for v0, Cursor, and new Lovable markers
 
 // ============= PROPRIETARY PATTERNS TO DETECT/REMOVE =============
 
 export const PROPRIETARY_IMPORTS: RegExp[] = [
+  // Lovable / GPT Engineer patterns
   /@lovable\//g,
   /@gptengineer\//g,
   /from ['"]lovable/g,
@@ -14,11 +16,33 @@ export const PROPRIETARY_IMPORTS: RegExp[] = [
   /componentTagger/g,
   /lovable-core/g,
   /gpt-engineer/g,
+  
+  // Bolt patterns
   /@bolt\//g,
   /from ['"]bolt/g,
+  /from ['"]@bolt/g,
+  
+  // v0 (Vercel) patterns - NEW
+  /@v0\//g,
+  /from ['"]v0/g,
+  /from ['"]@v0/g,
+  /v0-tagger/g,
+  /v0-runtime/g,
+  
+  // Cursor patterns - NEW
+  /@cursor\//g,
+  /from ['"]cursor/g,
+  /from ['"]@cursor/g,
+  /cursor-sdk/g,
+  
+  // Replit patterns - NEW
+  /@replit\//g,
+  /from ['"]replit/g,
+  /replit-runtime/g,
 ];
 
 export const PROPRIETARY_FILES: string[] = [
+  // Lovable / GPT Engineer
   '.bolt',
   '.lovable',
   '.gptengineer',
@@ -29,6 +53,23 @@ export const PROPRIETARY_FILES: string[] = [
   '.gptengineer.json',
   'bolt.config',
   '.bolt.json',
+  
+  // v0 (Vercel) - NEW
+  '.v0',
+  'v0.config',
+  '.v0.json',
+  'v0-manifest.json',
+  
+  // Cursor - NEW
+  '.cursor',
+  '.cursorrc',
+  'cursor.config',
+  '.cursor.json',
+  
+  // Replit - NEW
+  '.replit',
+  'replit.nix',
+  '.replit.json',
 ];
 
 export const PROPRIETARY_CONTENT: RegExp[] = [
@@ -68,6 +109,7 @@ export const PROPRIETARY_CONTENT: RegExp[] = [
 
 // Telemetry DOMAINS only (not packages!)
 export const TELEMETRY_DOMAINS: string[] = [
+  // Lovable / GPT Engineer
   'lovable.app',
   'lovable.dev',
   'events.lovable',
@@ -81,6 +123,17 @@ export const TELEMETRY_DOMAINS: string[] = [
   'cdn.gptengineer.app',
   'assets.lovable',
   'static.lovable',
+  
+  // v0 (Vercel) - NEW
+  'v0.dev',
+  'telemetry.v0.dev',
+  'api.v0.dev',
+  'cdn.v0.dev',
+  
+  // Bolt - NEW
+  'bolt.new',
+  'api.bolt.new',
+  
   // Third-party analytics (optional - user choice)
   // 'amplitude.com',
   // 'mixpanel.com',
@@ -89,6 +142,7 @@ export const TELEMETRY_DOMAINS: string[] = [
 
 // NPM packages to remove from dependencies
 export const SUSPICIOUS_PACKAGES: string[] = [
+  // Lovable / GPT Engineer
   'lovable-tagger',
   '@lovable/core',
   '@lovable/cli',
@@ -97,10 +151,32 @@ export const SUSPICIOUS_PACKAGES: string[] = [
   '@gptengineer/core',
   '@gptengineer/cli',
   'gpt-engineer',
-  'bolt-core',
-  '@bolt/core',
   'lovable-analytics',
   'gpt-engineer-tracker',
+  
+  // Bolt
+  'bolt-core',
+  '@bolt/core',
+  '@bolt/cli',
+  '@bolt/runtime',
+  
+  // v0 (Vercel) - NEW
+  '@v0/core',
+  '@v0/cli',
+  '@v0/runtime',
+  '@v0/ui',
+  'v0-tagger',
+  'v0-sdk',
+  
+  // Cursor - NEW
+  '@cursor/core',
+  '@cursor/sdk',
+  'cursor-runtime',
+  
+  // Replit - NEW
+  '@replit/core',
+  '@replit/extensions',
+  'replit-sdk',
 ];
 
 // Hidden plugin patterns to detect

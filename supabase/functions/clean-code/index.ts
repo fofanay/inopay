@@ -439,24 +439,31 @@ serve(async (req) => {
     }
 
     // Calculate API cost in cents based on provider
+    // CRITICAL: For BYOK users, we DO NOT count internal costs since they use their own API key
     const inputTokens = Math.ceil(code.length / 4);
     const outputTokens = Math.ceil(cleanedCode.length / 4);
     let apiCostCents: number;
+    let internalCostCents: number = 0; // Cost to Inopay (zero for BYOK)
 
-    // DeepSeek is much cheaper: ~$0.14/1M input, ~$0.28/1M output
-    // Claude: $3/1M input, $15/1M output
-    if (providerUsed.includes('deepseek')) {
-      apiCostCents = Math.ceil(((inputTokens * 0.14) + (outputTokens * 0.28)) / 10000);
-    } else if (providerUsed.includes('anthropic')) {
-      apiCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000);
-    } else {
-      // OpenAI pricing: $2.5/1M input, $10/1M output for GPT-4o
-      apiCostCents = Math.ceil(((inputTokens * 2.5) + (outputTokens * 10)) / 10000);
-    }
-
-    // Apply 30% discount for BYOK users
     if (isUsingBYOK) {
-      apiCostCents = Math.ceil(apiCostCents * 0.7);
+      // BYOK: User pays directly to their AI provider, Inopay incurs no cost
+      apiCostCents = 0; // No cost to track for Inopay
+      internalCostCents = 0;
+      console.log(`[CLEAN-CODE] BYOK mode: No internal cost recorded (user's ${providerUsed} key)`);
+    } else {
+      // Inopay is paying: Calculate actual cost
+      // DeepSeek is much cheaper: ~$0.14/1M input, ~$0.28/1M output
+      // Claude: $3/1M input, $15/1M output
+      if (providerUsed.includes('deepseek')) {
+        internalCostCents = Math.ceil(((inputTokens * 0.14) + (outputTokens * 0.28)) / 10000);
+      } else if (providerUsed.includes('anthropic')) {
+        internalCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000);
+      } else {
+        // OpenAI pricing: $2.5/1M input, $10/1M output for GPT-4o
+        internalCostCents = Math.ceil(((inputTokens * 2.5) + (outputTokens * 10)) / 10000);
+      }
+      apiCostCents = internalCostCents;
+      console.log(`[CLEAN-CODE] Inopay cost: ${internalCostCents}¢ for ${providerUsed}`);
     }
 
     // Store in cache with timestamp
