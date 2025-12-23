@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PostDeploymentAssistant from "./PostDeploymentAssistant";
 import { DirectDeployment } from "./dashboard/DirectDeployment";
+import { CleaningCostEstimator } from "./dashboard/CleaningCostEstimator";
 
 type DeployPlatform = "vercel" | "netlify" | "railway" | "none";
 type ExportType = "zip" | "github" | "vps";
@@ -70,6 +71,11 @@ const ProjectExporter = ({
   const [deployPlatform, setDeployPlatform] = useState<DeployPlatform>("vercel");
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
+  
+  // Cost estimation
+  const [showEstimator, setShowEstimator] = useState(true);
+  const [estimationApproved, setEstimationApproved] = useState(false);
+  const [estimationData, setEstimationData] = useState<any>(null);
 
   // Load user preferences on mount
   useEffect(() => {
@@ -542,7 +548,28 @@ const ProjectExporter = ({
         </DialogHeader>
 
         <div className="py-4">
-          {status === "idle" ? (
+          {/* Cost Estimation Step */}
+          {showEstimator && !estimationApproved && status === "idle" && (
+            <div className="space-y-4">
+              <CleaningCostEstimator
+                files={Array.from(extractedFiles.entries()).map(([path, content]) => ({ path, content }))}
+                projectName={projectName}
+                onEstimationComplete={(data) => {
+                  setEstimationData(data);
+                  if (!data.requiresAdminApproval) {
+                    // Auto-approve if margin is good
+                  }
+                }}
+                onProceed={() => {
+                  setEstimationApproved(true);
+                  setShowEstimator(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Export Options - shown after estimation is approved */}
+          {(estimationApproved || !showEstimator) && status === "idle" ? (
             <Tabs 
               value={exportType} 
               onValueChange={(v) => {

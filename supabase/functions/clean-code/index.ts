@@ -58,6 +58,15 @@ const SYSTEM_PROMPT = `Tu es un expert DevOps et architecte cloud. Réécris ce 
 - Utilise des variables d'environnement pour les URLs des services self-hosted
 - Retourne UNIQUEMENT le code nettoyé et optimisé, sans explication`;
 
+// Simple hash function for cache key
+async function hashContent(content: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -68,9 +77,11 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
     
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
     if (authHeader) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
       const tempSupabase = createClient(supabaseUrl, supabaseKey, {
         global: { headers: { Authorization: authHeader } }
       });
@@ -85,6 +96,43 @@ serve(async (req) => {
       return rateLimitResponse;
     }
 
+    const { code, fileName, projectId } = await req.json();
+
+    if (!code) {
+      return new Response(JSON.stringify({ error: 'Code requis' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Generate hash for cache lookup
+    const fileHash = await hashContent(code);
+    console.log(`[CLEAN-CODE] File: ${fileName}, Hash: ${fileHash.substring(0, 8)}...`);
+
+    // Check cache first
+    if (userId) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const { data: cachedResult } = await supabaseAdmin
+        .from('cleaning_cache')
+        .select('cleaned_content, tokens_used')
+        .eq('user_id', userId)
+        .eq('file_path', fileName || 'unknown')
+        .eq('file_hash', fileHash)
+        .maybeSingle();
+
+      if (cachedResult?.cleaned_content) {
+        console.log(`[CLEAN-CODE] CACHE HIT for ${fileName} - Saved API call!`);
+        return new Response(JSON.stringify({ 
+          cleanedCode: cachedResult.cleaned_content,
+          fromCache: true,
+          tokensSaved: cachedResult.tokens_used || 0
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Priority: Project secrets > User settings
     const anthropicProjectKey = Deno.env.get('ANTHROPIC_API_KEY');
     const openaiProjectKey = Deno.env.get('OPENAI_API_KEY');
@@ -96,11 +144,11 @@ serve(async (req) => {
     if (anthropicProjectKey) {
       apiKey = anthropicProjectKey;
       apiProvider = 'anthropic';
-      console.log('Using project-level Anthropic API key');
+      console.log('[CLEAN-CODE] Using project-level Anthropic API key');
     } else if (openaiProjectKey) {
       apiKey = openaiProjectKey;
       apiProvider = 'openai';
-      console.log('Using project-level OpenAI API key');
+      console.log('[CLEAN-CODE] Using project-level OpenAI API key');
     } else {
       // Fallback to user settings
       if (!authHeader) {
@@ -110,8 +158,6 @@ serve(async (req) => {
         });
       }
 
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
       const supabase = createClient(supabaseUrl, supabaseKey, {
         global: { headers: { Authorization: authHeader } }
       });
@@ -131,7 +177,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (settingsError) {
-        console.error('Settings error:', settingsError);
+        console.error('[CLEAN-CODE] Settings error:', settingsError);
         return new Response(JSON.stringify({ error: 'Erreur lors de la récupération des paramètres' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -147,20 +193,12 @@ serve(async (req) => {
 
       apiKey = settings.api_key;
       apiProvider = settings.api_provider;
-      console.log('Using user settings API key');
-    }
-
-    const { code, fileName } = await req.json();
-
-    if (!code) {
-      return new Response(JSON.stringify({ error: 'Code requis' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log('[CLEAN-CODE] Using user settings API key');
     }
 
     let response;
     let cleanedCode: string;
+    let tokensUsed = 0;
 
     if (apiProvider === 'anthropic') {
       // Call Anthropic API
@@ -186,7 +224,7 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Anthropic API error:', response.status, errorData);
+        console.error('[CLEAN-CODE] Anthropic API error:', response.status, errorData);
         return new Response(JSON.stringify({ error: `Erreur API Anthropic: ${response.status}` }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -195,6 +233,7 @@ serve(async (req) => {
 
       const data = await response.json();
       cleanedCode = data.content[0].text;
+      tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
     } else {
       // Call OpenAI API
       response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -218,7 +257,7 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('OpenAI API error:', response.status, errorData);
+        console.error('[CLEAN-CODE] OpenAI API error:', response.status, errorData);
         return new Response(JSON.stringify({ error: `Erreur API OpenAI: ${response.status}` }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -227,6 +266,7 @@ serve(async (req) => {
 
       const data = await response.json();
       cleanedCode = data.choices[0].message.content;
+      tokensUsed = data.usage?.total_tokens || 0;
     }
 
     // Extract code from markdown if present
@@ -235,12 +275,42 @@ serve(async (req) => {
       cleanedCode = codeMatch[1].trim();
     }
 
-    return new Response(JSON.stringify({ cleanedCode }), {
+    // Calculate API cost in cents (Anthropic pricing)
+    const inputTokens = Math.ceil(code.length / 4);
+    const outputTokens = Math.ceil(cleanedCode.length / 4);
+    const apiCostCents = Math.ceil(((inputTokens * 3) + (outputTokens * 15)) / 10000); // $3/$15 per 1M tokens
+
+    // Store in cache
+    if (userId) {
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await supabaseAdmin.from('cleaning_cache').upsert({
+        user_id: userId,
+        project_id: projectId || null,
+        file_path: fileName || 'unknown',
+        file_hash: fileHash,
+        cleaned_content: cleanedCode,
+        tokens_used: tokensUsed,
+        api_cost_cents: apiCostCents,
+        cleaned_at: new Date().toISOString(),
+      }, {
+        onConflict: 'project_id,file_path,file_hash'
+      });
+
+      console.log(`[CLEAN-CODE] Cached result for ${fileName}, tokens: ${tokensUsed}, cost: ${apiCostCents}¢`);
+    }
+
+    return new Response(JSON.stringify({ 
+      cleanedCode,
+      fromCache: false,
+      tokensUsed,
+      apiCostCents
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: unknown) {
-    console.error('Error in clean-code function:', error);
+    console.error('[CLEAN-CODE] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur interne';
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
