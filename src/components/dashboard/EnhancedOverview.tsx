@@ -247,19 +247,10 @@ const EnhancedOverview = ({ onNavigate }: EnhancedOverviewProps) => {
     }
   };
 
-  const handleGitHubConnect = async () => {
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: "repo read:user user:email",
-        },
-      });
-    } catch (error) {
-      console.error("GitHub OAuth error:", error);
-      toast.error("Erreur lors de la connexion GitHub");
-    }
+  const handleGitHubConnect = () => {
+    // Redirect to sovereignty wizard for PAT-based GitHub connection
+    onNavigate("sovereign-deploy");
+    toast.info("Connectez votre GitHub avec un Personal Access Token pour une souveraineté totale de votre code.");
   };
 
   return (

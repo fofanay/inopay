@@ -58,23 +58,12 @@ export function GitHubConnectionStatus({ onConnect, variant = "compact" }: GitHu
     checkGitHubConnection();
   }, []);
 
-  const handleConnect = async () => {
+  const handleConnect = () => {
     if (onConnect) {
       onConnect();
-      return;
     }
-
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          scopes: "repo read:user user:email",
-        },
-      });
-    } catch (error) {
-      console.error("GitHub OAuth error:", error);
-    }
+    // If no onConnect provided, the button will be disabled or hidden
+    // GitHub connection is now handled via PAT in SovereigntyWizard
   };
 
   if (status === "loading") {
