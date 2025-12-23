@@ -3,35 +3,38 @@ import { Shield, Key, Coins, ArrowRight, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
-const commandments = [
-  {
-    icon: Shield,
-    title: 'Zéro Dépendance',
-    description: 'Code pur, sans marqueurs propriétaires.',
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/20',
-  },
-  {
-    icon: Key,
-    title: 'Souveraineté Totale',
-    description: 'Votre GitHub, votre VPS, vos clés.',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
-  },
-  {
-    icon: Coins,
-    title: 'Liberté Économique',
-    description: 'Divisez vos coûts par 3.',
-    color: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/20',
-  },
-];
+import { useTranslation } from 'react-i18next';
 
 export function ManifesteBanner() {
+  const { t } = useTranslation();
+  
+  const commandments = [
+    {
+      icon: Shield,
+      title: t('manifeste.zeroDependency'),
+      description: t('manifeste.zeroDependencyDesc'),
+      color: 'text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/20',
+    },
+    {
+      icon: Key,
+      title: t('manifeste.totalSovereignty'),
+      description: t('manifeste.totalSovereigntyDesc'),
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-500/20',
+    },
+    {
+      icon: Coins,
+      title: t('manifeste.economicFreedom'),
+      description: t('manifeste.economicFreedomDesc'),
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20',
+    },
+  ];
+
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-[#1A202C] to-slate-900 border-slate-700/50 overflow-hidden">
       <CardContent className="p-6">
@@ -41,14 +44,14 @@ export function ManifesteBanner() {
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
                 <Sparkles className="h-3 w-3 mr-1" />
-                Manifeste
+                {t('manifeste.badge')}
               </Badge>
             </div>
             <h3 className="text-xl font-bold text-white">
-              Reprenez les clés de votre royaume
+              {t('manifeste.title')}
             </h3>
             <p className="text-sm text-slate-400 italic">
-              "Le code est une propriété, pas un abonnement."
+              "{t('manifeste.quote')}"
             </p>
           </div>
 
@@ -68,15 +71,15 @@ export function ManifesteBanner() {
             ))}
           </div>
 
-          {/* Right: CTA */}
+          {/* Right: CTA - Goes to liberation section of dashboard */}
           <div className="flex-shrink-0">
-            <Link to="/about">
+            <Link to="/dashboard?tab=liberation">
               <Button 
                 variant="outline" 
                 size="sm"
                 className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
               >
-                Lire le manifeste
+                {t('manifeste.readManifeste')}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

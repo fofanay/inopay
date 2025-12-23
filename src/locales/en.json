@@ -861,5 +861,17 @@
   "meta": {
     "title": "Inopay - Free your AI code",
     "description": "Go from AI prototype to real business. Deploy your Lovable, Bolt, or Cursor code to your own VPS in 10 minutes."
+  },
+  "manifeste": {
+    "badge": "Manifesto",
+    "title": "Take back the keys to your kingdom",
+    "quote": "Code is property, not a subscription.",
+    "zeroDependency": "Zero Dependency",
+    "zeroDependencyDesc": "Pure code, without proprietary markers.",
+    "totalSovereignty": "Total Sovereignty",
+    "totalSovereigntyDesc": "Your GitHub, your VPS, your keys.",
+    "economicFreedom": "Economic Freedom",
+    "economicFreedomDesc": "Cut your costs by 3x.",
+    "readManifeste": "Read the manifesto"
   }
 }
