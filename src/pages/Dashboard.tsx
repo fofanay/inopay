@@ -58,6 +58,7 @@ import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
+import { UserMigrationTools } from "@/components/dashboard/UserMigrationTools";
 import { DeploymentChoice, DeploymentOption } from "@/components/dashboard/DeploymentChoice";
 import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
