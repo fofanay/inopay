@@ -389,29 +389,59 @@
     "subtitle": "No subscription traps. No command line. No complications.",
     "features": "Free analysis • Transparent pricing • Full ownership",
     "currency": "Currency",
-    "portfolio": {
-      "name": "Portfolio Plan",
-      "description": "For serial creators",
-      "badge": "💎 Unlimited",
-      "feature1": "Unlimited deployments",
-      "feature2": "Up to 50 repositories",
-      "feature3": "GitHub batch import",
-      "feature4": "Centralized Fleet Dashboard",
-      "feature5": "Sync Mirror on all projects",
-      "feature6": "Priority 24/7 support",
-      "cta": "Go Pro Portfolio"
+    "unified": {
+      "title": "Two paths to freedom",
+      "subtitle": "Whether you prefer simplicity or total control, Inopay adapts to your needs"
     },
-    "deploy": {
-      "name": "VPS Deployment",
-      "description": "From AI prototype to production",
-      "badge": "Vibe-to-Prod",
-      "feature1": "Zero command line",
-      "feature2": "Docker + Coolify installed",
-      "feature3": "PostgreSQL configured",
-      "feature4": "SSL Let's Encrypt included",
-      "feature5": "7-day monitoring included",
-      "feature6": "AI code cleaning",
-      "cta": "Free my project"
+    "confort": {
+      "name": "Comfort Pack",
+      "badge": "Recommended",
+      "target": "Freelancers & Small projects",
+      "priceNote": "or per liberation",
+      "feature1": "Automatic cleaning",
+      "feature1Desc": "Powered by DeepSeek V3",
+      "feature2": "Up to 500 files",
+      "feature2Desc": "Ideal for most projects",
+      "feature3": "IONOS deployment in 1 click",
+      "feature3Desc": "Automatic configuration",
+      "feature4": "Zero Shadow Door Audit",
+      "feature4Desc": "Sovereignty certificate included",
+      "highlight": "Nothing to configure, we handle AI costs",
+      "cta": "Get started easily"
+    },
+    "souverain": {
+      "name": "Sovereign Pack",
+      "badge": "BYOK -30%",
+      "target": "Agencies, Startups & Large projects",
+      "priceNote": "Reduced platform fees",
+      "feature1": "Unlimited Volume",
+      "feature1Desc": "Pay for your tokens at the source",
+      "feature2": "Your own API key",
+      "feature2Desc": "Claude, GPT-4, DeepSeek",
+      "feature3": "Advanced Zero Shadow Door Audit",
+      "feature3Desc": "Complete detailed report",
+      "feature4": "AES-256 Encryption",
+      "feature4Desc": "Keys stored via Supabase Vault",
+      "highlight": "Save up to 70% on large volumes",
+      "cta": "Choose Sovereignty",
+      "activatedTitle": "Sovereign Mode activated!",
+      "activatedDesc": "Configure your API key in settings"
+    },
+    "calculator": {
+      "title": "Interactive cost comparison",
+      "subtitle": "Adjust the file count to see real-time savings",
+      "fileCount": "Number of files",
+      "files": "files",
+      "simple": "Simple",
+      "allInclusive": "All-inclusive price",
+      "yourTokens": "your tokens",
+      "savingsPrefix": "Savings with Sovereign Pack:",
+      "savingsSuffix": "with BYOK"
+    },
+    "addons": {
+      "badge": "Add-ons",
+      "title": "Additional services",
+      "subtitle": "Add services to your pack as needed"
     },
     "redeploy": {
       "name": "Re-deployment",
@@ -419,8 +449,6 @@
       "feature1": "Source code update",
       "feature2": "Automatic rebuild",
       "feature3": "Zero-downtime deployment",
-      "feature4": "Rollback on error",
-      "feature5": "Deployment logs",
       "cta": "Update"
     },
     "monitoring": {
@@ -430,8 +458,6 @@
       "feature1": "Permanent 24/7 monitoring",
       "feature2": "Priority auto-restart",
       "feature3": "Real-time alerts",
-      "feature4": "Downtime history",
-      "feature5": "Priority support",
       "cta": "Extend monitoring"
     },
     "server": {
@@ -439,9 +465,7 @@
       "description": "Add a VPS to your account",
       "feature1": "Complete configuration",
       "feature2": "Docker + Coolify",
-      "feature3": "Optional PostgreSQL",
-      "feature4": "Automatic SSL",
-      "feature5": "7-day monitoring",
+      "feature3": "Automatic SSL",
       "cta": "Add a server"
     },
     "comparison": {
@@ -459,7 +483,7 @@
     },
     "included": {
       "title": "What's included",
-      "subtitle": "All our core features",
+      "subtitle": "All our main features",
       "feature": "Feature",
       "free": "Free",
       "deployment": "Deployment",

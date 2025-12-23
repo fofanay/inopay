@@ -389,29 +389,59 @@
     "subtitle": "Sans abonnement piège. Sans ligne de commande. Sans complications.",
     "features": "Analyse gratuite • Tarification transparente • Propriété totale",
     "currency": "Devise",
-    "portfolio": {
-      "name": "Plan Portfolio",
-      "description": "Pour les créateurs en série",
-      "badge": "💎 Illimité",
-      "feature1": "Déploiements illimités",
-      "feature2": "Jusqu'à 50 repositories",
-      "feature3": "Import batch GitHub",
-      "feature4": "Fleet Dashboard centralisé",
-      "feature5": "Sync Mirror sur tous les projets",
-      "feature6": "Support prioritaire 24/7",
-      "cta": "Passer Pro Portfolio"
+    "unified": {
+      "title": "Deux chemins vers la liberté",
+      "subtitle": "Que vous préfériez la simplicité ou le contrôle total, Inopay s'adapte à vos besoins"
     },
-    "deploy": {
-      "name": "Déploiement VPS",
-      "description": "Du prototype IA à la production",
-      "badge": "Vibe-to-Prod",
-      "feature1": "Zéro ligne de commande",
-      "feature2": "Docker + Coolify installés",
-      "feature3": "PostgreSQL configuré",
-      "feature4": "SSL Let's Encrypt inclus",
-      "feature5": "Monitoring 7 jours inclus",
-      "feature6": "Nettoyage IA du code",
-      "cta": "Libérer mon projet"
+    "confort": {
+      "name": "Pack Confort",
+      "badge": "Recommandé",
+      "target": "Indépendants & Petits projets",
+      "priceNote": "ou par libération",
+      "feature1": "Nettoyage automatique",
+      "feature1Desc": "Propulsé par DeepSeek V3",
+      "feature2": "Jusqu'à 500 fichiers",
+      "feature2Desc": "Idéal pour la plupart des projets",
+      "feature3": "Déploiement IONOS en 1 clic",
+      "feature3Desc": "Configuration automatique",
+      "feature4": "Audit Zero Shadow Door",
+      "feature4Desc": "Certificat de souveraineté inclus",
+      "highlight": "Rien à configurer, on s'occupe des coûts d'IA",
+      "cta": "Commencer facilement"
+    },
+    "souverain": {
+      "name": "Pack Souverain",
+      "badge": "BYOK -30%",
+      "target": "Agences, Startups & Gros projets",
+      "priceNote": "Frais de plateforme réduits",
+      "feature1": "Volume Illimité",
+      "feature1Desc": "Vous payez vos tokens à la source",
+      "feature2": "Votre propre clé API",
+      "feature2Desc": "Claude, GPT-4, DeepSeek",
+      "feature3": "Audit Zero Shadow Door avancé",
+      "feature3Desc": "Rapport détaillé complet",
+      "feature4": "Chiffrement AES-256",
+      "feature4Desc": "Clés stockées via Supabase Vault",
+      "highlight": "Économisez jusqu'à 70% sur les gros volumes",
+      "cta": "Choisir la Souveraineté",
+      "activatedTitle": "Mode Souverain activé !",
+      "activatedDesc": "Configurez votre clé API dans les paramètres"
+    },
+    "calculator": {
+      "title": "Comparateur de coûts interactif",
+      "subtitle": "Ajustez le nombre de fichiers pour voir les économies en temps réel",
+      "fileCount": "Nombre de fichiers",
+      "files": "fichiers",
+      "simple": "Simple",
+      "allInclusive": "Prix tout inclus",
+      "yourTokens": "vos tokens",
+      "savingsPrefix": "Économie avec le Pack Souverain :",
+      "savingsSuffix": "avec BYOK"
+    },
+    "addons": {
+      "badge": "Options",
+      "title": "Services complémentaires",
+      "subtitle": "Ajoutez des services à votre pack selon vos besoins"
     },
     "redeploy": {
       "name": "Re-déploiement",
@@ -419,8 +449,6 @@
       "feature1": "Mise à jour du code source",
       "feature2": "Rebuild automatique",
       "feature3": "Zero-downtime deployment",
-      "feature4": "Rollback si erreur",
-      "feature5": "Logs de déploiement",
       "cta": "Mettre à jour"
     },
     "monitoring": {
@@ -430,8 +458,6 @@
       "feature1": "Monitoring 24/7 permanent",
       "feature2": "Auto-restart prioritaire",
       "feature3": "Alertes en temps réel",
-      "feature4": "Historique des pannes",
-      "feature5": "Support prioritaire",
       "cta": "Étendre le monitoring"
     },
     "server": {
@@ -439,9 +465,7 @@
       "description": "Ajoutez un VPS à votre compte",
       "feature1": "Configuration complète",
       "feature2": "Docker + Coolify",
-      "feature3": "PostgreSQL optionnel",
-      "feature4": "SSL automatique",
-      "feature5": "Monitoring 7 jours",
+      "feature3": "SSL automatique",
       "cta": "Ajouter un serveur"
     },
     "comparison": {
