@@ -172,17 +172,6 @@ const Header = () => {
               {t("common.pricing")}
             </Link>
             <Link 
-              to="/upgrade" 
-              className={`text-sm font-medium transition-colors flex items-center gap-1 ${
-                isActive("/upgrade") ? "text-white" : "text-white/80 hover:text-white"
-              }`}
-            >
-              {t("common.upgrade")}
-              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs px-1.5 py-0">
-                {t("common.byok")}
-              </Badge>
-            </Link>
-            <Link 
               to="/historique" 
               className={`text-sm font-medium transition-colors ${
                 isActive("/historique") ? "text-white" : "text-white/80 hover:text-white"
@@ -288,18 +277,6 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {t("common.pricing")}
-              </Link>
-              <Link 
-                to="/upgrade" 
-                className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-2 ${
-                  isActive("/upgrade") ? "text-primary" : "text-muted-foreground"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("common.upgrade")}
-                <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs px-1.5 py-0">
-                  {t("common.byok")}
-                </Badge>
               </Link>
               <Link 
                 to="/historique" 
