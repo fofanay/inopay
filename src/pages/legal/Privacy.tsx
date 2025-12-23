@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import FofyChat from "@/components/FofyChat";
 import { Shield, Database, CreditCard, UserCheck, Lock, Mail } from "lucide-react";
 
 const Privacy = () => {
@@ -275,6 +276,7 @@ const Privacy = () => {
           </div>
         </div>
       </div>
+      <FofyChat />
     </Layout>
   );
 };

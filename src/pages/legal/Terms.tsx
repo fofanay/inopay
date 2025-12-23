@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import FofyChat from "@/components/FofyChat";
 import { FileText, AlertCircle, Shield, CreditCard, Scale } from "lucide-react";
 
 const Terms = () => {
@@ -195,6 +196,7 @@ const Terms = () => {
           </div>
         </div>
       </div>
+      <FofyChat />
     </Layout>
   );
 };

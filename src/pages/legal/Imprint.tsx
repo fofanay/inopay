@@ -1,4 +1,5 @@
 import Layout from "@/components/layout/Layout";
+import FofyChat from "@/components/FofyChat";
 import { Building2, Mail, Globe, Shield, MapPin } from "lucide-react";
 
 const Imprint = () => {
@@ -224,6 +225,7 @@ const Imprint = () => {
           </div>
         </div>
       </div>
+      <FofyChat />
     </Layout>
   );
 };
