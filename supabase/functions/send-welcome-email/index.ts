@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Template HTML professionnel aux couleurs Inopay
+// Template HTML professionnel - Onboarding Email #1: Bienvenue
 const getWelcomeEmailTemplate = (userName: string, userEmail: string) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -16,31 +16,31 @@ const getWelcomeEmailTemplate = (userName: string, userEmail: string) => `
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bienvenue chez Inopay</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0F172A;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #1A202C; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
           
-          <!-- Header -->
+          <!-- Header avec Logo -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%); padding: 40px 30px; text-align: center;">
-              <img src="https://getinopay.com/inopay-logo-email.png" alt="Inopay" style="height: 50px; margin-bottom: 20px;" />
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                Bienvenue chez Inopay
+            <td style="background: linear-gradient(135deg, #1A202C 0%, #2D3748 100%); padding: 40px 30px; text-align: center; border-bottom: 1px solid rgba(59, 130, 246, 0.2);">
+              <img src="https://getinopay.com/inopay-logo-email.png" alt="Inopay" style="height: 50px; margin-bottom: 24px;" />
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.2;">
+                🚀 Bienvenue chez Inopay
               </h1>
-              <p style="margin: 10px 0 0; color: #A0AEC0; font-size: 16px;">
-                Une division d'Inovaq Canada Inc.
+              <p style="margin: 12px 0 0; color: #94A3B8; font-size: 16px;">
+                Préparez-vous à la souveraineté
               </p>
             </td>
           </tr>
           
-          <!-- Sovereignty Badge -->
+          <!-- Badge Inovaq -->
           <tr>
-            <td style="padding: 30px; text-align: center; background: linear-gradient(180deg, #1A202C 0%, #ffffff 50%);">
-              <div style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 16px 32px; border-radius: 50px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);">
-                <span style="color: #ffffff; font-size: 18px; font-weight: 600;">
-                  🎉 Vous êtes maintenant Souverain
+            <td style="padding: 24px 30px; text-align: center;">
+              <div style="display: inline-block; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 16px; border-radius: 50px;">
+                <span style="color: #3B82F6; font-size: 12px; font-weight: 500;">
+                  ✓ Une initiative d'Inovaq Canada Inc. (Québec) – Conforme Loi 25
                 </span>
               </div>
             </td>
@@ -49,74 +49,69 @@ const getWelcomeEmailTemplate = (userName: string, userEmail: string) => `
           <!-- Main Content -->
           <tr>
             <td style="padding: 0 40px 30px;">
-              <p style="color: #1A202C; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Bonjour${userName ? ` <strong>${userName}</strong>` : ''},
-              </p>
-              <p style="color: #4A5568; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Félicitations pour votre inscription sur <strong style="color: #3B82F6;">Inopay</strong> ! 
-                Vous avez fait le premier pas vers la <strong>souveraineté numérique totale</strong>.
+              <p style="color: #E2E8F0; font-size: 18px; line-height: 1.6; margin: 0 0 24px;">
+                Bonjour${userName ? ` <strong style="color: #ffffff;">${userName}</strong>` : ''},
               </p>
               
-              <!-- What is Sovereignty -->
-              <div style="background-color: #F7FAFC; border-left: 4px solid #3B82F6; padding: 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
-                <h3 style="color: #1A202C; font-size: 18px; margin: 0 0 12px;">
-                  Que signifie être Souverain ?
-                </h3>
-                <ul style="color: #4A5568; font-size: 15px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                  <li><strong>Votre code</strong> est sur votre GitHub personnel</li>
-                  <li><strong>Vos données</strong> sont sur votre Supabase</li>
-                  <li><strong>Votre application</strong> tourne sur votre VPS</li>
-                  <li><strong>Zéro dépendance</strong> aux plateformes tierces</li>
-                </ul>
+              <p style="color: #94A3B8; font-size: 16px; line-height: 1.7; margin: 0 0 24px;">
+                <strong style="color: #10B981;">Félicitations !</strong> Vous venez de rejoindre le mouvement des développeurs qui reprennent le contrôle de leur code.
+              </p>
+              
+              <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 24px; margin: 24px 0;">
+                <p style="color: #ffffff; font-size: 18px; font-weight: 600; margin: 0 0 12px; font-style: italic;">
+                  "Le code est une propriété, pas un abonnement."
+                </p>
+                <p style="color: #94A3B8; font-size: 14px; margin: 0;">
+                  Votre code va enfin vous appartenir. Plus de lock-in, plus de dépendances cachées.
+                </p>
               </div>
               
-              <p style="color: #4A5568; font-size: 16px; line-height: 1.6; margin: 20px 0;">
-                Pour activer votre souveraineté complète, il vous suffit de connecter vos propres outils 
-                (GitHub, Supabase, VPS) dans votre tableau de bord.
+              <p style="color: #94A3B8; font-size: 16px; line-height: 1.7; margin: 24px 0;">
+                Pour activer votre souveraineté complète, connectez vos outils en quelques clics :
               </p>
             </td>
           </tr>
           
-          <!-- CTA Button -->
+          <!-- CTA Principal -->
           <tr>
-            <td style="padding: 0 40px 40px; text-align: center;">
+            <td style="padding: 0 40px 32px; text-align: center;">
               <a href="https://getinopay.com/dashboard?tab=sovereign" 
-                 style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);">
-                Compléter ma configuration souveraine →
+                 style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 18px 48px; border-radius: 8px; box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);">
+                Configurer mes accès (GitHub & VPS) →
               </a>
             </td>
           </tr>
           
-          <!-- Steps Preview -->
+          <!-- 3 Étapes -->
           <tr>
             <td style="padding: 0 40px 30px;">
-              <div style="background-color: #1A202C; border-radius: 12px; padding: 24px; color: #ffffff;">
-                <h4 style="margin: 0 0 16px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #A0AEC0;">
-                  Les 3 étapes vers la liberté
+              <div style="background-color: #0F172A; border-radius: 12px; padding: 24px;">
+                <h4 style="margin: 0 0 20px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #64748B;">
+                  Votre parcours vers la liberté
                 </h4>
                 <table role="presentation" style="width: 100%; border-collapse: collapse;">
                   <tr>
-                    <td style="padding: 8px 0; vertical-align: top; width: 30px;">
-                      <span style="display: inline-block; width: 24px; height: 24px; background-color: #3B82F6; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">1</span>
+                    <td style="padding: 12px 0; vertical-align: middle; width: 40px;">
+                      <span style="display: inline-block; width: 32px; height: 32px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 50%; text-align: center; line-height: 32px; font-size: 14px; font-weight: 700; color: #ffffff;">1</span>
                     </td>
-                    <td style="padding: 8px 0; color: #E2E8F0; font-size: 14px;">
-                      <strong>Connecter GitHub</strong> - Votre coffre-fort de code
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; vertical-align: top;">
-                      <span style="display: inline-block; width: 24px; height: 24px; background-color: #3B82F6; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">2</span>
-                    </td>
-                    <td style="padding: 8px 0; color: #E2E8F0; font-size: 14px;">
-                      <strong>Connecter Supabase</strong> - Votre mémoire souveraine
+                    <td style="padding: 12px 0; color: #E2E8F0; font-size: 15px;">
+                      <strong>Connecter GitHub</strong> <span style="color: #64748B;">— Votre coffre-fort de code</span>
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding: 8px 0; vertical-align: top;">
-                      <span style="display: inline-block; width: 24px; height: 24px; background-color: #3B82F6; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">3</span>
+                    <td style="padding: 12px 0; vertical-align: middle;">
+                      <span style="display: inline-block; width: 32px; height: 32px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); border-radius: 50%; text-align: center; line-height: 32px; font-size: 14px; font-weight: 700; color: #ffffff;">2</span>
                     </td>
-                    <td style="padding: 8px 0; color: #E2E8F0; font-size: 14px;">
-                      <strong>Configurer le VPS</strong> - Votre infrastructure personnelle
+                    <td style="padding: 12px 0; color: #E2E8F0; font-size: 15px;">
+                      <strong>Configurer le VPS</strong> <span style="color: #64748B;">— Votre serveur personnel</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0; vertical-align: middle;">
+                      <span style="display: inline-block; width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); border-radius: 50%; text-align: center; line-height: 32px; font-size: 14px; font-weight: 700; color: #ffffff;">3</span>
+                    </td>
+                    <td style="padding: 12px 0; color: #E2E8F0; font-size: 15px;">
+                      <strong>Lancer la libération</strong> <span style="color: #64748B;">— Reprenez les clés</span>
                     </td>
                   </tr>
                 </table>
@@ -124,30 +119,15 @@ const getWelcomeEmailTemplate = (userName: string, userEmail: string) => `
             </td>
           </tr>
           
-          <!-- Support -->
-          <tr>
-            <td style="padding: 0 40px 30px; text-align: center;">
-              <p style="color: #718096; font-size: 14px; margin: 0;">
-                Des questions ? Répondez simplement à cet email ou contactez-nous à 
-                <a href="mailto:support@getinopay.com" style="color: #3B82F6; text-decoration: none;">support@getinopay.com</a>
-              </p>
-            </td>
-          </tr>
-          
           <!-- Footer -->
           <tr>
-            <td style="background-color: #1A202C; padding: 30px 40px; text-align: center;">
-              <p style="color: #A0AEC0; font-size: 14px; margin: 0 0 10px;">
-                <strong style="color: #ffffff;">Inopay</strong> - Libérez votre code
+            <td style="background-color: #0F172A; padding: 30px 40px; text-align: center; border-top: 1px solid rgba(148, 163, 184, 0.1);">
+              <p style="color: #64748B; font-size: 13px; margin: 0 0 12px; font-weight: 500;">
+                Inovaq Canada Inc. – Protéger votre propriété intellectuelle.
               </p>
-              <p style="color: #718096; font-size: 12px; margin: 0;">
-                © ${new Date().getFullYear()} Inovaq Canada Inc. Tous droits réservés.
-              </p>
-              <p style="color: #718096; font-size: 12px; margin: 10px 0 0;">
-                <a href="https://getinopay.com" style="color: #3B82F6; text-decoration: none;">Site web</a>
-                &nbsp;•&nbsp;
-                <a href="https://getinopay.com/privacy" style="color: #3B82F6; text-decoration: none;">Confidentialité</a>
-                &nbsp;•&nbsp;
+              <p style="color: #475569; font-size: 12px; margin: 0;">
+                © ${new Date().getFullYear()} Inovaq Canada Inc. (Québec) • 
+                <a href="https://getinopay.com/privacy" style="color: #3B82F6; text-decoration: none;">Confidentialité</a> • 
                 <a href="https://getinopay.com/terms" style="color: #3B82F6; text-decoration: none;">Conditions</a>
               </p>
             </td>
@@ -192,9 +172,9 @@ serve(async (req) => {
     // Send via Resend
     const resend = new Resend(resendApiKey);
     const result = await resend.emails.send({
-      from: "Inopay <welcome@getinopay.com>",
+      from: "Inopay <contact@getinopay.com>",
       to: [email],
-      subject: "🎉 Bienvenue chez Inopay - Devenez Souverain de votre code",
+      subject: "🚀 Bienvenue chez Inopay – Préparez-vous à la souveraineté",
       html: htmlContent,
     });
 
