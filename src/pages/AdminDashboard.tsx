@@ -23,7 +23,8 @@ import {
   Smartphone,
   Webhook,
   HardDrive,
-  Calculator
+  Calculator,
+  Network
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ import AdminStripeLogs from "@/components/admin/AdminStripeLogs";
 import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
 import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
 import AdminCleaningMargins from "@/components/admin/AdminCleaningMargins";
+import AdminNetworkDiagnostic from "@/components/admin/AdminNetworkDiagnostic";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -91,6 +93,7 @@ const AdminDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3 },
+    { id: "diagnostic", label: "Diagnostic Réseau", icon: Network },
     { id: "fleet", label: "Flotte Serveurs", icon: Server },
     { id: "widgets", label: "Widgets & Sync", icon: Smartphone },
     { id: "monitoring", label: "Monitoring", icon: Activity },
@@ -120,6 +123,7 @@ const AdminDashboard = () => {
   const getPageDescription = () => {
     switch (activeTab) {
       case "overview": return "Statistiques globales de la plateforme Inopay";
+      case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
       case "widgets": return "Surveillance des widgets mobiles et synchronisations";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
@@ -247,6 +251,7 @@ const AdminDashboard = () => {
         <div className="p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === "overview" && <AdminStats />}
+            {activeTab === "diagnostic" && <AdminNetworkDiagnostic />}
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
