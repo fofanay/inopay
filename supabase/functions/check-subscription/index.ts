@@ -264,9 +264,21 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    
+    // Return 401 for auth errors, 500 for others
+    const isAuthError = errorMessage.includes("Authentication") || 
+                        errorMessage.includes("authorization") ||
+                        errorMessage.includes("session");
+    
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      subscribed: false,
+      plan_type: "free",
+      limits: { maxFiles: 100, maxRepos: 3 },
+      limit_source: 'free',
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: isAuthError ? 401 : 500,
     });
   }
 });
