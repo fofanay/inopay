@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -12,7 +11,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['inopay-logo-email.png'],
@@ -22,6 +20,7 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB limit
         runtimeCaching: [
           {
+            // INOPAY: Support for self-hosted Supabase instance
             urlPattern: /^https:\/\/izqveyvcebolrqpqlmho\.supabase\.co\/.*/i,
             handler: 'NetworkFirst',
             options: {
@@ -35,9 +34,10 @@ export default defineConfig(({ mode }) => ({
         ]
       }
     }),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
+      // INOPAY: Keep @/ alias for imports, configure as needed
       "@": path.resolve(__dirname, "./src"),
     },
   },
