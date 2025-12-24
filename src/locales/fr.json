@@ -1169,6 +1169,9 @@
     "phoneVerified": "Numéro de téléphone vérifié avec succès",
     "otpSent": "Code de vérification envoyé par SMS",
     "otpSendError": "Impossible d'envoyer le code SMS",
-    "otpVerifyError": "Impossible de vérifier le code"
+    "otpVerifyError": "Impossible de vérifier le code",
+    "incomplete": "Profil incomplet",
+    "missingFields": "Champs manquants",
+    "phoneNotVerifiedWarning": "Téléphone non vérifié"
   }
 }

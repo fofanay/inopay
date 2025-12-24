@@ -2,21 +2,26 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { RoleIndicator } from "@/components/ui/role-indicator";
-import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, ArrowDownRight } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, ArrowDownRight, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Header = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, subscription, signOut, isAdmin } = useAuth();
+  const profileStatus = useProfileCompletion();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isActive = (path: string) => location.pathname === path;
+  
+  const showProfileWarning = user && !profileStatus.isLoading && (!profileStatus.isComplete || !profileStatus.phoneVerified);
 
   const handleSignOut = async () => {
     await signOut();
@@ -182,6 +187,31 @@ const Header = () => {
                   </Link>
                 )}
                 {getPlanBadge()}
+                {showProfileWarning && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link to="/profil">
+                          <div className="flex items-center gap-1.5 bg-warning/20 text-warning px-2.5 py-1 rounded-full text-xs font-medium animate-pulse cursor-pointer hover:bg-warning/30 transition-colors">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {t("profile.incomplete")}
+                          </div>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[250px]">
+                        <p className="text-sm">
+                          {!profileStatus.isComplete && (
+                            <span>{t("profile.missingFields")}: {profileStatus.missingFields.join(", ")}</span>
+                          )}
+                          {!profileStatus.isComplete && !profileStatus.phoneVerified && <br />}
+                          {!profileStatus.phoneVerified && (
+                            <span>{t("profile.phoneNotVerified")}</span>
+                          )}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 <Link to="/profil">
                   <div className="flex items-center gap-2 text-sm text-white/80 hover:text-white cursor-pointer transition-colors">
                     <User className="h-4 w-4" />

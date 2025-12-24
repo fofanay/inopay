@@ -1274,6 +1274,9 @@
     "phoneVerified": "Phone number verified successfully",
     "otpSent": "Verification code sent by SMS",
     "otpSendError": "Unable to send SMS code",
-    "otpVerifyError": "Unable to verify code"
+    "otpVerifyError": "Unable to verify code",
+    "incomplete": "Incomplete profile",
+    "missingFields": "Missing fields",
+    "phoneNotVerifiedWarning": "Phone not verified"
   }
 }
