@@ -13,6 +13,19 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+interface UserProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  billing_address_line1: string | null;
+  billing_address_line2: string | null;
+  billing_city: string | null;
+  billing_postal_code: string | null;
+  billing_country: string | null;
+  profile_completed: boolean;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,6 +51,11 @@ serve(async (req) => {
     return rateLimitResponse;
   }
 
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -56,6 +74,47 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Fetch user profile to verify completion and get billing info
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      logStep("Profile fetch error", { error: profileError.message });
+      throw new Error("PROFILE_NOT_FOUND");
+    }
+
+    const userProfile = profile as UserProfile;
+    logStep("Profile fetched", { 
+      hasAddress: !!userProfile.billing_address_line1,
+      hasCity: !!userProfile.billing_city,
+      profileCompleted: userProfile.profile_completed 
+    });
+
+    // Check if profile is complete (minimum: name + billing address)
+    const isProfileComplete = !!(
+      userProfile.first_name &&
+      userProfile.last_name &&
+      userProfile.billing_address_line1 &&
+      userProfile.billing_city &&
+      userProfile.billing_postal_code &&
+      userProfile.billing_country
+    );
+
+    if (!isProfileComplete) {
+      logStep("Profile incomplete - blocking checkout");
+      return new Response(JSON.stringify({ 
+        error: "PROFILE_INCOMPLETE",
+        message: "Veuillez compléter votre profil (nom et adresse de facturation) avant de procéder au paiement.",
+        redirect: "/profil"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
@@ -66,6 +125,20 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
+
+      // Update customer with profile data for Stripe Radar
+      await stripe.customers.update(customerId, {
+        name: `${userProfile.first_name} ${userProfile.last_name}`,
+        phone: userProfile.phone || undefined,
+        address: {
+          line1: userProfile.billing_address_line1 || undefined,
+          line2: userProfile.billing_address_line2 || undefined,
+          city: userProfile.billing_city || undefined,
+          postal_code: userProfile.billing_postal_code || undefined,
+          country: userProfile.billing_country || undefined,
+        },
+      });
+      logStep("Customer updated with profile data");
     }
 
     const origin = req.headers.get("origin") || "https://localhost:3000";
@@ -88,7 +161,7 @@ serve(async (req) => {
       ? `${origin}/payment-success?plan=${serviceType}&session_id={CHECKOUT_SESSION_ID}`
       : `${origin}/payment-success?service=${serviceType || "deploy"}&session_id={CHECKOUT_SESSION_ID}`;
 
-    // Create checkout session
+    // Create checkout session with billing address prefilled
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -101,10 +174,27 @@ serve(async (req) => {
       mode: mode || "payment",
       success_url: successUrl,
       cancel_url: `${origin}/tarifs`,
+      // Prefill billing address from profile
+      customer_update: customerId ? {
+        address: 'auto',
+        name: 'auto',
+      } : undefined,
+      // For new customers, prefill the address
+      ...(customerId ? {} : {
+        billing_address_collection: 'required',
+      }),
       metadata: {
         user_id: user.id,
         service_type: serviceType || "deploy",
         plan_type: planType,
+        customer_name: `${userProfile.first_name} ${userProfile.last_name}`,
+        customer_phone: userProfile.phone || '',
+        billing_city: userProfile.billing_city || '',
+        billing_country: userProfile.billing_country || '',
+      },
+      // Pass phone to Stripe for fraud detection
+      phone_number_collection: {
+        enabled: false, // We already have phone from profile
       },
     });
 
