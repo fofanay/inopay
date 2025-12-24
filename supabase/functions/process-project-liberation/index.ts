@@ -1,3 +1,6 @@
+// @inopay-core-protected
+// INOPAY LIBERATION ENGINE - Main Processing Function
+// This file MUST NOT be cleaned or removed during self-liberation
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { 
