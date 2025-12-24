@@ -705,20 +705,70 @@ const LimitsOverrideControl = () => {
     MAX_API_COST_CENTS: 5000,
     CACHE_TTL_HOURS: 24,
   });
+  const [killSwitch, setKillSwitch] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load current config from DB
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('admin_config')
+          .select('config_value')
+          .eq('config_key', 'SECURITY_LIMITS')
+          .single();
+        
+        if (data?.config_value) {
+          const config = data.config_value as Record<string, any>;
+          setLimits({
+            MAX_FILES_PER_LIBERATION: config.MAX_FILES_PER_LIBERATION || 500,
+            MAX_FILE_SIZE_CHARS: config.MAX_FILE_SIZE_CHARS || 50000,
+            MAX_API_COST_CENTS: config.MAX_API_COST_CENTS || 5000,
+            CACHE_TTL_HOURS: config.CACHE_TTL_HOURS || 24,
+          });
+          setKillSwitch(config.KILL_SWITCH_ENABLED || false);
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadConfig();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Save to admin settings or a config table
+      // Save to admin_config table for edge functions to read
+      const { error } = await supabase
+        .from('admin_config')
+        .upsert({
+          config_key: 'SECURITY_LIMITS',
+          config_value: {
+            ...limits,
+            KILL_SWITCH_ENABLED: killSwitch,
+          },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'config_key' });
+
+      if (error) throw error;
+
+      // Log the change for audit
       await supabase.from('admin_activity_logs').insert({
         action_type: 'limits_override',
         title: 'Mise à jour des limites de sécurité',
-        status: 'info',
-        metadata: limits as unknown as Record<string, any>,
+        status: killSwitch ? 'warning' : 'info',
+        metadata: { ...limits, KILL_SWITCH_ENABLED: killSwitch } as unknown as Record<string, any>,
       });
-      toast.success("Limites mises à jour");
+      
+      toast.success(killSwitch 
+        ? "⚠️ KILL SWITCH ACTIVÉ - Toutes les libérations sont bloquées" 
+        : "Limites mises à jour et actives immédiatement"
+      );
     } catch (error) {
+      console.error('Save error:', error);
       toast.error("Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
@@ -795,10 +845,37 @@ const LimitsOverrideControl = () => {
           </div>
         </div>
         
-        <Button onClick={handleSave} disabled={saving} className="w-full bg-cyan-600 hover:bg-cyan-700">
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Sauvegarder les limites
-        </Button>
+        {/* Kill Switch */}
+        <div className={`p-4 rounded-lg border-2 ${killSwitch ? 'border-red-500 bg-red-500/10' : 'border-slate-600 bg-slate-800/50'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className={`h-5 w-5 ${killSwitch ? 'text-red-500' : 'text-slate-400'}`} />
+              <div>
+                <p className="font-medium text-slate-100">Kill Switch Global</p>
+                <p className="text-xs text-slate-400">Bloque TOUTES les libérations en cours et futures</p>
+              </div>
+            </div>
+            <Button
+              variant={killSwitch ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => setKillSwitch(!killSwitch)}
+              className={killSwitch ? '' : 'border-slate-600 hover:bg-red-500/20 hover:text-red-400'}
+            >
+              {killSwitch ? 'ACTIVÉ' : 'Désactivé'}
+            </Button>
+          </div>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : (
+          <Button onClick={handleSave} disabled={saving} className={`w-full ${killSwitch ? 'bg-red-600 hover:bg-red-700' : 'bg-cyan-600 hover:bg-cyan-700'}`}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            {killSwitch ? '⚠️ Activer le Kill Switch' : 'Sauvegarder les limites'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

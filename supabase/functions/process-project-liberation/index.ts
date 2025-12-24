@@ -7,6 +7,7 @@ import {
   checkAssetSovereignty,
   generatePolyfills,
   SECURITY_LIMITS,
+  getDynamicSecurityLimits,
   type CleaningResult,
   type AssetSovereigntyResult,
   type PolyfillResult
@@ -291,14 +292,30 @@ serve(async (req) => {
       selectedPaths?: string[];
     };
 
+    // Fetch dynamic security limits from admin_config
+    const dynamicLimits = await getDynamicSecurityLimits(supabase);
+    console.log('[Liberation] Dynamic limits:', dynamicLimits);
+
+    // Check Kill Switch - block all liberations if enabled
+    if (dynamicLimits.KILL_SWITCH_ENABLED) {
+      console.log('[Liberation] KILL SWITCH ACTIVE - Blocking liberation');
+      return new Response(JSON.stringify({ 
+        error: 'Le service de libération est temporairement suspendu. Veuillez réessayer plus tard.',
+        killSwitch: true
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Dynamic limits check - Calculate quote instead of blocking
     let filesToProcess = files;
-    const isOverLimit = files.length > SECURITY_LIMITS.MAX_FILES_PER_LIBERATION;
+    const isOverLimit = files.length > dynamicLimits.MAX_FILES_PER_LIBERATION;
     
     if (isOverLimit && !pendingPaymentId && !selectedPaths) {
       // Return quote for large project instead of error
       const totalChars = files.reduce((sum, f) => sum + f.content.length, 0);
-      const excessFiles = files.length - SECURITY_LIMITS.MAX_FILES_PER_LIBERATION;
+      const excessFiles = files.length - dynamicLimits.MAX_FILES_PER_LIBERATION;
       
       // Cost calculation
       const COST_PER_TOKEN_CENTS = 0.003;
@@ -316,7 +333,7 @@ serve(async (req) => {
         requiresPayment: true,
         quote: {
           totalFiles: files.length,
-          maxFilesAllowed: SECURITY_LIMITS.MAX_FILES_PER_LIBERATION,
+          maxFilesAllowed: dynamicLimits.MAX_FILES_PER_LIBERATION,
           excessFiles,
           baseTokenCostCents: baseTokenCost,
           supplementAmountCents: supplementAmount,
@@ -401,7 +418,7 @@ serve(async (req) => {
       }
 
       // Skip files that are too large
-      if (file.content.length > SECURITY_LIMITS.MAX_FILE_SIZE_CHARS) {
+      if (file.content.length > dynamicLimits.MAX_FILE_SIZE_CHARS) {
         console.log(`[Liberation] Skipping large file: ${file.path} (${file.content.length} chars)`);
         continue;
       }
