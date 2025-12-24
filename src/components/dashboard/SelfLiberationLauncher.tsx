@@ -110,7 +110,7 @@ export function SelfLiberationLauncher() {
           .from('user_settings')
           .select('github_token, github_destination_username')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (settings?.github_token) {
           setGithubToken(settings.github_token);
@@ -126,12 +126,12 @@ export function SelfLiberationLauncher() {
           setDestinationOwner(settings.github_destination_username);
         }
 
-        // Load server config (Coolify)
+        // Load server config (Coolify) - use maybeSingle to handle no server case
         const { data: serverData } = await supabase
           .from('user_servers')
           .select('coolify_url, coolify_token, db_url, anon_key')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (serverData) {
           if (serverData.coolify_url) setCoolifyUrl(serverData.coolify_url);
@@ -258,71 +258,42 @@ export function SelfLiberationLauncher() {
     setIsTestingCoolify(true);
     
     try {
-      // Test Coolify connection
-      const response = await fetch(`${coolifyUrl.trim()}/api/v1/applications`, {
-        headers: {
-          'Authorization': `Bearer ${coolifyToken.trim()}`,
-          'Accept': 'application/json'
+      // Use backend function to test and save Coolify config (avoids CORS/mixed-content issues)
+      const { data, error } = await supabase.functions.invoke('save-admin-coolify-config', {
+        body: {
+          coolify_url: coolifyUrl.trim(),
+          coolify_token: coolifyToken.trim()
         }
       });
 
-      if (!response.ok) {
-        const status = response.status;
-        if (status === 401) {
-          toast.error('Token Coolify invalide');
-        } else if (status === 403) {
-          toast.error('Token sans permissions suffisantes');
-        } else {
-          toast.error(`Erreur connexion Coolify (HTTP ${status})`);
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error('Erreur de connexion au backend', {
+          description: error.message || 'Impossible de joindre le serveur'
+        });
+        return;
+      }
+
+      if (!data.success) {
+        toast.error('Erreur Coolify', {
+          description: data.error || 'Connexion échouée'
+        });
+        if (data.hint) {
+          console.log('Hint:', data.hint);
         }
         return;
-      }
-
-      const apps = await response.json();
-      
-      // Save to user_servers
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Session expirée');
-        return;
-      }
-
-      // Upsert to user_servers
-      const { data: existingServer } = await supabase
-        .from('user_servers')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (existingServer) {
-        await supabase
-          .from('user_servers')
-          .update({
-            coolify_url: coolifyUrl.trim(),
-            coolify_token: coolifyToken.trim(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingServer.id);
-      } else {
-        await supabase
-          .from('user_servers')
-          .insert({
-            user_id: session.user.id,
-            name: 'Serveur Principal',
-            ip_address: new URL(coolifyUrl.trim()).hostname,
-            coolify_url: coolifyUrl.trim(),
-            coolify_token: coolifyToken.trim(),
-            status: 'active'
-          });
       }
 
       setIsCoolifyConfigured(true);
       toast.success('Coolify configuré', {
-        description: `${apps.length} applications trouvées`
+        description: data.coolify_version 
+          ? `Version ${data.coolify_version} - ${data.apps_count || 0} application(s)`
+          : `${data.apps_count || 0} application(s) trouvée(s)`
       });
     } catch (err) {
-      toast.error('Erreur connexion Coolify', {
-        description: err instanceof Error ? err.message : 'URL invalide'
+      console.error('testAndSaveCoolify error:', err);
+      toast.error('Erreur inattendue', {
+        description: err instanceof Error ? err.message : 'Erreur inconnue'
       });
     } finally {
       setIsTestingCoolify(false);
@@ -346,30 +317,27 @@ export function SelfLiberationLauncher() {
       status.github = { ok: false, message: 'Token non configuré' };
     }
 
-    // Check Coolify
+    // Check Coolify via backend (avoids CORS issues)
     if (coolifyUrl && coolifyToken) {
       try {
-        const response = await fetch(`${coolifyUrl}/api/v1/applications`, {
-          headers: {
-            'Authorization': `Bearer ${coolifyToken}`,
-            'Accept': 'application/json'
+        const { data, error } = await supabase.functions.invoke('test-coolify-connection', {
+          body: {
+            coolify_url: coolifyUrl,
+            coolify_token: coolifyToken
           }
         });
         
-        if (response.ok) {
-          const apps = await response.json();
-          const inopayApp = apps.find((app: any) => 
-            app.name?.toLowerCase().includes('inopay') ||
-            app.git_repository?.includes('inopay')
-          );
-          status.coolify = inopayApp 
-            ? { ok: true, message: `App trouvée: ${inopayApp.name}`, url: inopayApp.fqdn }
-            : { ok: false, message: `${apps.length} apps mais aucune "inopay"` };
+        if (error) {
+          status.coolify = { ok: false, message: `Erreur backend: ${error.message}` };
+        } else if (data.success) {
+          status.coolify = data.inopay_app 
+            ? { ok: true, message: `App trouvée: ${data.inopay_app}`, url: data.app_url }
+            : { ok: true, message: `${data.apps_count || 0} apps (aucune "inopay")` };
         } else {
-          status.coolify = { ok: false, message: `HTTP ${response.status}` };
+          status.coolify = { ok: false, message: data.error || 'Connexion échouée' };
         }
       } catch (err) {
-        status.coolify = { ok: false, message: 'Connexion impossible' };
+        status.coolify = { ok: false, message: 'Erreur réseau backend' };
       }
     } else {
       status.coolify = { ok: false, message: 'Non configuré' };
