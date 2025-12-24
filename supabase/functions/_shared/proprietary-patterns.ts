@@ -1,6 +1,69 @@
+// @inopay-core-protected
 // Centralized proprietary patterns for all cleaning functions
 // This file ensures consistency across all cleaning operations
 // SRE Audit: Updated for v0, Cursor, and new Lovable markers
+
+// ============= CORE PROTECTION SYSTEM =============
+// Files marked with @inopay-core-protected are NEVER cleaned, even if they match patterns
+// This prevents the cleaning engine from self-destructing during auto-liberation
+
+export const CORE_PROTECTION_MARKER = '@inopay-core-protected';
+
+/**
+ * Check if content is protected from cleaning
+ * Returns true if the file should be skipped entirely
+ */
+export function isProtectedContent(content: string): boolean {
+  // Check for core protection marker in first 500 chars (header comment)
+  const header = content.substring(0, 500);
+  return header.includes(CORE_PROTECTION_MARKER);
+}
+
+// ============= SELF-PRESERVATION WHITELIST =============
+// Critical files that must NEVER be removed or altered by the cleaning engine
+
+export const INOPAY_WHITELIST: string[] = [
+  // Core engine files
+  'proprietary-patterns.ts',
+  'rate-limiter.ts',
+  'crypto-utils.ts',
+  'retry-handler.ts',
+  
+  // Edge functions - Liberation
+  'clean-code/index.ts',
+  'process-project-liberation/index.ts',
+  'diff-clean/index.ts',
+  'verify-zero-shadow-door/index.ts',
+  
+  // Edge functions - Payment (Stripe)
+  'stripe-webhook/index.ts',
+  'create-checkout/index.ts',
+  'create-liberation-checkout/index.ts',
+  'check-subscription/index.ts',
+  'customer-portal/index.ts',
+  
+  // Edge functions - Security
+  'decrypt-secret/index.ts',
+  'encrypt-secrets/index.ts',
+  
+  // Localization (critical for i18n)
+  'locales/fr.json',
+  'locales/en.json',
+  
+  // Compatibility layer
+  'lib/sovereigntyReport.ts',
+  'lib/costOptimization.ts',
+  'lib/rlsPolicyExtractor.ts',
+  'lib/edgeFunctionParser.ts',
+  'lib/zipAnalyzer.ts',
+];
+
+/**
+ * Check if file is in the self-preservation whitelist
+ */
+export function isWhitelistedFile(filePath: string): boolean {
+  return INOPAY_WHITELIST.some(pattern => filePath.includes(pattern));
+}
 
 // ============= PROPRIETARY PATTERNS TO DETECT/REMOVE =============
 
@@ -374,6 +437,17 @@ export function cleanFileContent(filePath: string, content: string): CleaningRes
   const changes: string[] = [];
   let cleanedContent = content;
   let removed = false;
+
+  // CORE PROTECTION: Skip if file is protected or whitelisted
+  if (isProtectedContent(content)) {
+    changes.push(`[PROTECTED] Fichier protégé ignoré: ${filePath}`);
+    return { path: filePath, originalContent: content, cleanedContent: content, changes, removed: false };
+  }
+  
+  if (isWhitelistedFile(filePath)) {
+    changes.push(`[WHITELIST] Fichier critique ignoré: ${filePath}`);
+    return { path: filePath, originalContent: content, cleanedContent: content, changes, removed: false };
+  }
 
   // Check if file should be removed
   if (shouldRemoveFile(filePath)) {
