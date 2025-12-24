@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -12,7 +11,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['inopay-logo-email.png'],
@@ -22,7 +20,7 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit
         runtimeCaching: [
           {
-            // INOPAY: Cache self-hosted Supabase instance
+            // INOPAY: Cache self-hosted Supabase instance (replaces Clerk/Auth0)
             urlPattern: new RegExp(`^${process.env.VITE_SUPABASE_URL || 'http://localhost:54321'}/.*`),
             handler: 'NetworkFirst',
             options: {
@@ -78,6 +76,18 @@ export default defineConfig(({ mode }) => ({
               expiration: {
                 maxEntries: 30,
                 maxAgeSeconds: 60 * 5 // 5 minutes
+              }
+            }
+          },
+          {
+            // INOPAY: Cache Soketi WebSocket requests (replaces Pusher)
+            urlPattern: new RegExp(`^${process.env.VITE_SOKETI_HOST || 'localhost'}:${process.env.VITE_SOKETI_PORT || '6001'}/.*`),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'soketi-websocket-cache',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 1 // 1 minute
               }
             }
           }
