@@ -616,7 +616,7 @@ const Dashboard = () => {
     { id: "overview", label: t("dashboard.overview"), icon: BarChart3, section: "espace" },
     { id: "fleet", label: t("dashboard.fleet"), icon: LayoutGrid, badge: t("dashboard.menu.myProjects"), section: "espace" },
     { id: "liberation", label: t("dashboard.liberation"), icon: Flame, badge: t("dashboard.menu.pipeline"), section: "liberer" },
-    { id: "import", label: t("dashboard.import"), icon: Upload, section: "importer" },
+    { id: "import", label: t("dashboard.importTab"), icon: Upload, section: "importer" },
     { id: "batch-import", label: t("dashboard.batchImport"), icon: Layers, badge: t("dashboard.menu.new"), section: "importer" },
     { id: "projects", label: t("dashboard.projects"), icon: Package, section: "espace" },
     { id: "deploy-choice", label: t("dashboard.deployChoice"), icon: Cloud, section: "liberer" },
