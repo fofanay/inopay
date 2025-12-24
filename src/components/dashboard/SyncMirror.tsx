@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   RefreshCw, 
   Zap, 
@@ -23,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SyncSetupWizard } from "./SyncSetupWizard";
 import { SyncHistory } from "./SyncHistory";
 import { WidgetManager } from "./WidgetManager";
+import { useLocaleFormat } from "@/hooks/useLocaleFormat";
 
 interface SyncConfig {
   id: string;
@@ -53,8 +55,10 @@ interface Deployment {
 }
 
 export function SyncMirror() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { formatDateTime } = useLocaleFormat();
   const [syncConfigs, setSyncConfigs] = useState<SyncConfig[]>([]);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +77,6 @@ export function SyncMirror() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch sync configurations
       const { data: configs, error: configError } = await supabase
         .from("sync_configurations")
         .select(`
@@ -84,7 +87,6 @@ export function SyncMirror() {
 
       if (configError) throw configError;
 
-      // Fetch deployments that can be synced (have GitHub repo and Coolify)
       const { data: deps, error: depError } = await supabase
         .from("server_deployments")
         .select("id, project_name, deployed_url, status, github_repo_url, coolify_app_uuid")
@@ -100,8 +102,8 @@ export function SyncMirror() {
     } catch (error) {
       console.error("Error fetching sync data:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les configurations de synchronisation",
+        title: t("common.error"),
+        description: t("syncMirror.loadError"),
         variant: "destructive",
       });
     } finally {
@@ -123,16 +125,16 @@ export function SyncMirror() {
       );
 
       toast({
-        title: enabled ? "Synchronisation activée" : "Synchronisation désactivée",
+        title: enabled ? t("syncMirror.syncEnabled") : t("syncMirror.syncDisabled"),
         description: enabled
-          ? "Les modifications seront automatiquement déployées"
-          : "La synchronisation automatique est en pause",
+          ? t("syncMirror.syncEnabledDesc")
+          : t("syncMirror.syncDisabledDesc"),
       });
     } catch (error) {
       console.error("Error toggling sync:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de modifier l'état de synchronisation",
+        title: t("common.error"),
+        description: t("syncMirror.toggleError"),
         variant: "destructive",
       });
     }
@@ -155,26 +157,21 @@ export function SyncMirror() {
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-success/20 text-success border-success/30">Complété</Badge>;
+        return <Badge className="bg-success/20 text-success border-success/30">{t("syncMirror.status.completed")}</Badge>;
       case "failed":
-        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Échoué</Badge>;
+        return <Badge className="bg-destructive/20 text-destructive border-destructive/30">{t("syncMirror.status.failed")}</Badge>;
       case "processing":
-        return <Badge className="bg-info/20 text-info border-info/30">En cours</Badge>;
+        return <Badge className="bg-info/20 text-info border-info/30">{t("syncMirror.status.processing")}</Badge>;
       case "deploying":
-        return <Badge className="bg-warning/20 text-warning border-warning/30">Déploiement</Badge>;
+        return <Badge className="bg-warning/20 text-warning border-warning/30">{t("syncMirror.status.deploying")}</Badge>;
       default:
-        return <Badge className="bg-muted/20 text-muted-foreground border-muted/30">En attente</Badge>;
+        return <Badge className="bg-muted/20 text-muted-foreground border-muted/30">{t("syncMirror.status.pending")}</Badge>;
     }
   };
 
   const formatDate = (date: string | null) => {
-    if (!date) return "Jamais";
-    return new Date(date).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    if (!date) return t("syncMirror.never");
+    return formatDateTime(date);
   };
 
   const getDeploymentsWithoutSync = () => {
@@ -223,9 +220,9 @@ export function SyncMirror() {
               <Zap className="h-6 w-6" />
             </div>
             <div>
-              <CardTitle className="text-xl">Inopay Sync Mirror</CardTitle>
+              <CardTitle className="text-xl">{t("syncMirror.title")}</CardTitle>
               <CardDescription>
-                Synchronisation automatique entre Lovable et votre serveur privé
+                {t("syncMirror.subtitle")}
               </CardDescription>
             </div>
           </div>
@@ -234,19 +231,19 @@ export function SyncMirror() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="text-center p-4 bg-background/50 rounded-lg">
               <p className="text-3xl font-bold text-primary">{syncConfigs.length}</p>
-              <p className="text-sm text-muted-foreground">Projets configurés</p>
+              <p className="text-sm text-muted-foreground">{t("syncMirror.stats.configured")}</p>
             </div>
             <div className="text-center p-4 bg-background/50 rounded-lg">
               <p className="text-3xl font-bold text-success">
                 {syncConfigs.filter(c => c.sync_enabled).length}
               </p>
-              <p className="text-sm text-muted-foreground">Sync actives</p>
+              <p className="text-sm text-muted-foreground">{t("syncMirror.stats.active")}</p>
             </div>
             <div className="text-center p-4 bg-background/50 rounded-lg">
               <p className="text-3xl font-bold text-info">
                 {syncConfigs.reduce((sum, c) => sum + c.sync_count, 0)}
               </p>
-              <p className="text-sm text-muted-foreground">Total syncs</p>
+              <p className="text-sm text-muted-foreground">{t("syncMirror.stats.total")}</p>
             </div>
           </div>
         </CardContent>
@@ -258,10 +255,10 @@ export function SyncMirror() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Power className="h-5 w-5 text-primary" />
-              Activer la Synchronisation Magique
+              {t("syncMirror.enableSync")}
             </CardTitle>
             <CardDescription>
-              Ces déploiements peuvent être synchronisés automatiquement
+              {t("syncMirror.enableSyncDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -290,7 +287,7 @@ export function SyncMirror() {
                     className="gap-2"
                   >
                     <Zap className="h-4 w-4" />
-                    Configurer
+                    {t("syncMirror.configure")}
                   </Button>
                 </div>
               ))}
@@ -305,7 +302,7 @@ export function SyncMirror() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-success" />
-              Configurations actives
+              {t("syncMirror.activeConfigs")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -324,7 +321,7 @@ export function SyncMirror() {
                       <div className="flex items-center gap-3">
                         {getStatusIcon(config.last_sync_status)}
                         <span className="font-medium">
-                          {config.server_deployments?.project_name || "Projet"}
+                          {config.server_deployments?.project_name || t("dashboard.projects")}
                         </span>
                         {getStatusBadge(config.last_sync_status)}
                       </div>
@@ -332,9 +329,9 @@ export function SyncMirror() {
                         {config.github_repo_url}
                       </p>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>Dernière sync: {formatDate(config.last_sync_at)}</span>
+                        <span>{t("syncMirror.lastSync")}: {formatDate(config.last_sync_at)}</span>
                         <span>•</span>
-                        <span>{config.sync_count} synchronisation(s)</span>
+                        <span>{config.sync_count} {t("syncMirror.syncs")}</span>
                         {config.last_sync_commit && (
                           <>
                             <span>•</span>
@@ -346,7 +343,7 @@ export function SyncMirror() {
                       </div>
                       {config.last_sync_error && (
                         <p className="text-sm text-destructive mt-2">
-                          Erreur: {config.last_sync_error}
+                          {t("syncMirror.error")}: {config.last_sync_error}
                         </p>
                       )}
                     </div>
@@ -421,10 +418,9 @@ export function SyncMirror() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mx-auto mb-4">
                 <Zap className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Aucun déploiement compatible</h3>
+              <h3 className="text-lg font-semibold mb-2">{t("syncMirror.noCompatible")}</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Pour utiliser Sync Mirror, vous devez d'abord déployer un projet via Coolify avec un
-                dépôt GitHub lié.
+                {t("syncMirror.noCompatibleDesc")}
               </p>
             </CardContent>
           </Card>
@@ -436,7 +432,7 @@ export function SyncMirror() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Comment ça marche ?
+            {t("syncMirror.howItWorks")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -445,29 +441,29 @@ export function SyncMirror() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto mb-2">
                 1
               </div>
-              <p className="text-sm font-medium">Modifiez sur Lovable</p>
-              <p className="text-xs text-muted-foreground">Codez par chat comme d'habitude</p>
+              <p className="text-sm font-medium">{t("syncMirror.steps.step1")}</p>
+              <p className="text-xs text-muted-foreground">{t("syncMirror.steps.step1Desc")}</p>
             </div>
             <div className="text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto mb-2">
                 2
               </div>
-              <p className="text-sm font-medium">Push vers GitHub</p>
-              <p className="text-xs text-muted-foreground">Lovable synchronise automatiquement</p>
+              <p className="text-sm font-medium">{t("syncMirror.steps.step2")}</p>
+              <p className="text-xs text-muted-foreground">{t("syncMirror.steps.step2Desc")}</p>
             </div>
             <div className="text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto mb-2">
                 3
               </div>
-              <p className="text-sm font-medium">Nettoyage intelligent</p>
-              <p className="text-xs text-muted-foreground">Inopay supprime les verrous</p>
+              <p className="text-sm font-medium">{t("syncMirror.steps.step3")}</p>
+              <p className="text-xs text-muted-foreground">{t("syncMirror.steps.step3Desc")}</p>
             </div>
             <div className="text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto mb-2">
                 4
               </div>
-              <p className="text-sm font-medium">Déploiement auto</p>
-              <p className="text-xs text-muted-foreground">Mise à jour sans interruption</p>
+              <p className="text-sm font-medium">{t("syncMirror.steps.step4")}</p>
+              <p className="text-xs text-muted-foreground">{t("syncMirror.steps.step4Desc")}</p>
             </div>
           </div>
         </CardContent>
