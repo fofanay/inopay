@@ -195,7 +195,16 @@
     "overview": "Overview",
     "fleet": "My Portfolio",
     "liberation": "Liberate & Deploy",
-    "import": "Import",
+    "importTab": "Import",
+    "import": {
+      "urlRequired": "URL required",
+      "enterUrl": "Please enter a valid GitHub URL",
+      "dropHere": "Drop the file here",
+      "zipTitle": "Import a ZIP file",
+      "clickToSelect": "Click to select a file",
+      "format": "Accepted format: .zip",
+      "backToUrl": "Import from URL"
+    },
     "batchImport": "Batch Import",
     "projects": "Analyzed Projects",
     "deployChoice": "Deploy",
