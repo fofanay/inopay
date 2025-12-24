@@ -22,6 +22,19 @@ interface LiberationQuoteRequest {
   selectedPaths?: string[];
 }
 
+interface UserProfile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  billing_address_line1: string | null;
+  billing_address_line2: string | null;
+  billing_city: string | null;
+  billing_postal_code: string | null;
+  billing_country: string | null;
+  profile_completed: boolean;
+}
+
 function calculateVolumeSupplement(
   totalFiles: number,
   maxFilesAllowed: number,
@@ -67,6 +80,42 @@ serve(async (req) => {
       throw new Error("Session invalide");
     }
     const user = userData.user;
+
+    // Fetch user profile to verify completion and get billing info
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.log("[LIBERATION-CHECKOUT] Profile fetch error:", profileError.message);
+      throw new Error("PROFILE_NOT_FOUND");
+    }
+
+    const userProfile = profile as UserProfile;
+
+    // Check if profile is complete (minimum: name + billing address)
+    const isProfileComplete = !!(
+      userProfile.first_name &&
+      userProfile.last_name &&
+      userProfile.billing_address_line1 &&
+      userProfile.billing_city &&
+      userProfile.billing_postal_code &&
+      userProfile.billing_country
+    );
+
+    if (!isProfileComplete) {
+      console.log("[LIBERATION-CHECKOUT] Profile incomplete - blocking checkout");
+      return new Response(JSON.stringify({ 
+        error: "PROFILE_INCOMPLETE",
+        message: "Veuillez compléter votre profil (nom et adresse de facturation) avant de procéder au paiement.",
+        redirect: "/profil"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
 
     const body: LiberationQuoteRequest = await req.json();
     const { projectName, projectId, totalFiles, maxFilesAllowed, filesData, selectedPaths } = body;
@@ -135,6 +184,20 @@ serve(async (req) => {
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+
+      // Update customer with profile data for Stripe Radar
+      await stripe.customers.update(customerId, {
+        name: `${userProfile.first_name} ${userProfile.last_name}`,
+        phone: userProfile.phone || undefined,
+        address: {
+          line1: userProfile.billing_address_line1 || undefined,
+          line2: userProfile.billing_address_line2 || undefined,
+          city: userProfile.billing_city || undefined,
+          postal_code: userProfile.billing_postal_code || undefined,
+          country: userProfile.billing_country || undefined,
+        },
+      });
+      console.log("[LIBERATION-CHECKOUT] Customer updated with profile data");
     }
 
     // Create dynamic price for the supplement
@@ -159,11 +222,19 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${origin}/dashboard?liberation=success&payment_id=${pendingPayment.id}`,
       cancel_url: `${origin}/dashboard?liberation=cancelled&payment_id=${pendingPayment.id}`,
+      // Prefill billing address for new customers
+      ...(customerId ? {} : {
+        billing_address_collection: 'required',
+      }),
       metadata: {
         type: 'liberation_supplement',
         pending_payment_id: pendingPayment.id,
         project_name: projectName,
         excess_files: String(excessFiles),
+        customer_name: `${userProfile.first_name} ${userProfile.last_name}`,
+        customer_phone: userProfile.phone || '',
+        billing_city: userProfile.billing_city || '',
+        billing_country: userProfile.billing_country || '',
       },
     });
 
