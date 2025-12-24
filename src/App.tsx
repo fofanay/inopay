@@ -11,6 +11,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import History from "./pages/History";
 import Pricing from "./pages/Pricing";
 import Economies from "./pages/Economies";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/a-propos" element={<About />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/parametres" element={<Settings />} />
+            <Route path="/profil" element={<Profile />} />
             <Route path="/historique" element={<History />} />
             <Route path="/tarifs" element={<Pricing />} />
             <Route path="/economies" element={<Economies />} />

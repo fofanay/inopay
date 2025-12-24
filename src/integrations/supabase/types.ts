@@ -786,6 +786,69 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          billing_address_line1: string | null
+          billing_address_line2: string | null
+          billing_city: string | null
+          billing_country: string | null
+          billing_postal_code: string | null
+          company_name: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          last_login_at: string | null
+          last_login_ip: unknown
+          last_name: string | null
+          phone: string | null
+          phone_verified: boolean | null
+          profile_completed: boolean | null
+          updated_at: string | null
+          vat_number: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_country?: string | null
+          billing_postal_code?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id: string
+          last_login_at?: string | null
+          last_login_ip?: unknown
+          last_name?: string | null
+          phone?: string | null
+          phone_verified?: boolean | null
+          profile_completed?: boolean | null
+          updated_at?: string | null
+          vat_number?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_country?: string | null
+          billing_postal_code?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          last_login_at?: string | null
+          last_login_ip?: unknown
+          last_name?: string | null
+          phone?: string | null
+          phone_verified?: boolean | null
+          profile_completed?: boolean | null
+          updated_at?: string | null
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
       projects_analysis: {
         Row: {
           created_at: string

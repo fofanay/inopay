@@ -182,10 +182,12 @@ const Header = () => {
                   </Link>
                 )}
                 {getPlanBadge()}
-                <div className="flex items-center gap-2 text-sm text-white/80">
-                  <User className="h-4 w-4" />
-                  <span className="max-w-[150px] truncate">{user.email}</span>
-                </div>
+                <Link to="/profil">
+                  <div className="flex items-center gap-2 text-sm text-white/80 hover:text-white cursor-pointer transition-colors">
+                    <User className="h-4 w-4" />
+                    <span className="max-w-[150px] truncate">{user.email}</span>
+                  </div>
+                </Link>
                 <Link to="/parametres">
                   <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
                     <Settings className="h-4 w-4" />
@@ -283,10 +285,12 @@ const Header = () => {
                       )}
                       {getPlanBadge()}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span className="truncate">{user.email}</span>
-                    </div>
+                    <Link to="/profil" onClick={() => setMobileMenuOpen(false)}>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <User className="h-4 w-4" />
+                        <span className="truncate">{user.email}</span>
+                      </div>
+                    </Link>
                     {isAdmin && (
                       <Link to="/admin-dashboard" onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="outline" size="sm" className="w-full gap-2 border-destructive/50 text-destructive">
@@ -295,6 +299,12 @@ const Header = () => {
                         </Button>
                       </Link>
                     )}
+                    <Link to="/profil" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        <User className="h-4 w-4 mr-2" />
+                        {t("common.profile")}
+                      </Button>
+                    </Link>
                     <Link to="/parametres" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="outline" size="sm" className="w-full">
                         <Settings className="h-4 w-4 mr-2" />
