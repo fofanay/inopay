@@ -102,30 +102,88 @@ async function pushToGitHub(
       baseTreeSha = '';
     }
 
-    // Create blobs for all files
+    // Create blobs for all files with retry logic
     const treeItems = [];
-    for (const file of files) {
-      const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/blobs`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content: btoa(unescape(encodeURIComponent(file.content))),
-          encoding: 'base64',
-        }),
-      });
+    const failedBlobs: string[] = [];
+    
+    const createBlobWithRetry = async (file: { path: string; content: string }, retries = 3): Promise<string | null> => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          // Validate content is not truncated (check for basic syntax issues)
+          const content = file.content;
+          if (!content || content.length === 0) {
+            console.warn(`[GitHub] Empty content for ${file.path}, skipping`);
+            return null;
+          }
+          
+          // Encode content safely
+          const encodedContent = btoa(unescape(encodeURIComponent(content)));
+          
+          const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/blobs`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              content: encodedContent,
+              encoding: 'base64',
+            }),
+          });
 
-      if (!blobResponse.ok) {
-        console.error(`Failed to create blob for ${file.path}`);
-        continue;
+          if (blobResponse.ok) {
+            const blob = await blobResponse.json();
+            return blob.sha;
+          }
+          
+          // Log error details
+          const errorText = await blobResponse.text();
+          console.error(`[GitHub] Attempt ${attempt}/${retries} failed for ${file.path}: ${blobResponse.status} - ${errorText}`);
+          
+          if (blobResponse.status === 403 || blobResponse.status === 429) {
+            // Rate limited - wait longer
+            await new Promise(r => setTimeout(r, 2000 * attempt));
+          } else if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+          }
+        } catch (err) {
+          console.error(`[GitHub] Error creating blob for ${file.path}:`, err);
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+          }
+        }
       }
-
-      const blob = await blobResponse.json();
-      treeItems.push({
-        path: file.path,
-        mode: '100644',
-        type: 'blob',
-        sha: blob.sha,
-      });
+      return null;
+    };
+    
+    // Process files in batches to avoid rate limiting
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async (file) => {
+          const sha = await createBlobWithRetry(file);
+          return { file, sha };
+        })
+      );
+      
+      for (const { file, sha } of results) {
+        if (sha) {
+          treeItems.push({
+            path: file.path,
+            mode: '100644',
+            type: 'blob',
+            sha,
+          });
+        } else {
+          failedBlobs.push(file.path);
+        }
+      }
+    }
+    
+    if (failedBlobs.length > 0) {
+      console.warn(`[GitHub] Failed to create blobs for ${failedBlobs.length} files:`, failedBlobs.slice(0, 10));
+    }
+    
+    if (treeItems.length === 0) {
+      return { success: false, error: 'Aucun fichier n\'a pu être envoyé vers GitHub' };
     }
 
     // Create tree
@@ -530,35 +588,45 @@ serve(async (req) => {
       };
     }
 
-    // Phase 3: Trigger Coolify deployment (if GitHub succeeded and Coolify is configured)
+    // Phase 3: Trigger Coolify deployment (even if GitHub failed partially - try with existing app)
     let coolifyResult: { success: boolean; deploymentUrl: string | undefined; error: string } = { 
       success: false, 
       deploymentUrl: undefined, 
       error: 'Non configuré' 
     };
 
-    if (githubResult.success && githubResult.repoUrl) {
-      // Get server with Coolify config
-      const { data: servers } = await supabase
-        .from('user_servers')
-        .select('coolify_url, coolify_token')
-        .eq('user_id', user.id)
-        .not('coolify_token', 'is', null)
-        .limit(1);
+    // Get server with Coolify config
+    const { data: servers } = await supabase
+      .from('user_servers')
+      .select('coolify_url, coolify_token')
+      .eq('user_id', user.id)
+      .not('coolify_token', 'is', null)
+      .limit(1);
 
-      if (servers && servers.length > 0 && servers[0].coolify_url && servers[0].coolify_token) {
-        console.log(`[Liberation] Triggering Coolify deployment`);
-        const deployResult = await triggerCoolifyDeployment(
-          servers[0].coolify_url,
-          servers[0].coolify_token,
-          githubResult.repoUrl,
-          projectName
-        );
-        coolifyResult = {
-          success: deployResult.success,
-          deploymentUrl: deployResult.deploymentUrl,
-          error: deployResult.error || '',
-        };
+    if (servers && servers.length > 0 && servers[0].coolify_url && servers[0].coolify_token) {
+      // Try Coolify deployment regardless of GitHub result
+      // If GitHub succeeded, use the new repo URL
+      // If GitHub failed, still try to trigger existing app deployment (might be using source repo)
+      const repoUrlToUse = githubResult.repoUrl || `https://github.com/fofanay/inopay`;
+      
+      console.log(`[Liberation] Triggering Coolify deployment with repo: ${repoUrlToUse}`);
+      
+      const deployResult = await triggerCoolifyDeployment(
+        servers[0].coolify_url,
+        servers[0].coolify_token,
+        repoUrlToUse,
+        projectName
+      );
+      coolifyResult = {
+        success: deployResult.success,
+        deploymentUrl: deployResult.deploymentUrl,
+        error: deployResult.error || '',
+      };
+      
+      // If Coolify succeeded but GitHub failed, note this in the result
+      if (coolifyResult.success && !githubResult.success) {
+        console.log(`[Liberation] Coolify deployed successfully despite GitHub failure`);
+        coolifyResult.error = 'Déployé avec le dépôt source (GitHub push a échoué)';
       }
     }
 

@@ -297,7 +297,7 @@ export function SelfLiberationLauncher() {
       updateStep('fetch', { status: 'running', message: 'Téléchargement des fichiers source...' });
       setProgress(10);
 
-      // Get repo tree
+      // Get repo tree (all files, not truncated)
       const treeResponse = await fetch(
         `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/main?recursive=1`,
         {
@@ -322,6 +322,7 @@ export function SelfLiberationLauncher() {
         !item.path.includes('dist/') &&
         !item.path.includes('.git/') &&
         !item.path.includes('bun.lockb') &&
+        !item.path.includes('package-lock.json') &&
         (item.path.endsWith('.ts') || 
          item.path.endsWith('.tsx') || 
          item.path.endsWith('.js') || 
@@ -343,42 +344,119 @@ export function SelfLiberationLauncher() {
       });
       setProgress(15);
 
-      // Fetch file contents in batches
-      let fetchedCount = 0;
-      for (const file of relevantFiles.slice(0, 200)) { // Limit to 200 files
-        try {
-          const contentResponse = await fetch(
-            `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${file.path}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${settings.github_token}`,
-                'Accept': 'application/vnd.github.v3+json'
+      // Helper function to fetch file with retry and use Git Blobs API for large files
+      const fetchFileContent = async (file: any, retries = 3): Promise<string | null> => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            // First try the Contents API (works for files < 1MB)
+            const contentResponse = await fetch(
+              `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${file.path}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${settings.github_token}`,
+                  'Accept': 'application/vnd.github.v3+json'
+                }
+              }
+            );
+
+            if (contentResponse.ok) {
+              const contentData = await contentResponse.json();
+              
+              // Check if file is too large (API returns size but no content)
+              if (contentData.size && contentData.size > 100000 && !contentData.content) {
+                // Use Git Blobs API for large files
+                console.log(`[Fetch] Large file detected: ${file.path} (${contentData.size} bytes), using Blobs API`);
+                const blobResponse = await fetch(
+                  `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs/${file.sha}`,
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${settings.github_token}`,
+                      'Accept': 'application/vnd.github.v3+json'
+                    }
+                  }
+                );
+                
+                if (blobResponse.ok) {
+                  const blobData = await blobResponse.json();
+                  if (blobData.content && blobData.encoding === 'base64') {
+                    return atob(blobData.content.replace(/\n/g, ''));
+                  }
+                }
+              } else if (contentData.content) {
+                // Normal file - decode base64 content
+                return atob(contentData.content.replace(/\n/g, ''));
+              }
+            } else if (contentResponse.status === 403) {
+              // File too large - use Git Blobs API directly with SHA from tree
+              console.log(`[Fetch] File too large for Contents API: ${file.path}, using Blobs API`);
+              const blobResponse = await fetch(
+                `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs/${file.sha}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${settings.github_token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                  }
+                }
+              );
+              
+              if (blobResponse.ok) {
+                const blobData = await blobResponse.json();
+                if (blobData.content && blobData.encoding === 'base64') {
+                  return atob(blobData.content.replace(/\n/g, ''));
+                }
               }
             }
-          );
-
-          if (contentResponse.ok) {
-            const contentData = await contentResponse.json();
-            if (contentData.content) {
-              const decodedContent = atob(contentData.content.replace(/\n/g, ''));
-              filesToProcess.push({
-                path: file.path,
-                content: decodedContent
-              });
-              fetchedCount++;
+          } catch (err) {
+            console.warn(`[Fetch] Attempt ${attempt}/${retries} failed for ${file.path}:`, err);
+            if (attempt < retries) {
+              await new Promise(r => setTimeout(r, 500 * attempt)); // Exponential backoff
             }
           }
-        } catch {
-          console.warn(`Failed to fetch ${file.path}`);
+        }
+        return null;
+      };
+
+      // Fetch ALL file contents (no arbitrary limit)
+      let fetchedCount = 0;
+      let failedCount = 0;
+      const MAX_CONCURRENT = 5; // Limit concurrent requests to avoid rate limiting
+      
+      for (let i = 0; i < relevantFiles.length; i += MAX_CONCURRENT) {
+        const batch = relevantFiles.slice(i, i + MAX_CONCURRENT);
+        const results = await Promise.all(
+          batch.map(async (file: any) => {
+            const content = await fetchFileContent(file);
+            if (content !== null) {
+              return { path: file.path, content };
+            }
+            return null;
+          })
+        );
+        
+        for (const result of results) {
+          if (result) {
+            filesToProcess.push(result);
+            fetchedCount++;
+          } else {
+            failedCount++;
+          }
         }
 
         // Update progress
-        setProgress(15 + (fetchedCount / relevantFiles.length) * 25);
+        setProgress(15 + ((i + batch.length) / relevantFiles.length) * 25);
+        updateStep('fetch', { 
+          status: 'running', 
+          message: `Téléchargement: ${fetchedCount}/${relevantFiles.length} fichiers...` 
+        });
+      }
+
+      if (failedCount > 0) {
+        console.warn(`[Fetch] Failed to fetch ${failedCount} files`);
       }
 
       updateStep('fetch', { 
         status: 'success', 
-        message: `${filesToProcess.length} fichiers récupérés`,
+        message: `${filesToProcess.length} fichiers récupérés${failedCount > 0 ? ` (${failedCount} ignorés)` : ''}`,
         details: `Source: ${repoOwner}/${repoName}`
       });
       setProgress(40);
