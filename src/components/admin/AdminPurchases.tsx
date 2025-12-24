@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,13 @@ import {
   TrendingUp,
   Package,
   Filter,
-  Crown,
-  Zap
+  Crown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { formatAmount, SERVICE_LABELS } from "@/lib/constants";
+import { SERVICE_LABELS } from "@/lib/constants";
+import { useLocaleFormat } from "@/hooks/useLocaleFormat";
 
 interface Purchase {
   id: string;
@@ -46,6 +47,8 @@ interface ServiceStats {
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6'];
 
 const AdminPurchases = () => {
+  const { t } = useTranslation();
+  const { formatCurrency, formatDateTime, locale } = useLocaleFormat();
   const [loading, setLoading] = useState(true);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [serviceStats, setServiceStats] = useState<ServiceStats[]>([]);
@@ -56,6 +59,10 @@ const AdminPurchases = () => {
   const [conversionRate, setConversionRate] = useState(0);
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
   const [usersWithEnterprise, setUsersWithEnterprise] = useState(0);
+
+  const formatAmount = (amount: number) => {
+    return formatCurrency(amount / 100, 'CAD');
+  };
 
   const fetchPurchases = async () => {
     setLoading(true);
@@ -140,13 +147,13 @@ const AdminPurchases = () => {
       }
 
       setDailyRevenue(Object.entries(daily).map(([date, revenue]) => ({
-        date: new Date(date).toLocaleDateString('fr-FR', { weekday: 'short' }),
+        date: new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(date)),
         revenue: revenue / 100,
       })));
 
     } catch (error) {
       console.error("Error fetching purchases:", error);
-      toast.error("Erreur lors du chargement des achats");
+      toast.error(t('adminPurchases.loadingError'));
     } finally {
       setLoading(false);
     }
@@ -168,29 +175,20 @@ const AdminPurchases = () => {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const getStatusBadge = (purchase: Purchase) => {
     if (purchase.status === "refunded") {
-      return <Badge variant="destructive">Remboursé</Badge>;
+      return <Badge variant="destructive">{t('adminPurchases.refunded')}</Badge>;
     }
     if (purchase.is_subscription) {
       if (purchase.subscription_status === "active") {
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Actif</Badge>;
+        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">{t('adminPurchases.active')}</Badge>;
       }
       return <Badge variant="secondary">{purchase.subscription_status}</Badge>;
     }
     if (purchase.used) {
-      return <Badge variant="secondary">Utilisé</Badge>;
+      return <Badge variant="secondary">{t('adminPurchases.usedStatus')}</Badge>;
     }
-    return <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">Disponible</Badge>;
+    return <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">{t('adminPurchases.available')}</Badge>;
   };
 
   // Check if purchase grants enterprise limits
@@ -238,7 +236,7 @@ const AdminPurchases = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-emerald-400">{formatAmount(totalRevenue)}</p>
-                <p className="text-xs text-zinc-400">Revenus totaux</p>
+                <p className="text-xs text-zinc-400">{t('adminPurchases.totalRevenue')}</p>
               </div>
             </div>
           </CardContent>
@@ -252,7 +250,7 @@ const AdminPurchases = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-400">{formatAmount(mrr)}</p>
-                <p className="text-xs text-zinc-400">MRR (Monitoring)</p>
+                <p className="text-xs text-zinc-400">{t('adminPurchases.mrr')}</p>
               </div>
             </div>
           </CardContent>
@@ -266,7 +264,7 @@ const AdminPurchases = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-violet-400">{purchases.length}</p>
-                <p className="text-xs text-zinc-400">Total achats</p>
+                <p className="text-xs text-zinc-400">{t('adminPurchases.totalPurchases')}</p>
               </div>
             </div>
           </CardContent>
@@ -280,7 +278,7 @@ const AdminPurchases = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-amber-400">{conversionRate}%</p>
-                <p className="text-xs text-zinc-400">Taux d'utilisation</p>
+                <p className="text-xs text-zinc-400">{t('adminPurchases.usageRate')}</p>
               </div>
             </div>
           </CardContent>
@@ -294,7 +292,7 @@ const AdminPurchases = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-pink-400">{usersWithEnterprise}</p>
-                <p className="text-xs text-zinc-400">Users Enterprise</p>
+                <p className="text-xs text-zinc-400">{t('adminPurchases.enterpriseUsers')}</p>
               </div>
             </div>
           </CardContent>
@@ -305,8 +303,8 @@ const AdminPurchases = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-zinc-100">Revenus par jour</CardTitle>
-            <CardDescription className="text-zinc-400">7 derniers jours</CardDescription>
+            <CardTitle className="text-zinc-100">{t('adminPurchases.revenueByDay')}</CardTitle>
+            <CardDescription className="text-zinc-400">{t('adminPurchases.last7Days')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -323,7 +321,7 @@ const AdminPurchases = () => {
                   <YAxis stroke="#71717a" fontSize={12} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
-                    formatter={(value: number) => [`${value.toFixed(2)} $`, 'Revenus']}
+                    formatter={(value: number) => [formatCurrency(value, 'CAD'), t('adminPurchases.revenue')]}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revenueGradient)" />
                 </AreaChart>
@@ -334,8 +332,8 @@ const AdminPurchases = () => {
 
         <Card className="bg-zinc-900/50 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-zinc-100">Répartition par service</CardTitle>
-            <CardDescription className="text-zinc-400">Distribution des revenus</CardDescription>
+            <CardTitle className="text-zinc-100">{t('adminPurchases.serviceDistribution')}</CardTitle>
+            <CardDescription className="text-zinc-400">{t('adminPurchases.revenueDistribution')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -356,7 +354,7 @@ const AdminPurchases = () => {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
-                    formatter={(value: number) => [`${value.toFixed(2)} $`, '']}
+                    formatter={(value: number) => [formatCurrency(value, 'CAD'), '']}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -376,7 +374,7 @@ const AdminPurchases = () => {
       {/* Service Stats */}
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-zinc-100">Statistiques par service</CardTitle>
+          <CardTitle className="text-zinc-100">{t('adminPurchases.serviceStats')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -393,11 +391,11 @@ const AdminPurchases = () => {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-lg font-bold text-zinc-100">{stat.count} ventes</p>
+                  <p className="text-lg font-bold text-zinc-100">{stat.count} {t('adminPurchases.sales')}</p>
                   <p className="text-sm text-emerald-400">{formatAmount(stat.revenue)}</p>
                   {!stat.type.includes("monitoring") && (
                     <p className="text-xs text-zinc-500">
-                      {stat.usedCount}/{stat.count} utilisés ({stat.count > 0 ? Math.round((stat.usedCount / stat.count) * 100) : 0}%)
+                      {stat.usedCount}/{stat.count} {t('adminPurchases.used')} ({stat.count > 0 ? Math.round((stat.usedCount / stat.count) * 100) : 0}%)
                     </p>
                   )}
                 </div>
@@ -411,32 +409,32 @@ const AdminPurchases = () => {
       <Card className="bg-zinc-900/50 border-zinc-800">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-zinc-100">Tous les achats</CardTitle>
-            <CardDescription className="text-zinc-400">{filteredPurchases.length} achats</CardDescription>
+            <CardTitle className="text-zinc-100">{t('adminPurchases.allPurchases')}</CardTitle>
+            <CardDescription className="text-zinc-400">{t('adminPurchases.purchasesCount', { count: filteredPurchases.length })}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Service" />
+                <SelectValue placeholder={t('adminPurchases.service')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous services</SelectItem>
-                <SelectItem value="deploy">Déploiement</SelectItem>
-                <SelectItem value="redeploy">Re-déploiement</SelectItem>
-                <SelectItem value="monitoring">Monitoring</SelectItem>
-                <SelectItem value="server">Serveur</SelectItem>
+                <SelectItem value="all">{t('adminPurchases.allServices')}</SelectItem>
+                <SelectItem value="deploy">{t('adminPurchases.deployment')}</SelectItem>
+                <SelectItem value="redeploy">{t('adminPurchases.redeployment')}</SelectItem>
+                <SelectItem value="monitoring">{t('adminPurchases.monitoring')}</SelectItem>
+                <SelectItem value="server">{t('adminPurchases.server')}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterEnterprise} onValueChange={setFilterEnterprise}>
               <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700">
                 <Crown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Limites" />
+                <SelectValue placeholder={t('adminPurchases.limits')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="enterprise">Enterprise</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="all">{t('adminPurchases.all')}</SelectItem>
+                <SelectItem value="enterprise">{t('adminPurchases.enterprise')}</SelectItem>
+                <SelectItem value="standard">{t('adminPurchases.standard')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={fetchPurchases} className="border-zinc-700">
@@ -448,11 +446,11 @@ const AdminPurchases = () => {
           <Table>
             <TableHeader>
               <TableRow className="border-zinc-800">
-                <TableHead className="text-zinc-400">Service</TableHead>
-                <TableHead className="text-zinc-400">Montant</TableHead>
-                <TableHead className="text-zinc-400">Date</TableHead>
-                <TableHead className="text-zinc-400">Limites</TableHead>
-                <TableHead className="text-zinc-400">Statut</TableHead>
+                <TableHead className="text-zinc-400">{t('adminPurchases.service')}</TableHead>
+                <TableHead className="text-zinc-400">{t('adminPurchases.amount')}</TableHead>
+                <TableHead className="text-zinc-400">{t('adminPurchases.date')}</TableHead>
+                <TableHead className="text-zinc-400">{t('adminPurchases.limits')}</TableHead>
+                <TableHead className="text-zinc-400">{t('adminPurchases.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -470,13 +468,13 @@ const AdminPurchases = () => {
                     {formatAmount(purchase.amount)}
                   </TableCell>
                   <TableCell className="text-zinc-400">
-                    {formatDate(purchase.created_at)}
+                    {formatDateTime(purchase.created_at)}
                   </TableCell>
                   <TableCell>
                     {hasEnterpriseLimits(purchase) ? (
                       <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
                         <Crown className="h-3 w-3 mr-1" />
-                        Enterprise
+                        {t('adminPurchases.enterprise')}
                       </Badge>
                     ) : (
                       <span className="text-zinc-500">—</span>
