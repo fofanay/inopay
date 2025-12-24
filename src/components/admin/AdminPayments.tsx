@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,10 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, TrendingUp, DollarSign, CreditCard, RotateCcw, Eye } from "lucide-react";
+import { Loader2, RefreshCw, TrendingUp, DollarSign, CreditCard, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useLocaleFormat } from "@/hooks/useLocaleFormat";
 
 interface Payment {
   id: string;
@@ -36,6 +38,8 @@ interface Balance {
 }
 
 const AdminPayments = () => {
+  const { t } = useTranslation();
+  const { formatCurrency, formatDateTime, locale } = useLocaleFormat();
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [stats, setStats] = useState<PaymentStats | null>(null);
@@ -62,7 +66,7 @@ const AdminPayments = () => {
       setBalance(data.balance || null);
     } catch (error) {
       console.error("Error fetching payments:", error);
-      toast.error("Erreur lors du chargement des paiements");
+      toast.error(t("adminPayments.loadingError"));
     } finally {
       setLoading(false);
     }
@@ -91,32 +95,23 @@ const AdminPayments = () => {
 
       if (error) throw error;
 
-      toast.success("Remboursement effectué");
+      toast.success(t("adminPayments.refundSuccess"));
       setRefundDialog({ open: false, payment: null });
       fetchPayments();
     } catch (error) {
       console.error("Error refunding:", error);
-      toast.error("Erreur lors du remboursement");
+      toast.error(t("adminPayments.refundError"));
     } finally {
       setRefunding(false);
     }
   };
 
-  const formatAmount = (amount: number, currency: string = "cad") => {
-    return new Intl.NumberFormat("fr-CA", {
-      style: "currency",
-      currency: "CAD",
-    }).format(amount / 100);
+  const formatAmount = (amount: number) => {
+    return formatCurrency(amount / 100, "CAD");
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateTime(new Date(timestamp * 1000));
   };
 
   const getStatusBadge = (status: string) => {
@@ -135,7 +130,7 @@ const AdminPayments = () => {
     .slice(0, 30)
     .reverse()
     .map(p => ({
-      date: new Date(p.created * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+      date: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit" }).format(new Date(p.created * 1000)),
       amount: p.amount / 100,
     }));
 
@@ -155,9 +150,9 @@ const AdminPayments = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-primary-foreground/80">Solde disponible</p>
+                <p className="text-sm font-medium text-primary-foreground/80">{t("adminPayments.availableBalance")}</p>
                 <p className="text-2xl font-bold text-primary-foreground">
-                  {balance?.available?.[0] ? formatAmount(balance.available[0].amount) : "0,00 $CA"}
+                  {balance?.available?.[0] ? formatAmount(balance.available[0].amount) : formatCurrency(0, "CAD")}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-primary-foreground/20">
@@ -171,9 +166,9 @@ const AdminPayments = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-success-foreground/80">Revenus ce mois</p>
+                <p className="text-sm font-medium text-success-foreground/80">{t("adminPayments.monthlyRevenue")}</p>
                 <p className="text-2xl font-bold text-success-foreground">
-                  {stats ? formatAmount(stats.monthly_revenue) : "0,00 $CA"}
+                  {stats ? formatAmount(stats.monthly_revenue) : formatCurrency(0, "CAD")}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-success-foreground/20">
@@ -187,7 +182,7 @@ const AdminPayments = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-white/80">Paiements réussis</p>
+                <p className="text-sm font-medium text-white/80">{t("adminPayments.successfulPayments")}</p>
                 <p className="text-2xl font-bold text-white">{stats?.successful_payments || 0}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/20">
@@ -201,9 +196,9 @@ const AdminPayments = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-warning-foreground/80">Total remboursements</p>
+                <p className="text-sm font-medium text-warning-foreground/80">{t("adminPayments.totalRefunds")}</p>
                 <p className="text-2xl font-bold text-warning-foreground">
-                  {stats ? formatAmount(stats.total_refunds) : "0,00 $CA"}
+                  {stats ? formatAmount(stats.total_refunds) : formatCurrency(0, "CAD")}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-warning-foreground/20">
@@ -222,9 +217,9 @@ const AdminPayments = () => {
               <div className="p-2 rounded-lg bg-primary/10">
                 <TrendingUp className="h-5 w-5 text-primary" />
               </div>
-              Évolution des revenus
+              {t("adminPayments.revenueEvolution")}
             </CardTitle>
-            <CardDescription>30 derniers paiements réussis</CardDescription>
+            <CardDescription>{t("adminPayments.last30Payments")}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="h-64">
@@ -238,9 +233,9 @@ const AdminPayments = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="date" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(v) => `${v} $`} />
+                  <YAxis className="text-xs" tickFormatter={(v) => formatCurrency(v, "CAD")} />
                   <Tooltip 
-                    formatter={(value: number) => [`${value.toFixed(2)} $CA`, "Montant"]}
+                    formatter={(value: number) => [formatCurrency(value, "CAD"), t("adminPayments.amount")]}
                     contentStyle={{ 
                       backgroundColor: "hsl(var(--card))", 
                       border: "1px solid hsl(var(--border))",
@@ -269,13 +264,13 @@ const AdminPayments = () => {
               <div className="p-2 rounded-lg bg-primary/10">
                 <CreditCard className="h-5 w-5 text-primary" />
               </div>
-              Historique des paiements
+              {t("adminPayments.paymentHistory")}
             </CardTitle>
-            <CardDescription className="mt-1">{payments.length} paiements</CardDescription>
+            <CardDescription className="mt-1">{t("adminPayments.paymentsCount", { count: payments.length })}</CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchPayments} className="border-border/50 hover:bg-muted">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
+            {t("adminPayments.refresh")}
           </Button>
         </CardHeader>
         <CardContent className="pt-6">
@@ -283,11 +278,11 @@ const AdminPayments = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="font-semibold">Date</TableHead>
-                  <TableHead className="font-semibold">Client</TableHead>
-                  <TableHead className="font-semibold">Montant</TableHead>
-                  <TableHead className="font-semibold">Statut</TableHead>
-                  <TableHead className="font-semibold">Actions</TableHead>
+                  <TableHead className="font-semibold">{t("adminPayments.date")}</TableHead>
+                  <TableHead className="font-semibold">{t("adminPayments.client")}</TableHead>
+                  <TableHead className="font-semibold">{t("adminPayments.amount")}</TableHead>
+                  <TableHead className="font-semibold">{t("adminPayments.status")}</TableHead>
+                  <TableHead className="font-semibold">{t("adminPayments.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -298,12 +293,12 @@ const AdminPayments = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{payment.customer_name || "N/A"}</p>
-                        <p className="text-sm text-muted-foreground">{payment.customer_email || "N/A"}</p>
+                        <p className="font-medium">{payment.customer_name || t("adminPayments.na")}</p>
+                        <p className="text-sm text-muted-foreground">{payment.customer_email || t("adminPayments.na")}</p>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatAmount(payment.amount, payment.currency)}
+                      {formatAmount(payment.amount)}
                     </TableCell>
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>
@@ -318,7 +313,7 @@ const AdminPayments = () => {
                           className="border-border/50 hover:bg-muted"
                         >
                           <RotateCcw className="h-4 w-4 mr-1" />
-                          Rembourser
+                          {t("adminPayments.refund")}
                         </Button>
                       )}
                     </TableCell>
@@ -334,45 +329,45 @@ const AdminPayments = () => {
       <Dialog open={refundDialog.open} onOpenChange={(open) => setRefundDialog({ open, payment: open ? refundDialog.payment : null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rembourser le paiement</DialogTitle>
+            <DialogTitle>{t("adminPayments.refundPayment")}</DialogTitle>
             <DialogDescription>
-              Montant original : {refundDialog.payment && formatAmount(refundDialog.payment.amount, refundDialog.payment.currency)}
+              {t("adminPayments.originalAmount")} : {refundDialog.payment && formatAmount(refundDialog.payment.amount)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Montant à rembourser (en centimes)</Label>
+              <Label>{t("adminPayments.amountToRefund")}</Label>
               <Input
                 type="number"
-                placeholder={`Laisser vide pour remboursement total (${refundDialog.payment?.amount || 0})`}
+                placeholder={`${t("adminPayments.leaveEmptyForFull")} (${refundDialog.payment?.amount || 0})`}
                 value={refundAmount}
                 onChange={(e) => setRefundAmount(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Laisser vide pour un remboursement total
+                {t("adminPayments.leaveEmptyForFull")}
               </p>
             </div>
             <div>
-              <Label>Raison</Label>
+              <Label>{t("adminPayments.reason")}</Label>
               <Select value={refundReason} onValueChange={setRefundReason}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="requested_by_customer">Demandé par le client</SelectItem>
-                  <SelectItem value="duplicate">Paiement en double</SelectItem>
-                  <SelectItem value="fraudulent">Fraude</SelectItem>
+                  <SelectItem value="requested_by_customer">{t("adminPayments.requestedByCustomer")}</SelectItem>
+                  <SelectItem value="duplicate">{t("adminPayments.duplicate")}</SelectItem>
+                  <SelectItem value="fraudulent">{t("adminPayments.fraudulent")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRefundDialog({ open: false, payment: null })}>
-              Annuler
+              {t("adminPayments.cancel")}
             </Button>
             <Button onClick={handleRefund} disabled={refunding}>
               {refunding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Confirmer le remboursement
+              {t("adminPayments.confirmRefund")}
             </Button>
           </DialogFooter>
         </DialogContent>
