@@ -10,17 +10,23 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Mail, Lock, ArrowLeft, Github } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
+import OTPVerification from "@/components/auth/OTPVerification";
+
+type AuthStep = "credentials" | "otp";
 
 const Auth = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [authStep, setAuthStep] = useState<AuthStep>("credentials");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPassword, setPendingPassword] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
 
   const authSchema = z.object({
     email: z.string().email(t("auth.invalidEmail")),
@@ -42,6 +48,7 @@ const Auth = () => {
     
     try {
       if (isLogin) {
+        // Login flow - unchanged
         const { error } = await signIn(data.email, data.password);
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
@@ -65,38 +72,66 @@ const Auth = () => {
           navigate("/dashboard");
         }
       } else {
-        const { error } = await signUp(data.email, data.password);
+        // Signup flow - send OTP
+        const { data: otpData, error } = await supabase.functions.invoke("send-otp", {
+          body: { 
+            email: data.email, 
+            password: data.password,
+            language: i18n.language 
+          },
+        });
+
         if (error) {
-          if (error.message.includes("User already registered")) {
-            toast({
-              title: t("auth.accountExists"),
-              description: t("auth.emailAlreadyUsed"),
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: t("common.error"),
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-        } else {
           toast({
-            title: t("auth.signupSuccess"),
-            description: t("auth.welcomeNew"),
+            title: t("common.error"),
+            description: error.message,
+            variant: "destructive",
           });
-          navigate("/dashboard");
+          return;
         }
+
+        if (otpData?.error) {
+          toast({
+            title: t("common.error"),
+            description: otpData.error,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Store credentials and move to OTP step
+        setPendingEmail(data.email);
+        setPendingPassword(data.password);
+        setAuthStep("otp");
+        
+        toast({
+          title: t("auth.otp.sent"),
+          description: t("auth.otp.checkEmail"),
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: t("common.error"),
-        description: t("auth.unexpectedError"),
+        description: error.message || t("auth.unexpectedError"),
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOTPSuccess = () => {
+    toast({
+      title: t("auth.signupSuccess"),
+      description: t("auth.welcomeNew"),
+    });
+    navigate("/dashboard");
+  };
+
+  const handleBackToCredentials = () => {
+    setAuthStep("credentials");
+    setPendingEmail("");
+    setPendingPassword("");
   };
 
   return (
@@ -114,119 +149,98 @@ const Auth = () => {
           {t("auth.backToHome")}
         </Link>
 
-        <Card className="border-border/50 bg-card/80 backdrop-blur-xl">
-          <CardHeader className="text-center space-y-4">
-            {/* Logo */}
-            <div className="flex justify-center">
+        {authStep === "otp" ? (
+          <>
+            {/* Logo above OTP card */}
+            <div className="flex justify-center mb-6">
               <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
             </div>
-            <div>
-              <CardTitle className="text-2xl">
-                {isLogin ? t("auth.login") : t("auth.signup")}
-              </CardTitle>
-              <CardDescription className="mt-2">
-                {isLogin ? t("auth.loginDesc") : t("auth.signupDesc")}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("auth.email")}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder={t("auth.emailPlaceholder")} 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("auth.password")}</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            type="password" 
-                            placeholder={t("auth.passwordPlaceholder")} 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full glow-sm" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLogin ? t("auth.submit") : t("auth.submitSignup")}
-                </Button>
-              </form>
-            </Form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+            <OTPVerification
+              email={pendingEmail}
+              password={pendingPassword}
+              onSuccess={handleOTPSuccess}
+              onBack={handleBackToCredentials}
+            />
+          </>
+        ) : (
+          <Card className="border-border/50 bg-card/80 backdrop-blur-xl">
+            <CardHeader className="text-center space-y-4">
+              {/* Logo */}
+              <div className="flex justify-center">
+                <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">{t("auth.orContinueWith")}</span>
+              <div>
+                <CardTitle className="text-2xl">
+                  {isLogin ? t("auth.login") : t("auth.signup")}
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  {isLogin ? t("auth.loginDesc") : t("auth.signupDesc")}
+                </CardDescription>
               </div>
-            </div>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("auth.email")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              placeholder={t("auth.emailPlaceholder")} 
+                              className="pl-10" 
+                              {...field} 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("auth.password")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              type="password" 
+                              placeholder={t("auth.passwordPlaceholder")} 
+                              className="pl-10" 
+                              {...field} 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full glow-sm" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLogin ? t("auth.submit") : t("auth.submitSignup")}
+                  </Button>
+                </form>
+              </Form>
 
-            {/* GitHub OAuth */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={async () => {
-                const { error } = await supabase.auth.signInWithOAuth({
-                  provider: "github",
-                  options: {
-                    redirectTo: `${window.location.origin}/dashboard`,
-                    scopes: "repo read:user user:email",
-                  },
-                });
-                if (error) {
-                  toast({
-                    title: t("common.error"),
-                    description: error.message,
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <Github className="h-4 w-4" />
-              GitHub
-            </Button>
-
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {isLogin ? t("auth.noAccount") : t("auth.hasAccount")}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="mt-6 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {isLogin ? t("auth.noAccount") : t("auth.hasAccount")}
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

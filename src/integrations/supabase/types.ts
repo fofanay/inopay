@@ -684,6 +684,42 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_verifications: {
+        Row: {
+          attempts: number
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          max_attempts: number
+          otp_code: string
+          password_hash: string
+          verified: boolean
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          otp_code: string
+          password_hash: string
+          verified?: boolean
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          otp_code?: string
+          password_hash?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       pending_liberation_payments: {
         Row: {
           base_token_cost_cents: number
@@ -1355,6 +1391,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otps: { Args: never; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
