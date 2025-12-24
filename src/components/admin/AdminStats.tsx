@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, DollarSign, TrendingUp, RefreshCw, Loader2, Zap, Target, CreditCard, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatAmount } from "@/lib/constants";
+import { useLocaleFormat } from "@/hooks/useLocaleFormat";
 
 interface Stats {
   totalUsers: number;
@@ -18,8 +19,14 @@ interface Stats {
 }
 
 const AdminStats = () => {
+  const { t } = useTranslation();
+  const { formatCurrency } = useLocaleFormat();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const formatAmount = (amount: number) => {
+    return formatCurrency(amount / 100, "CAD");
+  };
 
   const fetchStats = async () => {
     setLoading(true);
@@ -79,7 +86,7 @@ const AdminStats = () => {
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
-      toast.error("Erreur lors du chargement des statistiques");
+      toast.error(t("adminStats.loadingError"));
     } finally {
       setLoading(false);
     }
@@ -99,36 +106,36 @@ const AdminStats = () => {
 
   const statCards = [
     {
-      title: "Utilisateurs",
+      title: t("adminStats.users"),
       value: stats?.totalUsers || 0,
-      subtitle: "Comptes inscrits",
+      subtitle: t("adminStats.registeredAccounts"),
       icon: Users,
       gradient: "from-primary to-primary/80",
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
     },
     {
-      title: "Crédits Vendus (30j)",
+      title: t("adminStats.creditsSold30d"),
       value: stats?.creditsVendus30j || 0,
-      subtitle: "Pay-per-Service",
+      subtitle: t("adminStats.payPerService"),
       icon: CreditCard,
       gradient: "from-violet-500 to-violet-400",
       iconBg: "bg-violet-500/10",
       iconColor: "text-violet-400",
     },
     {
-      title: "Revenus (30j)",
+      title: t("adminStats.revenue30d"),
       value: formatAmount(stats?.revenusPayPerService || 0),
-      subtitle: "Pay-per-Service",
+      subtitle: t("adminStats.payPerService"),
       icon: DollarSign,
       gradient: "from-emerald-500 to-emerald-400",
       iconBg: "bg-emerald-500/10",
       iconColor: "text-emerald-400",
     },
     {
-      title: "Taux Conversion",
+      title: t("adminStats.conversionRate"),
       value: `${stats?.tauxConversion || 0}%`,
-      subtitle: "Crédit → Déploiement",
+      subtitle: t("adminStats.creditToDeployment"),
       icon: Rocket,
       gradient: "from-amber-500 to-amber-400",
       iconBg: "bg-amber-500/10",
@@ -170,13 +177,13 @@ const AdminStats = () => {
                   <Target className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle>Score de Liberté Moyen</CardTitle>
-                  <CardDescription>Performance globale des analyses</CardDescription>
+                  <CardTitle>{t("adminStats.averageFreedomScore")}</CardTitle>
+                  <CardDescription>{t("adminStats.analysisPerformance")}</CardDescription>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={fetchStats} className="gap-2">
                 <RefreshCw className="h-4 w-4" />
-                Actualiser
+                {t("adminStats.refresh")}
               </Button>
             </div>
           </CardHeader>
@@ -218,13 +225,13 @@ const AdminStats = () => {
                       : "bg-destructive/10 text-destructive border-destructive/20"
                 }`}>
                   {(stats?.averageScore || 0) >= 80 
-                    ? "Excellent" 
+                    ? t("adminStats.excellent")
                     : (stats?.averageScore || 0) >= 60 
-                      ? "Moyen" 
-                      : "À améliorer"}
+                      ? t("adminStats.average")
+                      : t("adminStats.needsImprovement")}
                 </Badge>
                 <p className="text-sm text-muted-foreground">
-                  Score moyen sur {stats?.totalProjects || 0} projets
+                  {t("adminStats.averageScoreOn", { count: stats?.totalProjects || 0 })}
                 </p>
               </div>
             </div>
@@ -239,8 +246,8 @@ const AdminStats = () => {
                 <Zap className="h-6 w-6 text-accent" />
               </div>
               <div>
-                <CardTitle>Résumé Activité</CardTitle>
-                <CardDescription>Métriques clés du modèle Pay-per-Service</CardDescription>
+                <CardTitle>{t("adminStats.activitySummary")}</CardTitle>
+                <CardDescription>{t("adminStats.keyMetrics")}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -248,21 +255,21 @@ const AdminStats = () => {
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <span>Projets analysés</span>
+                <span>{t("adminStats.analyzedProjects")}</span>
               </div>
               <span className="font-bold text-primary">{stats?.totalProjects || 0}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-success" />
-                <span>Déploiements totaux</span>
+                <span>{t("adminStats.totalDeployments")}</span>
               </div>
               <span className="font-bold text-success">{stats?.totalDeployments || 0}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-emerald-500/10 rounded-lg">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-emerald-400" />
-                <span>Revenus Pay-per-Service</span>
+                <span>{t("adminStats.payPerServiceRevenue")}</span>
               </div>
               <span className="font-bold text-emerald-400">{formatAmount(stats?.revenusPayPerService || 0)}</span>
             </div>
