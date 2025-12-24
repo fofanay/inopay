@@ -21,7 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr, enUS } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 interface DeploymentRecord {
   id: string;
@@ -41,9 +42,12 @@ interface DeploymentHistoryProps {
 
 export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [deployments, setDeployments] = useState<DeploymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  
+  const dateLocale = i18n.language === 'fr' ? fr : enUS;
 
   const fetchDeployments = async () => {
     if (!user) return;
@@ -60,7 +64,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
       setDeployments(data || []);
     } catch (error) {
       console.error("Error fetching deployments:", error);
-      toast.error("Impossible de charger l'historique");
+      toast.error(t("deploymentHistory.loadError"));
     } finally {
       setLoading(false);
     }
@@ -81,10 +85,10 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
       if (error) throw error;
       
       setDeployments(prev => prev.filter(d => d.id !== id));
-      toast.success("Déploiement supprimé de l'historique");
+      toast.success(t("deploymentHistory.deleteSuccess"));
     } catch (error) {
       console.error("Error deleting deployment:", error);
-      toast.error("Impossible de supprimer");
+      toast.error(t("deploymentHistory.deleteError"));
     } finally {
       setDeleting(null);
     }
@@ -112,7 +116,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
         return (
           <Badge variant="outline" className="gap-1 bg-primary/10 border-primary/30 text-primary">
             <Zap className="h-3 w-3" />
-            Ultra-Rapide
+            {t("deploymentHistory.ultraFast")}
           </Badge>
         );
       default:
@@ -125,7 +129,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
       <Card>
         <CardContent className="p-8 text-center">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="mt-2 text-muted-foreground">Chargement...</p>
+          <p className="mt-2 text-muted-foreground">{t("common.loading")}</p>
         </CardContent>
       </Card>
     );
@@ -138,9 +142,9 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
           <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
             <History className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h3 className="font-medium text-foreground mb-1">Aucun déploiement</h3>
+          <h3 className="font-medium text-foreground mb-1">{t("deploymentHistory.noDeployments")}</h3>
           <p className="text-sm text-muted-foreground">
-            Vos déploiements réussis apparaîtront ici
+            {t("deploymentHistory.noDeploymentsDesc")}
           </p>
         </CardContent>
       </Card>
@@ -154,10 +158,10 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
               <Rocket className="h-5 w-5 text-primary" />
-              Historique des déploiements
+              {t("deploymentHistory.title")}
             </CardTitle>
             <CardDescription>
-              Vos {deployments.length} derniers déploiements réussis
+              {t("deploymentHistory.lastDeployments", { count: deployments.length })}
             </CardDescription>
           </div>
           <Button 
@@ -167,7 +171,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
             className="gap-1"
           >
             <RefreshCw className="h-4 w-4" />
-            Actualiser
+            {t("deploymentHistory.refresh")}
           </Button>
         </div>
       </CardHeader>
@@ -198,13 +202,13 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                   <span>{deployment.provider}</span>
                   <span>•</span>
-                  <span>{deployment.files_uploaded} fichiers</span>
+                  <span>{t("deploymentHistory.filesCount", { count: deployment.files_uploaded })}</span>
                   <span>•</span>
                   <Clock className="h-3 w-3" />
                   <span>
                     {formatDistanceToNow(new Date(deployment.created_at), { 
                       addSuffix: true, 
-                      locale: fr 
+                      locale: dateLocale 
                     })}
                   </span>
                 </div>
@@ -226,7 +230,7 @@ export function DeploymentHistory({ onRefresh }: DeploymentHistoryProps) {
                 >
                   <Link to={`/rapport-liberation/${deployment.id}`}>
                     <FileText className="h-4 w-4" />
-                    <span className="hidden md:inline text-xs">Rapport</span>
+                    <span className="hidden md:inline text-xs">{t("deploymentHistory.report")}</span>
                   </Link>
                 </Button>
                 {deployment.deployed_url && (

@@ -21,6 +21,7 @@ import { fr, enUS } from "date-fns/locale";
 import { Json } from "@/integrations/supabase/types";
 import { COSTLY_SERVICES } from "@/lib/costOptimization";
 import { useTranslation } from "react-i18next";
+import { useLocaleFormat } from "@/hooks/useLocaleFormat";
 
 export interface AnalyzedProject {
   id: string;
@@ -66,6 +67,7 @@ interface AnalyzedProjectsProps {
 export function AnalyzedProjects({ onSelectProject, onRefresh, loadingProjectId }: AnalyzedProjectsProps) {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
+  const { formatCurrency } = useLocaleFormat();
   const [projects, setProjects] = useState<AnalyzedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -211,7 +213,7 @@ export function AnalyzedProjects({ onSelectProject, onRefresh, loadingProjectId 
                           <TooltipTrigger>
                             <Badge className="bg-success/10 text-success border-success/20 gap-1 cursor-help">
                               <TrendingDown className="h-3 w-3" />
-                              -{potentialSavings}$/mois
+                              -{formatCurrency(potentialSavings, i18n.language === 'fr' ? 'CAD' : 'USD')}/{t("common.month")}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
