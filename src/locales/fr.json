@@ -1235,6 +1235,119 @@
     "originalCode": "Code Original",
     "cleanedCode": "Code Nettoyé"
   },
+  "liberation": {
+    "title": "Assistant de Libération",
+    "description": "Exportez votre projet Lovable vers votre propre compte GitHub",
+    "restart": "Nouveau projet",
+    "files": "fichiers",
+    "modified": "modifiés",
+    "yourAccount": "Votre compte"
+  },
+  "liberationWizard": {
+    "steps": {
+      "source": "Source",
+      "destination": "Destination",
+      "aiEngine": "Moteur IA",
+      "cleaning": "Nettoyage",
+      "export": "Export"
+    },
+    "back": "Retour",
+    "step1": {
+      "title": "Récupérer le code source",
+      "description": "Entrez l'URL de votre dépôt GitHub Lovable. Pour les dépôts privés, ajoutez un Personal Access Token.",
+      "urlLabel": "URL du dépôt GitHub",
+      "urlPlaceholder": "https://github.com/lovable-dev/mon-projet",
+      "tokenLabel": "Token GitHub (optionnel, pour dépôts privés)",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "fetchFiles": "Récupérer les fichiers"
+    },
+    "step2": {
+      "title": "Connecter votre compte GitHub",
+      "description": "Créez un <strong>Personal Access Token</strong> sur votre compte GitHub personnel pour exporter le code nettoyé.",
+      "patLabel": "Personal Access Token (avec scope 'repo')",
+      "createToken": "Créer un token sur GitHub",
+      "repoNameLabel": "Nom du nouveau dépôt",
+      "repoNamePlaceholder": "mon-projet-libre",
+      "connectAccount": "Connecter mon compte"
+    },
+    "step3": {
+      "title": "Configuration du moteur IA",
+      "description": "Choisissez le moteur IA pour nettoyer votre code des dépendances propriétaires Lovable.",
+      "inopayEngine": "Moteur Inopay",
+      "inopayDesc": "Utilisez DeepSeek V3 avec fallback automatique sur Claude. Aucune configuration requise.",
+      "fallbackInfo": "Fallback automatique sur Claude si DeepSeek est surchargé",
+      "byokTitle": "Apportez votre clé (BYOK)",
+      "byokDesc": "Utilisez votre propre clé API pour un contrôle total et économisez 30% sur les frais de plateforme.",
+      "byokDiscount": "Économisez 30% sur les frais Inopay !",
+      "apiKeyLabel": "Votre clé API",
+      "validated": "Validée",
+      "test": "Tester",
+      "existingKey": "Clé API existante configurée",
+      "useInopay": "Utiliser le moteur Inopay",
+      "continueWithKey": "Continuer avec ma clé"
+    },
+    "step4": {
+      "title": "Nettoyage intelligent du code",
+      "description": "{{count}} fichiers TypeScript/JavaScript à nettoyer.",
+      "byokUsed": "Mode BYOK : utilisation de votre clé {{provider}}",
+      "cleaningInProgress": "Nettoyage en cours...",
+      "task1": "Suppression des imports @lovable-dev",
+      "task2": "Remplacement des composants propriétaires",
+      "task3": "Nettoyage des références Supabase spécifiques",
+      "task4": "Optimisation des imports React",
+      "task5": "Génération du code 100% portable",
+      "startCleaning": "Lancer le nettoyage"
+    },
+    "step5": {
+      "title": "Export vers votre GitHub",
+      "description": "<strong>{{count}} fichiers</strong> prêts à être exportés vers <code>@{{username}}/{{repo}}</code>",
+      "filesOptimized": "{{count}} fichiers optimisés par l'IA",
+      "codeCleaned": "Le code a été nettoyé des dépendances propriétaires",
+      "exportInProgress": "Export en cours...",
+      "exportNow": "Exporter maintenant"
+    },
+    "success": {
+      "title": "Libération réussie !",
+      "description": "Votre code est maintenant 100% autonome sur votre compte GitHub.",
+      "filesExported": "Fichiers exportés",
+      "filesModified": "Fichiers modifiés",
+      "mode": "Mode",
+      "viewOnGithub": "Voir sur GitHub",
+      "newProject": "Nouveau projet"
+    },
+    "toast": {
+      "urlRequired": "URL requise",
+      "enterLovableUrl": "Veuillez entrer l'URL de votre dépôt Lovable",
+      "sourceValidated": "Source validée",
+      "filesFetched": "{{count}} fichiers récupérés depuis {{owner}}/{{repo}}",
+      "tokenRequired": "Token requis",
+      "enterPAT": "Veuillez entrer votre Personal Access Token GitHub",
+      "destinationConnected": "Compte connecté",
+      "readyToExport": "Prêt à exporter vers @{{username}}",
+      "keyRequired": "Clé API requise",
+      "enterApiKey": "Veuillez entrer votre clé API",
+      "keyValidated": "Clé validée",
+      "invalidKey": "Clé invalide",
+      "inopaySelected": "Moteur Inopay sélectionné",
+      "deepseekUsed": "DeepSeek V3 sera utilisé avec fallback automatique",
+      "validationRequired": "Validation requise",
+      "testKeyFirst": "Veuillez d'abord tester votre clé API",
+      "cleaningComplete": "Nettoyage terminé",
+      "filesModified": "{{changed}}/{{total}} fichiers modifiés",
+      "cleaningError": "Erreur de nettoyage",
+      "liberationSuccess": "Libération réussie",
+      "codeExported": "Code exporté vers {{repo}}",
+      "exportError": "Erreur d'export"
+    },
+    "errors": {
+      "invalidUrl": "URL GitHub invalide",
+      "noFilesFound": "Aucun fichier trouvé dans le dépôt",
+      "invalidToken": "Token GitHub invalide ou expiré",
+      "noFilesToClean": "Aucun fichier à nettoyer",
+      "noFilesToExport": "Aucun fichier à exporter",
+      "exportFailed": "Échec de l'export GitHub"
+    }
+  },
   "ui": {
     "morePages": "Plus de pages",
     "retryDeployment": "Relancer le déploiement",
