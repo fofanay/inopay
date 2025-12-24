@@ -126,12 +126,12 @@ const Header = () => {
               {t("common.home")}
             </Link>
             <Link 
-              to="/dashboard" 
+              to="/tarifs" 
               className={`text-sm font-medium transition-colors ${
-                isActive("/dashboard") ? "text-white" : "text-white/80 hover:text-white"
+                isActive("/tarifs") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              {t("common.dashboard")}
+              {t("common.pricing")}
             </Link>
             <Link 
               to="/economies" 
@@ -145,12 +145,12 @@ const Header = () => {
               </Badge>
             </Link>
             <Link 
-              to="/tarifs" 
+              to="/dashboard" 
               className={`text-sm font-medium transition-colors ${
-                isActive("/tarifs") ? "text-white" : "text-white/80 hover:text-white"
+                isActive("/dashboard") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
-              {t("common.pricing")}
+              {t("common.dashboard")}
             </Link>
             <Link 
               to="/historique" 
@@ -230,13 +230,13 @@ const Header = () => {
                 {t("common.home")}
               </Link>
               <Link 
-                to="/dashboard" 
+                to="/tarifs" 
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
+                  isActive("/tarifs") ? "text-primary" : "text-muted-foreground"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                {t("common.dashboard")}
+                {t("common.pricing")}
               </Link>
               <Link 
                 to="/economies" 
@@ -251,13 +251,13 @@ const Header = () => {
                 </Badge>
               </Link>
               <Link 
-                to="/tarifs" 
+                to="/dashboard" 
                 className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive("/tarifs") ? "text-primary" : "text-muted-foreground"
+                  isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                {t("common.pricing")}
+                {t("common.dashboard")}
               </Link>
               <Link 
                 to="/historique" 
