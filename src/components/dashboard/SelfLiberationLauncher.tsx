@@ -40,6 +40,8 @@ interface LiberationResult {
 export function SelfLiberationLauncher() {
   const [isRunning, setIsRunning] = useState(false);
   const [steps, setSteps] = useState<LiberationStep[]>([
+    { id: 'auth', name: 'Vérification authentification', status: 'pending' },
+    { id: 'token-check', name: 'Validation permissions GitHub', status: 'pending' },
     { id: 'fetch', name: 'Récupération du code source', status: 'pending' },
     { id: 'clean', name: 'Nettoyage propriétaire', status: 'pending' },
     { id: 'validate', name: 'Validation package.json', status: 'pending' },
@@ -72,6 +74,52 @@ export function SelfLiberationLauncher() {
     }
   };
 
+  const validateGitHubTokenScopes = async (token: string): Promise<{
+    valid: boolean;
+    username?: string;
+    scopes: string[];
+    missing: string[];
+  }> => {
+    const requiredScopes = ['repo', 'admin:repo_hook'];
+    
+    try {
+      // Use GET to also retrieve username
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!response.ok) {
+        return { valid: false, scopes: [], missing: requiredScopes };
+      }
+
+      const userData = await response.json();
+      const scopesHeader = response.headers.get('X-OAuth-Scopes') || '';
+      const scopes = scopesHeader.split(',').map(s => s.trim()).filter(Boolean);
+      
+      // Check for required scopes (also accept parent scopes)
+      const missing = requiredScopes.filter(required => {
+        const [mainScope, subScope] = required.split(':');
+        return !scopes.some(scope => 
+          scope === required || 
+          scope === mainScope || 
+          (subScope && scope.startsWith(`${mainScope}:`))
+        );
+      });
+
+      return {
+        valid: missing.length === 0,
+        username: userData.login,
+        scopes,
+        missing
+      };
+    } catch {
+      return { valid: false, scopes: [], missing: requiredScopes };
+    }
+  };
+
   const launchLiberation = async () => {
     setIsRunning(true);
     setError(null);
@@ -82,16 +130,22 @@ export function SelfLiberationLauncher() {
     setSteps(prev => prev.map(s => ({ ...s, status: 'pending', message: undefined })));
 
     try {
-      // Step 1: Fetch source code from GitHub
-      updateStep('fetch', { status: 'running', message: 'Connexion à GitHub...' });
-      setProgress(5);
+      // Step 1: Auth verification
+      updateStep('auth', { status: 'running', message: 'Vérification session...' });
+      setProgress(2);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        updateStep('auth', { status: 'error', message: 'Session non authentifiée' });
         throw new Error('Session non authentifiée');
       }
 
-      // Fetch user's GitHub token
+      updateStep('auth', { status: 'success', message: 'Authentifié', details: session.user.email });
+      setProgress(5);
+
+      // Step 2: Fetch and validate GitHub token
+      updateStep('token-check', { status: 'running', message: 'Récupération du token GitHub...' });
+
       const { data: settings } = await supabase
         .from('user_settings')
         .select('github_token')
@@ -99,8 +153,37 @@ export function SelfLiberationLauncher() {
         .single();
 
       if (!settings?.github_token) {
+        updateStep('token-check', { 
+          status: 'error', 
+          message: 'Token GitHub non configuré',
+          details: 'Configurez votre token dans Paramètres > GitHub'
+        });
         throw new Error('Token GitHub non configuré');
       }
+
+      // Validate token scopes
+      updateStep('token-check', { status: 'running', message: 'Validation des permissions...' });
+
+      const tokenValidation = await validateGitHubTokenScopes(settings.github_token);
+
+      if (!tokenValidation.valid) {
+        const missingScopes = tokenValidation.missing.join(', ');
+        updateStep('token-check', { 
+          status: 'error', 
+          message: `Permissions manquantes: ${missingScopes}`,
+          details: 'Régénérez le token avec les scopes: repo, admin:repo_hook'
+        });
+        throw new Error(`Token GitHub invalide: scopes manquants (${missingScopes}). Régénérez votre token sur github.com/settings/tokens avec les permissions repo et admin:repo_hook.`);
+      }
+
+      updateStep('token-check', { 
+        status: 'success', 
+        message: `Permissions validées (${tokenValidation.username})`,
+        details: `Scopes: ${tokenValidation.scopes.slice(0, 3).join(', ')}${tokenValidation.scopes.length > 3 ? '...' : ''}`
+      });
+      setProgress(10);
+
+      // Step 3: Fetch source code from GitHub
 
       // Fetch current repo files from inopay repository
       const repoOwner = 'fofanay';
@@ -377,6 +460,8 @@ export function SelfLiberationLauncher() {
 
   const getStepIcon = (step: LiberationStep) => {
     const icons: Record<string, React.ReactNode> = {
+      auth: <Shield className="h-5 w-5" />,
+      'token-check': <Github className="h-5 w-5" />,
       fetch: <FileCode className="h-5 w-5" />,
       clean: <Shield className="h-5 w-5" />,
       validate: <CheckCircle2 className="h-5 w-5" />,
