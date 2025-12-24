@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +115,7 @@ const DatabaseConfigAssistant = ({
   onSkip,
   disabled = false,
 }: DatabaseConfigAssistantProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("choice");
   const [databaseChoice, setDatabaseChoice] = useState<"keep" | "new" | null>(null);

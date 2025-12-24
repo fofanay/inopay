@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr, enUS } from "date-fns/locale";
 
 interface ServerDeployment {
   id: string;
@@ -67,6 +68,7 @@ const isDeploymentStuck = (deployment: ServerDeployment): boolean => {
 const canRetry = (_deployment: ServerDeployment): boolean => true;
 
 export function ServerDeploymentsManager() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -74,6 +76,8 @@ export function ServerDeploymentsManager() {
   const [syncingAll, setSyncingAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previousStatuses, setPreviousStatuses] = useState<Record<string, string>>({});
+  
+  const dateLocale = i18n.language === 'fr' ? fr : enUS;
 
   const fetchDeployments = async () => {
     if (!user) return;
@@ -560,14 +564,14 @@ export function ServerDeploymentsManager() {
                     className="h-8 gap-1"
                     onClick={() => handleRetry(deployment)}
                     disabled={retryingId === deployment.id}
-                    title="Relancer le déploiement"
+                    title={t("ui.retryDeployment")}
                   >
                     {retryingId === deployment.id ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
                       <RotateCcw className="h-4 w-4" />
                     )}
-                    Réessayer
+                    {t("serverManagement.retry")}
                   </Button>
                 )}
 

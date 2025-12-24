@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Clock, Search, Webhook
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr, enUS } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ActivityLog {
@@ -24,11 +25,14 @@ interface ActivityLog {
 }
 
 const AdminStripeLogs = () => {
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [filter, setFilter] = useState<"all" | "success" | "error">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  
+  const dateLocale = i18n.language === 'fr' ? fr : enUS;
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -218,7 +222,7 @@ const AdminStripeLogs = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher dans les logs..."
+                placeholder={t("ui.searchLogs")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
