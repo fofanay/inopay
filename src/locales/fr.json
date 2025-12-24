@@ -164,7 +164,7 @@
     "button": "Commencer gratuitement",
     "buttonLoggedIn": "Libérer mon projet",
     "subtext": "Analyse gratuite • Déploiement en 10 minutes",
-    "testimonial": "Inopay m'a permis de migrer sur mon IONOS en 10 min. Maintenant je paie 5$/mois au lieu de 50$.",
+    "testimonial": "Inopay m'a permis de migrer sur mon propre VPS en 10 min. Maintenant je paie 5$/mois au lieu de 50$.",
     "testimonialAuthor": "— Marie L."
   },
   "pulse": {
@@ -412,7 +412,7 @@
       "feature1Desc": "Propulsé par DeepSeek V3",
       "feature2": "Jusqu'à 500 fichiers",
       "feature2Desc": "Idéal pour la plupart des projets",
-      "feature3": "Déploiement IONOS en 1 clic",
+      "feature3": "Déploiement VPS en 1 clic",
       "feature3Desc": "Configuration automatique",
       "feature4": "Audit Zero Shadow Door",
       "feature4Desc": "Certificat de souveraineté inclus",
@@ -516,7 +516,7 @@
         },
         "deployment": {
           "name": "Déploiement VPS automatique",
-          "desc": "IONOS, Hetzner, etc."
+          "desc": "Tout fournisseur VPS"
         },
         "volumeDiscount": {
           "name": "Réduction volume",
