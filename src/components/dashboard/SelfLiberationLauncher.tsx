@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -23,7 +24,11 @@ import {
   ExternalLink,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
+  Settings,
+  Database,
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 
 interface LiberationStep {
@@ -40,6 +45,12 @@ interface LiberationResult {
   removedPatterns: string[];
   githubUrl?: string;
   deploymentUrl?: string;
+}
+
+interface PreflightStatus {
+  github: { ok: boolean; message: string; username?: string };
+  coolify: { ok: boolean; message: string; url?: string };
+  externalBackend?: { ok: boolean; message: string };
 }
 
 export function SelfLiberationLauncher() {
@@ -65,10 +76,28 @@ export function SelfLiberationLauncher() {
   const [isTestingToken, setIsTestingToken] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [tokenLoading, setTokenLoading] = useState(true);
+  
+  // Destination owner (for private GitHub)
+  const [destinationOwner, setDestinationOwner] = useState('');
+  
+  // Coolify configuration
+  const [coolifyUrl, setCoolifyUrl] = useState('');
+  const [coolifyToken, setCoolifyToken] = useState('');
+  const [isCoolifyConfigured, setIsCoolifyConfigured] = useState(false);
+  const [isTestingCoolify, setIsTestingCoolify] = useState(false);
+  const [showCoolifyToken, setShowCoolifyToken] = useState(false);
+  
+  // External backend configuration
+  const [externalBackendUrl, setExternalBackendUrl] = useState('');
+  const [externalAnonKey, setExternalAnonKey] = useState('');
+  
+  // Preflight status
+  const [preflight, setPreflight] = useState<PreflightStatus | null>(null);
+  const [isPreflightRunning, setIsPreflightRunning] = useState(false);
 
-  // Load existing token on mount
+  // Load existing configurations on mount
   useEffect(() => {
-    const loadExistingToken = async () => {
+    const loadExistingConfig = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -76,15 +105,15 @@ export function SelfLiberationLauncher() {
           return;
         }
 
+        // Load user settings
         const { data: settings } = await supabase
           .from('user_settings')
-          .select('github_token')
+          .select('github_token, github_destination_username')
           .eq('user_id', session.user.id)
           .single();
 
         if (settings?.github_token) {
           setGithubToken(settings.github_token);
-          // Validate the existing token
           const validation = await validateGitHubTokenScopes(settings.github_token);
           if (validation.valid) {
             setIsTokenValid(true);
@@ -92,17 +121,82 @@ export function SelfLiberationLauncher() {
             setGithubScopes(validation.scopes);
           }
         }
+        
+        if (settings?.github_destination_username) {
+          setDestinationOwner(settings.github_destination_username);
+        }
+
+        // Load server config (Coolify)
+        const { data: serverData } = await supabase
+          .from('user_servers')
+          .select('coolify_url, coolify_token, db_url, anon_key')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (serverData) {
+          if (serverData.coolify_url) setCoolifyUrl(serverData.coolify_url);
+          if (serverData.coolify_token) {
+            setCoolifyToken(serverData.coolify_token);
+            setIsCoolifyConfigured(true);
+          }
+          if (serverData.db_url) setExternalBackendUrl(serverData.db_url);
+          if (serverData.anon_key) setExternalAnonKey(serverData.anon_key);
+        }
       } catch (err) {
-        console.error('Error loading token:', err);
+        console.error('Error loading config:', err);
       } finally {
         setTokenLoading(false);
       }
     };
 
-    loadExistingToken();
+    loadExistingConfig();
   }, []);
 
-  const testAndSaveToken = async () => {
+  const validateGitHubTokenScopes = async (token: string): Promise<{
+    valid: boolean;
+    username?: string;
+    scopes: string[];
+    missing: string[];
+  }> => {
+    const requiredScopes = ['repo', 'admin:repo_hook'];
+    
+    try {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!response.ok) {
+        return { valid: false, scopes: [], missing: requiredScopes };
+      }
+
+      const userData = await response.json();
+      const scopesHeader = response.headers.get('X-OAuth-Scopes') || '';
+      const scopes = scopesHeader.split(',').map(s => s.trim()).filter(Boolean);
+      
+      const missing = requiredScopes.filter(required => {
+        const [mainScope, subScope] = required.split(':');
+        return !scopes.some(scope => 
+          scope === required || 
+          scope === mainScope || 
+          (subScope && scope.startsWith(`${mainScope}:`))
+        );
+      });
+
+      return {
+        valid: missing.length === 0,
+        username: userData.login,
+        scopes,
+        missing
+      };
+    } catch {
+      return { valid: false, scopes: [], missing: requiredScopes };
+    }
+  };
+
+  const testAndSaveGitHubToken = async () => {
     if (!githubToken.trim()) {
       toast.error('Veuillez entrer un token GitHub');
       return;
@@ -123,7 +217,6 @@ export function SelfLiberationLauncher() {
         return;
       }
 
-      // Save token to database
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Session expirée');
@@ -135,12 +228,11 @@ export function SelfLiberationLauncher() {
         .upsert({
           user_id: session.user.id,
           github_token: githubToken.trim(),
+          github_destination_username: destinationOwner.trim() || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
-      if (upsertError) {
-        throw upsertError;
-      }
+      if (upsertError) throw upsertError;
 
       setIsTokenValid(true);
       setGithubUsername(validation.username || null);
@@ -155,6 +247,153 @@ export function SelfLiberationLauncher() {
     } finally {
       setIsTestingToken(false);
     }
+  };
+
+  const testAndSaveCoolify = async () => {
+    if (!coolifyUrl.trim() || !coolifyToken.trim()) {
+      toast.error('Veuillez entrer l\'URL et le token Coolify');
+      return;
+    }
+
+    setIsTestingCoolify(true);
+    
+    try {
+      // Test Coolify connection
+      const response = await fetch(`${coolifyUrl.trim()}/api/v1/applications`, {
+        headers: {
+          'Authorization': `Bearer ${coolifyToken.trim()}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        if (status === 401) {
+          toast.error('Token Coolify invalide');
+        } else if (status === 403) {
+          toast.error('Token sans permissions suffisantes');
+        } else {
+          toast.error(`Erreur connexion Coolify (HTTP ${status})`);
+        }
+        return;
+      }
+
+      const apps = await response.json();
+      
+      // Save to user_servers
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée');
+        return;
+      }
+
+      // Upsert to user_servers
+      const { data: existingServer } = await supabase
+        .from('user_servers')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (existingServer) {
+        await supabase
+          .from('user_servers')
+          .update({
+            coolify_url: coolifyUrl.trim(),
+            coolify_token: coolifyToken.trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingServer.id);
+      } else {
+        await supabase
+          .from('user_servers')
+          .insert({
+            user_id: session.user.id,
+            name: 'Serveur Principal',
+            ip_address: new URL(coolifyUrl.trim()).hostname,
+            coolify_url: coolifyUrl.trim(),
+            coolify_token: coolifyToken.trim(),
+            status: 'active'
+          });
+      }
+
+      setIsCoolifyConfigured(true);
+      toast.success('Coolify configuré', {
+        description: `${apps.length} applications trouvées`
+      });
+    } catch (err) {
+      toast.error('Erreur connexion Coolify', {
+        description: err instanceof Error ? err.message : 'URL invalide'
+      });
+    } finally {
+      setIsTestingCoolify(false);
+    }
+  };
+
+  const runPreflight = async () => {
+    setIsPreflightRunning(true);
+    const status: PreflightStatus = {
+      github: { ok: false, message: 'Non testé' },
+      coolify: { ok: false, message: 'Non testé' }
+    };
+
+    // Check GitHub
+    if (githubToken) {
+      const validation = await validateGitHubTokenScopes(githubToken);
+      status.github = validation.valid 
+        ? { ok: true, message: 'Connecté', username: validation.username }
+        : { ok: false, message: `Permissions manquantes: ${validation.missing.join(', ')}` };
+    } else {
+      status.github = { ok: false, message: 'Token non configuré' };
+    }
+
+    // Check Coolify
+    if (coolifyUrl && coolifyToken) {
+      try {
+        const response = await fetch(`${coolifyUrl}/api/v1/applications`, {
+          headers: {
+            'Authorization': `Bearer ${coolifyToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const apps = await response.json();
+          const inopayApp = apps.find((app: any) => 
+            app.name?.toLowerCase().includes('inopay') ||
+            app.git_repository?.includes('inopay')
+          );
+          status.coolify = inopayApp 
+            ? { ok: true, message: `App trouvée: ${inopayApp.name}`, url: inopayApp.fqdn }
+            : { ok: false, message: `${apps.length} apps mais aucune "inopay"` };
+        } else {
+          status.coolify = { ok: false, message: `HTTP ${response.status}` };
+        }
+      } catch (err) {
+        status.coolify = { ok: false, message: 'Connexion impossible' };
+      }
+    } else {
+      status.coolify = { ok: false, message: 'Non configuré' };
+    }
+
+    // Check external backend (optional)
+    if (externalBackendUrl) {
+      try {
+        const testUrl = externalBackendUrl.includes('/rest/') 
+          ? externalBackendUrl 
+          : `${externalBackendUrl}/rest/v1/`;
+        const response = await fetch(testUrl, {
+          headers: externalAnonKey ? { 'apikey': externalAnonKey } : {}
+        });
+        status.externalBackend = response.ok 
+          ? { ok: true, message: 'Backend accessible' }
+          : { ok: false, message: `HTTP ${response.status}` };
+      } catch {
+        status.externalBackend = { ok: false, message: 'Connexion impossible' };
+      }
+    }
+
+    setPreflight(status);
+    setIsPreflightRunning(false);
   };
 
   const updateStep = useCallback((id: string, updates: Partial<LiberationStep>) => {
@@ -179,59 +418,12 @@ export function SelfLiberationLauncher() {
     }
   };
 
-  const validateGitHubTokenScopes = async (token: string): Promise<{
-    valid: boolean;
-    username?: string;
-    scopes: string[];
-    missing: string[];
-  }> => {
-    const requiredScopes = ['repo', 'admin:repo_hook'];
-    
-    try {
-      // Use GET to also retrieve username
-      const response = await fetch('https://api.github.com/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-
-      if (!response.ok) {
-        return { valid: false, scopes: [], missing: requiredScopes };
-      }
-
-      const userData = await response.json();
-      const scopesHeader = response.headers.get('X-OAuth-Scopes') || '';
-      const scopes = scopesHeader.split(',').map(s => s.trim()).filter(Boolean);
-      
-      // Check for required scopes (also accept parent scopes)
-      const missing = requiredScopes.filter(required => {
-        const [mainScope, subScope] = required.split(':');
-        return !scopes.some(scope => 
-          scope === required || 
-          scope === mainScope || 
-          (subScope && scope.startsWith(`${mainScope}:`))
-        );
-      });
-
-      return {
-        valid: missing.length === 0,
-        username: userData.login,
-        scopes,
-        missing
-      };
-    } catch {
-      return { valid: false, scopes: [], missing: requiredScopes };
-    }
-  };
-
   const launchLiberation = async () => {
     setIsRunning(true);
     setError(null);
     setResult(null);
     setProgress(0);
     
-    // Reset steps
     setSteps(prev => prev.map(s => ({ ...s, status: 'pending', message: undefined })));
 
     try {
@@ -253,7 +445,7 @@ export function SelfLiberationLauncher() {
 
       const { data: settings } = await supabase
         .from('user_settings')
-        .select('github_token')
+        .select('github_token, github_destination_username')
         .eq('user_id', session.user.id)
         .single();
 
@@ -261,12 +453,11 @@ export function SelfLiberationLauncher() {
         updateStep('token-check', { 
           status: 'error', 
           message: 'Token GitHub non configuré',
-          details: 'Configurez votre token dans Paramètres > GitHub'
+          details: 'Configurez votre token ci-dessus'
         });
         throw new Error('Token GitHub non configuré');
       }
 
-      // Validate token scopes
       updateStep('token-check', { status: 'running', message: 'Validation des permissions...' });
 
       const tokenValidation = await validateGitHubTokenScopes(settings.github_token);
@@ -276,28 +467,27 @@ export function SelfLiberationLauncher() {
         updateStep('token-check', { 
           status: 'error', 
           message: `Permissions manquantes: ${missingScopes}`,
-          details: 'Régénérez le token avec les scopes: repo, admin:repo_hook'
+          details: 'Régénérez le token avec les scopes requis'
         });
-        throw new Error(`Token GitHub invalide: scopes manquants (${missingScopes}). Régénérez votre token sur github.com/settings/tokens avec les permissions repo et admin:repo_hook.`);
+        throw new Error(`Token GitHub invalide: scopes manquants (${missingScopes})`);
       }
 
       updateStep('token-check', { 
         status: 'success', 
         message: `Permissions validées (${tokenValidation.username})`,
-        details: `Scopes: ${tokenValidation.scopes.slice(0, 3).join(', ')}${tokenValidation.scopes.length > 3 ? '...' : ''}`
+        details: settings.github_destination_username 
+          ? `Destination: ${settings.github_destination_username}` 
+          : `Destination: ${tokenValidation.username}`
       });
       setProgress(10);
 
       // Step 3: Fetch source code from GitHub
-
-      // Fetch current repo files from inopay repository
       const repoOwner = 'fofanay';
       const repoName = 'inopay';
       
       updateStep('fetch', { status: 'running', message: 'Téléchargement des fichiers source...' });
       setProgress(10);
 
-      // Get repo tree (all files, not truncated)
       const treeResponse = await fetch(
         `https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/main?recursive=1`,
         {
@@ -315,7 +505,6 @@ export function SelfLiberationLauncher() {
       const treeData = await treeResponse.json();
       const filesToProcess: { path: string; content: string }[] = [];
       
-      // Filter relevant files (exclude node_modules, dist, etc.)
       const relevantFiles = treeData.tree.filter((item: any) => 
         item.type === 'blob' && 
         !item.path.includes('node_modules/') &&
@@ -344,11 +533,9 @@ export function SelfLiberationLauncher() {
       });
       setProgress(15);
 
-      // Helper function to fetch file with retry and use Git Blobs API for large files
       const fetchFileContent = async (file: any, retries = 3): Promise<string | null> => {
         for (let attempt = 1; attempt <= retries; attempt++) {
           try {
-            // First try the Contents API (works for files < 1MB)
             const contentResponse = await fetch(
               `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${file.path}`,
               {
@@ -362,10 +549,7 @@ export function SelfLiberationLauncher() {
             if (contentResponse.ok) {
               const contentData = await contentResponse.json();
               
-              // Check if file is too large (API returns size but no content)
               if (contentData.size && contentData.size > 100000 && !contentData.content) {
-                // Use Git Blobs API for large files
-                console.log(`[Fetch] Large file detected: ${file.path} (${contentData.size} bytes), using Blobs API`);
                 const blobResponse = await fetch(
                   `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs/${file.sha}`,
                   {
@@ -383,12 +567,9 @@ export function SelfLiberationLauncher() {
                   }
                 }
               } else if (contentData.content) {
-                // Normal file - decode base64 content
                 return atob(contentData.content.replace(/\n/g, ''));
               }
             } else if (contentResponse.status === 403) {
-              // File too large - use Git Blobs API directly with SHA from tree
-              console.log(`[Fetch] File too large for Contents API: ${file.path}, using Blobs API`);
               const blobResponse = await fetch(
                 `https://api.github.com/repos/${repoOwner}/${repoName}/git/blobs/${file.sha}`,
                 {
@@ -409,17 +590,16 @@ export function SelfLiberationLauncher() {
           } catch (err) {
             console.warn(`[Fetch] Attempt ${attempt}/${retries} failed for ${file.path}:`, err);
             if (attempt < retries) {
-              await new Promise(r => setTimeout(r, 500 * attempt)); // Exponential backoff
+              await new Promise(r => setTimeout(r, 500 * attempt));
             }
           }
         }
         return null;
       };
 
-      // Fetch ALL file contents (no arbitrary limit)
       let fetchedCount = 0;
       let failedCount = 0;
-      const MAX_CONCURRENT = 5; // Limit concurrent requests to avoid rate limiting
+      const MAX_CONCURRENT = 5;
       
       for (let i = 0; i < relevantFiles.length; i += MAX_CONCURRENT) {
         const batch = relevantFiles.slice(i, i + MAX_CONCURRENT);
@@ -442,16 +622,11 @@ export function SelfLiberationLauncher() {
           }
         }
 
-        // Update progress
         setProgress(15 + ((i + batch.length) / relevantFiles.length) * 25);
         updateStep('fetch', { 
           status: 'running', 
           message: `Téléchargement: ${fetchedCount}/${relevantFiles.length} fichiers...` 
         });
-      }
-
-      if (failedCount > 0) {
-        console.warn(`[Fetch] Failed to fetch ${failedCount} files`);
       }
 
       updateStep('fetch', { 
@@ -461,7 +636,7 @@ export function SelfLiberationLauncher() {
       });
       setProgress(40);
 
-      // Step 2: Clean proprietary patterns
+      // Step 4: Clean proprietary patterns
       updateStep('clean', { status: 'running', message: 'Nettoyage en cours...' });
 
       const cleanResponse = await supabase.functions.invoke('process-project-liberation', {
@@ -490,7 +665,7 @@ export function SelfLiberationLauncher() {
       });
       setProgress(60);
 
-      // Step 3: Validate package.json
+      // Step 5: Validate package.json
       updateStep('validate', { status: 'running', message: 'Validation package.json...' });
 
       const packageFile = cleanData.files?.find((f: any) => f.path === 'package.json');
@@ -508,14 +683,15 @@ export function SelfLiberationLauncher() {
       });
       setProgress(70);
 
-      // Step 4: Push to GitHub production repo
-      updateStep('github', { status: 'running', message: 'Push vers inopay-production...' });
+      // Step 6: Push to GitHub production repo
+      updateStep('github', { status: 'running', message: 'Push vers GitHub...' });
 
       const githubResponse = await supabase.functions.invoke('process-project-liberation', {
         body: {
           files: cleanData.files || filesToProcess,
           projectName: 'inopay-production',
           userId: session.user.id,
+          destinationOwner: settings.github_destination_username || undefined,
           action: 'full-pipeline'
         }
       });
@@ -526,91 +702,39 @@ export function SelfLiberationLauncher() {
 
       const githubData = githubResponse.data;
 
-      if (!githubData.github?.success) {
+      if (!githubData.phases?.github?.success) {
         updateStep('github', { 
           status: 'error', 
-          message: githubData.github?.error || 'Échec push GitHub' 
+          message: githubData.phases?.github?.error || 'Échec push GitHub' 
         });
-        // Continue anyway - GitHub might be optional
       } else {
         updateStep('github', { 
           status: 'success', 
           message: 'Poussé vers GitHub',
-          details: githubData.github.repoUrl
+          details: githubData.phases.github.repoUrl
         });
       }
       setProgress(85);
 
-      // Step 5: Trigger Coolify deployment
+      // Step 7: Trigger Coolify deployment
       updateStep('coolify', { status: 'running', message: 'Déclenchement déploiement Coolify...' });
 
-      if (githubData.coolify?.success) {
+      if (githubData.phases?.coolify?.success) {
         updateStep('coolify', { 
           status: 'success', 
           message: 'Déploiement lancé',
-          details: githubData.coolify.deploymentUrl
+          details: githubData.phases.coolify.deploymentUrl
         });
-      } else if (githubData.coolify?.error) {
+      } else if (githubData.phases?.coolify?.error) {
         updateStep('coolify', { 
           status: 'error', 
-          message: githubData.coolify.error
+          message: githubData.phases.coolify.error
         });
       } else {
-        // Manual Coolify trigger
-        const { data: serverData } = await supabase
-          .from('user_servers')
-          .select('coolify_url, coolify_token')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (serverData?.coolify_url && serverData?.coolify_token) {
-          try {
-            const coolifyResponse = await fetch(`${serverData.coolify_url}/api/v1/applications`, {
-              headers: {
-                'Authorization': `Bearer ${serverData.coolify_token}`,
-                'Accept': 'application/json'
-              }
-            });
-
-            if (coolifyResponse.ok) {
-              const apps = await coolifyResponse.json();
-              const inopayApp = apps.find((app: any) => 
-                app.name?.toLowerCase().includes('inopay') ||
-                app.git_repository?.includes('inopay-production')
-              );
-
-              if (inopayApp) {
-                await fetch(`${serverData.coolify_url}/api/v1/applications/${inopayApp.uuid}/restart`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${serverData.coolify_token}`,
-                    'Accept': 'application/json'
-                  }
-                });
-                updateStep('coolify', { 
-                  status: 'success', 
-                  message: 'Déploiement déclenché',
-                  details: inopayApp.fqdn || 'VPS IONOS'
-                });
-              } else {
-                updateStep('coolify', { 
-                  status: 'error', 
-                  message: 'Application non trouvée sur Coolify'
-                });
-              }
-            }
-          } catch (e) {
-            updateStep('coolify', { 
-              status: 'error', 
-              message: 'Erreur connexion Coolify'
-            });
-          }
-        } else {
-          updateStep('coolify', { 
-            status: 'error', 
-            message: 'Configuration Coolify manquante'
-          });
-        }
+        updateStep('coolify', { 
+          status: 'error', 
+          message: 'Configuration Coolify manquante'
+        });
       }
       setProgress(100);
 
@@ -619,8 +743,8 @@ export function SelfLiberationLauncher() {
         cleanedFiles: cleanData.cleanedFiles || filesToProcess.length,
         totalChanges: cleanData.summary?.totalChanges || 0,
         removedPatterns: cleanData.summary?.removedPatterns || [],
-        githubUrl: githubData.github?.repoUrl,
-        deploymentUrl: githubData.coolify?.deploymentUrl
+        githubUrl: githubData.phases?.github?.repoUrl,
+        deploymentUrl: githubData.phases?.coolify?.deploymentUrl
       });
 
       toast.success('Auto-libération terminée !', {
@@ -632,7 +756,6 @@ export function SelfLiberationLauncher() {
       setError(errorMessage);
       toast.error('Échec de l\'auto-libération', { description: errorMessage });
       
-      // Mark current running step as error
       setSteps(prev => prev.map(s => 
         s.status === 'running' ? { ...s, status: 'error', message: errorMessage } : s
       ));
@@ -663,6 +786,8 @@ export function SelfLiberationLauncher() {
     }
   };
 
+  const canLaunch = isTokenValid && !isRunning;
+
   return (
     <Card className="border-2 border-primary/30 bg-gradient-to-br from-background to-primary/5">
       <CardHeader>
@@ -677,11 +802,41 @@ export function SelfLiberationLauncher() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* GitHub Token Configuration */}
+        {/* Preflight Status */}
+        {preflight && (
+          <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm">État des connexions</span>
+              <Button variant="ghost" size="sm" onClick={runPreflight}>
+                <RefreshCw className={`h-4 w-4 ${isPreflightRunning ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                {preflight.github.ok ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span>GitHub: {preflight.github.message}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {preflight.coolify.ok ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span>Coolify: {preflight.coolify.message}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GitHub Configuration */}
         <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" />
+              <Github className="h-5 w-5 text-primary" />
               <span className="font-medium">Configuration GitHub</span>
             </div>
             {tokenLoading ? (
@@ -702,16 +857,113 @@ export function SelfLiberationLauncher() {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="github-token">Token GitHub (PAT)</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="github-token">Token GitHub (PAT)</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="github-token"
+                    type={showToken ? 'text' : 'password'}
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full"
+                    onClick={() => setShowToken(!showToken)}
+                  >
+                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Scopes: <code className="bg-muted px-1 rounded">repo</code>, <code className="bg-muted px-1 rounded">admin:repo_hook</code>
+                {' • '}
+                <a 
+                  href="https://github.com/settings/tokens/new?scopes=repo,admin:repo_hook&description=Inopay%20Auto-Liberation" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Créer un token <ExternalLink className="h-3 w-3" />
+                </a>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dest-owner">Owner cible (optionnel)</Label>
+              <Input
+                id="dest-owner"
+                placeholder="votre-username-ou-organisation"
+                value={destinationOwner}
+                onChange={(e) => setDestinationOwner(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Laissez vide pour utiliser votre compte GitHub personnel
+              </p>
+            </div>
+
+            <Button
+              onClick={testAndSaveGitHubToken}
+              disabled={isTestingToken || !githubToken.trim()}
+              variant={isTokenValid ? 'outline' : 'default'}
+            >
+              {isTestingToken ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Test en cours...</>
+              ) : isTokenValid ? (
+                'Retester & Sauvegarder'
+              ) : (
+                'Tester & Sauvegarder'
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Coolify Configuration */}
+        <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Cloud className="h-5 w-5 text-primary" />
+              <span className="font-medium">Configuration Coolify</span>
+            </div>
+            {isCoolifyConfigured ? (
+              <Badge variant="default" className="bg-green-500">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Configuré
+              </Badge>
+            ) : (
+              <Badge variant="secondary">
+                <Settings className="h-3 w-3 mr-1" />
+                Non configuré
+              </Badge>
+            )}
+          </div>
+
+          <div className="grid gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="coolify-url">URL Coolify</Label>
+              <Input
+                id="coolify-url"
+                placeholder="https://coolify.monserveur.com"
+                value={coolifyUrl}
+                onChange={(e) => setCoolifyUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="coolify-token">Token API Coolify</Label>
+              <div className="relative">
                 <Input
-                  id="github-token"
-                  type={showToken ? 'text' : 'password'}
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  value={githubToken}
-                  onChange={(e) => setGithubToken(e.target.value)}
+                  id="coolify-token"
+                  type={showCoolifyToken ? 'text' : 'password'}
+                  placeholder="Token API Coolify"
+                  value={coolifyToken}
+                  onChange={(e) => setCoolifyToken(e.target.value)}
                   className="pr-10"
                 />
                 <Button
@@ -719,56 +971,68 @@ export function SelfLiberationLauncher() {
                   variant="ghost"
                   size="icon"
                   className="absolute right-0 top-0 h-full"
-                  onClick={() => setShowToken(!showToken)}
+                  onClick={() => setShowCoolifyToken(!showCoolifyToken)}
                 >
-                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showCoolifyToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <Button
-                onClick={testAndSaveToken}
-                disabled={isTestingToken || !githubToken.trim()}
-                variant={isTokenValid ? 'outline' : 'default'}
-              >
-                {isTestingToken ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isTokenValid ? (
-                  'Retester'
-                ) : (
-                  'Tester & Sauvegarder'
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Scopes requis: <code className="bg-muted px-1 rounded">repo</code>, <code className="bg-muted px-1 rounded">admin:repo_hook</code>
-              {' • '}
-              <a 
-                href="https://github.com/settings/tokens/new?scopes=repo,admin:repo_hook&description=Inopay%20Auto-Liberation" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Créer un token <ExternalLink className="h-3 w-3" />
-              </a>
-            </p>
-            {isTokenValid && githubScopes.length > 0 && (
-              <p className="text-xs text-green-600 dark:text-green-400">
-                Scopes détectés: {githubScopes.slice(0, 4).join(', ')}{githubScopes.length > 4 ? '...' : ''}
+              <p className="text-xs text-muted-foreground">
+                Créez un token dans Coolify: Settings → API
               </p>
-            )}
+            </div>
+
+            <Button
+              onClick={testAndSaveCoolify}
+              disabled={isTestingCoolify || !coolifyUrl.trim() || !coolifyToken.trim()}
+              variant={isCoolifyConfigured ? 'outline' : 'default'}
+            >
+              {isTestingCoolify ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Test en cours...</>
+              ) : (
+                'Tester & Sauvegarder'
+              )}
+            </Button>
           </div>
         </div>
 
-        {/* Status Overview */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        {/* External Backend (Optional) */}
+        <div className="p-4 rounded-lg border border-dashed border-border bg-muted/10 space-y-4">
           <div className="flex items-center gap-2">
-            <Server className="h-4 w-4" />
-            <span>VPS IONOS: 209.46.125.157</span>
+            <Database className="h-5 w-5 text-muted-foreground" />
+            <span className="font-medium text-muted-foreground">Backend externe (optionnel)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Github className="h-4 w-4" />
-            <span>Target: inopay-production</span>
+          <p className="text-xs text-muted-foreground">
+            Configurez si vous souhaitez migrer vers votre propre backend Supabase.
+          </p>
+          <div className="grid gap-3">
+            <Input
+              placeholder="https://votre-projet.supabase.co"
+              value={externalBackendUrl}
+              onChange={(e) => setExternalBackendUrl(e.target.value)}
+            />
+            <Input
+              placeholder="Anon Key"
+              value={externalAnonKey}
+              onChange={(e) => setExternalAnonKey(e.target.value)}
+            />
           </div>
         </div>
+
+        <Separator />
+
+        {/* Preflight Button */}
+        <Button
+          onClick={runPreflight}
+          disabled={isPreflightRunning}
+          variant="outline"
+          className="w-full"
+        >
+          {isPreflightRunning ? (
+            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Vérification...</>
+          ) : (
+            <><RefreshCw className="h-4 w-4 mr-2" /> Vérifier les connexions</>
+          )}
+        </Button>
 
         {/* Progress Bar */}
         {isRunning && (
@@ -883,7 +1147,7 @@ export function SelfLiberationLauncher() {
         {/* Launch Button */}
         <Button 
           onClick={launchLiberation}
-          disabled={isRunning || !isTokenValid}
+          disabled={!canLaunch}
           className="w-full h-12 text-lg font-bold"
           size="lg"
         >
@@ -907,7 +1171,7 @@ export function SelfLiberationLauncher() {
 
         <p className="text-xs text-center text-muted-foreground">
           Ce processus va nettoyer le code source d'Inopay, le pousser vers GitHub 
-          et déclencher un déploiement sur votre VPS IONOS.
+          et déclencher un déploiement sur votre VPS.
         </p>
       </CardContent>
     </Card>
