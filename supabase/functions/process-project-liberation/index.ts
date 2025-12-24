@@ -26,11 +26,15 @@ interface ProcessRequest {
   projectName: string;
   userId: string;
   projectId?: string;
+  destinationOwner?: string;
 }
 
-async function pushToGitHub(
+// NEW: Push to GitHub using tree with inline content strategy
+// This DRASTICALLY reduces API calls (1 tree call vs N blob calls)
+async function pushToGitHubOptimized(
   githubToken: string,
   repoName: string,
+  destinationOwner: string | null,
   files: { path: string; content: string }[],
   commitMessage: string
 ): Promise<{ success: boolean; repoUrl?: string; error?: string }> {
@@ -47,23 +51,30 @@ async function pushToGitHub(
       return { success: false, error: 'Token GitHub invalide ou expiré' };
     }
     const user = await userResponse.json();
-    const owner = user.login;
+    const owner = destinationOwner || user.login;
+    
+    console.log(`[GitHub] Pushing to ${owner}/${repoName} (${files.length} files)`);
 
     // Check if repo exists
     const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}`, { headers });
     
     let repoUrl: string;
+    let isNewRepo = false;
     
     if (repoResponse.status === 404) {
-      // Create new repo
-      const createResponse = await fetch('https://api.github.com/user/repos', {
+      // Create new repo (in user account or organization)
+      const createUrl = owner === user.login 
+        ? 'https://api.github.com/user/repos'
+        : `https://api.github.com/orgs/${owner}/repos`;
+      
+      const createResponse = await fetch(createUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           name: repoName,
           description: 'Projet libéré et nettoyé par Inopay - 100% Souverain',
           private: true,
-          auto_init: true,
+          auto_init: false, // Don't auto-init - we'll push everything at once
         }),
       });
 
@@ -74,50 +85,45 @@ async function pushToGitHub(
 
       const newRepo = await createResponse.json();
       repoUrl = newRepo.html_url;
-
-      // Wait for repo initialization
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      isNewRepo = true;
+      console.log(`[GitHub] Created new repo: ${repoUrl}`);
     } else {
       const existingRepo = await repoResponse.json();
       repoUrl = existingRepo.html_url;
     }
 
-    // Get current commit SHA
-    const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`, { headers });
+    // STRATEGY: Use tree with inline content for small files
+    // Only create blobs for large files (>100KB)
+    const INLINE_SIZE_LIMIT = 100 * 1024; // 100KB
+    const treeItems: any[] = [];
+    const largeFilesToProcess: { path: string; content: string }[] = [];
     
-    let baseSha: string;
-    let baseTreeSha: string;
-
-    if (refResponse.ok) {
-      const refData = await refResponse.json();
-      baseSha = refData.object.sha;
-
-      // Get base tree
-      const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`, { headers });
-      const commitData = await commitResponse.json();
-      baseTreeSha = commitData.tree.sha;
-    } else {
-      // Empty repo, need to create initial commit
-      baseSha = '';
-      baseTreeSha = '';
+    // Separate small files (inline) from large files (need blob)
+    for (const file of files) {
+      const size = new TextEncoder().encode(file.content).length;
+      if (size > INLINE_SIZE_LIMIT) {
+        largeFilesToProcess.push(file);
+      } else {
+        // Small files go directly in tree with base64 content
+        treeItems.push({
+          path: file.path,
+          mode: '100644',
+          type: 'blob',
+          content: file.content, // Content directly in tree item
+        });
+      }
     }
-
-    // Create blobs for all files with retry logic
-    const treeItems = [];
+    
+    console.log(`[GitHub] ${treeItems.length} inline files, ${largeFilesToProcess.length} large files need blobs`);
+    
+    // Create blobs only for large files (with retry and rate limit handling)
     const failedBlobs: string[] = [];
     
-    const createBlobWithRetry = async (file: { path: string; content: string }, retries = 3): Promise<string | null> => {
-      for (let attempt = 1; attempt <= retries; attempt++) {
+    for (const file of largeFilesToProcess) {
+      let success = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          // Validate content is not truncated (check for basic syntax issues)
-          const content = file.content;
-          if (!content || content.length === 0) {
-            console.warn(`[GitHub] Empty content for ${file.path}, skipping`);
-            return null;
-          }
-          
-          // Encode content safely
-          const encodedContent = btoa(unescape(encodeURIComponent(content)));
+          const encodedContent = btoa(unescape(encodeURIComponent(file.content)));
           
           const blobResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/blobs`, {
             method: 'POST',
@@ -130,63 +136,72 @@ async function pushToGitHub(
 
           if (blobResponse.ok) {
             const blob = await blobResponse.json();
-            return blob.sha;
+            treeItems.push({
+              path: file.path,
+              mode: '100644',
+              type: 'blob',
+              sha: blob.sha,
+            });
+            success = true;
+            break;
           }
           
-          // Log error details
-          const errorText = await blobResponse.text();
-          console.error(`[GitHub] Attempt ${attempt}/${retries} failed for ${file.path}: ${blobResponse.status} - ${errorText}`);
-          
+          // Handle rate limiting
           if (blobResponse.status === 403 || blobResponse.status === 429) {
-            // Rate limited - wait longer
-            await new Promise(r => setTimeout(r, 2000 * attempt));
-          } else if (attempt < retries) {
-            await new Promise(r => setTimeout(r, 500 * attempt));
+            const retryAfter = blobResponse.headers.get('Retry-After');
+            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000 * attempt;
+            console.warn(`[GitHub] Rate limited on blob creation, waiting ${waitTime}ms`);
+            await new Promise(r => setTimeout(r, waitTime));
+          } else {
+            const errorText = await blobResponse.text();
+            console.error(`[GitHub] Blob creation failed for ${file.path}: ${blobResponse.status} - ${errorText}`);
+            await new Promise(r => setTimeout(r, 1000 * attempt));
           }
         } catch (err) {
           console.error(`[GitHub] Error creating blob for ${file.path}:`, err);
-          if (attempt < retries) {
-            await new Promise(r => setTimeout(r, 500 * attempt));
-          }
+          await new Promise(r => setTimeout(r, 1000 * attempt));
         }
       }
-      return null;
-    };
-    
-    // Process files in batches to avoid rate limiting
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      const batch = files.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map(async (file) => {
-          const sha = await createBlobWithRetry(file);
-          return { file, sha };
-        })
-      );
       
-      for (const { file, sha } of results) {
-        if (sha) {
-          treeItems.push({
-            path: file.path,
-            mode: '100644',
-            type: 'blob',
-            sha,
-          });
-        } else {
-          failedBlobs.push(file.path);
-        }
+      if (!success) {
+        failedBlobs.push(file.path);
+        // Add content directly anyway (might work for some files)
+        treeItems.push({
+          path: file.path,
+          mode: '100644',
+          type: 'blob',
+          content: file.content,
+        });
       }
     }
     
     if (failedBlobs.length > 0) {
-      console.warn(`[GitHub] Failed to create blobs for ${failedBlobs.length} files:`, failedBlobs.slice(0, 10));
+      console.warn(`[GitHub] ${failedBlobs.length} blob creations failed, using inline content fallback`);
     }
     
     if (treeItems.length === 0) {
-      return { success: false, error: 'Aucun fichier n\'a pu être envoyé vers GitHub' };
+      return { success: false, error: 'Aucun fichier à envoyer' };
     }
 
-    // Create tree
+    // For existing repos, get the base tree SHA
+    let baseSha: string | null = null;
+    let baseTreeSha: string | null = null;
+    
+    if (!isNewRepo) {
+      const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`, { headers });
+      if (refResponse.ok) {
+        const refData = await refResponse.json();
+        baseSha = refData.object.sha;
+        const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`, { headers });
+        if (commitResponse.ok) {
+          const commitData = await commitResponse.json();
+          baseTreeSha = commitData.tree.sha;
+        }
+      }
+    }
+
+    // Create tree (single API call for all inline content!)
+    console.log(`[GitHub] Creating tree with ${treeItems.length} items...`);
     const treePayload: any = { tree: treeItems };
     if (baseTreeSha) {
       treePayload.base_tree = baseTreeSha;
@@ -200,10 +215,12 @@ async function pushToGitHub(
 
     if (!treeResponse.ok) {
       const error = await treeResponse.json();
+      console.error('[GitHub] Tree creation failed:', error);
       return { success: false, error: `Erreur création arbre: ${error.message}` };
     }
 
     const tree = await treeResponse.json();
+    console.log(`[GitHub] Tree created: ${tree.sha}`);
 
     // Create commit
     const commitPayload: any = {
@@ -226,33 +243,41 @@ async function pushToGitHub(
     }
 
     const newCommit = await newCommitResponse.json();
+    console.log(`[GitHub] Commit created: ${newCommit.sha}`);
 
-    // Update reference
-    const updateRefMethod = baseSha ? 'PATCH' : 'POST';
-    const refUrl = baseSha 
-      ? `https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`
-      : `https://api.github.com/repos/${owner}/${repoName}/git/refs`;
-
-    const refPayload = baseSha 
-      ? { sha: newCommit.sha, force: true }
-      : { ref: 'refs/heads/main', sha: newCommit.sha };
-
-    const updateRefResponse = await fetch(refUrl, {
-      method: updateRefMethod,
-      headers,
-      body: JSON.stringify(refPayload),
-    });
-
-    if (!updateRefResponse.ok) {
-      const error = await updateRefResponse.json();
-      return { success: false, error: `Erreur mise à jour ref: ${error.message}` };
+    // Update or create reference
+    if (baseSha) {
+      // Update existing ref
+      const updateRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ sha: newCommit.sha, force: true }),
+      });
+      
+      if (!updateRefResponse.ok) {
+        const error = await updateRefResponse.json();
+        return { success: false, error: `Erreur mise à jour ref: ${error.message}` };
+      }
+    } else {
+      // Create new ref for new repo
+      const createRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/refs`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ref: 'refs/heads/main', sha: newCommit.sha }),
+      });
+      
+      if (!createRefResponse.ok) {
+        const error = await createRefResponse.json();
+        return { success: false, error: `Erreur création ref: ${error.message}` };
+      }
     }
 
+    console.log(`[GitHub] Successfully pushed to ${repoUrl}`);
     return { success: true, repoUrl };
   } catch (error) {
-    console.error('GitHub push error:', error);
+    console.error('[GitHub] Push error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-    return { success: false, repoUrl: undefined, error: `Erreur réseau: ${errorMessage}` };
+    return { success: false, error: `Erreur réseau: ${errorMessage}` };
   }
 }
 
@@ -263,6 +288,8 @@ async function triggerCoolifyDeployment(
   projectName: string
 ): Promise<{ success: boolean; deploymentUrl?: string; error?: string }> {
   try {
+    console.log(`[Coolify] Connecting to ${coolifyUrl}...`);
+    
     // List applications to find or create one
     const appsResponse = await fetch(`${coolifyUrl}/api/v1/applications`, {
       headers: {
@@ -272,30 +299,43 @@ async function triggerCoolifyDeployment(
     });
 
     if (!appsResponse.ok) {
-      return { success: false, error: 'Impossible de se connecter à Coolify' };
+      const status = appsResponse.status;
+      if (status === 401) {
+        return { success: false, error: 'Token Coolify invalide ou expiré' };
+      } else if (status === 403) {
+        return { success: false, error: 'Token Coolify sans permissions suffisantes' };
+      }
+      return { success: false, error: `Impossible de se connecter à Coolify (HTTP ${status})` };
     }
 
     const apps = await appsResponse.json();
+    console.log(`[Coolify] Found ${apps.length} applications`);
+    
     let appUuid: string | null = null;
     let deploymentUrl: string | null = null;
 
-    // Find existing app or create new one
+    // Find existing app by name or repo URL
     const existingApp = apps.find((app: any) => 
       app.name === `inopay-${projectName}` || 
-      app.git_repository?.includes(projectName)
+      app.name?.toLowerCase().includes('inopay') ||
+      app.git_repository?.includes(projectName) ||
+      app.git_repository?.includes('inopay')
     );
 
     if (existingApp) {
       appUuid = existingApp.uuid;
       deploymentUrl = existingApp.fqdn;
+      console.log(`[Coolify] Found existing app: ${existingApp.name} (${appUuid})`);
     } else {
+      console.log(`[Coolify] No matching app found for ${projectName}`);
       return { 
         success: false, 
-        error: 'Application non trouvée sur Coolify. Créez-la d\'abord depuis le dashboard Coolify.' 
+        error: `Application non trouvée sur Coolify. Créez d'abord une application nommée "inopay-${projectName}" dans Coolify.` 
       };
     }
 
     // Trigger deployment
+    console.log(`[Coolify] Triggering restart for ${appUuid}...`);
     const deployResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}/restart`, {
       method: 'POST',
       headers: {
@@ -305,15 +345,17 @@ async function triggerCoolifyDeployment(
     });
 
     if (!deployResponse.ok) {
-      const error = await deployResponse.json();
-      return { success: false, error: `Erreur déploiement: ${error.message || 'Inconnu'}` };
+      const errorText = await deployResponse.text();
+      console.error(`[Coolify] Restart failed: ${deployResponse.status} - ${errorText}`);
+      return { success: false, error: `Erreur déploiement: ${deployResponse.status}` };
     }
 
+    console.log(`[Coolify] Deployment triggered successfully`);
     return { success: true, deploymentUrl: deploymentUrl || undefined };
   } catch (error) {
-    console.error('Coolify deployment error:', error);
+    console.error('[Coolify] Deployment error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-    return { success: false, deploymentUrl: undefined, error: `Erreur Coolify: ${errorMessage}` };
+    return { success: false, error: `Erreur Coolify: ${errorMessage}` };
   }
 }
 
@@ -347,7 +389,7 @@ serve(async (req) => {
       });
     }
 
-    const { files, projectName, projectId, action, pendingPaymentId, selectedPaths } = await req.json() as ProcessRequest & { 
+    const { files, projectName, projectId, action, pendingPaymentId, selectedPaths, destinationOwner } = await req.json() as ProcessRequest & { 
       action?: string;
       pendingPaymentId?: string;
       selectedPaths?: string[];
@@ -456,11 +498,12 @@ serve(async (req) => {
     // Get user settings for GitHub token
     const { data: settings } = await supabase
       .from('user_settings')
-      .select('github_token')
+      .select('github_token, github_destination_username')
       .eq('user_id', user.id)
       .single();
 
     const githubToken = settings?.github_token;
+    const storedDestinationOwner = settings?.github_destination_username;
 
     // Log admin notification - Liberation started
     try {
@@ -477,7 +520,8 @@ serve(async (req) => {
           total_files: filesToProcess.length,
           original_files: files.length,
           has_payment: !!pendingPaymentId,
-          partial_paths: selectedPaths || null
+          partial_paths: selectedPaths || null,
+          destination_owner: destinationOwner || storedDestinationOwner || null
         }
       });
       console.log('[Liberation] Admin notified of liberation start');
@@ -555,16 +599,21 @@ serve(async (req) => {
         phase: 'cleaning',
         cleaningResults,
         cleanedFiles: cleanedFiles.length,
+        files: cleanedFiles,
         totalChanges,
         validationErrors,
         assetAlerts,
         polyfillsGenerated: polyfillResult.generated.map(p => p.path),
+        summary: {
+          totalChanges,
+          removedPatterns: cleaningResults.flatMap(r => r.changes.map((c: any) => c.type))
+        }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Phase 2: Push to GitHub
+    // Phase 2: Push to GitHub using optimized strategy
     let githubResult: { success: boolean; repoUrl: string | undefined; error: string } = { 
       success: false, 
       repoUrl: undefined, 
@@ -573,11 +622,14 @@ serve(async (req) => {
     
     if (githubToken) {
       const repoName = `inopay-${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
-      console.log(`[Liberation] Pushing to GitHub repo: ${repoName}`);
+      const effectiveOwner = destinationOwner || storedDestinationOwner || null;
       
-      const pushResult = await pushToGitHub(
+      console.log(`[Liberation] Pushing to GitHub: ${effectiveOwner || 'user'}/${repoName}`);
+      
+      const pushResult = await pushToGitHubOptimized(
         githubToken,
         repoName,
+        effectiveOwner,
         cleanedFiles,
         `🚀 Libération Inopay - ${new Date().toLocaleDateString('fr-CA')}\n\n${totalChanges} modifications de nettoyage appliquées`
       );
@@ -588,7 +640,7 @@ serve(async (req) => {
       };
     }
 
-    // Phase 3: Trigger Coolify deployment (even if GitHub failed partially - try with existing app)
+    // Phase 3: Trigger Coolify deployment (even if GitHub failed partially)
     let coolifyResult: { success: boolean; deploymentUrl: string | undefined; error: string } = { 
       success: false, 
       deploymentUrl: undefined, 
@@ -604,9 +656,7 @@ serve(async (req) => {
       .limit(1);
 
     if (servers && servers.length > 0 && servers[0].coolify_url && servers[0].coolify_token) {
-      // Try Coolify deployment regardless of GitHub result
-      // If GitHub succeeded, use the new repo URL
-      // If GitHub failed, still try to trigger existing app deployment (might be using source repo)
+      // Try Coolify deployment
       const repoUrlToUse = githubResult.repoUrl || `https://github.com/fofanay/inopay`;
       
       console.log(`[Liberation] Triggering Coolify deployment with repo: ${repoUrlToUse}`);
@@ -623,7 +673,7 @@ serve(async (req) => {
         error: deployResult.error || '',
       };
       
-      // If Coolify succeeded but GitHub failed, note this in the result
+      // If Coolify succeeded but GitHub failed, note this
       if (coolifyResult.success && !githubResult.success) {
         console.log(`[Liberation] Coolify deployed successfully despite GitHub failure`);
         coolifyResult.error = 'Déployé avec le dépôt source (GitHub push a échoué)';
@@ -660,7 +710,6 @@ serve(async (req) => {
           totalChanges,
           validationErrors,
           results: cleaningResults.filter(r => r.changes.length > 0),
-          // New security features
           lockFilesExcluded: files.filter(f => isLockFile(f.path)).map(f => f.path),
           assetAlerts: assetAlerts.length > 0 ? {
             count: assetAlerts.length,
