@@ -589,12 +589,53 @@ export function validateSyntax(code: string, filePath: string): { valid: boolean
 
 // ============= SECURITY LIMITS =============
 
+// Default values - can be overridden by admin_config table
 export const SECURITY_LIMITS = {
   MAX_FILES_PER_LIBERATION: 500,
   MAX_FILE_SIZE_CHARS: 50000,
   MAX_API_COST_CENTS: 5000, // $50
   CACHE_TTL_HOURS: 24,
+  KILL_SWITCH_ENABLED: false,
 };
+
+// Type for dynamic security limits
+export interface DynamicSecurityLimits {
+  MAX_FILES_PER_LIBERATION: number;
+  MAX_FILE_SIZE_CHARS: number;
+  MAX_API_COST_CENTS: number;
+  CACHE_TTL_HOURS: number;
+  KILL_SWITCH_ENABLED: boolean;
+}
+
+// Function to fetch dynamic limits from admin_config table
+export async function getDynamicSecurityLimits(
+  supabaseAdmin: any
+): Promise<DynamicSecurityLimits> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('admin_config')
+      .select('config_value')
+      .eq('config_key', 'SECURITY_LIMITS')
+      .single();
+    
+    if (error || !data) {
+      console.log('[SECURITY] Using default limits (no config found)');
+      return SECURITY_LIMITS;
+    }
+    
+    const config = data.config_value as Record<string, any>;
+    return {
+      MAX_FILES_PER_LIBERATION: config.MAX_FILES_PER_LIBERATION ?? SECURITY_LIMITS.MAX_FILES_PER_LIBERATION,
+      MAX_FILE_SIZE_CHARS: config.MAX_FILE_SIZE_CHARS ?? SECURITY_LIMITS.MAX_FILE_SIZE_CHARS,
+      MAX_API_COST_CENTS: config.MAX_API_COST_CENTS ?? SECURITY_LIMITS.MAX_API_COST_CENTS,
+      CACHE_TTL_HOURS: config.CACHE_TTL_HOURS ?? SECURITY_LIMITS.CACHE_TTL_HOURS,
+      KILL_SWITCH_ENABLED: config.KILL_SWITCH_ENABLED ?? false,
+    };
+  } catch (e) {
+    console.error('[SECURITY] Error fetching dynamic limits:', e);
+    return SECURITY_LIMITS;
+  }
+}
 
 // ============= LOCK FILE EXCLUSION =============
 

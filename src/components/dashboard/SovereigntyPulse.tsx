@@ -50,7 +50,7 @@ export function SovereigntyPulse() {
       // Check active servers
       const { data: servers } = await supabase
         .from("user_servers")
-        .select("id, status, coolify_url")
+        .select("id, status, coolify_url, provider, name")
         .eq("user_id", session.session.user.id)
         .eq("status", "active");
 
@@ -87,8 +87,10 @@ export function SovereigntyPulse() {
       // Evaluate Infrastructure status
       const hasActiveServer = (servers?.length || 0) > 0;
       const activeDeployments = deployments?.filter(d => d.status === "deployed" && d.health_status === "healthy").length || 0;
+      // Get provider name dynamically from first active server or default to generic message
+      const serverProvider = servers?.[0] ? (servers[0].provider || 'VPS') : 'VPS';
       const infraStatus: DiagnosticResult["infrastructure"] = hasActiveServer
-        ? { status: "ok", message: `Serveur IONOS Réactif`, latency }
+        ? { status: "ok", message: `Serveur ${serverProvider} Réactif`, latency }
         : { status: "warning", message: "Aucun serveur configuré", latency };
 
       // Evaluate Sovereignty status

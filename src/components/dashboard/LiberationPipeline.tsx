@@ -84,7 +84,7 @@ export function LiberationPipeline({
     },
     { 
       id: 'build', 
-      label: 'Build sur VPS IONOS', 
+      label: 'Build sur votre VPS', 
       icon: <Server className="h-5 w-5" />, 
       status: 'pending' 
     },
