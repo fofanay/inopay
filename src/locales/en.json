@@ -749,7 +749,25 @@
     "emailAlreadyUsed": "This email is already in use. Try signing in.",
     "unexpectedError": "An unexpected error occurred",
     "invalidEmail": "Invalid email",
-    "passwordMinLength": "Password must be at least 6 characters"
+    "passwordMinLength": "Password must be at least 6 characters",
+    "otp": {
+      "title": "Verify your email",
+      "description": "We sent a 6-digit code to",
+      "sent": "Code sent",
+      "checkEmail": "Check your inbox",
+      "enterFullCode": "Please enter the full 6-digit code",
+      "verify": "Verify code",
+      "verifying": "Verifying...",
+      "verified": "Email verified!",
+      "accountCreated": "Your account has been created successfully",
+      "noCode": "Didn't receive the code?",
+      "resend": "Resend code",
+      "resendIn": "Resend in",
+      "resent": "Code resent",
+      "resendError": "Unable to resend code",
+      "verifyError": "Unable to verify code",
+      "changeEmail": "Change email address"
+    }
   },
   "vpsOnboarding": {
     "configQuestion": "How would you like to configure your VPS?",

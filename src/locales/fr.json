@@ -644,7 +644,25 @@
     "emailAlreadyUsed": "Cet email est déjà utilisé. Essayez de vous connecter.",
     "unexpectedError": "Une erreur inattendue s'est produite",
     "invalidEmail": "Email invalide",
-    "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères"
+    "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+    "otp": {
+      "title": "Vérification de votre email",
+      "description": "Nous avons envoyé un code à 6 chiffres à",
+      "sent": "Code envoyé",
+      "checkEmail": "Vérifiez votre boîte de réception",
+      "enterFullCode": "Veuillez entrer les 6 chiffres du code",
+      "verify": "Vérifier le code",
+      "verifying": "Vérification...",
+      "verified": "Email vérifié !",
+      "accountCreated": "Votre compte a été créé avec succès",
+      "noCode": "Vous n'avez pas reçu le code ?",
+      "resend": "Renvoyer le code",
+      "resendIn": "Renvoyer dans",
+      "resent": "Code renvoyé",
+      "resendError": "Impossible de renvoyer le code",
+      "verifyError": "Impossible de vérifier le code",
+      "changeEmail": "Modifier l'adresse email"
+    }
   },
   "vpsOnboarding": {
     "configQuestion": "Comment souhaitez-vous configurer votre VPS ?",
