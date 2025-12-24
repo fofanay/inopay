@@ -700,6 +700,49 @@
     "deleteError": "Unable to delete project",
     "loadError": "Unable to load projects"
   },
+  "syncMirror": {
+    "title": "Inopay Sync Mirror",
+    "subtitle": "Automatic sync between Lovable and your private server",
+    "stats": {
+      "configured": "Configured projects",
+      "active": "Active syncs",
+      "total": "Total syncs"
+    },
+    "enableSync": "Enable Magic Sync",
+    "enableSyncDesc": "These deployments can be synced automatically",
+    "configure": "Configure",
+    "activeConfigs": "Active configurations",
+    "lastSync": "Last sync",
+    "syncs": "sync(s)",
+    "error": "Error",
+    "noCompatible": "No compatible deployment",
+    "noCompatibleDesc": "To use Sync Mirror, you must first deploy a project via Coolify with a linked GitHub repository.",
+    "howItWorks": "How does it work?",
+    "steps": {
+      "step1": "Modify on Lovable",
+      "step1Desc": "Code by chat as usual",
+      "step2": "Push to GitHub",
+      "step2Desc": "Lovable syncs automatically",
+      "step3": "Smart cleaning",
+      "step3Desc": "Inopay removes locks",
+      "step4": "Automatic deployment",
+      "step4Desc": "Your VPS is updated"
+    },
+    "status": {
+      "completed": "Completed",
+      "failed": "Failed",
+      "processing": "Processing",
+      "deploying": "Deploying",
+      "pending": "Pending"
+    },
+    "syncEnabled": "Sync enabled",
+    "syncDisabled": "Sync disabled",
+    "syncEnabledDesc": "Changes will be automatically deployed",
+    "syncDisabledDesc": "Automatic sync is paused",
+    "loadError": "Unable to load sync configurations",
+    "toggleError": "Unable to change sync state",
+    "never": "Never"
+  },
   "serverManagement": {
     "title": "My VPS servers",
     "subtitle": "Manage your servers for unlimited deployments",

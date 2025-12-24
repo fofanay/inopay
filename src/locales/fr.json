@@ -595,6 +595,49 @@
     "deleteError": "Impossible de supprimer le projet",
     "loadError": "Impossible de charger les projets"
   },
+  "syncMirror": {
+    "title": "Inopay Sync Mirror",
+    "subtitle": "Synchronisation automatique entre Lovable et votre serveur privé",
+    "stats": {
+      "configured": "Projets configurés",
+      "active": "Sync actives",
+      "total": "Total syncs"
+    },
+    "enableSync": "Activer la Synchronisation Magique",
+    "enableSyncDesc": "Ces déploiements peuvent être synchronisés automatiquement",
+    "configure": "Configurer",
+    "activeConfigs": "Configurations actives",
+    "lastSync": "Dernière sync",
+    "syncs": "synchronisation(s)",
+    "error": "Erreur",
+    "noCompatible": "Aucun déploiement compatible",
+    "noCompatibleDesc": "Pour utiliser Sync Mirror, vous devez d'abord déployer un projet via Coolify avec un dépôt GitHub lié.",
+    "howItWorks": "Comment ça marche ?",
+    "steps": {
+      "step1": "Modifiez sur Lovable",
+      "step1Desc": "Codez par chat comme d'habitude",
+      "step2": "Push vers GitHub",
+      "step2Desc": "Lovable synchronise automatiquement",
+      "step3": "Nettoyage intelligent",
+      "step3Desc": "Inopay supprime les verrous",
+      "step4": "Déploiement automatique",
+      "step4Desc": "Votre VPS est mis à jour"
+    },
+    "status": {
+      "completed": "Complété",
+      "failed": "Échoué",
+      "processing": "En cours",
+      "deploying": "Déploiement",
+      "pending": "En attente"
+    },
+    "syncEnabled": "Synchronisation activée",
+    "syncDisabled": "Synchronisation désactivée",
+    "syncEnabledDesc": "Les modifications seront automatiquement déployées",
+    "syncDisabledDesc": "La synchronisation automatique est en pause",
+    "loadError": "Impossible de charger les configurations de synchronisation",
+    "toggleError": "Impossible de modifier l'état de synchronisation",
+    "never": "Jamais"
+  },
   "serverManagement": {
     "title": "Mes serveurs VPS",
     "subtitle": "Gérez vos serveurs pour des déploiements illimités",
