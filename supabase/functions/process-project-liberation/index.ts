@@ -66,6 +66,9 @@ async function pushToGitHubOptimized(
     const user = await userResponse.json();
     const owner = cleanedDestinationOwner || user.login;
     
+    // Case-insensitive comparison for owner matching
+    const isOwnAccount = owner.toLowerCase() === user.login.toLowerCase();
+    console.log(`[GitHub] Token user: ${user.login}, destination owner: ${owner}, isOwnAccount: ${isOwnAccount}`);
     console.log(`[GitHub] Pushing to ${owner}/${repoName} (${files.length} files)`);
 
     // Check if repo exists
@@ -75,10 +78,12 @@ async function pushToGitHubOptimized(
     let isNewRepo = false;
     
     if (repoResponse.status === 404) {
-      // Create new repo (in user account or organization)
-      const createUrl = owner === user.login 
+      // Create new repo - use case-insensitive comparison
+      const createUrl = isOwnAccount
         ? 'https://api.github.com/user/repos'
         : `https://api.github.com/orgs/${owner}/repos`;
+      
+      console.log(`[GitHub] Creating repo via: ${createUrl}`);
       
       const createResponse = await fetch(createUrl, {
         method: 'POST',
@@ -93,7 +98,24 @@ async function pushToGitHubOptimized(
 
       if (!createResponse.ok) {
         const error = await createResponse.json();
-        return { success: false, error: `Erreur création repo: ${error.message}` };
+        const errorMsg = error.message || 'Erreur inconnue';
+        
+        // Detect common issues
+        if (createUrl.includes('/orgs/') && (errorMsg.includes('Not Found') || createResponse.status === 404)) {
+          return { 
+            success: false, 
+            error: `"${owner}" n'est pas une organisation GitHub. Si c'est votre compte personnel, laissez "Destination" vide ou vérifiez que le nom correspond exactement à votre nom d'utilisateur GitHub (casse comprise: ${user.login}).` 
+          };
+        }
+        
+        if (errorMsg.includes('name already exists')) {
+          return {
+            success: false,
+            error: `Le dépôt ${owner}/${repoName} existe déjà mais n'est pas accessible avec ce token. Vérifiez les permissions ou supprimez le repo existant.`
+          };
+        }
+        
+        return { success: false, error: `Erreur création repo: ${errorMsg} (status: ${createResponse.status})` };
       }
 
       const newRepo = await createResponse.json();
