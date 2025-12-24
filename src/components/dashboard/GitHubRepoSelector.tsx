@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, GitBranch, Star, Clock, Unlock, Loader2, RefreshCw, Radar, CheckCircle2, Github, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ interface GitHubRepoSelectorProps {
 }
 
 const GitHubRepoSelector = ({ onSelectRepo, isLoading, isCompleted }: GitHubRepoSelectorProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [filteredRepos, setFilteredRepos] = useState<GitHubRepo[]>([]);
@@ -235,7 +237,7 @@ const GitHubRepoSelector = ({ onSelectRepo, isLoading, isCompleted }: GitHubRepo
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher un projet..."
+            placeholder={t("ui.searchProjects")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 rounded-lg border-border bg-background"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 import { Loader2, Sparkles, Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface CodeCleanerProps {
 }
 
 const CodeCleaner = ({ fileName, originalCode, isOpen, onClose }: CodeCleanerProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [cleaning, setCleaning] = useState(false);
   const [cleanedCode, setCleanedCode] = useState<string | null>(null);
@@ -182,8 +184,8 @@ const CodeCleaner = ({ fileName, originalCode, isOpen, onClose }: CodeCleanerPro
                   newValue={cleanedCode}
                   splitView={true}
                   compareMethod={DiffMethod.WORDS}
-                  leftTitle="Code Original"
-                  rightTitle="Code Nettoyé"
+                  leftTitle={t("codeCleaner.originalCode")}
+                  rightTitle={t("codeCleaner.cleanedCode")}
                   styles={{
                     variables: {
                       dark: {
