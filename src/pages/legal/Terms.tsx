@@ -56,7 +56,7 @@ const Terms = () => {
                 </p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
                   <li>Nettoyage automatique du code généré par IA</li>
-                  <li>Déploiement sur serveurs VPS (IONOS, Hetzner, etc.)</li>
+                  <li>Déploiement sur serveurs VPS (Hetzner, OVH, DigitalOcean, etc.)</li>
                   <li>Configuration SSL et monitoring 24/7</li>
                   <li>Synchronisation GitHub automatique</li>
                   <li>Services de redéploiement et maintenance</li>

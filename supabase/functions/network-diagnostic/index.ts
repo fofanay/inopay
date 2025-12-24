@@ -154,7 +154,7 @@ serve(async (req) => {
         
         if (response && response.ok) {
           results.push({
-            service: 'VPS IONOS',
+            service: 'VPS',
             status: 'ok',
             latency,
             message: `VPS accessible (${vpsIp})`
@@ -173,7 +173,7 @@ serve(async (req) => {
             // Connection refused means port is active
             clearTimeout(sshTimeout);
             results.push({
-              service: 'VPS IONOS',
+              service: 'VPS',
               status: 'ok',
               latency: Date.now() - vpsStart,
               message: `VPS en ligne (${vpsIp})`
@@ -183,7 +183,7 @@ serve(async (req) => {
           
           clearTimeout(sshTimeout);
           results.push({
-            service: 'VPS IONOS',
+            service: 'VPS',
             status: 'error',
             latency,
             message: 'VPS ne répond pas',
@@ -196,7 +196,7 @@ serve(async (req) => {
         // AbortError or connection refused can mean server is up but blocking
         if (errorName === 'AbortError') {
           results.push({
-            service: 'VPS IONOS',
+            service: 'VPS',
             status: 'error',
             latency,
             message: 'Timeout - VPS injoignable',
@@ -205,7 +205,7 @@ serve(async (req) => {
         } else {
           // Connection refused usually means server is up
           results.push({
-            service: 'VPS IONOS',
+            service: 'VPS',
             status: 'ok',
             latency,
             message: `VPS détecté (${vpsIp})`
@@ -214,7 +214,7 @@ serve(async (req) => {
       }
     } else {
       results.push({
-        service: 'VPS IONOS',
+        service: 'VPS',
         status: 'error',
         latency: 0,
         message: 'IP VPS non configurée',

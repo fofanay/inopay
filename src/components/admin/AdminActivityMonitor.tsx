@@ -39,6 +39,8 @@ const iconMap: Record<string, any> = {
   secrets_cleaned: Key,
   health_check: Activity,
   error: XCircle,
+  liberation: Zap,
+  project_liberation: CheckCircle2,
   default: Info,
 };
 
@@ -47,6 +49,7 @@ const statusColors: Record<string, string> = {
   error: 'bg-red-500/10 text-red-400 border-red-500/20',
   warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   info: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  processing: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
 };
 
 const AdminActivityMonitor = () => {
@@ -148,12 +151,14 @@ const AdminActivityMonitor = () => {
                           log.status === 'success' ? 'bg-emerald-500/10' :
                           log.status === 'error' ? 'bg-red-500/10' :
                           log.status === 'warning' ? 'bg-amber-500/10' :
+                          log.status === 'processing' ? 'bg-purple-500/10' :
                           'bg-blue-500/10'
                         }`}>
                           <Icon className={`h-4 w-4 ${
                             log.status === 'success' ? 'text-emerald-400' :
                             log.status === 'error' ? 'text-red-400' :
                             log.status === 'warning' ? 'text-amber-400' :
+                            log.status === 'processing' ? 'text-purple-400' :
                             'text-blue-400'
                           }`} />
                         </div>

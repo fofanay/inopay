@@ -32,11 +32,11 @@ const Index = () => {
   ];
 
   const hosters = [
-    { name: "IONOS", icon: Globe, color: "text-blue-600" },
-    { name: "OVH", icon: Cloud, color: "text-sky-500" },
     { name: "Hetzner", icon: Server, color: "text-red-500" },
+    { name: "OVH", icon: Cloud, color: "text-sky-500" },
     { name: "DigitalOcean", icon: Droplets, color: "text-blue-400" },
     { name: "Scaleway", icon: Zap, color: "text-purple-500" },
+    { name: "Your VPS", icon: Globe, color: "text-green-500" },
   ];
 
   // 3 Features Vibe-Friendly essentielles

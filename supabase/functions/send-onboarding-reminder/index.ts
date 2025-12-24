@@ -85,7 +85,7 @@ const getReminderEmailTemplate = (userName: string) => `
               </div>
               
               <p style="color: #94A3B8; font-size: 15px; line-height: 1.7; margin: 20px 0;">
-                La connexion à GitHub et au VPS IONOS ne prend que <strong style="color: #FBBF24;">2 minutes</strong>. 
+                La connexion à GitHub et à votre VPS ne prend que <strong style="color: #FBBF24;">2 minutes</strong>. 
                 Après ça, vous êtes libre.
               </p>
             </td>

@@ -401,6 +401,29 @@ serve(async (req) => {
 
     const githubToken = settings?.github_token;
 
+    // Log admin notification - Liberation started
+    try {
+      const userEmail = user.email || 'Unknown';
+      await supabase.from('admin_activity_logs').insert({
+        action_type: 'liberation',
+        title: `Libération démarrée: ${projectName}`,
+        description: `Utilisateur ${userEmail} a lancé une libération de ${filesToProcess.length} fichiers`,
+        status: 'processing',
+        user_id: user.id,
+        metadata: {
+          project_name: projectName,
+          project_id: projectId,
+          total_files: filesToProcess.length,
+          original_files: files.length,
+          has_payment: !!pendingPaymentId,
+          partial_paths: selectedPaths || null
+        }
+      });
+      console.log('[Liberation] Admin notified of liberation start');
+    } catch (notifyError) {
+      console.warn('[Liberation] Failed to notify admin:', notifyError);
+    }
+
     // Phase 1: Clean files
     console.log(`[Liberation] Starting cleaning for ${projectName}, ${filesToProcess.length} files (original: ${files.length})`);
     

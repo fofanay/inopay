@@ -37,7 +37,7 @@ interface DiagnosticConfig {
 const serviceIcons: Record<string, React.ElementType> = {
   'Supabase Database': Database,
   'Edge Functions': Cloud,
-  'VPS IONOS': Server,
+  'VPS': Server,
   'Coolify API': Activity,
   'GitHub API': Github,
 };
@@ -123,7 +123,7 @@ export default function AdminNetworkDiagnostic() {
         setShowConfig(true);
         toast("Mettez à jour votre token Coolify ci-dessous");
         break;
-      case 'VPS IONOS':
+      case 'VPS':
         setShowConfig(true);
         toast("Vérifiez l'adresse IP de votre VPS");
         break;
@@ -188,7 +188,7 @@ export default function AdminNetworkDiagnostic() {
             <CardContent className="pt-4 space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="vpsIp">IP VPS IONOS</Label>
+                  <Label htmlFor="vpsIp">IP VPS</Label>
                   <Input
                     id="vpsIp"
                     value={config.vpsIp}
