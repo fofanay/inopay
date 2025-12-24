@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +12,12 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
-  XCircle,
-  ExternalLink
+  XCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useLocaleFormat } from '@/hooks/useLocaleFormat';
 
 interface PendingPayment {
   id: string;
@@ -41,6 +40,8 @@ interface PaymentStats {
 }
 
 export function AdminExcessPayments() {
+  const { t } = useTranslation();
+  const { formatCurrency, formatDate, locale } = useLocaleFormat();
   const [payments, setPayments] = useState<PendingPayment[]>([]);
   const [stats, setStats] = useState<PaymentStats | null>(null);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -84,15 +85,15 @@ export function AdminExcessPayments() {
       const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - (6 - i));
-        return format(date, 'yyyy-MM-dd');
+        return date.toISOString().split('T')[0];
       });
 
-      const chartDataBuilt = last7Days.map(date => {
+      const chartDataBuilt = last7Days.map(dateStr => {
         const dayPayments = paid.filter(p => 
-          p.paid_at && format(new Date(p.paid_at), 'yyyy-MM-dd') === date
+          p.paid_at && new Date(p.paid_at).toISOString().split('T')[0] === dateStr
         );
         return {
-          date: format(new Date(date), 'dd MMM', { locale: fr }),
+          date: new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short' }).format(new Date(dateStr)),
           revenue: dayPayments.reduce((sum, p) => sum + p.supplement_amount_cents, 0) / 100,
           count: dayPayments.length,
         };
@@ -102,7 +103,7 @@ export function AdminExcessPayments() {
 
     } catch (error) {
       console.error('Error fetching payments:', error);
-      toast.error('Erreur de chargement');
+      toast.error(t('adminExcessPayments.loadingError'));
     } finally {
       setIsLoading(false);
     }
@@ -115,11 +116,11 @@ export function AdminExcessPayments() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle2 className="h-3 w-3 mr-1" />Payé</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle2 className="h-3 w-3 mr-1" />{t('adminExcessPayments.paid')}</Badge>;
       case 'pending':
-        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Clock className="h-3 w-3 mr-1" />En attente</Badge>;
+        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Clock className="h-3 w-3 mr-1" />{t('adminExcessPayments.pendingStatus')}</Badge>;
       case 'cancelled':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />Annulé</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />{t('adminExcessPayments.cancelled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -141,9 +142,9 @@ export function AdminExcessPayments() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Revenus Suppléments</p>
+                <p className="text-sm text-muted-foreground">{t('adminExcessPayments.supplementRevenue')}</p>
                 <p className="text-2xl font-bold text-green-400">
-                  ${((stats?.totalRevenue || 0) / 100).toFixed(2)}
+                  {formatCurrency((stats?.totalRevenue || 0) / 100, 'CAD')}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-green-500/50" />
@@ -155,7 +156,7 @@ export function AdminExcessPayments() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Projets Payés</p>
+                <p className="text-sm text-muted-foreground">{t('adminExcessPayments.paidProjects')}</p>
                 <p className="text-2xl font-bold text-blue-400">{stats?.paidCount || 0}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-blue-500/50" />
@@ -167,7 +168,7 @@ export function AdminExcessPayments() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">En Attente</p>
+                <p className="text-sm text-muted-foreground">{t('adminExcessPayments.pending')}</p>
                 <p className="text-2xl font-bold text-amber-400">{stats?.pendingCount || 0}</p>
               </div>
               <Clock className="h-8 w-8 text-amber-500/50" />
@@ -179,7 +180,7 @@ export function AdminExcessPayments() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Taux Conversion</p>
+                <p className="text-sm text-muted-foreground">{t('adminExcessPayments.conversionRate')}</p>
                 <p className="text-2xl font-bold text-purple-400">
                   {(stats?.conversionRate || 0).toFixed(1)}%
                 </p>
@@ -195,12 +196,12 @@ export function AdminExcessPayments() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Revenus Suppléments (7 jours)</CardTitle>
-              <CardDescription>Revenus générés par les gros projets</CardDescription>
+              <CardTitle>{t('adminExcessPayments.supplementRevenue7Days')}</CardTitle>
+              <CardDescription>{t('adminExcessPayments.revenueFromLargeProjects')}</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={fetchPayments}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Actualiser
+              {t('adminExcessPayments.refresh')}
             </Button>
           </div>
         </CardHeader>
@@ -216,14 +217,14 @@ export function AdminExcessPayments() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `$${v}`} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => formatCurrency(v, 'CAD')} />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--background))', 
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenus']}
+                  formatter={(value: number) => [formatCurrency(value, 'CAD'), t('adminExcessPayments.revenue')]}
                 />
                 <Area 
                   type="monotone" 
@@ -243,29 +244,29 @@ export function AdminExcessPayments() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileCode className="h-5 w-5" />
-            Historique des Suppléments
+            {t('adminExcessPayments.supplementHistory')}
           </CardTitle>
           <CardDescription>
-            Paiements excédentaires pour les gros projets
+            {t('adminExcessPayments.excessPaymentsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Projet</TableHead>
-                <TableHead>Fichiers</TableHead>
-                <TableHead>Excédent</TableHead>
-                <TableHead>Supplément</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>{t('adminExcessPayments.project')}</TableHead>
+                <TableHead>{t('adminExcessPayments.files')}</TableHead>
+                <TableHead>{t('adminExcessPayments.excess')}</TableHead>
+                <TableHead>{t('adminExcessPayments.supplement')}</TableHead>
+                <TableHead>{t('adminExcessPayments.status')}</TableHead>
+                <TableHead>{t('adminExcessPayments.date')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Aucun paiement de supplément enregistré
+                    {t('adminExcessPayments.noPayments')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -279,11 +280,11 @@ export function AdminExcessPayments() {
                       <span className="text-amber-400">+{payment.excess_files}</span>
                     </TableCell>
                     <TableCell className="font-mono">
-                      ${(payment.supplement_amount_cents / 100).toFixed(2)}
+                      {formatCurrency(payment.supplement_amount_cents / 100, 'CAD')}
                     </TableCell>
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(payment.created_at), 'dd MMM yyyy', { locale: fr })}
+                      {formatDate(payment.created_at)}
                     </TableCell>
                   </TableRow>
                 ))
