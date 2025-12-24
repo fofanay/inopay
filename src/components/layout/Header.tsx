@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { RoleIndicator } from "@/components/ui/role-indicator";
-import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, Twitter, Github, ArrowDownRight } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, ArrowDownRight } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
@@ -98,25 +98,6 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Social icons */}
-          <div className="hidden md:flex items-center gap-3">
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
-            >
-              <Twitter className="h-4 w-4" />
-            </a>
-            <a 
-              href="https://github.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
-            >
-              <Github className="h-4 w-4" />
-            </a>
-          </div>
 
           {/* Mobile Menu Button */}
           <button
