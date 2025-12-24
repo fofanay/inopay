@@ -1,9 +1,15 @@
-import { Link } from 'react-router-dom';
-import { Shield, Key, Coins, ArrowRight, Sparkles } from 'lucide-react';
+import { Shield, Key, Coins, ArrowRight, Sparkles, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export function ManifesteBanner() {
   const { t } = useTranslation();
@@ -32,6 +38,30 @@ export function ManifesteBanner() {
       color: 'text-amber-400',
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/20',
+    },
+  ];
+
+  const manifestePoints = [
+    {
+      icon: Shield,
+      title: t('manifeste.zeroDependency'),
+      description: t('manifeste.zeroDependencyDesc'),
+      details: "Votre code ne dépend d'aucun service externe propriétaire. Pas de SDK fermé, pas de lock-in technique.",
+      color: 'text-emerald-400',
+    },
+    {
+      icon: Key,
+      title: t('manifeste.totalSovereignty'),
+      description: t('manifeste.totalSovereigntyDesc'),
+      details: "GitHub est votre dépôt source. VPS est votre infrastructure. Vous contrôlez les clés, les accès, les données.",
+      color: 'text-blue-400',
+    },
+    {
+      icon: Coins,
+      title: t('manifeste.economicFreedom'),
+      description: t('manifeste.economicFreedomDesc'),
+      details: "Hébergement à partir de 5€/mois au lieu de 50€+. Divisez vos coûts par 3 minimum.",
+      color: 'text-amber-400',
     },
   ];
 
@@ -71,18 +101,61 @@ export function ManifesteBanner() {
             ))}
           </div>
 
-          {/* Right: CTA - Goes to liberation section of dashboard */}
+          {/* Right: CTA - Opens manifeste modal */}
           <div className="flex-shrink-0">
-            <Link to="/dashboard?tab=liberation">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
-              >
-                {t('manifeste.readManifeste')}
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button 
+                  size="sm"
+                  className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-lg shadow-primary/25"
+                >
+                  {t('manifeste.readManifeste')}
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl bg-slate-900 border-slate-700 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="h-6 w-6 text-primary" />
+                    {t('manifeste.badge')} - {t('manifeste.title')}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="mt-4 space-y-6">
+                  <p className="text-slate-300 italic text-lg border-l-4 border-primary pl-4">
+                    "{t('manifeste.quote')}"
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {manifestePoints.map((point, index) => (
+                      <div 
+                        key={point.title}
+                        className="p-4 rounded-lg bg-slate-800/50 border border-slate-700"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg bg-slate-700/50`}>
+                            <point.icon className={`h-5 w-5 ${point.color}`} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className={`font-semibold ${point.color}`}>
+                              {index + 1}. {point.title}
+                            </h4>
+                            <p className="text-slate-400 text-sm mt-1">
+                              {point.details}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="pt-4 border-t border-slate-700">
+                    <p className="text-sm text-slate-400 text-center">
+                      Inopay libère votre code des plateformes propriétaires. Gardez le vibe, reprenez le contrôle.
+                    </p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardContent>
