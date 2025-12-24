@@ -176,3 +176,9 @@ verify_jwt = false
 
 [functions.fofy-chat]
 verify_jwt = false
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
