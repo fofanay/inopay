@@ -1263,6 +1263,17 @@
     "companyNamePlaceholder": "My Company Inc.",
     "vatNumber": "VAT number",
     "saved": "Profile saved successfully",
-    "saveError": "Error saving profile"
+    "saveError": "Error saving profile",
+    "phoneRequired": "Phone number required",
+    "phoneVerifiedLabel": "Verified",
+    "changePhone": "Change",
+    "otpSentTo": "Code sent to",
+    "verifyCode": "Verify code",
+    "verifyPhone": "Verify",
+    "phoneVerifyDesc": "A verification SMS will be sent to this number",
+    "phoneVerified": "Phone number verified successfully",
+    "otpSent": "Verification code sent by SMS",
+    "otpSendError": "Unable to send SMS code",
+    "otpVerifyError": "Unable to verify code"
   }
 }
