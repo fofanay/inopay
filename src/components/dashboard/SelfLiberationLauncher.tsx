@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -18,7 +20,10 @@ import {
   Loader2,
   FileCode,
   Cloud,
-  ExternalLink
+  ExternalLink,
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface LiberationStep {
@@ -51,6 +56,106 @@ export function SelfLiberationLauncher() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<LiberationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // GitHub token configuration state
+  const [githubToken, setGithubToken] = useState('');
+  const [githubUsername, setGithubUsername] = useState<string | null>(null);
+  const [githubScopes, setGithubScopes] = useState<string[]>([]);
+  const [isTokenValid, setIsTokenValid] = useState(false);
+  const [isTestingToken, setIsTestingToken] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(true);
+
+  // Load existing token on mount
+  useEffect(() => {
+    const loadExistingToken = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setTokenLoading(false);
+          return;
+        }
+
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('github_token')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (settings?.github_token) {
+          setGithubToken(settings.github_token);
+          // Validate the existing token
+          const validation = await validateGitHubTokenScopes(settings.github_token);
+          if (validation.valid) {
+            setIsTokenValid(true);
+            setGithubUsername(validation.username || null);
+            setGithubScopes(validation.scopes);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading token:', err);
+      } finally {
+        setTokenLoading(false);
+      }
+    };
+
+    loadExistingToken();
+  }, []);
+
+  const testAndSaveToken = async () => {
+    if (!githubToken.trim()) {
+      toast.error('Veuillez entrer un token GitHub');
+      return;
+    }
+
+    setIsTestingToken(true);
+    
+    try {
+      const validation = await validateGitHubTokenScopes(githubToken.trim());
+      
+      if (!validation.valid) {
+        setIsTokenValid(false);
+        setGithubUsername(null);
+        setGithubScopes([]);
+        toast.error('Token invalide ou permissions manquantes', {
+          description: `Scopes manquants: ${validation.missing.join(', ')}`
+        });
+        return;
+      }
+
+      // Save token to database
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée');
+        return;
+      }
+
+      const { error: upsertError } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: session.user.id,
+          github_token: githubToken.trim(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (upsertError) {
+        throw upsertError;
+      }
+
+      setIsTokenValid(true);
+      setGithubUsername(validation.username || null);
+      setGithubScopes(validation.scopes);
+      toast.success('Token GitHub configuré', {
+        description: `Connecté en tant que ${validation.username}`
+      });
+    } catch (err) {
+      toast.error('Erreur lors de la sauvegarde', {
+        description: err instanceof Error ? err.message : 'Erreur inconnue'
+      });
+    } finally {
+      setIsTestingToken(false);
+    }
+  };
 
   const updateStep = useCallback((id: string, updates: Partial<LiberationStep>) => {
     setSteps(prev => prev.map(step => 
@@ -494,6 +599,87 @@ export function SelfLiberationLauncher() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* GitHub Token Configuration */}
+        <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              <span className="font-medium">Configuration GitHub</span>
+            </div>
+            {tokenLoading ? (
+              <Badge variant="secondary">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Chargement...
+              </Badge>
+            ) : isTokenValid ? (
+              <Badge variant="default" className="bg-green-500">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Connecté: {githubUsername}
+              </Badge>
+            ) : (
+              <Badge variant="destructive">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Non configuré
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="github-token">Token GitHub (PAT)</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="github-token"
+                  type={showToken ? 'text' : 'password'}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full"
+                  onClick={() => setShowToken(!showToken)}
+                >
+                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <Button
+                onClick={testAndSaveToken}
+                disabled={isTestingToken || !githubToken.trim()}
+                variant={isTokenValid ? 'outline' : 'default'}
+              >
+                {isTestingToken ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isTokenValid ? (
+                  'Retester'
+                ) : (
+                  'Tester & Sauvegarder'
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Scopes requis: <code className="bg-muted px-1 rounded">repo</code>, <code className="bg-muted px-1 rounded">admin:repo_hook</code>
+              {' • '}
+              <a 
+                href="https://github.com/settings/tokens/new?scopes=repo,admin:repo_hook&description=Inopay%20Auto-Liberation" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-1"
+              >
+                Créer un token <ExternalLink className="h-3 w-3" />
+              </a>
+            </p>
+            {isTokenValid && githubScopes.length > 0 && (
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Scopes détectés: {githubScopes.slice(0, 4).join(', ')}{githubScopes.length > 4 ? '...' : ''}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Status Overview */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
@@ -619,7 +805,7 @@ export function SelfLiberationLauncher() {
         {/* Launch Button */}
         <Button 
           onClick={launchLiberation}
-          disabled={isRunning}
+          disabled={isRunning || !isTokenValid}
           className="w-full h-12 text-lg font-bold"
           size="lg"
         >
@@ -627,6 +813,11 @@ export function SelfLiberationLauncher() {
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Libération en cours...
+            </>
+          ) : !isTokenValid ? (
+            <>
+              <Key className="mr-2 h-5 w-5" />
+              Configurez le token GitHub
             </>
           ) : (
             <>
