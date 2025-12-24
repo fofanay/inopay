@@ -1340,6 +1340,119 @@
     "originalCode": "Original Code",
     "cleanedCode": "Cleaned Code"
   },
+  "liberation": {
+    "title": "Liberation Assistant",
+    "description": "Export your Lovable project to your own GitHub account",
+    "restart": "New project",
+    "files": "files",
+    "modified": "modified",
+    "yourAccount": "Your account"
+  },
+  "liberationWizard": {
+    "steps": {
+      "source": "Source",
+      "destination": "Destination",
+      "aiEngine": "AI Engine",
+      "cleaning": "Cleaning",
+      "export": "Export"
+    },
+    "back": "Back",
+    "step1": {
+      "title": "Fetch source code",
+      "description": "Enter the URL of your Lovable GitHub repository. For private repos, add a Personal Access Token.",
+      "urlLabel": "GitHub repository URL",
+      "urlPlaceholder": "https://github.com/lovable-dev/my-project",
+      "tokenLabel": "GitHub Token (optional, for private repos)",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+      "fetchFiles": "Fetch files"
+    },
+    "step2": {
+      "title": "Connect your GitHub account",
+      "description": "Create a <strong>Personal Access Token</strong> on your personal GitHub account to export the cleaned code.",
+      "patLabel": "Personal Access Token (with 'repo' scope)",
+      "createToken": "Create a token on GitHub",
+      "repoNameLabel": "New repository name",
+      "repoNamePlaceholder": "my-free-project",
+      "connectAccount": "Connect my account"
+    },
+    "step3": {
+      "title": "AI Engine Configuration",
+      "description": "Choose the AI engine to clean your code from Lovable proprietary dependencies.",
+      "inopayEngine": "Inopay Engine",
+      "inopayDesc": "Use DeepSeek V3 with automatic Claude fallback. No configuration required.",
+      "fallbackInfo": "Automatic fallback to Claude if DeepSeek is overloaded",
+      "byokTitle": "Bring Your Own Key (BYOK)",
+      "byokDesc": "Use your own API key for full control and save 30% on platform fees.",
+      "byokDiscount": "Save 30% on Inopay fees!",
+      "apiKeyLabel": "Your API key",
+      "validated": "Validated",
+      "test": "Test",
+      "existingKey": "Existing API key configured",
+      "useInopay": "Use Inopay Engine",
+      "continueWithKey": "Continue with my key"
+    },
+    "step4": {
+      "title": "Smart code cleaning",
+      "description": "{{count}} TypeScript/JavaScript files to clean.",
+      "byokUsed": "BYOK mode: using your {{provider}} key",
+      "cleaningInProgress": "Cleaning in progress...",
+      "task1": "Removing @lovable-dev imports",
+      "task2": "Replacing proprietary components",
+      "task3": "Cleaning Supabase-specific references",
+      "task4": "Optimizing React imports",
+      "task5": "Generating 100% portable code",
+      "startCleaning": "Start cleaning"
+    },
+    "step5": {
+      "title": "Export to your GitHub",
+      "description": "<strong>{{count}} files</strong> ready to export to <code>@{{username}}/{{repo}}</code>",
+      "filesOptimized": "{{count}} files optimized by AI",
+      "codeCleaned": "Code has been cleaned of proprietary dependencies",
+      "exportInProgress": "Exporting...",
+      "exportNow": "Export now"
+    },
+    "success": {
+      "title": "Liberation successful!",
+      "description": "Your code is now 100% autonomous on your GitHub account.",
+      "filesExported": "Files exported",
+      "filesModified": "Files modified",
+      "mode": "Mode",
+      "viewOnGithub": "View on GitHub",
+      "newProject": "New project"
+    },
+    "toast": {
+      "urlRequired": "URL required",
+      "enterLovableUrl": "Please enter your Lovable repository URL",
+      "sourceValidated": "Source validated",
+      "filesFetched": "{{count}} files fetched from {{owner}}/{{repo}}",
+      "tokenRequired": "Token required",
+      "enterPAT": "Please enter your GitHub Personal Access Token",
+      "destinationConnected": "Account connected",
+      "readyToExport": "Ready to export to @{{username}}",
+      "keyRequired": "API key required",
+      "enterApiKey": "Please enter your API key",
+      "keyValidated": "Key validated",
+      "invalidKey": "Invalid key",
+      "inopaySelected": "Inopay Engine selected",
+      "deepseekUsed": "DeepSeek V3 will be used with automatic fallback",
+      "validationRequired": "Validation required",
+      "testKeyFirst": "Please test your API key first",
+      "cleaningComplete": "Cleaning complete",
+      "filesModified": "{{changed}}/{{total}} files modified",
+      "cleaningError": "Cleaning error",
+      "liberationSuccess": "Liberation successful",
+      "codeExported": "Code exported to {{repo}}",
+      "exportError": "Export error"
+    },
+    "errors": {
+      "invalidUrl": "Invalid GitHub URL",
+      "noFilesFound": "No files found in repository",
+      "invalidToken": "Invalid or expired GitHub token",
+      "noFilesToClean": "No files to clean",
+      "noFilesToExport": "No files to export",
+      "exportFailed": "GitHub export failed"
+    }
+  },
   "ui": {
     "morePages": "More pages",
     "retryDeployment": "Retry deployment",
