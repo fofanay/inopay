@@ -29,6 +29,17 @@ interface ProcessRequest {
   destinationOwner?: string;
 }
 
+// Clean GitHub URL/username - extract only the username
+function cleanGitHubOwner(input: string | null): string | null {
+  if (!input) return null;
+  // Remove https://github.com/ or http://github.com/ prefix
+  let cleaned = input.replace(/^https?:\/\/github\.com\//i, '');
+  // Take only the first segment (username), ignore repo name
+  cleaned = cleaned.split('/')[0];
+  // Remove any trailing slashes or whitespace
+  return cleaned.trim() || null;
+}
+
 // NEW: Push to GitHub using tree with inline content strategy
 // This DRASTICALLY reduces API calls (1 tree call vs N blob calls)
 async function pushToGitHubOptimized(
@@ -38,6 +49,8 @@ async function pushToGitHubOptimized(
   files: { path: string; content: string }[],
   commitMessage: string
 ): Promise<{ success: boolean; repoUrl?: string; error?: string }> {
+  // Clean the destination owner (extract username from URL if needed)
+  const cleanedDestinationOwner = cleanGitHubOwner(destinationOwner);
   const headers = {
     'Authorization': `Bearer ${githubToken}`,
     'Accept': 'application/vnd.github.v3+json',
@@ -51,7 +64,7 @@ async function pushToGitHubOptimized(
       return { success: false, error: 'Token GitHub invalide ou expiré' };
     }
     const user = await userResponse.json();
-    const owner = destinationOwner || user.login;
+    const owner = cleanedDestinationOwner || user.login;
     
     console.log(`[GitHub] Pushing to ${owner}/${repoName} (${files.length} files)`);
 

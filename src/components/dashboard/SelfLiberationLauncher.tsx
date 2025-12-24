@@ -196,6 +196,17 @@ export function SelfLiberationLauncher() {
     }
   };
 
+  // Clean GitHub URL/username - extract only the username
+  const cleanGitHubOwner = (input: string): string => {
+    if (!input) return '';
+    // Remove https://github.com/ or http://github.com/ prefix
+    let cleaned = input.replace(/^https?:\/\/github\.com\//i, '');
+    // Take only the first segment (username), ignore repo name
+    cleaned = cleaned.split('/')[0];
+    // Remove any trailing slashes or whitespace
+    return cleaned.trim();
+  };
+
   const testAndSaveGitHubToken = async () => {
     if (!githubToken.trim()) {
       toast.error('Veuillez entrer un token GitHub');
@@ -223,12 +234,20 @@ export function SelfLiberationLauncher() {
         return;
       }
 
+      // Clean the destination owner (extract username from URL if needed)
+      const cleanedOwner = cleanGitHubOwner(destinationOwner);
+      
+      // Update local state with cleaned value
+      if (cleanedOwner !== destinationOwner) {
+        setDestinationOwner(cleanedOwner);
+      }
+
       const { error: upsertError } = await supabase
         .from('user_settings')
         .upsert({
           user_id: session.user.id,
           github_token: githubToken.trim(),
-          github_destination_username: destinationOwner.trim() || null,
+          github_destination_username: cleanedOwner || null,
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
@@ -238,7 +257,7 @@ export function SelfLiberationLauncher() {
       setGithubUsername(validation.username || null);
       setGithubScopes(validation.scopes);
       toast.success('Token GitHub configuré', {
-        description: `Connecté en tant que ${validation.username}`
+        description: `Connecté en tant que ${validation.username}${cleanedOwner ? ` → ${cleanedOwner}` : ''}`
       });
     } catch (err) {
       toast.error('Erreur lors de la sauvegarde', {
@@ -864,13 +883,27 @@ export function SelfLiberationLauncher() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dest-owner">Owner cible (optionnel)</Label>
+              <Label htmlFor="dest-owner">Nom d'utilisateur GitHub destination (optionnel)</Label>
               <Input
                 id="dest-owner"
-                placeholder="votre-username-ou-organisation"
+                placeholder="Ex: Inovaqfofy (pas d'URL)"
                 value={destinationOwner}
-                onChange={(e) => setDestinationOwner(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Auto-clean if user pastes a URL
+                  if (value.includes('github.com/')) {
+                    const cleaned = cleanGitHubOwner(value);
+                    setDestinationOwner(cleaned);
+                  } else {
+                    setDestinationOwner(value);
+                  }
+                }}
               />
+              {destinationOwner.includes('github.com') && (
+                <p className="text-xs text-destructive">
+                  ⚠️ Entrez uniquement le nom d'utilisateur, pas l'URL complète
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Laissez vide pour utiliser votre compte GitHub personnel
               </p>
