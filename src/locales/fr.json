@@ -1410,5 +1410,43 @@
     "repoDesc": "Description du projet",
     "email": "email@exemple.com",
     "url": "https://mon-site.vercel.app"
+  },
+  "deploymentHistory": {
+    "title": "Historique des déploiements",
+    "lastDeployments": "Vos {{count}} derniers déploiements réussis",
+    "refresh": "Actualiser",
+    "loadError": "Impossible de charger l'historique",
+    "deleteSuccess": "Déploiement supprimé de l'historique",
+    "deleteError": "Impossible de supprimer",
+    "noDeployments": "Aucun déploiement",
+    "noDeploymentsDesc": "Vos déploiements réussis apparaîtront ici",
+    "filesCount": "{{count}} fichiers",
+    "report": "Rapport",
+    "ultraFast": "Ultra-Rapide"
+  },
+  "userStats": {
+    "loadError": "Erreur lors du chargement des statistiques",
+    "analyzedProjects": "Projets Analysés",
+    "analysesPerformed": "Analyses effectuées",
+    "averageScore": "Score Moyen",
+    "averagePortability": "Portabilité moyenne",
+    "deployments": "Déploiements",
+    "projectsDeployed": "Projets déployés",
+    "availableCredits": "Crédits Disponibles",
+    "unlimitedAccess": "Accès illimité",
+    "deploymentsCount": "{{count}} déploiements",
+    "limits": "Limites: {{files}} fichiers, {{repos}} repos",
+    "freedomScore": "Score de Liberté Global",
+    "analysisPerformance": "Performance de vos analyses",
+    "refresh": "Actualiser",
+    "excellent": "Excellent",
+    "good": "Bon",
+    "needsImprovement": "À améliorer",
+    "basedOnProjects": "Basé sur {{count}} projet(s) analysé(s)",
+    "quickActions": "Actions Rapides",
+    "quickActionsDesc": "Accédez rapidement aux fonctionnalités",
+    "analyzeNewProject": "Analyser un nouveau projet",
+    "viewProjects": "Voir mes projets",
+    "deploymentHistory": "Historique des déploiements"
   }
 }

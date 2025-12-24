@@ -21,6 +21,7 @@ import { useUserLimits } from "@/hooks/useUserLimits";
 import { SecurityBadge } from "@/components/ui/security-badge";
 import { LIMIT_SOURCES } from "@/lib/constants";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface UserStatsData {
   totalProjects: number;
@@ -35,6 +36,7 @@ interface UserStatsProps {
 
 const UserStats = ({ onNavigate }: UserStatsProps) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const limits = useUserLimits();
   const [stats, setStats] = useState<UserStatsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
-      toast.error("Erreur lors du chargement des statistiques");
+      toast.error(t("userStats.loadError"));
     } finally {
       setLoading(false);
     }
@@ -91,36 +93,36 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
 
   const statCards = [
     {
-      title: "Projets Analysés",
+      title: t("userStats.analyzedProjects"),
       value: stats?.totalProjects || 0,
-      subtitle: "Analyses effectuées",
+      subtitle: t("userStats.analysesPerformed"),
       icon: FileText,
       gradient: "from-primary to-primary/80",
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
     },
     {
-      title: "Score Moyen",
+      title: t("userStats.averageScore"),
       value: `${stats?.averageScore || 0}%`,
-      subtitle: "Portabilité moyenne",
+      subtitle: t("userStats.averagePortability"),
       icon: Target,
       gradient: "from-success to-success/80",
       iconBg: "bg-success/10",
       iconColor: "text-success",
     },
     {
-      title: "Déploiements",
+      title: t("userStats.deployments"),
       value: stats?.totalDeployments || 0,
-      subtitle: "Projets déployés",
+      subtitle: t("userStats.projectsDeployed"),
       icon: Rocket,
       gradient: "from-accent to-accent/80",
       iconBg: "bg-accent/10",
       iconColor: "text-accent",
     },
     {
-      title: "Crédits Disponibles",
+      title: t("userStats.availableCredits"),
       value: limits.credits.total,
-      subtitle: limits.isTester ? "Accès illimité" : `${limits.credits.deploy} déploiements`,
+      subtitle: limits.isTester ? t("userStats.unlimitedAccess") : t("userStats.deploymentsCount", { count: limits.credits.deploy }),
       icon: limits.isTester ? Crown : CreditCard,
       gradient: limits.isTester ? "from-warning to-warning/80" : "from-primary to-primary/80",
       iconBg: limits.isTester ? "bg-warning/10" : "bg-primary/10",
@@ -168,7 +170,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
                   <Sparkles className="h-5 w-5 text-muted-foreground" />
                 )}
                 <span className="font-medium">
-                  Limites: {limits.maxFiles} fichiers, {limits.maxRepos} repos
+                  {t("userStats.limits", { files: limits.maxFiles, repos: limits.maxRepos })}
                 </span>
               </div>
               <Badge variant="outline" className="text-xs">
@@ -195,13 +197,13 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
                   <TrendingUp className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle>Score de Liberté Global</CardTitle>
-                  <CardDescription>Performance de vos analyses</CardDescription>
+                  <CardTitle>{t("userStats.freedomScore")}</CardTitle>
+                  <CardDescription>{t("userStats.analysisPerformance")}</CardDescription>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={fetchStats} className="gap-2">
                 <RefreshCw className="h-4 w-4" />
-                Actualiser
+                {t("userStats.refresh")}
               </Button>
             </div>
           </CardHeader>
@@ -243,13 +245,13 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
                       : "bg-destructive/10 text-destructive border-destructive/20"
                 }`}>
                   {(stats?.averageScore || 0) >= 80 
-                    ? "Excellent" 
+                    ? t("userStats.excellent") 
                     : (stats?.averageScore || 0) >= 60 
-                      ? "Bon" 
-                      : "À améliorer"}
+                      ? t("userStats.good") 
+                      : t("userStats.needsImprovement")}
                 </Badge>
                 <p className="text-sm text-muted-foreground">
-                  Basé sur {stats?.totalProjects || 0} projet(s) analysé(s)
+                  {t("userStats.basedOnProjects", { count: stats?.totalProjects || 0 })}
                 </p>
               </div>
             </div>
@@ -264,8 +266,8 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
                 <Zap className="h-6 w-6 text-accent" />
               </div>
               <div>
-                <CardTitle>Actions Rapides</CardTitle>
-                <CardDescription>Accédez rapidement aux fonctionnalités</CardDescription>
+                <CardTitle>{t("userStats.quickActions")}</CardTitle>
+                <CardDescription>{t("userStats.quickActionsDesc")}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -276,7 +278,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
             >
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5" />
-                <span>Analyser un nouveau projet</span>
+                <span>{t("userStats.analyzeNewProject")}</span>
               </div>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -287,7 +289,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
             >
               <div className="flex items-center gap-3">
                 <Target className="h-5 w-5 text-accent" />
-                <span>Voir mes projets</span>
+                <span>{t("userStats.viewProjects")}</span>
               </div>
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -298,7 +300,7 @@ const UserStats = ({ onNavigate }: UserStatsProps) => {
             >
               <div className="flex items-center gap-3">
                 <Rocket className="h-5 w-5 text-success" />
-                <span>Historique des déploiements</span>
+                <span>{t("userStats.deploymentHistory")}</span>
               </div>
               <ArrowRight className="h-4 w-4" />
             </Button>

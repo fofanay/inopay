@@ -1515,5 +1515,43 @@
     "repoDesc": "Project description",
     "email": "email@example.com",
     "url": "https://my-site.vercel.app"
+  },
+  "deploymentHistory": {
+    "title": "Deployment History",
+    "lastDeployments": "Your last {{count}} successful deployments",
+    "refresh": "Refresh",
+    "loadError": "Unable to load history",
+    "deleteSuccess": "Deployment removed from history",
+    "deleteError": "Unable to delete",
+    "noDeployments": "No deployments",
+    "noDeploymentsDesc": "Your successful deployments will appear here",
+    "filesCount": "{{count}} files",
+    "report": "Report",
+    "ultraFast": "Ultra-Fast"
+  },
+  "userStats": {
+    "loadError": "Error loading statistics",
+    "analyzedProjects": "Analyzed Projects",
+    "analysesPerformed": "Analyses performed",
+    "averageScore": "Average Score",
+    "averagePortability": "Average portability",
+    "deployments": "Deployments",
+    "projectsDeployed": "Projects deployed",
+    "availableCredits": "Available Credits",
+    "unlimitedAccess": "Unlimited access",
+    "deploymentsCount": "{{count}} deployments",
+    "limits": "Limits: {{files}} files, {{repos}} repos",
+    "freedomScore": "Global Freedom Score",
+    "analysisPerformance": "Your analysis performance",
+    "refresh": "Refresh",
+    "excellent": "Excellent",
+    "good": "Good",
+    "needsImprovement": "Needs improvement",
+    "basedOnProjects": "Based on {{count}} analyzed project(s)",
+    "quickActions": "Quick Actions",
+    "quickActionsDesc": "Quick access to features",
+    "analyzeNewProject": "Analyze a new project",
+    "viewProjects": "View my projects",
+    "deploymentHistory": "Deployment history"
   }
 }
