@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Shield,
   Upload,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +74,13 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [completionScore, setCompletionScore] = useState(0);
+  
+  // Phone verification states
+  const [phoneToVerify, setPhoneToVerify] = useState("");
+  const [showPhoneOTP, setShowPhoneOTP] = useState(false);
+  const [phoneOTPCode, setPhoneOTPCode] = useState("");
+  const [sendingPhoneOTP, setSendingPhoneOTP] = useState(false);
+  const [verifyingPhoneOTP, setVerifyingPhoneOTP] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -299,6 +308,95 @@ const Profile = () => {
     }
   };
 
+  const handleSendPhoneOTP = async () => {
+    if (!phoneToVerify.trim()) {
+      toast({
+        title: t("common.error"),
+        description: t("profile.phoneRequired"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingPhoneOTP(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke("send-phone-otp", {
+        body: { phone: phoneToVerify },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setShowPhoneOTP(true);
+      toast({
+        title: t("common.success"),
+        description: t("profile.otpSent"),
+      });
+    } catch (error) {
+      console.error("Error sending phone OTP:", error);
+      toast({
+        title: t("common.error"),
+        description: error instanceof Error ? error.message : t("profile.otpSendError"),
+        variant: "destructive",
+      });
+    } finally {
+      setSendingPhoneOTP(false);
+    }
+  };
+
+  const handleVerifyPhoneOTP = async () => {
+    if (phoneOTPCode.length !== 6) {
+      toast({
+        title: t("common.error"),
+        description: t("auth.otp.enterFullCode"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setVerifyingPhoneOTP(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke("verify-phone-otp", {
+        body: { code: phoneOTPCode, phone: phoneToVerify },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Update local state
+      if (profile) {
+        setProfile({ ...profile, phone: data.phone, phone_verified: true });
+      }
+      setShowPhoneOTP(false);
+      setPhoneOTPCode("");
+      setPhoneToVerify("");
+
+      toast({
+        title: t("common.success"),
+        description: t("profile.phoneVerified"),
+      });
+    } catch (error) {
+      console.error("Error verifying phone OTP:", error);
+      toast({
+        title: t("common.error"),
+        description: error instanceof Error ? error.message : t("profile.otpVerifyError"),
+        variant: "destructive",
+      });
+    } finally {
+      setVerifyingPhoneOTP(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <Layout>
@@ -452,21 +550,124 @@ const Profile = () => {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
+              {/* Phone Section with SMS Verification */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
                   {t("profile.phone")}
                   {profile?.phone_verified && (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span className="flex items-center gap-1 text-emerald-500 text-xs">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {t("profile.phoneVerifiedLabel")}
+                    </span>
                   )}
                 </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={profile?.phone || ""}
-                  onChange={(e) => updateField("phone", e.target.value)}
-                  placeholder="+33 6 12 34 56 78"
-                />
+                
+                {profile?.phone_verified ? (
+                  // Phone is verified - show read-only
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="tel"
+                      value={profile.phone || ""}
+                      disabled
+                      className="bg-muted/50"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPhoneToVerify("");
+                        setProfile({ ...profile, phone: null, phone_verified: false });
+                      }}
+                      className="text-muted-foreground"
+                    >
+                      {t("profile.changePhone")}
+                    </Button>
+                  </div>
+                ) : showPhoneOTP ? (
+                  // Show OTP verification
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/20">
+                    <div className="flex items-center gap-2 text-sm">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <span>{t("profile.otpSentTo")} <strong>{phoneToVerify}</strong></span>
+                    </div>
+                    <div className="flex justify-center">
+                      <InputOTP
+                        maxLength={6}
+                        value={phoneOTPCode}
+                        onChange={setPhoneOTPCode}
+                      >
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleVerifyPhoneOTP}
+                        disabled={verifyingPhoneOTP || phoneOTPCode.length !== 6}
+                        className="flex-1"
+                      >
+                        {verifyingPhoneOTP ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t("auth.otp.verifying")}
+                          </>
+                        ) : (
+                          t("profile.verifyCode")
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowPhoneOTP(false);
+                          setPhoneOTPCode("");
+                        }}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                    </div>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={handleSendPhoneOTP}
+                      disabled={sendingPhoneOTP}
+                      className="w-full"
+                    >
+                      {t("auth.otp.resend")}
+                    </Button>
+                  </div>
+                ) : (
+                  // Show phone input with verify button
+                  <div className="flex gap-2">
+                    <Input
+                      type="tel"
+                      value={phoneToVerify}
+                      onChange={(e) => setPhoneToVerify(e.target.value)}
+                      placeholder="+33 6 12 34 56 78"
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendPhoneOTP}
+                      disabled={sendingPhoneOTP || !phoneToVerify.trim()}
+                      variant="secondary"
+                    >
+                      {sendingPhoneOTP ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        t("profile.verifyPhone")
+                      )}
+                    </Button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {t("profile.phoneVerifyDesc")}
+                </p>
               </div>
               <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
                 <strong>{t("profile.email")}:</strong> {user?.email}

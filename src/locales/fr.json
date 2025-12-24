@@ -1158,6 +1158,17 @@
     "companyNamePlaceholder": "Ma Société SAS",
     "vatNumber": "Numéro de TVA",
     "saved": "Profil enregistré avec succès",
-    "saveError": "Erreur lors de l'enregistrement du profil"
+    "saveError": "Erreur lors de l'enregistrement du profil",
+    "phoneRequired": "Numéro de téléphone requis",
+    "phoneVerifiedLabel": "Vérifié",
+    "changePhone": "Modifier",
+    "otpSentTo": "Code envoyé au",
+    "verifyCode": "Vérifier le code",
+    "verifyPhone": "Vérifier",
+    "phoneVerifyDesc": "Un SMS de vérification sera envoyé à ce numéro",
+    "phoneVerified": "Numéro de téléphone vérifié avec succès",
+    "otpSent": "Code de vérification envoyé par SMS",
+    "otpSendError": "Impossible d'envoyer le code SMS",
+    "otpVerifyError": "Impossible de vérifier le code"
   }
 }
