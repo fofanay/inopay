@@ -25,8 +25,10 @@ import {
   AlertCircle,
   Wrench,
   Save,
-  Zap
+  Zap,
+  Rocket
 } from "lucide-react";
+import { SelfLiberationLauncher } from "@/components/dashboard/SelfLiberationLauncher";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -1015,8 +1017,12 @@ const AdminOperationsCenter = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="kpis" className="space-y-6">
-        <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1">
+      <Tabs defaultValue="liberation" className="space-y-6">
+        <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1 flex-wrap">
+          <TabsTrigger value="liberation" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Rocket className="h-4 w-4 mr-2" />
+            Auto-Libération
+          </TabsTrigger>
           <TabsTrigger value="kpis" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">
             <TrendingUp className="h-4 w-4 mr-2" />
             KPIs
@@ -1038,6 +1044,10 @@ const AdminOperationsCenter = () => {
             Support
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="liberation">
+          <SelfLiberationLauncher />
+        </TabsContent>
 
         <TabsContent value="kpis">
           <OperationsKPIs />
