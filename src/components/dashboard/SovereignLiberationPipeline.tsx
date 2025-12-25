@@ -23,7 +23,8 @@ import {
   Clock,
   Zap,
   Key,
-  FileCode
+  FileCode,
+  Download
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -414,13 +415,39 @@ export function SovereignLiberationPipeline({
       <CardContent className="space-y-6">
         {/* Supabase Credentials Configuration */}
         <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 space-y-4">
-          <div className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-primary" />
-            <div>
-              <h4 className="font-semibold">{t('sovereignPipeline.targetSupabaseConfig')}</h4>
-              <p className="text-sm text-muted-foreground">{t('sovereignPipeline.targetSupabaseConfigDesc')}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              <div>
+                <h4 className="font-semibold">{t('sovereignPipeline.targetSupabaseConfig')}</h4>
+                <p className="text-sm text-muted-foreground">{t('sovereignPipeline.targetSupabaseConfigDesc')}</p>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = '/MASTER_MIGRATION_INOPAY.sql';
+                link.download = 'MASTER_MIGRATION_INOPAY.sql';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success(t('sovereignPipeline.sqlScriptDownloaded'));
+              }}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {t('sovereignPipeline.downloadSqlScript')}
+            </Button>
           </div>
+
+          <Alert className="bg-muted/50 border-muted-foreground/20">
+            <Database className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              {t('sovereignPipeline.sqlScriptInstructions')}
+            </AlertDescription>
+          </Alert>
           
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
