@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import AdminPipelineDiagnostic from "./AdminPipelineDiagnostic";
 
 interface SecurityAlert {
   id: string;
@@ -426,6 +427,9 @@ const AdminSecurityAudit = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pipeline Diagnostic */}
+      <AdminPipelineDiagnostic />
 
       {/* Admin Note */}
       <Card className="bg-muted/30 border-dashed">
