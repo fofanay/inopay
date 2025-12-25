@@ -26,11 +26,22 @@ import {
   Calculator,
   Network,
   Eye,
-  Layers
+  Layers,
+  Rocket,
+  GitBranch,
+  FolderUp,
+  X,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle2,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { RoleIndicator, RoleContextBanner } from "@/components/ui/role-indicator";
@@ -60,6 +71,11 @@ import { AdminExcessPayments } from "@/components/admin/AdminExcessPayments";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
+import { DeploymentChoice } from "@/components/dashboard/DeploymentChoice";
+import { SyncMirror } from "@/components/dashboard/SyncMirror";
+import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
+import { formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -67,18 +83,48 @@ const AdminDashboard = () => {
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("operations");
   const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
 
   // Handler pour la navigation depuis MyPersonalFleet
   const handleFleetNavigate = (tab: string) => {
-    // Pour l'instant, on reste sur my-fleet car les autres tabs n'existent pas dans l'admin
-    // On peut étendre ceci plus tard si nécessaire
-    toast.info(`Navigation vers: ${tab}`);
+    // Mapper les tabs de MyPersonalFleet vers les tabs AdminDashboard
+    const tabMapping: Record<string, string> = {
+      "deploy-choice": "deploy-choice",
+      "sync-mirror": "sync-mirror",
+      "batch-import": "import",
+      "import": "import",
+    };
+    const targetTab = tabMapping[tab] || tab;
+    if (menuItems.some(m => m.id === targetTab)) {
+      setActiveTab(targetTab);
+    } else {
+      toast.info(`Navigation vers: ${tab}`);
+    }
   };
 
   // Handler pour la sélection d'un projet
   const handleSelectProject = (project: any) => {
     setSelectedProject(project);
-    toast.success(`Projet sélectionné: ${project.project_name}`);
+    setShowProjectDetails(true);
+  };
+
+  // Helper pour obtenir la couleur du score
+  const getScoreColor = (score: number | null) => {
+    if (score === null) return "text-muted-foreground";
+    if (score >= 80) return "text-success";
+    if (score >= 60) return "text-warning";
+    return "text-destructive";
+  };
+
+  // Helper pour obtenir le statut du projet
+  const getStatusBadge = (status: string, score: number | null) => {
+    if (status === "analyzed" && (score ?? 0) >= 70) {
+      return <Badge className="bg-success/20 text-success border-success/30">Prêt à déployer</Badge>;
+    }
+    if (status === "analyzed") {
+      return <Badge className="bg-warning/20 text-warning border-warning/30">Analysé</Badge>;
+    }
+    return <Badge variant="secondary">En attente</Badge>;
   };
 
   useEffect(() => {
@@ -128,6 +174,9 @@ const AdminDashboard = () => {
     { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
     // 🖥️ Infrastructure
     { id: "my-fleet", label: "Ma Flotte Perso", icon: Layers, section: "infra" },
+    { id: "deploy-choice", label: "Choix Déploiement", icon: Rocket, section: "infra" },
+    { id: "sync-mirror", label: "Sync & Mirror", icon: GitBranch, section: "infra" },
+    { id: "import", label: "Import Projets", icon: FolderUp, section: "infra" },
     { id: "fleet", label: "Flotte Serveurs", icon: Server, section: "infra" },
     { id: "widgets", label: "Widgets & Sync", icon: Smartphone, section: "infra" },
     { id: "monitoring", label: "Monitoring", icon: Activity, section: "infra" },
@@ -155,6 +204,9 @@ const AdminDashboard = () => {
       case "overview": return "Statistiques globales de la plateforme Inopay";
       case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
       case "my-fleet": return "Gérez vos propres serveurs Coolify pour les déploiements";
+      case "deploy-choice": return "Choisissez votre méthode de déploiement préférée";
+      case "sync-mirror": return "Synchronisez vos déploiements avec GitHub";
+      case "import": return "Importez et analysez de nouveaux projets";
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
       case "widgets": return "Surveillance des widgets mobiles et synchronisations";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
@@ -294,6 +346,13 @@ const AdminDashboard = () => {
                 onNavigate={handleFleetNavigate}
               />
             )}
+            {activeTab === "deploy-choice" && (
+              <DeploymentChoice 
+                onSelect={(option) => toast.success(`Option sélectionnée: ${option}`)} 
+              />
+            )}
+            {activeTab === "sync-mirror" && <SyncMirror />}
+            {activeTab === "import" && <AnalyzedProjects />}
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
@@ -318,6 +377,141 @@ const AdminDashboard = () => {
         </div>
       </main>
       </div>
+
+      {/* Project Details Sheet */}
+      <Sheet open={showProjectDetails} onOpenChange={setShowProjectDetails}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Détails du Projet
+            </SheetTitle>
+            <SheetDescription>
+              Informations détaillées et actions disponibles
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedProject && (
+            <div className="mt-6 space-y-6">
+              {/* Project Header */}
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-foreground">{selectedProject.project_name}</h3>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(selectedProject.status, selectedProject.portability_score)}
+                  <span className="text-xs text-muted-foreground">
+                    Créé {formatDistanceToNow(new Date(selectedProject.created_at), { addSuffix: true, locale: fr })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Score Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Score de Portabilité</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className={`text-4xl font-bold ${getScoreColor(selectedProject.portability_score)}`}>
+                      {selectedProject.portability_score ?? "N/A"}
+                    </div>
+                    <div className="flex-1">
+                      <Progress 
+                        value={selectedProject.portability_score ?? 0} 
+                        className="h-3"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {(selectedProject.portability_score ?? 0) >= 70 
+                          ? "Prêt pour le déploiement" 
+                          : "Optimisation recommandée"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Issues Detected */}
+              {selectedProject.detected_issues && Array.isArray(selectedProject.detected_issues) && selectedProject.detected_issues.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                      Problèmes Détectés ({selectedProject.detected_issues.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedProject.detected_issues.slice(0, 5).map((issue: any, idx: number) => (
+                        <div key={idx} className="text-sm p-2 bg-muted/50 rounded-md">
+                          {typeof issue === "string" ? issue : JSON.stringify(issue)}
+                        </div>
+                      ))}
+                      {selectedProject.detected_issues.length > 5 && (
+                        <p className="text-xs text-muted-foreground">
+                          + {selectedProject.detected_issues.length - 5} autres problèmes
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recommendations */}
+              {selectedProject.recommendations && Array.isArray(selectedProject.recommendations) && selectedProject.recommendations.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                      Recommandations ({selectedProject.recommendations.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedProject.recommendations.slice(0, 5).map((rec: any, idx: number) => (
+                        <div key={idx} className="text-sm p-2 bg-success/5 rounded-md border-l-2 border-success">
+                          {typeof rec === "string" ? rec : JSON.stringify(rec)}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-3 pt-4 border-t">
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    setShowProjectDetails(false);
+                    setActiveTab("deploy-choice");
+                  }}
+                >
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Déployer ce projet
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    setShowProjectDetails(false);
+                    setActiveTab("sync-mirror");
+                  }}
+                >
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  Configurer la synchronisation
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => setShowProjectDetails(false)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
