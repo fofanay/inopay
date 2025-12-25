@@ -78,6 +78,7 @@ serve(async (req) => {
       env_vars,
       auto_deploy = true,
       force_rebuild = true, // Force clean rebuild by default
+      force_no_cache = true, // Force Docker no-cache by default
       skip_pre_check = false // Skip pre-deploy checks if already done
     } = await req.json();
 
@@ -502,10 +503,14 @@ serve(async (req) => {
     // Step 8: Deploy if requested with force rebuild option
     let deploymentUuid: string | null = null;
     if (auto_deploy) {
-      console.log(`[auto-configure-coolify] Step 8: Triggering deployment (force_rebuild=${force_rebuild})...`);
+      console.log(`[auto-configure-coolify] Step 8: Triggering deployment (force_rebuild=${force_rebuild}, force_no_cache=${force_no_cache})...`);
       try {
         // Use force=true to bypass Docker cache and do a clean rebuild
-        const deployUrl = `${coolifyUrl}/api/v1/deploy?uuid=${appUuid}&force=${force_rebuild}`;
+        // Additional no_cache flag for complete Docker cache invalidation
+        let deployUrl = `${coolifyUrl}/api/v1/deploy?uuid=${appUuid}&force=${force_rebuild}`;
+        if (force_no_cache) {
+          deployUrl += '&no_cache=true';
+        }
         console.log('[auto-configure-coolify] Deploy URL:', deployUrl.replace(server.coolify_token!, '***'));
         
         const deployRes = await fetch(deployUrl, {
