@@ -11,8 +11,13 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Installer les dépendances
-RUN npm ci --legacy-peer-deps
+# Installer les dépendances (npm ci si package-lock existe, sinon npm install)
+RUN if [ -f package-lock.json ]; then \
+      npm ci --legacy-peer-deps; \
+    else \
+      echo "⚠️ package-lock.json absent, utilisation de npm install"; \
+      npm install --legacy-peer-deps; \
+    fi
 
 # Copier le code source
 COPY . .
