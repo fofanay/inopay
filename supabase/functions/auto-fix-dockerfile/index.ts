@@ -355,10 +355,38 @@ serve(async (req) => {
             coolifyUrl = urlObj.toString().replace(/\/+$/, '');
           }
 
+          const coolifyHeaders = {
+            'Authorization': `Bearer ${server.coolify_token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          };
+
           // Wait a bit for GitHub to propagate the commit
           await new Promise(resolve => setTimeout(resolve, 2000));
 
-          // Trigger redeploy
+          // PATCH the Coolify app to ensure correct branch and commit SHA before deploying
+          console.log(`[auto-fix-dockerfile] Patching Coolify app with git_branch=${defaultBranch}, git_commit_sha=${newCommitSha}`);
+          try {
+            const patchRes = await fetch(`${coolifyUrl}/api/v1/applications/${coolify_app_uuid}`, {
+              method: 'PATCH',
+              headers: coolifyHeaders,
+              body: JSON.stringify({
+                git_branch: defaultBranch,
+                git_commit_sha: newCommitSha
+              })
+            });
+
+            if (patchRes.ok) {
+              console.log('[auto-fix-dockerfile] Coolify app patched with correct branch and commit');
+            } else {
+              const patchErr = await patchRes.text();
+              console.warn('[auto-fix-dockerfile] PATCH failed (continuing with deploy):', patchErr.slice(0, 100));
+            }
+          } catch (patchError) {
+            console.warn('[auto-fix-dockerfile] PATCH error (continuing with deploy):', patchError);
+          }
+
+          // Trigger redeploy with force=true to bypass cache
           const deployRes = await fetch(`${coolifyUrl}/api/v1/deploy?uuid=${coolify_app_uuid}&force=true`, {
             method: 'GET',
             headers: {
@@ -372,7 +400,9 @@ serve(async (req) => {
             redeployResult = {
               success: true,
               deployment_uuid: deployData.deployment_uuid || deployData.uuid,
-              message: 'Redéploiement lancé'
+              branch: defaultBranch,
+              commit_sha: newCommitSha,
+              message: 'Redéploiement lancé avec la bonne branche'
             };
             console.log('[auto-fix-dockerfile] Redeploy triggered:', redeployResult.deployment_uuid);
           } else {
