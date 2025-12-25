@@ -25,7 +25,8 @@ import {
   HardDrive,
   Calculator,
   Network,
-  Eye
+  Eye,
+  Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ import AdminOperationsCenter from "@/components/admin/AdminOperationsCenter";
 import { AdminExcessPayments } from "@/components/admin/AdminExcessPayments";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
+import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 const AdminDashboard = () => {
@@ -111,6 +113,7 @@ const AdminDashboard = () => {
     { id: "margins", label: "Marges Nettoyage", icon: Calculator, section: "business" },
     { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
     // 🖥️ Infrastructure
+    { id: "my-fleet", label: "Ma Flotte Perso", icon: Layers, section: "infra" },
     { id: "fleet", label: "Flotte Serveurs", icon: Server, section: "infra" },
     { id: "widgets", label: "Widgets & Sync", icon: Smartphone, section: "infra" },
     { id: "monitoring", label: "Monitoring", icon: Activity, section: "infra" },
@@ -137,6 +140,7 @@ const AdminDashboard = () => {
       case "operations": return "Surveillance en temps réel du processus de libération";
       case "overview": return "Statistiques globales de la plateforme Inopay";
       case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
+      case "my-fleet": return "Gérez vos propres serveurs Coolify pour les déploiements";
       case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
       case "widgets": return "Surveillance des widgets mobiles et synchronisations";
       case "monitoring": return "Journal d'activité et alertes en temps réel";
@@ -270,6 +274,7 @@ const AdminDashboard = () => {
             {activeTab === "operations" && <AdminOperationsCenter />}
             {activeTab === "overview" && <AdminStats />}
             {activeTab === "diagnostic" && <AdminNetworkDiagnostic />}
+            {activeTab === "my-fleet" && <MyPersonalFleet />}
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
