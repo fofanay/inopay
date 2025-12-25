@@ -66,6 +66,20 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("operations");
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+
+  // Handler pour la navigation depuis MyPersonalFleet
+  const handleFleetNavigate = (tab: string) => {
+    // Pour l'instant, on reste sur my-fleet car les autres tabs n'existent pas dans l'admin
+    // On peut étendre ceci plus tard si nécessaire
+    toast.info(`Navigation vers: ${tab}`);
+  };
+
+  // Handler pour la sélection d'un projet
+  const handleSelectProject = (project: any) => {
+    setSelectedProject(project);
+    toast.success(`Projet sélectionné: ${project.project_name}`);
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -274,7 +288,12 @@ const AdminDashboard = () => {
             {activeTab === "operations" && <AdminOperationsCenter />}
             {activeTab === "overview" && <AdminStats />}
             {activeTab === "diagnostic" && <AdminNetworkDiagnostic />}
-            {activeTab === "my-fleet" && <MyPersonalFleet />}
+            {activeTab === "my-fleet" && (
+              <MyPersonalFleet 
+                onSelectProject={handleSelectProject}
+                onNavigate={handleFleetNavigate}
+              />
+            )}
             {activeTab === "fleet" && <AdminServerFleet />}
             {activeTab === "widgets" && <AdminWidgetMonitoring />}
             {activeTab === "monitoring" && <AdminActivityMonitor />}
