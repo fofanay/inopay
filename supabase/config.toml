@@ -206,3 +206,9 @@ verify_jwt = false
 
 [functions.detect-missing-env-vars]
 verify_jwt = false
+
+[functions.pre-deploy-check]
+verify_jwt = false
+
+[functions.check-deployment-status]
+verify_jwt = false
