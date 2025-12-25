@@ -31,15 +31,128 @@ function redactSecrets(input: string): string {
     .replace(/github_pat_[A-Za-z0-9_]+/g, 'github_pat_[REDACTED]');
 }
 
-function buildAuthenticatedGithubUrl(repoUrl: string, token: string | null): string | null {
-  if (!token) return null;
-  if (!repoUrl || !repoUrl.includes('github.com')) return null;
-
-  const urlMatch = repoUrl.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
+// Normalize GitHub repo URL to canonical form: owner/repo
+function normalizeGitHubRepoUrl(repoUrl: string): { owner: string; repo: string; canonical: string } | null {
+  if (!repoUrl) return null;
+  
+  // Remove credentials if present
+  const cleaned = repoUrl.replace(/x-access-token:[^@]+@/i, '');
+  
+  const urlMatch = cleaned.match(/github\.com[/:]([^/]+)\/([^/.#?\s]+)/i);
   if (!urlMatch) return null;
 
   const [, owner, repo] = urlMatch;
-  return `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+  const repoClean = repo.replace(/\.git$/, '');
+  return {
+    owner,
+    repo: repoClean,
+    canonical: `https://github.com/${owner}/${repoClean}`
+  };
+}
+
+function buildAuthenticatedGithubUrl(repoUrl: string, token: string | null): string | null {
+  if (!token) return null;
+  const normalized = normalizeGitHubRepoUrl(repoUrl);
+  if (!normalized) return null;
+
+  return `https://x-access-token:${token}@github.com/${normalized.owner}/${normalized.repo}.git`;
+}
+
+// Structured error types for GitHub/Coolify issues
+interface GitHubErrorInfo {
+  code: 'REPO_NOT_FOUND' | 'RATE_LIMIT' | 'AUTH_REQUIRED' | 'TOKEN_INVALID' | 'COOLIFY_NO_SOURCE' | 'UNKNOWN';
+  message: string;
+  details: string;
+  actionRequired: string[];
+  requiresManualFix: boolean;
+}
+
+function classifyGitHubCoolifyError(text: string, hasToken: boolean): GitHubErrorInfo {
+  const s = (text || '').toLowerCase();
+  
+  // Pattern: Coolify reports "GitHub API call failed: Not Found" with empty rate limit
+  if (s.includes('github api call failed') && s.includes('not found') && 
+      (s.includes('rate limit status') || s.includes('1970-01-01'))) {
+    return {
+      code: 'COOLIFY_NO_SOURCE',
+      message: 'Coolify ne peut pas accéder au dépôt GitHub',
+      details: 'Coolify n\'a pas de Source GitHub configurée pour accéder aux dépôts privés',
+      actionRequired: [
+        '1. Ouvrez votre interface Coolify',
+        '2. Allez dans Sources → Add New Source → GitHub App',
+        '3. Suivez les instructions pour créer une GitHub App',
+        '4. Reconfigurez l\'application pour utiliser cette source',
+        'Alternative: Rendez le dépôt public sur GitHub'
+      ],
+      requiresManualFix: true
+    };
+  }
+  
+  // Rate limit
+  if (s.includes('rate limit') && !s.includes('1970-01-01')) {
+    return {
+      code: 'RATE_LIMIT',
+      message: 'Limite de requêtes GitHub API atteinte',
+      details: 'Trop de requêtes vers l\'API GitHub',
+      actionRequired: [
+        '1. Attendez 10-15 minutes avant de réessayer',
+        '2. Configurez un token GitHub pour augmenter les limites'
+      ],
+      requiresManualFix: false
+    };
+  }
+  
+  // Token invalid or no access
+  if ((s.includes('repository not found') || s.includes('not found')) && hasToken) {
+    return {
+      code: 'TOKEN_INVALID',
+      message: 'Token GitHub invalide ou sans accès à ce dépôt',
+      details: 'Le token configuré n\'a pas les permissions nécessaires',
+      actionRequired: [
+        '1. Vérifiez que le token GitHub a le scope "repo" complet',
+        '2. Vérifiez que vous avez accès au dépôt sur GitHub',
+        '3. Régénérez le token si nécessaire'
+      ],
+      requiresManualFix: false
+    };
+  }
+  
+  // Auth required but no token
+  if ((s.includes('authentication failed') || s.includes('permission denied') || 
+       s.includes('fatal: could not read username')) && !hasToken) {
+    return {
+      code: 'AUTH_REQUIRED',
+      message: 'Authentification GitHub requise',
+      details: 'Le dépôt est privé et aucun token n\'est configuré',
+      actionRequired: [
+        '1. Configurez votre token GitHub dans les paramètres',
+        '2. Ou rendez le dépôt public sur GitHub'
+      ],
+      requiresManualFix: false
+    };
+  }
+  
+  // Generic not found
+  if (s.includes('repository not found') || s.includes('not found')) {
+    return {
+      code: 'REPO_NOT_FOUND',
+      message: 'Dépôt GitHub introuvable',
+      details: 'Le dépôt n\'existe pas ou n\'est pas accessible',
+      actionRequired: [
+        '1. Vérifiez que l\'URL du dépôt est correcte',
+        '2. Vérifiez que le dépôt n\'a pas été supprimé'
+      ],
+      requiresManualFix: false
+    };
+  }
+  
+  return {
+    code: 'UNKNOWN',
+    message: 'Erreur GitHub inconnue',
+    details: text.slice(0, 200),
+    actionRequired: ['Consultez les logs détaillés'],
+    requiresManualFix: false
+  };
 }
 
 function looksLikeGitAuthError(text: string): boolean {
@@ -49,13 +162,43 @@ function looksLikeGitAuthError(text: string): boolean {
     s.includes('fatal: could not read username') ||
     s.includes('permission denied') ||
     s.includes('repository not found') ||
-    s.includes('not found') ||
+    (s.includes('not found') && s.includes('github')) ||
     s.includes('error: not found') ||
     (s.includes('403') && s.includes('github')) ||
     (s.includes('access denied') && s.includes('github')) ||
     (s.includes('github api call failed') && s.includes('not found')) ||
-    s.includes('rate limit status')
+    (s.includes('rate limit') && s.includes('1970'))
   );
+}
+
+// PATCH application with authenticated git URL before deploy
+async function patchAppGitRepository(
+  coolifyUrl: string,
+  coolifyHeaders: Record<string, string>,
+  appUuid: string,
+  authenticatedGitUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`[deploy-coolify] PATCHing git_repository for app ${appUuid}...`);
+    
+    const patchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+      method: 'PATCH',
+      headers: coolifyHeaders,
+      body: JSON.stringify({ git_repository: authenticatedGitUrl })
+    });
+
+    if (!patchRes.ok) {
+      const errText = await patchRes.text();
+      console.warn('[deploy-coolify] PATCH git_repository failed:', redactSecrets(errText));
+      return { success: false, error: errText };
+    }
+    
+    console.log('[deploy-coolify] Successfully patched git_repository');
+    return { success: true };
+  } catch (e) {
+    console.error('[deploy-coolify] Error patching git_repository:', e);
+    return { success: false, error: String(e) };
+  }
 }
 
 // Verify GitHub repository accessibility before deployment
@@ -318,14 +461,20 @@ async function fetchCoolifyDeploymentLogs(
   }
 }
 
-// Check if an existing app can be reused for this repo
+// Check if an existing app can be reused for this repo (using normalized URL matching)
 async function findExistingAppForRepo(
   coolifyUrl: string,
   coolifyHeaders: Record<string, string>,
   projectUuid: string,
   githubRepoUrl: string
-): Promise<{ uuid: string; status: string; domains?: string } | null> {
+): Promise<{ uuid: string; status: string; domains?: string; git_repository?: string } | null> {
   try {
+    const normalizedTarget = normalizeGitHubRepoUrl(githubRepoUrl);
+    if (!normalizedTarget) {
+      console.warn('[deploy-coolify] Could not normalize target repo URL:', githubRepoUrl);
+      return null;
+    }
+    
     // Get project details which includes applications
     const projectResponse = await fetch(
       `${coolifyUrl}/api/v1/projects/${projectUuid}`,
@@ -339,14 +488,22 @@ async function findExistingAppForRepo(
     const projectData = await projectResponse.json();
     console.log('[deploy-coolify] Project data:', JSON.stringify(projectData).slice(0, 500));
     
-    // Check environments and applications
+    // Check environments and applications using NORMALIZED URL comparison
     if (projectData.environments) {
       for (const env of projectData.environments) {
         if (env.applications) {
           for (const app of env.applications) {
-            if (app.git_repository === githubRepoUrl) {
-              console.log('[deploy-coolify] Found existing app for repo:', app.uuid);
-              return { uuid: app.uuid, status: app.status, domains: app.fqdn };
+            const normalizedApp = normalizeGitHubRepoUrl(app.git_repository || '');
+            
+            // Compare canonical forms (ignores auth tokens in URL)
+            if (normalizedApp && normalizedApp.canonical === normalizedTarget.canonical) {
+              console.log('[deploy-coolify] Found existing app for repo (normalized match):', app.uuid);
+              return { 
+                uuid: app.uuid, 
+                status: app.status, 
+                domains: app.fqdn,
+                git_repository: app.git_repository 
+              };
             }
           }
         }
@@ -666,8 +823,9 @@ serve(async (req) => {
           : github_repo_url;
 
       // Step 2: Check for existing app to REDEPLOY instead of recreating
-      let appData: { uuid: string; domains?: string; fqdn?: string } | null = null;
+      let appData: { uuid: string; domains?: string; fqdn?: string; git_repository?: string } | null = null;
       let isRedeploy = false;
+      let patchedGitUrl = false;
       
       // First, try to use known app UUID from previous deployment
       if (existingAppUuid) {
@@ -703,6 +861,35 @@ serve(async (req) => {
           appData = existingApp;
           isRedeploy = true;
           console.log('[deploy-coolify] Found existing app by repo URL:', appData.uuid);
+        }
+      }
+      
+      // CRITICAL FIX: For existing apps, PATCH git_repository with authenticated URL BEFORE deploy
+      // This fixes the "GitHub API call failed: Not Found" error on redeploys
+      if (isRedeploy && appData?.uuid && repoAuthMode === 'authenticated' && authenticatedGitRepoUrl) {
+        // Check if the current git_repository already has auth token
+        const currentGitUrl = (appData as { git_repository?: string }).git_repository || '';
+        const hasAuthToken = currentGitUrl.includes('x-access-token:') || currentGitUrl.includes('@github.com');
+        
+        if (!hasAuthToken) {
+          console.log('[deploy-coolify] Existing app needs auth URL, patching git_repository...');
+          const patchResult = await patchAppGitRepository(
+            server.coolify_url,
+            coolifyHeaders,
+            appData.uuid,
+            authenticatedGitRepoUrl
+          );
+          
+          if (patchResult.success) {
+            patchedGitUrl = true;
+            console.log('[deploy-coolify] Successfully patched git_repository with authenticated URL');
+          } else {
+            console.warn('[deploy-coolify] Could not patch git_repository, deploy might fail:', patchResult.error);
+            // Continue anyway - the build might still work or we'll get a clear error
+          }
+        } else {
+          console.log('[deploy-coolify] Existing app already has authenticated git URL');
+          patchedGitUrl = true;
         }
       }
 
@@ -1110,22 +1297,26 @@ serve(async (req) => {
         const combinedLower = `${buildLogs}\n${runtimeLogs}`.toLowerCase();
 
         if (looksLikeGitAuthError(combinedLower)) {
-          errorParts.push('  ⚠️ ERREUR GIT/GITHUB DÉTECTÉE');
-          if (combinedLower.includes('github api call failed') || combinedLower.includes('not found')) {
-            errorParts.push('  - GitHub API: Le dépôt est introuvable ou inaccessible');
-            errorParts.push('  - Coolify n\'a pas de token GitHub configuré pour ce dépôt privé');
-            errorParts.push('  - SOLUTION: Configurez une Source GitHub dans Coolify:');
-            errorParts.push('    1. Allez sur votre interface Coolify');
-            errorParts.push('    2. Sources → Add New Source → GitHub App ou GitHub (Deploy Key)');
-            errorParts.push('    3. Reconfigurez l\'application pour utiliser cette source');
-          } else if (combinedLower.includes('rate limit')) {
-            errorParts.push('  - Limite de requêtes GitHub API atteinte');
-            errorParts.push('  - Attendez quelques minutes avant de réessayer');
-            errorParts.push('  - Ou configurez un token GitHub pour éviter les limites');
-          } else {
-            errorParts.push('  - Le dépôt est privé ou les permissions GitHub sont insuffisantes');
-            errorParts.push('  - Si le dépôt est public: attendez 1-2 minutes et relancez (cache Git)');
-            errorParts.push('  - Sinon: vérifiez votre token GitHub (lecture repo)');
+          // Use structured error classification
+          const gitError = classifyGitHubCoolifyError(combinedLower, !!githubToken);
+          
+          errorParts.push(`  ⚠️ ${gitError.code}: ${gitError.message}`);
+          errorParts.push(`  📋 ${gitError.details}`);
+          errorParts.push('');
+          errorParts.push('  📌 Actions requises:');
+          for (const action of gitError.actionRequired) {
+            errorParts.push(`     ${action}`);
+          }
+          
+          if (gitError.requiresManualFix) {
+            errorParts.push('');
+            errorParts.push('  🔧 Cette erreur nécessite une configuration manuelle dans Coolify');
+          }
+          
+          if (patchedGitUrl) {
+            errorParts.push('');
+            errorParts.push('  ℹ️ Note: URL Git authentifiée déjà appliquée, mais Coolify');
+            errorParts.push('     utilise son propre mécanisme pour accéder au dépôt (API GitHub)');
           }
         } else if (
           combinedLower.includes('cannot connect to the docker daemon') ||
@@ -1228,7 +1419,9 @@ serve(async (req) => {
             project: projectData,
             application: { uuid: appData.uuid },
             build_status: buildStatus,
-            is_redeploy: isRedeploy
+            is_redeploy: isRedeploy,
+            git_url_patched: patchedGitUrl,
+            repo_auth_mode: repoAuthMode
           },
           auto_cleanup_scheduled: isHealthy,
           build_checks_performed: attempts
