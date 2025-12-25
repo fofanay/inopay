@@ -229,7 +229,7 @@ serve(async (req) => {
         const createProjectRes = await fetch(`${coolifyUrl}/api/v1/projects`, {
           method: 'POST',
           headers: coolifyHeaders,
-          body: JSON.stringify({ name: project_name, description: 'Déployé via Inopay' })
+          body: JSON.stringify({ name: project_name, description: 'Deployed via Inopay' })
         });
         
         if (!createProjectRes.ok) {
