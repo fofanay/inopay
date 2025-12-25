@@ -58,21 +58,38 @@ serve(async (req) => {
 
     console.log(`[validate-github-repo] Validating ${github_repo_url} branch ${branch}`);
 
-    // Extract owner/repo from URL
-    const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.#?\s]+)/i);
-    if (!urlMatch) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid GitHub URL format',
-          valid: false,
-          errors: ['URL GitHub invalide. Format attendu: https://github.com/owner/repo']
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Extract owner/repo from URL - support multiple formats:
+    // - https://github.com/owner/repo
+    // - github.com/owner/repo
+    // - owner/repo
+    // - /owner/repo
+    let owner: string;
+    let repoClean: string;
+
+    // Try full GitHub URL first
+    const fullUrlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.#?\s]+)/i);
+    if (fullUrlMatch) {
+      owner = fullUrlMatch[1];
+      repoClean = fullUrlMatch[2].replace(/\.git$/, '');
+    } else {
+      // Try short format: owner/repo or /owner/repo
+      const shortMatch = github_repo_url.replace(/^\//, '').match(/^([^/]+)\/([^/.#?\s]+)$/);
+      if (shortMatch) {
+        owner = shortMatch[1];
+        repoClean = shortMatch[2].replace(/\.git$/, '');
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid GitHub URL format',
+            valid: false,
+            errors: ['URL GitHub invalide. Formats acceptés: https://github.com/owner/repo ou owner/repo']
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    const [, owner, repo] = urlMatch;
-    const repoClean = repo.replace(/\.git$/, '');
+    console.log(`[validate-github-repo] Parsed owner=${owner}, repo=${repoClean}`);
     
     // Get GitHub token
     const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
