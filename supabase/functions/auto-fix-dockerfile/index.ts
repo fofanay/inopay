@@ -112,7 +112,13 @@ serve(async (req) => {
       );
     }
 
-    const { github_repo_url, fix_type = 'npm_install' } = await req.json();
+    const { 
+      github_repo_url, 
+      fix_type = 'npm_install',
+      auto_redeploy = false,
+      coolify_app_uuid,
+      server_id
+    } = await req.json();
 
     if (!github_repo_url) {
       return new Response(
@@ -121,7 +127,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[auto-fix-dockerfile] Starting fix for ${github_repo_url}, type: ${fix_type}`);
+    console.log(`[auto-fix-dockerfile] Starting fix for ${github_repo_url}, type: ${fix_type}, auto_redeploy: ${auto_redeploy}`);
 
     // Get GitHub token
     const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
@@ -322,6 +328,71 @@ serve(async (req) => {
       }
     });
 
+    // Auto-redeploy if requested
+    let redeployResult = null;
+    if (auto_redeploy && coolify_app_uuid && server_id) {
+      console.log('[auto-fix-dockerfile] Triggering auto-redeploy...');
+      try {
+        // Get server info for Coolify connection
+        const { data: server } = await supabase
+          .from('user_servers')
+          .select('coolify_url, coolify_token')
+          .eq('id', server_id)
+          .single();
+
+        if (server?.coolify_url && server?.coolify_token) {
+          // Normalize Coolify URL
+          let coolifyUrl = server.coolify_url.trim();
+          if (!coolifyUrl.startsWith('http://') && !coolifyUrl.startsWith('https://')) {
+            coolifyUrl = `http://${coolifyUrl}`;
+          }
+          coolifyUrl = coolifyUrl.replace(/\/+$/, '');
+          if (!coolifyUrl.includes(':8000') && !coolifyUrl.includes(':443')) {
+            const urlObj = new URL(coolifyUrl);
+            if (urlObj.protocol === 'http:') {
+              urlObj.port = '8000';
+            }
+            coolifyUrl = urlObj.toString().replace(/\/+$/, '');
+          }
+
+          // Wait a bit for GitHub to propagate the commit
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Trigger redeploy
+          const deployRes = await fetch(`${coolifyUrl}/api/v1/deploy?uuid=${coolify_app_uuid}&force=true`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${server.coolify_token}`,
+              'Accept': 'application/json'
+            }
+          });
+
+          if (deployRes.ok) {
+            const deployData = await deployRes.json();
+            redeployResult = {
+              success: true,
+              deployment_uuid: deployData.deployment_uuid || deployData.uuid,
+              message: 'Redéploiement lancé'
+            };
+            console.log('[auto-fix-dockerfile] Redeploy triggered:', redeployResult.deployment_uuid);
+          } else {
+            const errText = await deployRes.text();
+            console.error('[auto-fix-dockerfile] Redeploy failed:', errText);
+            redeployResult = {
+              success: false,
+              message: `Redeploy failed: ${errText.slice(0, 100)}`
+            };
+          }
+        }
+      } catch (redeployError) {
+        console.error('[auto-fix-dockerfile] Redeploy error:', redeployError);
+        redeployResult = {
+          success: false,
+          message: redeployError instanceof Error ? redeployError.message : 'Redeploy error'
+        };
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -329,7 +400,8 @@ serve(async (req) => {
         commit_sha: newCommitSha,
         branch: defaultBranch,
         files_modified: filesToAdd.map(f => f.path),
-        commit_url: `https://github.com/${owner}/${repoClean}/commit/${newCommitSha}`
+        commit_url: `https://github.com/${owner}/${repoClean}/commit/${newCommitSha}`,
+        redeploy: redeployResult
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -20,7 +20,8 @@ import {
   Server,
   GitBranch,
   Loader2,
-  GitCommit
+  GitCommit,
+  RotateCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -185,8 +186,11 @@ const ERROR_PATTERNS: ErrorPattern[] = [
 interface CoolifyDeploymentErrorHandlerProps {
   logs: string;
   githubRepoUrl?: string;
+  coolifyAppUuid?: string;
+  serverId?: string;
   onAutoFix?: (fixAction: string) => void;
   onAutoFixComplete?: () => void;
+  onRedeployTriggered?: (deploymentUuid: string) => void;
   showRawLogs?: boolean;
 }
 
@@ -201,19 +205,28 @@ interface AutoFixResult {
   commit_sha?: string;
   commit_url?: string;
   files_modified?: string[];
+  redeploy?: {
+    success: boolean;
+    deployment_uuid?: string;
+    message?: string;
+  };
 }
 
 export function CoolifyDeploymentErrorHandler({ 
   logs, 
   githubRepoUrl,
+  coolifyAppUuid,
+  serverId,
   onAutoFix,
   onAutoFixComplete,
+  onRedeployTriggered,
   showRawLogs = true 
 }: CoolifyDeploymentErrorHandlerProps) {
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
   const [showLogs, setShowLogs] = useState(false);
   const [isFixing, setIsFixing] = useState<string | null>(null);
   const [fixResult, setFixResult] = useState<AutoFixResult | null>(null);
+  const [autoRedeploy, setAutoRedeploy] = useState(true);
 
   // Detect errors in logs
   const detectedErrors: DetectedError[] = [];
@@ -238,10 +251,15 @@ export function CoolifyDeploymentErrorHandler({
     setFixResult(null);
 
     try {
+      const canRedeploy = autoRedeploy && coolifyAppUuid && serverId;
+      
       const { data, error } = await supabase.functions.invoke('auto-fix-dockerfile', {
         body: {
           github_repo_url: githubRepoUrl,
-          fix_type: fixAction
+          fix_type: fixAction,
+          auto_redeploy: canRedeploy,
+          coolify_app_uuid: coolifyAppUuid,
+          server_id: serverId
         }
       });
 
@@ -255,15 +273,29 @@ export function CoolifyDeploymentErrorHandler({
           message: data.message,
           commit_sha: data.commit_sha,
           commit_url: data.commit_url,
-          files_modified: data.files_modified
+          files_modified: data.files_modified,
+          redeploy: data.redeploy
         });
-        toast.success('Dockerfile corrigé avec succès!', {
-          description: `Commit: ${data.commit_sha?.slice(0, 7)}`,
-          action: data.commit_url ? {
-            label: 'Voir',
-            onClick: () => window.open(data.commit_url, '_blank')
-          } : undefined
-        });
+        
+        if (data.redeploy?.success) {
+          toast.success('Dockerfile corrigé et redéploiement lancé!', {
+            description: `Commit: ${data.commit_sha?.slice(0, 7)} - Redeploy en cours...`,
+            action: data.commit_url ? {
+              label: 'Voir commit',
+              onClick: () => window.open(data.commit_url, '_blank')
+            } : undefined
+          });
+          onRedeployTriggered?.(data.redeploy.deployment_uuid);
+        } else {
+          toast.success('Dockerfile corrigé avec succès!', {
+            description: `Commit: ${data.commit_sha?.slice(0, 7)}${data.redeploy ? ` - Redeploy: ${data.redeploy.message}` : ''}`,
+            action: data.commit_url ? {
+              label: 'Voir',
+              onClick: () => window.open(data.commit_url, '_blank')
+            } : undefined
+          });
+        }
+        
         onAutoFix?.(fixAction);
         onAutoFixComplete?.();
       } else {
@@ -446,18 +478,27 @@ export function CoolifyDeploymentErrorHandler({
                           <AlertTitle className="text-green-700 dark:text-green-400">
                             Correction appliquée
                           </AlertTitle>
-                          <AlertDescription className="text-sm">
+                          <AlertDescription className="text-sm space-y-2">
                             <p>{fixResult.message}</p>
                             {fixResult.files_modified && (
-                              <p className="text-xs mt-1">
+                              <p className="text-xs">
                                 Fichiers modifiés: {fixResult.files_modified.join(', ')}
                               </p>
+                            )}
+                            {fixResult.redeploy && (
+                              <div className={`flex items-center gap-2 text-xs ${fixResult.redeploy.success ? 'text-green-600' : 'text-orange-500'}`}>
+                                <RotateCw className="h-3 w-3" />
+                                {fixResult.redeploy.success 
+                                  ? `Redéploiement lancé: ${fixResult.redeploy.deployment_uuid?.slice(0, 8)}...`
+                                  : `Redeploy: ${fixResult.redeploy.message}`
+                                }
+                              </div>
                             )}
                             {fixResult.commit_url && (
                               <Button
                                 variant="link"
                                 size="sm"
-                                className="p-0 h-auto mt-1"
+                                className="p-0 h-auto"
                                 onClick={() => window.open(fixResult.commit_url, '_blank')}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
@@ -476,6 +517,22 @@ export function CoolifyDeploymentErrorHandler({
                         </Alert>
                       )}
                       
+                      {/* Auto-redeploy toggle */}
+                      {coolifyAppUuid && serverId && (
+                        <div className="flex items-center justify-between text-sm">
+                          <label className="flex items-center gap-2 text-muted-foreground">
+                            <RotateCw className="h-4 w-4" />
+                            Redéployer automatiquement après correction
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={autoRedeploy}
+                            onChange={(e) => setAutoRedeploy(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                        </div>
+                      )}
+                      
                       <Button 
                         size="sm" 
                         onClick={() => handleAutoFix(error.pattern.fixAction!)}
@@ -485,12 +542,12 @@ export function CoolifyDeploymentErrorHandler({
                         {isFixing === error.pattern.fixAction ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Correction en cours...
+                            {autoRedeploy && coolifyAppUuid ? 'Correction + Redéploiement...' : 'Correction en cours...'}
                           </>
                         ) : (
                           <>
                             <Wrench className="h-4 w-4 mr-2" />
-                            Corriger automatiquement (commit GitHub)
+                            {autoRedeploy && coolifyAppUuid ? 'Corriger et redéployer' : 'Corriger automatiquement'}
                           </>
                         )}
                       </Button>
