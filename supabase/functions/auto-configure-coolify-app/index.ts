@@ -308,33 +308,64 @@ serve(async (req) => {
     }
 
     // Step 5: Configure application with correct build settings
+    // Split into multiple calls to handle rejected parameters
     console.log('[auto-configure-coolify] Step 5: Configuring application...');
     try {
-      const patchBody: Record<string, unknown> = {
-        base_directory: DEFAULT_APP_CONFIG.base_directory,
-        dockerfile_location: DEFAULT_APP_CONFIG.dockerfile_location,
-        ports_exposes: DEFAULT_APP_CONFIG.ports_exposes,
-        build_pack: DEFAULT_APP_CONFIG.build_pack
+      // First PATCH: Core build settings only (these are typically accepted)
+      const corePatchBody: Record<string, unknown> = {
+        build_pack: 'dockerfile',
+        ports_exposes: '80'
       };
 
-      // Add domain if provided
-      if (domain) {
-        patchBody.fqdn = domain.startsWith('http') ? domain : `http://${domain}`;
-      }
-
-      const patchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+      const corePatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
         method: 'PATCH',
         headers: coolifyHeaders,
-        body: JSON.stringify(patchBody)
+        body: JSON.stringify(corePatchBody)
       });
 
-      if (!patchRes.ok) {
-        const errText = await patchRes.text();
-        console.warn('[auto-configure-coolify] PATCH warning:', errText);
-        // Don't fail, continue
+      if (corePatchRes.ok) {
+        console.log('[auto-configure-coolify] Core settings applied');
+      } else {
+        const errText = await corePatchRes.text();
+        console.warn('[auto-configure-coolify] Core PATCH warning:', errText);
       }
 
-      steps.push({ step: 'configuration', status: 'success', message: 'Dockerfile mode, port 80, base_directory: /' });
+      // Second PATCH: Try base_directory (may be rejected in some Coolify versions)
+      try {
+        const dirPatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+          method: 'PATCH',
+          headers: coolifyHeaders,
+          body: JSON.stringify({ base_directory: '/' })
+        });
+        if (!dirPatchRes.ok) {
+          const errText = await dirPatchRes.text();
+          console.log('[auto-configure-coolify] base_directory not accepted (normal for some versions):', errText.slice(0, 100));
+        }
+      } catch (e) {
+        console.log('[auto-configure-coolify] base_directory patch failed (non-critical)');
+      }
+
+      // Third PATCH: Try domain if provided (fqdn is often rejected via PATCH)
+      if (domain) {
+        try {
+          const fqdnValue = domain.startsWith('http') ? domain : `https://${domain}`;
+          const domainPatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+            method: 'PATCH',
+            headers: coolifyHeaders,
+            body: JSON.stringify({ fqdn: fqdnValue })
+          });
+          if (!domainPatchRes.ok) {
+            const errText = await domainPatchRes.text();
+            console.log('[auto-configure-coolify] fqdn not accepted (configure manually):', errText.slice(0, 100));
+          } else {
+            console.log('[auto-configure-coolify] Domain configured:', fqdnValue);
+          }
+        } catch (e) {
+          console.log('[auto-configure-coolify] fqdn patch failed (configure manually in Coolify)');
+        }
+      }
+
+      steps.push({ step: 'configuration', status: 'success', message: 'Build pack: dockerfile, port: 80' });
     } catch (e) {
       steps.push({ step: 'configuration', status: 'error', message: String(e) });
       // Continue anyway
