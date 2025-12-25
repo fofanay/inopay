@@ -117,6 +117,21 @@ serve(async (req) => {
 
     const steps: { step: string; status: 'success' | 'error' | 'pending'; message: string }[] = [];
 
+    // Helper function to safely parse JSON response
+    async function safeJsonParse(response: Response): Promise<{ data: unknown; error: string | null }> {
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        return { data, error: null };
+      } catch {
+        // Not JSON - might be HTML or plain text
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          return { data: null, error: `HTML response received (status ${response.status}). Is Coolify URL correct?` };
+        }
+        return { data: null, error: `Invalid response: ${text.slice(0, 100)}` };
+      }
+    }
+
     // Step 1: Test Coolify connection
     console.log('[auto-configure-coolify] Step 1: Testing Coolify connection...');
     try {
@@ -126,13 +141,20 @@ serve(async (req) => {
       });
       
       if (!versionRes.ok) {
-        throw new Error(`Coolify API error: ${versionRes.status}`);
+        const errorText = await versionRes.text().catch(() => 'Unknown error');
+        throw new Error(`Coolify API error ${versionRes.status}: ${errorText.slice(0, 100)}`);
       }
       
-      const versionData = await versionRes.json();
-      steps.push({ step: 'connection', status: 'success', message: `Coolify v${versionData.version || 'unknown'}` });
+      const { data: versionData, error: parseError } = await safeJsonParse(versionRes);
+      if (parseError) {
+        throw new Error(parseError);
+      }
+      
+      const version = (versionData as { version?: string })?.version || 'unknown';
+      steps.push({ step: 'connection', status: 'success', message: `Coolify v${version}` });
     } catch (e) {
-      steps.push({ step: 'connection', status: 'error', message: `Coolify inaccessible: ${e}` });
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      steps.push({ step: 'connection', status: 'error', message: `Coolify inaccessible: ${errorMessage}` });
       return new Response(
         JSON.stringify({ error: 'Coolify connection failed', steps }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -149,18 +171,25 @@ serve(async (req) => {
       });
       
       if (!serversRes.ok) {
-        throw new Error(`Failed to fetch servers: ${serversRes.status}`);
+        const errText = await serversRes.text().catch(() => 'Unknown error');
+        throw new Error(`Failed to fetch servers (${serversRes.status}): ${errText.slice(0, 100)}`);
       }
       
-      const servers = await serversRes.json();
-      if (!servers || servers.length === 0) {
+      const { data: servers, error: parseError } = await safeJsonParse(serversRes);
+      if (parseError) {
+        throw new Error(parseError);
+      }
+      
+      const serverList = servers as Array<{ uuid: string; name?: string }>;
+      if (!serverList || serverList.length === 0) {
         throw new Error('No servers found in Coolify');
       }
       
-      coolifyServerUuid = servers[0].uuid;
-      steps.push({ step: 'servers', status: 'success', message: `Server: ${servers[0].name || coolifyServerUuid}` });
+      coolifyServerUuid = serverList[0].uuid;
+      steps.push({ step: 'servers', status: 'success', message: `Server: ${serverList[0].name || coolifyServerUuid}` });
     } catch (e) {
-      steps.push({ step: 'servers', status: 'error', message: String(e) });
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      steps.push({ step: 'servers', status: 'error', message: errorMessage });
       return new Response(
         JSON.stringify({ error: 'No Coolify servers available', steps }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -178,8 +207,15 @@ serve(async (req) => {
         headers: coolifyHeaders
       });
       
-      const existingProjects = projectsRes.ok ? await projectsRes.json() : [];
-      const existingProject = existingProjects.find((p: { name: string }) => p.name === project_name);
+      let existingProjects: Array<{ name: string; uuid: string }> = [];
+      if (projectsRes.ok) {
+        const { data, error } = await safeJsonParse(projectsRes);
+        if (!error && Array.isArray(data)) {
+          existingProjects = data;
+        }
+      }
+      
+      const existingProject = existingProjects.find((p) => p.name === project_name);
       
       if (existingProject) {
         projectUuid = existingProject.uuid;
@@ -193,16 +229,20 @@ serve(async (req) => {
         });
         
         if (!createProjectRes.ok) {
-          const errText = await createProjectRes.text();
-          throw new Error(`Failed to create project: ${errText}`);
+          const errText = await createProjectRes.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to create project: ${errText.slice(0, 100)}`);
         }
         
-        const newProject = await createProjectRes.json();
-        projectUuid = newProject.uuid;
+        const { data: newProject, error: parseError } = await safeJsonParse(createProjectRes);
+        if (parseError || !newProject) {
+          throw new Error(parseError || 'Invalid project response');
+        }
+        projectUuid = (newProject as { uuid: string }).uuid;
         steps.push({ step: 'project', status: 'success', message: `Projet créé: ${project_name}` });
       }
     } catch (e) {
-      steps.push({ step: 'project', status: 'error', message: String(e) });
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      steps.push({ step: 'project', status: 'error', message: errorMessage });
       return new Response(
         JSON.stringify({ error: 'Failed to create/find project', steps }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -244,15 +284,19 @@ serve(async (req) => {
       });
 
       if (!createAppRes.ok) {
-        const errText = await createAppRes.text();
-        throw new Error(`Failed to create application: ${errText}`);
+        const errText = await createAppRes.text().catch(() => 'Unknown error');
+        throw new Error(`Failed to create application: ${errText.slice(0, 150)}`);
       }
 
-      const newApp = await createAppRes.json();
-      appUuid = newApp.uuid;
+      const { data: newApp, error: parseError } = await safeJsonParse(createAppRes);
+      if (parseError || !newApp) {
+        throw new Error(parseError || 'Invalid application response');
+      }
+      appUuid = (newApp as { uuid: string }).uuid;
       steps.push({ step: 'application', status: 'success', message: `Application créée: ${appUuid.slice(0, 8)}...` });
     } catch (e) {
-      steps.push({ step: 'application', status: 'error', message: String(e) });
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      steps.push({ step: 'application', status: 'error', message: errorMessage });
       return new Response(
         JSON.stringify({ error: 'Failed to create application', steps }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
