@@ -65,18 +65,25 @@ serve(async (req) => {
   }
 
   // Rate limiting - 60 requests per minute per user
-  const authHeader = req.headers.get("Authorization");
-  const token = authHeader?.replace("Bearer ", "");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+
+  // Auth client uses the incoming Authorization header (no session storage in functions)
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false },
+    global: {
+      headers: authHeader ? { Authorization: authHeader } : {},
+    },
+  });
+
   let userId: string | null = null;
-  
-  const tempClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-  
-  if (token) {
-    const { data } = await tempClient.auth.getUser(token);
-    userId = data.user?.id || null;
+
+  if (authHeader) {
+    const { data } = await authClient.auth.getUser();
+    userId = data.user?.id ?? null;
   }
 
   const rateLimitResponse = withRateLimit(req, userId, "check-subscription", corsHeaders);
@@ -85,23 +92,23 @@ serve(async (req) => {
     return rateLimitResponse;
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
+  // DB client (service role) for reading/writing app tables
+  const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
 
   try {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
 
     if (!authHeader) throw new Error("No authorization header provided");
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await authClient.auth.getUser();
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
+
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
