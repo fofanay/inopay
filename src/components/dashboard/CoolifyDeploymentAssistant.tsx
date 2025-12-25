@@ -26,8 +26,12 @@ import {
   Clock,
   Terminal,
   FileCode,
-  Eye
+  Eye,
+  Trash2,
+  Bug,
+  GitCompare
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -121,7 +125,18 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
   const [showLogs, setShowLogs] = useState(false);
   const [showDockerfile, setShowDockerfile] = useState(false);
   const [forceNoCache, setForceNoCache] = useState(true);
-
+  
+  // Debug mode state
+  const [debugMode, setDebugMode] = useState(false);
+  const [apiLogs, setApiLogs] = useState<{ timestamp: string; method: string; url: string; status?: number; duration?: number }[]>([]);
+  const [isPurgingCache, setIsPurgingCache] = useState(false);
+  const [dockerfileComparison, setDockerfileComparison] = useState<{
+    github_content: string | null;
+    coolify_content: string | null;
+    is_synced: boolean;
+    differences: string[];
+  } | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
   // Load servers on mount
   useEffect(() => {
     loadServers();
@@ -249,6 +264,99 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
       });
     } finally {
       setIsRunningPreflight(false);
+    }
+  };
+
+  // Compare Dockerfiles between GitHub and Coolify
+  const compareDockerfiles = async () => {
+    if (!selectedServer || !githubRepoUrl) {
+      toast.error('Serveur et URL GitHub requis');
+      return;
+    }
+
+    setIsComparing(true);
+    try {
+      const startTime = Date.now();
+      const response = await supabase.functions.invoke('compare-dockerfile', {
+        body: {
+          server_id: selectedServer.id,
+          github_repo_url: githubRepoUrl,
+          coolify_app_uuid: deploymentResult?.app_uuid
+        }
+      });
+
+      if (debugMode) {
+        setApiLogs(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          method: 'POST',
+          url: '/functions/v1/compare-dockerfile',
+          status: response.error ? 500 : 200,
+          duration: Date.now() - startTime
+        }]);
+      }
+
+      if (response.error) throw response.error;
+
+      setDockerfileComparison(response.data);
+      
+      if (response.data.is_synced) {
+        toast.success('Dockerfiles synchronisés ✓');
+      } else {
+        toast.warning('Désynchronisation détectée!');
+      }
+    } catch (error) {
+      console.error('Compare error:', error);
+      toast.error('Erreur lors de la comparaison');
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
+  // Purge Coolify cache
+  const purgeCoolifyCache = async () => {
+    if (!selectedServer) {
+      toast.error('Serveur requis');
+      return;
+    }
+
+    setIsPurgingCache(true);
+    try {
+      const startTime = Date.now();
+      const response = await supabase.functions.invoke('purge-coolify-cache', {
+        body: {
+          server_id: selectedServer.id,
+          coolify_app_uuid: deploymentResult?.app_uuid
+        }
+      });
+
+      if (debugMode) {
+        setApiLogs(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          method: 'POST',
+          url: '/functions/v1/purge-coolify-cache',
+          status: response.error ? 500 : 200,
+          duration: Date.now() - startTime
+        }]);
+      }
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (data.actions_taken?.length > 0) {
+        toast.success(`Cache purgé: ${data.actions_taken.join(', ')}`);
+      } else {
+        toast.info('Purge manuelle requise. Commandes SSH affichées.');
+      }
+
+      // Show manual commands
+      if (data.manual_commands) {
+        console.log('Commandes SSH pour purge manuelle:', data.manual_commands);
+      }
+    } catch (error) {
+      console.error('Purge error:', error);
+      toast.error('Erreur lors de la purge du cache');
+    } finally {
+      setIsPurgingCache(false);
     }
   };
 
@@ -793,6 +901,77 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                 <li>✅ <code>force_no_cache: {forceNoCache ? 'true' : 'false'}</code></li>
               </ul>
             </div>
+
+            {/* Advanced Options */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-sm mb-3">Options avancées</h4>
+              
+              {/* Debug Mode Toggle */}
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg mb-3">
+                <div className="flex items-center gap-2">
+                  <Bug className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Mode Debug (logs API)</span>
+                </div>
+                <Switch
+                  checked={debugMode}
+                  onCheckedChange={setDebugMode}
+                />
+              </div>
+
+              {/* Purge Cache Button */}
+              <div className="flex gap-2 mb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={purgeCoolifyCache}
+                  disabled={isPurgingCache || !selectedServer}
+                  className="flex-1"
+                >
+                  {isPurgingCache ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Purger cache Docker
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={compareDockerfiles}
+                  disabled={isComparing || !selectedServer || !githubRepoUrl}
+                  className="flex-1"
+                >
+                  {isComparing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <GitCompare className="h-4 w-4 mr-2" />
+                  )}
+                  Comparer Dockerfiles
+                </Button>
+              </div>
+
+              {/* Dockerfile Comparison Results */}
+              {dockerfileComparison && (
+                <div className={`p-3 rounded-lg text-sm ${dockerfileComparison.is_synced ? 'bg-green-500/10 border border-green-500' : 'bg-destructive/10 border border-destructive'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {dockerfileComparison.is_synced ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    )}
+                    <span className="font-medium">
+                      {dockerfileComparison.is_synced ? 'Dockerfiles synchronisés' : 'Désynchronisation détectée!'}
+                    </span>
+                  </div>
+                  <ul className="text-xs space-y-1">
+                    {dockerfileComparison.differences.map((diff, i) => (
+                      <li key={i}>{diff}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -886,6 +1065,41 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                       <AlertDescription>{deploymentStatus.error_message}</AlertDescription>
                     </Alert>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Debug Mode: API Logs */}
+            {debugMode && apiLogs.length > 0 && (
+              <Card className="border-dashed border-2 border-primary/30">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Bug className="h-4 w-4" />
+                    API Logs (Mode Debug)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {apiLogs.map((log, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs font-mono p-1 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <Badge variant={log.status && log.status < 400 ? 'default' : 'destructive'} className="text-[10px] py-0">
+                          {log.method}
+                        </Badge>
+                        <span className="truncate flex-1">{log.url}</span>
+                        {log.status && <span className={log.status < 400 ? 'text-green-500' : 'text-destructive'}>{log.status}</span>}
+                        {log.duration && <span className="text-muted-foreground">{log.duration}ms</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setApiLogs([])}
+                    className="mt-2 w-full"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Effacer les logs
+                  </Button>
                 </CardContent>
               </Card>
             )}
