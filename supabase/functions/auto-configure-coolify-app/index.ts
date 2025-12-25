@@ -145,12 +145,16 @@ serve(async (req) => {
         throw new Error(`Coolify API error ${versionRes.status}: ${errorText.slice(0, 100)}`);
       }
       
-      const { data: versionData, error: parseError } = await safeJsonParse(versionRes);
-      if (parseError) {
-        throw new Error(parseError);
+      // Version endpoint returns plain text (e.g., "4.0.0-beta.458"), not JSON
+      const versionText = await versionRes.text();
+      const version = versionText.trim();
+      
+      // Validate it looks like a version string
+      if (!version || version.includes('<!DOCTYPE') || version.includes('<html')) {
+        throw new Error(`Invalid version response: ${version.slice(0, 100)}`);
       }
       
-      const version = (versionData as { version?: string })?.version || 'unknown';
+      console.log(`[auto-configure-coolify] Connected to Coolify v${version}`);
       steps.push({ step: 'connection', status: 'success', message: `Coolify v${version}` });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
