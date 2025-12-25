@@ -49,9 +49,110 @@ function looksLikeGitAuthError(text: string): boolean {
     s.includes('fatal: could not read username') ||
     s.includes('permission denied') ||
     s.includes('repository not found') ||
+    s.includes('not found') ||
+    s.includes('error: not found') ||
     (s.includes('403') && s.includes('github')) ||
-    (s.includes('access denied') && s.includes('github'))
+    (s.includes('access denied') && s.includes('github')) ||
+    (s.includes('github api call failed') && s.includes('not found')) ||
+    s.includes('rate limit status')
   );
+}
+
+// Verify GitHub repository accessibility before deployment
+async function verifyGitHubRepoAccess(repoUrl: string, token: string | null): Promise<{ 
+  accessible: boolean; 
+  isPrivate: boolean; 
+  error?: string;
+  requiresAuth: boolean;
+}> {
+  try {
+    const urlMatch = repoUrl.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
+    if (!urlMatch) {
+      return { accessible: false, isPrivate: false, error: 'Invalid GitHub URL format', requiresAuth: false };
+    }
+
+    const [, owner, repo] = urlMatch;
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+    
+    // Try without auth first to check if public
+    const publicResponse = await fetch(apiUrl, {
+      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Inopay-Deploy' }
+    });
+
+    if (publicResponse.ok) {
+      const repoData = await publicResponse.json();
+      console.log(`[deploy-coolify] GitHub repo ${owner}/${repo} is ${repoData.private ? 'private' : 'public'}`);
+      return { 
+        accessible: true, 
+        isPrivate: repoData.private, 
+        requiresAuth: repoData.private 
+      };
+    }
+
+    // If 404, try with token
+    if (publicResponse.status === 404 && token) {
+      const authResponse = await fetch(apiUrl, {
+        headers: { 
+          'Accept': 'application/vnd.github.v3+json', 
+          'User-Agent': 'Inopay-Deploy',
+          'Authorization': `token ${token}`
+        }
+      });
+
+      if (authResponse.ok) {
+        const repoData = await authResponse.json();
+        console.log(`[deploy-coolify] GitHub repo ${owner}/${repo} accessible with token (private: ${repoData.private})`);
+        return { 
+          accessible: true, 
+          isPrivate: repoData.private, 
+          requiresAuth: true 
+        };
+      }
+
+      const authErrorData = await authResponse.json().catch(() => ({}));
+      return { 
+        accessible: false, 
+        isPrivate: true, 
+        error: `Repository not found or no access: ${authErrorData.message || authResponse.status}`,
+        requiresAuth: true
+      };
+    }
+
+    // Handle other error cases
+    if (publicResponse.status === 404) {
+      return { 
+        accessible: false, 
+        isPrivate: true, 
+        error: 'Repository not found. It may be private and requires a GitHub token.',
+        requiresAuth: true
+      };
+    }
+
+    if (publicResponse.status === 403) {
+      const rateLimitReset = publicResponse.headers.get('x-ratelimit-reset');
+      return { 
+        accessible: false, 
+        isPrivate: false, 
+        error: `GitHub API rate limit exceeded. Reset at: ${rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000).toISOString() : 'unknown'}`,
+        requiresAuth: true
+      };
+    }
+
+    return { 
+      accessible: false, 
+      isPrivate: false, 
+      error: `GitHub API error: ${publicResponse.status}`,
+      requiresAuth: false
+    };
+  } catch (error) {
+    console.error('[deploy-coolify] GitHub API check error:', error);
+    return { 
+      accessible: false, 
+      isPrivate: false, 
+      error: `GitHub API check failed: ${error}`,
+      requiresAuth: false
+    };
+  }
 }
 
 async function fetchCoolifyApplicationLogs(
@@ -493,11 +594,71 @@ serve(async (req) => {
         throw new Error('No project data available');
       }
 
-      // Git URL strategy: try public first, fallback to authenticated URL ONLY if we detect a Git auth error.
+      // Git URL strategy: IMPROVED - verify repo access first and use authenticated URL if needed
       const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN') || null;
       const authenticatedGitRepoUrl = buildAuthenticatedGithubUrl(github_repo_url, githubToken);
-      let repoAuthMode: 'public' | 'authenticated' = 'public';
+      
+      // Pre-flight check: verify GitHub repository access
+      console.log('[deploy-coolify] Verifying GitHub repository access...');
+      const repoAccessCheck = await verifyGitHubRepoAccess(github_repo_url, githubToken);
+      
+      if (!repoAccessCheck.accessible) {
+        // Early exit with clear error message
+        const errorDetails = [
+          `🔴 GitHub Repository Access Error`,
+          ``,
+          `Repository: ${github_repo_url}`,
+          `Error: ${repoAccessCheck.error}`,
+          ``,
+          `💡 Solutions:`,
+        ];
+        
+        if (repoAccessCheck.requiresAuth && !githubToken) {
+          errorDetails.push(`  1. Le dépôt est privé mais aucun token GitHub n'est configuré`);
+          errorDetails.push(`  2. Configurez votre token GitHub dans les paramètres Inopay`);
+          errorDetails.push(`  3. Ou rendez le dépôt public sur GitHub`);
+        } else if (repoAccessCheck.requiresAuth) {
+          errorDetails.push(`  1. Le token GitHub configuré n'a pas accès à ce dépôt`);
+          errorDetails.push(`  2. Vérifiez les permissions du token (repo scope requis)`);
+          errorDetails.push(`  3. Vérifiez que le dépôt existe: ${github_repo_url}`);
+        } else {
+          errorDetails.push(`  1. Vérifiez que l'URL du dépôt est correcte`);
+          errorDetails.push(`  2. Vérifiez que le dépôt n'a pas été supprimé`);
+        }
+        
+        const errorMessage = errorDetails.join('\n');
+        console.error('[deploy-coolify] GitHub access check failed:', errorMessage);
+        
+        // Update deployment as failed
+        await supabase
+          .from('server_deployments')
+          .update({
+            status: 'failed',
+            error_message: errorMessage,
+            health_status: 'unhealthy'
+          })
+          .eq('id', deployment.id);
+
+        return new Response(
+          JSON.stringify({ 
+            error: 'GitHub repository access failed', 
+            details: repoAccessCheck.error,
+            requires_github_token: repoAccessCheck.requiresAuth && !githubToken,
+            is_private: repoAccessCheck.isPrivate
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Determine auth mode based on repo access check
+      // CRITICAL: Use authenticated URL if repo is private OR if auth was required to access it
+      let repoAuthMode: 'public' | 'authenticated' = 
+        (repoAccessCheck.isPrivate || repoAccessCheck.requiresAuth) && authenticatedGitRepoUrl 
+          ? 'authenticated' 
+          : 'public';
       let repoAttemptedAuthFallback = false;
+      
+      console.log(`[deploy-coolify] Repository auth mode: ${repoAuthMode} (private: ${repoAccessCheck.isPrivate}, requiresAuth: ${repoAccessCheck.requiresAuth})`);
 
       const getGitRepoUrlForCoolify = () =>
         repoAuthMode === 'authenticated' && authenticatedGitRepoUrl
@@ -949,10 +1110,23 @@ serve(async (req) => {
         const combinedLower = `${buildLogs}\n${runtimeLogs}`.toLowerCase();
 
         if (looksLikeGitAuthError(combinedLower)) {
-          errorParts.push('  ⚠️ ERREUR GIT AUTH DÉTECTÉE');
-          errorParts.push('  - Le dépôt est privé ou les permissions GitHub sont insuffisantes');
-          errorParts.push('  - Si le dépôt est public: attendez 1-2 minutes et relancez (cache Git)');
-          errorParts.push('  - Sinon: vérifiez votre token GitHub (lecture repo)');
+          errorParts.push('  ⚠️ ERREUR GIT/GITHUB DÉTECTÉE');
+          if (combinedLower.includes('github api call failed') || combinedLower.includes('not found')) {
+            errorParts.push('  - GitHub API: Le dépôt est introuvable ou inaccessible');
+            errorParts.push('  - Coolify n\'a pas de token GitHub configuré pour ce dépôt privé');
+            errorParts.push('  - SOLUTION: Configurez une Source GitHub dans Coolify:');
+            errorParts.push('    1. Allez sur votre interface Coolify');
+            errorParts.push('    2. Sources → Add New Source → GitHub App ou GitHub (Deploy Key)');
+            errorParts.push('    3. Reconfigurez l\'application pour utiliser cette source');
+          } else if (combinedLower.includes('rate limit')) {
+            errorParts.push('  - Limite de requêtes GitHub API atteinte');
+            errorParts.push('  - Attendez quelques minutes avant de réessayer');
+            errorParts.push('  - Ou configurez un token GitHub pour éviter les limites');
+          } else {
+            errorParts.push('  - Le dépôt est privé ou les permissions GitHub sont insuffisantes');
+            errorParts.push('  - Si le dépôt est public: attendez 1-2 minutes et relancez (cache Git)');
+            errorParts.push('  - Sinon: vérifiez votre token GitHub (lecture repo)');
+          }
         } else if (
           combinedLower.includes('cannot connect to the docker daemon') ||
           combinedLower.includes('is the docker daemon running') ||
@@ -966,6 +1140,11 @@ serve(async (req) => {
           errorParts.push('  ℹ️ CONTAINER INTROUVABLE (pas un souci Docker daemon)');
           errorParts.push('  - Le conteneur a été supprimé/arrêté avant la commande');
           errorParts.push('  - Concentrez-vous sur les logs de build et les logs runtime ci-dessus');
+        } else if (combinedLower.includes('nixpacks failed to detect')) {
+          errorParts.push('  ⚠️ ERREUR NIXPACKS DÉTECTÉE');
+          errorParts.push('  - Nixpacks ne peut pas détecter le type d\'application');
+          errorParts.push('  - SOLUTION: Dans Coolify, changez Build Pack de "nixpacks" à "dockerfile"');
+          errorParts.push('  - Assurez-vous que le Dockerfile est à la racine du projet');
         } else if (buildStatus.includes('unhealthy') || buildStatus.startsWith('exited')) {
           errorParts.push('  - Le container démarre mais échoue au healthcheck');
           errorParts.push('  - Vérifiez que /health répond bien en HTTP 200');
