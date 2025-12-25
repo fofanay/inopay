@@ -191,3 +191,6 @@ verify_jwt = false
 
 [functions.pipeline-health-check]
 verify_jwt = false
+
+[functions.auto-configure-coolify-app]
+verify_jwt = false
