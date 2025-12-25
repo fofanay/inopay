@@ -1,13 +1,14 @@
 -- ============================================================
--- INOPAY - MASTER SQL MIGRATION SCRIPT
+-- INOPAY - MASTER SQL MIGRATION SCRIPT (FIXED ORDER)
 -- ============================================================
--- Generated: 2024-12-25
+-- Generated: 2024-12-25 (Fixed)
 -- Purpose: Complete database schema migration for private Supabase instance
 -- Instructions: Execute this script in your Supabase SQL Editor
+-- IMPORTANT: Tables must be created BEFORE functions that reference them
 -- ============================================================
 
 -- ============================================================
--- STEP 1: EXTENSIONS (Optionnel - certaines peuvent nécessiter des droits)
+-- STEP 1: EXTENSIONS (Optionnel)
 -- ============================================================
 
 -- Note: pg_cron et pg_net peuvent ne pas être disponibles sur toutes les instances
@@ -26,7 +27,7 @@ EXCEPTION
 END $$;
 
 -- ============================================================
--- STEP 3: CORE FUNCTIONS (doivent être créées AVANT les tables/triggers)
+-- STEP 3: BASIC FUNCTION (sans dépendances de tables)
 -- ============================================================
 
 -- Function to update updated_at timestamps automatically
@@ -37,6 +38,31 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
+
+-- ============================================================
+-- STEP 4: CRITICAL BASE TABLES (user_roles MUST be first!)
+-- ============================================================
+
+-- ----------------------------------------
+-- TABLE: user_roles (MUST BE CREATED BEFORE has_role function)
+-- ----------------------------------------
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Basic policy without has_role function (to avoid circular dependency)
+CREATE POLICY "Users can view their own roles" ON public.user_roles
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- ============================================================
+-- STEP 5: SECURITY DEFINER FUNCTIONS (after user_roles exists)
+-- ============================================================
 
 -- Security definer function to check roles (prevents RLS recursion)
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
@@ -68,6 +94,17 @@ AS $$
   LIMIT 1
 $$;
 
+-- Now add admin policies to user_roles (after has_role exists)
+CREATE POLICY "Admins can view all roles" ON public.user_roles
+  FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can manage roles" ON public.user_roles
+  FOR ALL USING (public.has_role(auth.uid(), 'admin'));
+
+-- ============================================================
+-- STEP 6: OTHER FUNCTIONS
+-- ============================================================
+
 -- Function to clean up expired OTP records
 CREATE OR REPLACE FUNCTION public.cleanup_expired_otps()
 RETURNS void
@@ -96,7 +133,7 @@ END;
 $$;
 
 -- ============================================================
--- STEP 4: BASE TABLES (sans dépendances FK)
+-- STEP 7: BASE TABLES (sans dépendances FK)
 -- ============================================================
 
 -- ----------------------------------------
@@ -134,6 +171,9 @@ CREATE POLICY "Users can update their own profile" ON public.profiles
 CREATE POLICY "Users can insert their own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Admins can view all profiles" ON public.profiles
+  FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
+
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -143,28 +183,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
 CREATE TRIGGER on_auth_user_created_profile
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_profile();
-
--- ----------------------------------------
--- TABLE: user_roles (rôles séparés pour sécurité)
--- ----------------------------------------
-CREATE TABLE IF NOT EXISTS public.user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  role app_role NOT NULL DEFAULT 'user',
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  UNIQUE (user_id, role)
-);
-
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own roles" ON public.user_roles
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins can view all roles" ON public.user_roles
-  FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Admins can manage roles" ON public.user_roles
-  FOR ALL USING (public.has_role(auth.uid(), 'admin'));
 
 -- ----------------------------------------
 -- TABLE: banned_users
@@ -211,6 +229,9 @@ CREATE POLICY "Users can create their own settings" ON public.user_settings
 
 CREATE POLICY "Users can update their own settings" ON public.user_settings
   FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all user_settings" ON public.user_settings
+  FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
 
 CREATE TRIGGER update_user_settings_updated_at
   BEFORE UPDATE ON public.user_settings
@@ -385,7 +406,7 @@ CREATE TRIGGER update_user_servers_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- ============================================================
--- STEP 5: TABLES WITH FK DEPENDENCIES
+-- STEP 8: TABLES WITH FK DEPENDENCIES
 -- ============================================================
 
 -- ----------------------------------------
@@ -720,7 +741,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_created ON public.admin_activ
 CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_status ON public.admin_activity_logs(status);
 
 -- ============================================================
--- STEP 6: STANDALONE TABLES (sans dépendances)
+-- STEP 9: STANDALONE TABLES (sans dépendances)
 -- ============================================================
 
 -- ----------------------------------------
@@ -883,7 +904,7 @@ VALUES ('SECURITY_LIMITS', '{
 ON CONFLICT (config_key) DO NOTHING;
 
 -- ============================================================
--- STEP 7: EMAIL SYSTEM TABLES
+-- STEP 10: EMAIL SYSTEM TABLES
 -- ============================================================
 
 -- ----------------------------------------
@@ -1057,7 +1078,7 @@ CREATE INDEX IF NOT EXISTS idx_email_sends_campaign ON public.email_sends(campai
 CREATE INDEX IF NOT EXISTS idx_email_sends_status ON public.email_sends(status);
 
 -- ============================================================
--- STEP 8: STORAGE BUCKETS
+-- STEP 11: STORAGE BUCKETS
 -- ============================================================
 
 -- Note: Ces instructions nécessitent l'accès au schéma storage
@@ -1113,7 +1134,7 @@ CREATE POLICY "Users can delete their own avatar" ON storage.objects
   );
 
 -- ============================================================
--- STEP 9: REALTIME CONFIGURATION
+-- STEP 12: REALTIME CONFIGURATION
 -- ============================================================
 
 -- Enable realtime for specific tables
@@ -1129,7 +1150,7 @@ EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
 -- ============================================================
--- STEP 10: ADDITIONAL INDEXES FOR PERFORMANCE
+-- STEP 13: ADDITIONAL INDEXES FOR PERFORMANCE
 -- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_server_deployments_health 
