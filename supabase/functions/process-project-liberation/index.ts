@@ -40,6 +40,179 @@ function cleanGitHubOwner(input: string | null): string | null {
   return cleaned.trim() || null;
 }
 
+// Mask sensitive tokens in URLs/strings for safe logging
+function maskSensitiveData(input: string): string {
+  // Mask x-access-token:TOKEN@ patterns
+  let masked = input.replace(/x-access-token:[^@]+@/gi, 'x-access-token:***@');
+  // Mask https://TOKEN@github.com patterns
+  masked = masked.replace(/https:\/\/[^:@]+:[^@]+@github\.com/gi, 'https://***:***@github.com');
+  // Mask Bearer tokens
+  masked = masked.replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer ***');
+  // Mask ghp_ tokens
+  masked = masked.replace(/ghp_[A-Za-z0-9_]+/g, 'ghp_***');
+  // Mask gho_ tokens
+  masked = masked.replace(/gho_[A-Za-z0-9_]+/g, 'gho_***');
+  return masked;
+}
+
+// Initialize an empty GitHub repo with a first commit
+async function initializeEmptyRepo(
+  headers: Record<string, string>,
+  owner: string,
+  repoName: string
+): Promise<{ success: boolean; baseSha?: string; baseTreeSha?: string; error?: string }> {
+  console.log(`[GitHub] Repo is empty, initializing with first commit...`);
+  
+  try {
+    // Create initial README.md via Contents API (works on empty repos)
+    const readmeContent = btoa(`# ${repoName}\n\nProjet libéré et nettoyé par Inopay - 100% Souverain\n`);
+    
+    const createFileResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/contents/README.md`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: '🎉 Initial commit - Repo initialized',
+          content: readmeContent,
+          branch: 'main',
+        }),
+      }
+    );
+
+    if (!createFileResponse.ok) {
+      // Try with master branch if main doesn't exist
+      const masterResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/contents/README.md`,
+        {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: '🎉 Initial commit - Repo initialized',
+            content: readmeContent,
+            branch: 'master',
+          }),
+        }
+      );
+      
+      if (!masterResponse.ok) {
+        const error = await masterResponse.json();
+        console.error('[GitHub] Failed to initialize repo:', error);
+        return { success: false, error: `Impossible d'initialiser le repo: ${error.message}` };
+      }
+    }
+    
+    console.log(`[GitHub] Initial commit created, waiting for branch to be ready...`);
+    
+    // Wait a moment for GitHub to process
+    await new Promise(r => setTimeout(r, 1500));
+    
+    // Now get the base SHA from the newly created commit
+    const refResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`,
+      { headers }
+    );
+    
+    if (refResponse.ok) {
+      const refData = await refResponse.json();
+      const baseSha = refData.object.sha;
+      
+      const commitResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`,
+        { headers }
+      );
+      
+      if (commitResponse.ok) {
+        const commitData = await commitResponse.json();
+        console.log(`[GitHub] Repo initialized successfully, baseSha: ${baseSha}`);
+        return { 
+          success: true, 
+          baseSha, 
+          baseTreeSha: commitData.tree.sha 
+        };
+      }
+    }
+    
+    // Try master branch
+    const masterRefResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/master`,
+      { headers }
+    );
+    
+    if (masterRefResponse.ok) {
+      const refData = await masterRefResponse.json();
+      const baseSha = refData.object.sha;
+      
+      const commitResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`,
+        { headers }
+      );
+      
+      if (commitResponse.ok) {
+        const commitData = await commitResponse.json();
+        console.log(`[GitHub] Repo initialized on master, baseSha: ${baseSha}`);
+        return { 
+          success: true, 
+          baseSha, 
+          baseTreeSha: commitData.tree.sha 
+        };
+      }
+    }
+    
+    return { success: false, error: 'Repo initialisé mais impossible de lire la ref' };
+  } catch (error) {
+    console.error('[GitHub] Init error:', error);
+    return { success: false, error: `Erreur initialisation: ${error instanceof Error ? error.message : 'Inconnue'}` };
+  }
+}
+
+// Check if a repo is empty (no commits)
+async function isRepoEmpty(
+  headers: Record<string, string>,
+  owner: string,
+  repoName: string
+): Promise<boolean> {
+  // Try to get the default branch ref
+  const mainRef = await fetch(
+    `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`,
+    { headers }
+  );
+  
+  if (mainRef.ok) return false;
+  
+  // Check if 404 means empty or just no main branch
+  if (mainRef.status === 404 || mainRef.status === 409) {
+    // Also check master branch
+    const masterRef = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/master`,
+      { headers }
+    );
+    
+    if (masterRef.ok) return false;
+    
+    // Check commits count as final confirmation
+    const commitsResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repoName}/commits?per_page=1`,
+      { headers }
+    );
+    
+    if (commitsResponse.status === 409) {
+      // 409 "Git Repository is empty" confirms it's empty
+      return true;
+    }
+    
+    if (commitsResponse.ok) {
+      const commits = await commitsResponse.json();
+      return commits.length === 0;
+    }
+    
+    // Likely empty if we got here
+    return true;
+  }
+  
+  return false;
+}
+
 // NEW: Push to GitHub using tree with inline content strategy
 // This DRASTICALLY reduces API calls (1 tree call vs N blob calls)
 async function pushToGitHubOptimized(
@@ -76,6 +249,7 @@ async function pushToGitHubOptimized(
     
     let repoUrl: string;
     let isNewRepo = false;
+    let repoIsEmpty = false;
     
     if (repoResponse.status === 404) {
       // Create new repo - use case-insensitive comparison
@@ -125,6 +299,12 @@ async function pushToGitHubOptimized(
     } else {
       const existingRepo = await repoResponse.json();
       repoUrl = existingRepo.html_url;
+      
+      // Check if existing repo is empty
+      repoIsEmpty = await isRepoEmpty(headers, owner, repoName);
+      if (repoIsEmpty) {
+        console.log(`[GitHub] Existing repo ${owner}/${repoName} is EMPTY - will initialize first`);
+      }
     }
 
     // STRATEGY: Use tree with inline content for small files
@@ -223,14 +403,37 @@ async function pushToGitHubOptimized(
     let baseTreeSha: string | null = null;
     
     if (!isNewRepo) {
-      const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`, { headers });
-      if (refResponse.ok) {
-        const refData = await refResponse.json();
-        baseSha = refData.object.sha;
-        const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`, { headers });
-        if (commitResponse.ok) {
-          const commitData = await commitResponse.json();
-          baseTreeSha = commitData.tree.sha;
+      // If repo exists but is empty, initialize it first
+      if (repoIsEmpty) {
+        const initResult = await initializeEmptyRepo(headers, owner, repoName);
+        if (!initResult.success) {
+          return { success: false, error: initResult.error };
+        }
+        baseSha = initResult.baseSha || null;
+        baseTreeSha = initResult.baseTreeSha || null;
+      } else {
+        // Normal case: get existing refs
+        const refResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/main`, { headers });
+        if (refResponse.ok) {
+          const refData = await refResponse.json();
+          baseSha = refData.object.sha;
+          const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`, { headers });
+          if (commitResponse.ok) {
+            const commitData = await commitResponse.json();
+            baseTreeSha = commitData.tree.sha;
+          }
+        } else {
+          // Maybe master branch?
+          const masterRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/ref/heads/master`, { headers });
+          if (masterRefResponse.ok) {
+            const refData = await masterRefResponse.json();
+            baseSha = refData.object.sha;
+            const commitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits/${baseSha}`, { headers });
+            if (commitResponse.ok) {
+              const commitData = await commitResponse.json();
+              baseTreeSha = commitData.tree.sha;
+            }
+          }
         }
       }
     }
@@ -251,6 +454,75 @@ async function pushToGitHubOptimized(
     if (!treeResponse.ok) {
       const error = await treeResponse.json();
       console.error('[GitHub] Tree creation failed:', error);
+      
+      // Handle "Git Repository is empty" error - retry with init
+      if (error.message?.includes('empty') || treeResponse.status === 409) {
+        console.log('[GitHub] Got "empty repo" error, attempting auto-init...');
+        const initResult = await initializeEmptyRepo(headers, owner, repoName);
+        if (initResult.success) {
+          baseSha = initResult.baseSha || null;
+          baseTreeSha = initResult.baseTreeSha || null;
+          
+          // Retry tree creation
+          const retryTreePayload: any = { tree: treeItems };
+          if (baseTreeSha) {
+            retryTreePayload.base_tree = baseTreeSha;
+          }
+          
+          const retryTreeResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/trees`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(retryTreePayload),
+          });
+          
+          if (!retryTreeResponse.ok) {
+            const retryError = await retryTreeResponse.json();
+            return { success: false, error: `Erreur création arbre (après init): ${retryError.message}` };
+          }
+          
+          // Continue with the retried tree
+          const retryTree = await retryTreeResponse.json();
+          console.log(`[GitHub] Tree created after init: ${retryTree.sha}`);
+          
+          // Create commit with the retry tree
+          const retryCommitPayload: any = {
+            message: commitMessage,
+            tree: retryTree.sha,
+          };
+          if (baseSha) {
+            retryCommitPayload.parents = [baseSha];
+          }
+          
+          const retryCommitResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/commits`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(retryCommitPayload),
+          });
+          
+          if (!retryCommitResponse.ok) {
+            const retryCommitError = await retryCommitResponse.json();
+            return { success: false, error: `Erreur création commit (après init): ${retryCommitError.message}` };
+          }
+          
+          const retryCommit = await retryCommitResponse.json();
+          
+          // Update ref
+          const updateRefResponse = await fetch(`https://api.github.com/repos/${owner}/${repoName}/git/refs/heads/main`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ sha: retryCommit.sha, force: true }),
+          });
+          
+          if (!updateRefResponse.ok) {
+            const refError = await updateRefResponse.json();
+            return { success: false, error: `Erreur mise à jour ref (après init): ${refError.message}` };
+          }
+          
+          console.log(`[GitHub] Successfully pushed to ${repoUrl} (after auto-init)`);
+          return { success: true, repoUrl };
+        }
+      }
+      
       return { success: false, error: `Erreur création arbre: ${error.message}` };
     }
 
@@ -390,8 +662,8 @@ async function triggerCoolifyDeployment(
     };
     
     console.log(`[Coolify] Found app: ${appDetails.name} (${appUuid})`);
-    console.log(`[Coolify] Current git_repository: ${appDetails.git_repository || 'NONE'}`);
-    console.log(`[Coolify] Target repo URL: ${repoUrl}`);
+    console.log(`[Coolify] Current git_repository: ${maskSensitiveData(appDetails.git_repository || 'NONE')}`);
+    console.log(`[Coolify] Target repo URL: ${maskSensitiveData(repoUrl)}`);
     
     let repoUpdated = false;
     
@@ -401,7 +673,7 @@ async function triggerCoolifyDeployment(
     
     if (!currentRepo || !currentRepo.includes(normalizedRepoUrl.split('/').pop() || '')) {
       // Need to update the git repository configuration
-      console.log(`[Coolify] Updating git_repository from "${appDetails.git_repository}" to "${repoUrl}"`);
+      console.log(`[Coolify] Updating git_repository from "${maskSensitiveData(appDetails.git_repository || '')}" to "${maskSensitiveData(repoUrl)}"`);
       
       // First, get full app details to preserve other settings
       const appDetailsResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, { headers });
