@@ -13,12 +13,14 @@ import {
   Clock,
   Globe,
   Activity,
-  RotateCcw
+  RotateCcw,
+  GitBranch
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import AdminCoolifyDiagnostic from "./AdminCoolifyDiagnostic";
 
 interface ServerDeployment {
   id: string;
@@ -44,6 +46,7 @@ const AdminServerFleet = () => {
   const [deployments, setDeployments] = useState<ServerDeployment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [uniqueServers, setUniqueServers] = useState<Array<{id: string; name: string}>>([]);
 
   const fetchDeployments = async () => {
     try {
@@ -79,6 +82,15 @@ const AdminServerFleet = () => {
       })).filter(d => d.server);
       
       setDeployments(transformedData as ServerDeployment[]);
+      
+      // Extract unique servers
+      const serversMap = new Map<string, {id: string; name: string}>();
+      transformedData.forEach(d => {
+        if (d.server && !serversMap.has(d.server.id)) {
+          serversMap.set(d.server.id, { id: d.server.id, name: d.server.name });
+        }
+      });
+      setUniqueServers(Array.from(serversMap.values()));
     } catch (error) {
       console.error('Error fetching deployments:', error);
       toast.error("Erreur lors du chargement des déploiements");
@@ -372,6 +384,15 @@ const AdminServerFleet = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Coolify Diagnostic for each server */}
+      {uniqueServers.map(server => (
+        <AdminCoolifyDiagnostic 
+          key={server.id} 
+          serverId={server.id} 
+          serverName={server.name}
+        />
+      ))}
     </div>
   );
 };

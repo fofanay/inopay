@@ -316,22 +316,38 @@ async function pushToGitHubOptimized(
   }
 }
 
+interface CoolifyAppDetails {
+  uuid: string;
+  name: string;
+  fqdn: string | null;
+  git_repository: string | null;
+  git_branch: string | null;
+  build_pack: string | null;
+}
+
 async function triggerCoolifyDeployment(
   coolifyUrl: string,
   coolifyToken: string,
   repoUrl: string,
   projectName: string
-): Promise<{ success: boolean; deploymentUrl?: string; error?: string }> {
+): Promise<{ 
+  success: boolean; 
+  deploymentUrl?: string; 
+  error?: string;
+  appDetails?: CoolifyAppDetails;
+  repoUpdated?: boolean;
+}> {
   try {
     console.log(`[Coolify] Connecting to ${coolifyUrl}...`);
     
-    // List applications to find or create one
-    const appsResponse = await fetch(`${coolifyUrl}/api/v1/applications`, {
-      headers: {
-        'Authorization': `Bearer ${coolifyToken}`,
-        'Accept': 'application/json',
-      },
-    });
+    const headers = {
+      'Authorization': `Bearer ${coolifyToken}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    
+    // List applications to find one
+    const appsResponse = await fetch(`${coolifyUrl}/api/v1/applications`, { headers });
 
     if (!appsResponse.ok) {
       const status = appsResponse.status;
@@ -346,22 +362,16 @@ async function triggerCoolifyDeployment(
     const apps = await appsResponse.json();
     console.log(`[Coolify] Found ${apps.length} applications`);
     
-    let appUuid: string | null = null;
-    let deploymentUrl: string | null = null;
-
     // Find existing app by name or repo URL
     const existingApp = apps.find((app: any) => 
       app.name === `inopay-${projectName}` || 
       app.name?.toLowerCase().includes('inopay') ||
+      app.name?.toLowerCase().includes('getinopay') ||
       app.git_repository?.includes(projectName) ||
       app.git_repository?.includes('inopay')
     );
 
-    if (existingApp) {
-      appUuid = existingApp.uuid;
-      deploymentUrl = existingApp.fqdn;
-      console.log(`[Coolify] Found existing app: ${existingApp.name} (${appUuid})`);
-    } else {
+    if (!existingApp) {
       console.log(`[Coolify] No matching app found for ${projectName}`);
       return { 
         success: false, 
@@ -369,24 +379,113 @@ async function triggerCoolifyDeployment(
       };
     }
 
-    // Trigger deployment
-    console.log(`[Coolify] Triggering restart for ${appUuid}...`);
-    const deployResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}/restart`, {
+    const appUuid = existingApp.uuid;
+    const appDetails: CoolifyAppDetails = {
+      uuid: existingApp.uuid,
+      name: existingApp.name,
+      fqdn: existingApp.fqdn,
+      git_repository: existingApp.git_repository,
+      git_branch: existingApp.git_branch,
+      build_pack: existingApp.build_pack,
+    };
+    
+    console.log(`[Coolify] Found app: ${appDetails.name} (${appUuid})`);
+    console.log(`[Coolify] Current git_repository: ${appDetails.git_repository || 'NONE'}`);
+    console.log(`[Coolify] Target repo URL: ${repoUrl}`);
+    
+    let repoUpdated = false;
+    
+    // Check if we need to update the git_repository
+    const normalizedRepoUrl = repoUrl.replace(/\.git$/, '').toLowerCase();
+    const currentRepo = (appDetails.git_repository || '').replace(/\.git$/, '').toLowerCase();
+    
+    if (!currentRepo || !currentRepo.includes(normalizedRepoUrl.split('/').pop() || '')) {
+      // Need to update the git repository configuration
+      console.log(`[Coolify] Updating git_repository from "${appDetails.git_repository}" to "${repoUrl}"`);
+      
+      // First, get full app details to preserve other settings
+      const appDetailsResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, { headers });
+      
+      if (appDetailsResponse.ok) {
+        const fullAppDetails = await appDetailsResponse.json();
+        
+        // Update the application with new git repository
+        const updatePayload = {
+          git_repository: repoUrl,
+          git_branch: 'main',
+          // Keep existing build settings
+          build_pack: fullAppDetails.build_pack || 'dockerfile',
+        };
+        
+        console.log(`[Coolify] PATCH payload:`, JSON.stringify(updatePayload));
+        
+        const updateResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(updatePayload),
+        });
+        
+        if (updateResponse.ok) {
+          console.log(`[Coolify] Successfully updated git_repository to ${repoUrl}`);
+          appDetails.git_repository = repoUrl;
+          appDetails.git_branch = 'main';
+          repoUpdated = true;
+        } else {
+          const errorText = await updateResponse.text();
+          console.error(`[Coolify] Failed to update git_repository: ${updateResponse.status} - ${errorText}`);
+          // Continue anyway - we'll try to deploy
+        }
+      } else {
+        console.warn(`[Coolify] Could not fetch app details, will try to deploy anyway`);
+      }
+    } else {
+      console.log(`[Coolify] git_repository already points to the correct repo`);
+    }
+
+    // Trigger deployment (not just restart) - this will pull latest from git
+    console.log(`[Coolify] Triggering deployment for ${appUuid}...`);
+    
+    // Try deploy first (preferred - pulls latest git)
+    let deploySuccess = false;
+    const deployResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}/deploy`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${coolifyToken}`,
-        'Accept': 'application/json',
-      },
+      headers,
+      body: JSON.stringify({ force: true }),
     });
 
-    if (!deployResponse.ok) {
-      const errorText = await deployResponse.text();
-      console.error(`[Coolify] Restart failed: ${deployResponse.status} - ${errorText}`);
-      return { success: false, error: `Erreur déploiement: ${deployResponse.status}` };
+    if (deployResponse.ok) {
+      console.log(`[Coolify] Deploy triggered successfully`);
+      deploySuccess = true;
+    } else {
+      // Fallback to restart if deploy endpoint doesn't exist
+      console.log(`[Coolify] Deploy endpoint failed, trying restart...`);
+      const restartResponse = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}/restart`, {
+        method: 'POST',
+        headers,
+      });
+      
+      if (restartResponse.ok) {
+        console.log(`[Coolify] Restart triggered successfully`);
+        deploySuccess = true;
+      } else {
+        const errorText = await restartResponse.text();
+        console.error(`[Coolify] Restart failed: ${restartResponse.status} - ${errorText}`);
+        return { 
+          success: false, 
+          error: `Erreur déploiement: ${restartResponse.status}`,
+          appDetails,
+          repoUpdated,
+        };
+      }
     }
 
     console.log(`[Coolify] Deployment triggered successfully`);
-    return { success: true, deploymentUrl: deploymentUrl || undefined };
+    return { 
+      success: true, 
+      deploymentUrl: appDetails.fqdn || undefined,
+      appDetails,
+      repoUpdated,
+    };
   } catch (error) {
     console.error('[Coolify] Deployment error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
