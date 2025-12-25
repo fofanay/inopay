@@ -32,9 +32,10 @@ interface PreDeployCheckResult {
 }
 
 // Corrected Dockerfile template - CRITICAL: COPY package.json MUST come BEFORE npm install
+// Includes ARG/ENV for Vite build-time variables
 const CORRECTED_DOCKERFILE = `# ============================================
 # Auto-generated Dockerfile by Inopay
-# Optimized for Vite/React projects
+# Optimized for Vite/React projects with Supabase
 # ============================================
 
 # Build stage
@@ -52,8 +53,21 @@ RUN npm install --legacy-peer-deps
 # Copy all source files AFTER dependencies are installed
 COPY . .
 
-# Build the application
+# Build arguments for Vite (passed from Coolify as build-time env vars)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_PROJECT_ID
+ARG VITE_SUPABASE_ANON_KEY
+
+# Set environment variables for the build process
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_ENV=production
+
+# Build the application
 RUN npm run build
 
 # Production stage

@@ -24,7 +24,9 @@ import {
   Play,
   XCircle,
   Clock,
-  Terminal
+  Terminal,
+  FileCode,
+  Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -54,11 +56,18 @@ interface PreDeployCheck {
   warnings: string[];
   blocking_errors: string[];
   dockerfile_status: string;
+  dockerfile_proof?: {
+    raw_content?: string;
+    copy_package_line?: number;
+    npm_install_line?: number;
+    is_valid: boolean;
+  };
   checks: {
     coolify_connection: boolean;
     github_access: boolean;
     package_json: boolean;
     dockerfile: boolean;
+    dockerfile_verified?: boolean;
     env_vars: boolean;
   };
 }
@@ -110,6 +119,8 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
   const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [showDockerfile, setShowDockerfile] = useState(false);
+  const [forceNoCache, setForceNoCache] = useState(true);
 
   // Load servers on mount
   useEffect(() => {
@@ -317,6 +328,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
           env_vars: envVars,
           auto_deploy: true,
           force_rebuild: true,
+          force_no_cache: forceNoCache,
           skip_pre_check: true
         }
       });
@@ -586,13 +598,55 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     label="Dockerfile valide" 
                     checked={preflightCheck.checks.dockerfile}
                     detail={preflightCheck.dockerfile_status === 'generated' ? '(généré)' : 
-                           preflightCheck.dockerfile_status === 'exists_fixed' ? '(corrigé)' : ''}
+                           preflightCheck.dockerfile_status === 'exists_fixed' ? '(corrigé)' : 
+                           preflightCheck.checks.dockerfile_verified ? '(vérifié)' : ''}
                   />
                   <CheckItem 
                     label="Variables d'environnement" 
                     checked={preflightCheck.checks.env_vars} 
                   />
                 </div>
+
+                {/* Dockerfile preview */}
+                {preflightCheck.dockerfile_proof && (
+                  <div className="mt-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDockerfile(!showDockerfile)}
+                      className="w-full justify-start"
+                    >
+                      <FileCode className="h-4 w-4 mr-2" />
+                      {showDockerfile ? 'Masquer' : 'Voir'} le Dockerfile analysé
+                      {preflightCheck.dockerfile_proof.is_valid ? (
+                        <Badge variant="default" className="ml-2 bg-green-500">Valide</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="ml-2">Invalide</Badge>
+                      )}
+                    </Button>
+                    
+                    {showDockerfile && (
+                      <div className="mt-2 p-3 bg-muted rounded-lg">
+                        <div className="flex items-center justify-between mb-2 text-xs">
+                          <span className="text-muted-foreground">
+                            COPY package.json: ligne {preflightCheck.dockerfile_proof.copy_package_line || 'N/A'} |
+                            npm install: ligne {preflightCheck.dockerfile_proof.npm_install_line || 'N/A'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(`${githubRepoUrl}/blob/${preflightCheck.branch}/Dockerfile`, '_blank')}
+                          >
+                            <Eye className="h-3 w-3 mr-1" /> GitHub
+                          </Button>
+                        </div>
+                        <pre className="text-xs overflow-x-auto max-h-40 overflow-y-auto bg-black text-green-400 p-2 rounded">
+                          {preflightCheck.dockerfile_proof.raw_content || 'Contenu non disponible'}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Branch and commit info */}
                 {preflightCheck.ready && (
@@ -736,6 +790,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                 )}
                 <li>✅ <code>ports_exposes: 80</code></li>
                 <li>✅ <code>force_rebuild: true</code></li>
+                <li>✅ <code>force_no_cache: {forceNoCache ? 'true' : 'false'}</code></li>
               </ul>
             </div>
           </div>
