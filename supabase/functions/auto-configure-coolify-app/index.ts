@@ -71,7 +71,8 @@ serve(async (req) => {
     const { 
       server_id, 
       project_name, 
-      github_repo_url, 
+      github_repo_url,
+      git_branch, // Optional: if not provided, will fetch from GitHub 
       domain,
       env_vars,
       auto_deploy = true,
@@ -84,6 +85,38 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get the correct branch from GitHub if not provided
+    let gitBranchToUse = git_branch;
+    if (!gitBranchToUse) {
+      const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
+      if (urlMatch) {
+        const [, ghOwner, ghRepo] = urlMatch;
+        const repoClean = ghRepo.replace(/\.git$/, '');
+        const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
+        const ghHeaders: Record<string, string> = {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Inopay-Deployer'
+        };
+        if (githubToken) {
+          ghHeaders['Authorization'] = `token ${githubToken}`;
+        }
+        
+        try {
+          const repoRes = await fetch(`https://api.github.com/repos/${ghOwner}/${repoClean}`, { headers: ghHeaders });
+          if (repoRes.ok) {
+            const repoData = await repoRes.json();
+            gitBranchToUse = repoData.default_branch || 'main';
+            console.log(`[auto-configure-coolify] Detected default branch: ${gitBranchToUse}`);
+          }
+        } catch (e) {
+          console.warn('[auto-configure-coolify] Could not fetch default branch, using main');
+          gitBranchToUse = 'main';
+        }
+      }
+    }
+    gitBranchToUse = gitBranchToUse || 'main';
+    console.log(`[auto-configure-coolify] Using git_branch: ${gitBranchToUse}`);
 
     console.log(`[auto-configure-coolify] Starting for ${project_name}`);
 
@@ -270,6 +303,7 @@ serve(async (req) => {
         }
       }
       
+      console.log(`[auto-configure-coolify] Creating app with git_branch: ${gitBranchToUse}`);
       const createAppRes = await fetch(`${coolifyUrl}/api/v1/applications/public`, {
         method: 'POST',
         headers: coolifyHeaders,
@@ -278,7 +312,7 @@ serve(async (req) => {
           server_uuid: coolifyServerUuid,
           environment_name: environmentName,
           git_repository: gitRepoUrlToUse,
-          git_branch: 'main',
+          git_branch: gitBranchToUse, // Use detected/provided branch instead of hardcoded 'main'
           build_pack: 'dockerfile',
           name: project_name,
           description: `Application ${project_name}`,
@@ -490,6 +524,7 @@ serve(async (req) => {
         project_uuid: projectUuid,
         deployment_uuid: deploymentUuid,
         deployment_id: deployment?.id,
+        git_branch: gitBranchToUse, // Return the branch used
         app_config: appConfig ? {
           build_pack: appConfig.build_pack,
           base_directory: appConfig.base_directory,

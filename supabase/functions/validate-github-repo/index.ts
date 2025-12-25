@@ -13,6 +13,7 @@ interface ValidationResult {
   hasPackageLock: boolean;
   hasBunLock: boolean;
   branch: string;
+  default_branch: string;
   errors: string[];
   warnings: string[];
   suggestions: string[];
@@ -47,7 +48,7 @@ serve(async (req) => {
       );
     }
 
-    const { github_repo_url, branch = 'main' } = await req.json();
+    const { github_repo_url, branch } = await req.json(); // branch is optional, will use default_branch
 
     if (!github_repo_url) {
       return new Response(
@@ -103,47 +104,60 @@ serve(async (req) => {
       githubHeaders['Authorization'] = `token ${githubToken}`;
     }
 
-    const result: ValidationResult = {
-      valid: true,
-      hasPackageJson: false,
-      hasDockerfile: false,
-      hasPackageLock: false,
-      hasBunLock: false,
-      branch,
-      errors: [],
-      warnings: [],
-      suggestions: []
-    };
-
-    // Check if repo exists and is accessible
+    // Check if repo exists and is accessible - get default branch info first
     const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repoClean}`, {
       headers: githubHeaders
     });
 
     if (!repoResponse.ok) {
+      const errorResult: ValidationResult = {
+        valid: false,
+        hasPackageJson: false,
+        hasDockerfile: false,
+        hasPackageLock: false,
+        hasBunLock: false,
+        branch: branch || 'main',
+        default_branch: 'main',
+        errors: [],
+        warnings: [],
+        suggestions: []
+      };
+
       if (repoResponse.status === 404) {
-        result.valid = false;
-        result.errors.push('Dépôt introuvable. Vérifiez l\'URL ou les permissions.');
+        errorResult.errors.push('Dépôt introuvable. Vérifiez l\'URL ou les permissions.');
         if (!githubToken) {
-          result.suggestions.push('Si le dépôt est privé, configurez un token GitHub dans les paramètres.');
+          errorResult.suggestions.push('Si le dépôt est privé, configurez un token GitHub dans les paramètres.');
         }
       } else if (repoResponse.status === 403) {
-        result.valid = false;
-        result.errors.push('Accès refusé (rate limit ou permissions). Réessayez plus tard.');
+        errorResult.errors.push('Accès refusé (rate limit ou permissions). Réessayez plus tard.');
       } else {
-        result.valid = false;
-        result.errors.push(`Erreur GitHub API: ${repoResponse.status}`);
+        errorResult.errors.push(`Erreur GitHub API: ${repoResponse.status}`);
       }
       
       return new Response(
-        JSON.stringify(result),
+        JSON.stringify(errorResult),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const repoData = await repoResponse.json();
     const defaultBranch = repoData.default_branch || 'main';
-    result.branch = branch || defaultBranch;
+    const useBranch = branch || defaultBranch;
+    
+    console.log(`[validate-github-repo] Using branch: ${useBranch} (default: ${defaultBranch})`);
+
+    const result: ValidationResult = {
+      valid: true,
+      hasPackageJson: false,
+      hasDockerfile: false,
+      hasPackageLock: false,
+      hasBunLock: false,
+      branch: useBranch,
+      default_branch: defaultBranch,
+      errors: [],
+      warnings: [],
+      suggestions: []
+    };
 
     // Get repository contents at root
     const contentsUrl = `https://api.github.com/repos/${owner}/${repoClean}/contents?ref=${result.branch}`;
@@ -217,7 +231,7 @@ serve(async (req) => {
       result.suggestions.push('✅ Le dépôt est prêt pour le déploiement Coolify!');
     }
 
-    console.log(`[validate-github-repo] Result: valid=${result.valid}, package.json=${result.hasPackageJson}, Dockerfile=${result.hasDockerfile}`);
+    console.log(`[validate-github-repo] Result: valid=${result.valid}, package.json=${result.hasPackageJson}, Dockerfile=${result.hasDockerfile}, branch=${result.branch}, default_branch=${result.default_branch}`);
 
     return new Response(
       JSON.stringify(result),

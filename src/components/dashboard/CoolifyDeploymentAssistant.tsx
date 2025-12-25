@@ -59,9 +59,12 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain] = useState('');
+  const [gitBranch, setGitBranch] = useState('');
   const [repoValidation, setRepoValidation] = useState<{
     valid: boolean;
     checked: boolean;
+    branch: string;
+    default_branch: string;
     errors: string[];
     warnings: string[];
     suggestions: string[];
@@ -165,13 +168,20 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
       setRepoValidation({
         valid: data.valid,
         checked: true,
+        branch: data.branch || 'main',
+        default_branch: data.default_branch || 'main',
         errors: data.errors || [],
         warnings: data.warnings || [],
         suggestions: data.suggestions || []
       });
 
+      // Set the branch to the detected default branch
+      if (data.branch) {
+        setGitBranch(data.branch);
+      }
+
       if (data.valid) {
-        toast.success('Dépôt validé - prêt pour le déploiement!');
+        toast.success(`Dépôt validé (branche: ${data.branch || 'main'}) - prêt pour le déploiement!`);
       } else {
         toast.error('Problèmes détectés dans le dépôt');
       }
@@ -180,6 +190,8 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
       setRepoValidation({
         valid: false,
         checked: true,
+        branch: 'main',
+        default_branch: 'main',
         errors: ['Erreur lors de la validation'],
         warnings: [],
         suggestions: []
@@ -214,6 +226,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
           server_id: selectedServer.id,
           project_name: projectName,
           github_repo_url: githubRepoUrl,
+          git_branch: gitBranch || repoValidation?.branch || undefined, // Pass the detected/selected branch
           domain: domain || null,
           env_vars: Object.keys(envVars).length > 0 ? envVars : null,
           auto_deploy: true
@@ -419,6 +432,21 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="git-branch">Branche Git</Label>
+              <Input
+                id="git-branch"
+                placeholder="main"
+                value={gitBranch}
+                onChange={(e) => setGitBranch(e.target.value)}
+              />
+              {repoValidation?.default_branch && (
+                <p className="text-xs text-muted-foreground">
+                  Branche par défaut détectée: <code className="bg-muted px-1 rounded">{repoValidation.default_branch}</code>
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
