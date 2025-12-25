@@ -14,11 +14,24 @@ import {
   Zap,
   Bell,
   Server,
-  TrendingUp
+  TrendingUp,
+  LogOut,
+  Users
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { differenceInMinutes } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SecurityAlert {
   id: string;
@@ -41,6 +54,7 @@ const AdminSecurityAudit = () => {
   const [stats, setStats] = useState<GlobalSecurityStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [signingOutAll, setSigningOutAll] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -154,6 +168,26 @@ const AdminSecurityAudit = () => {
     } catch (error) {
       console.error('Force cleanup error:', error);
       toast.error("Erreur lors du nettoyage");
+    }
+  };
+
+  const handleSignOutAllUsers = async () => {
+    setSigningOutAll(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-signout-all');
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast.success(`${data.signedOutCount} utilisateurs déconnectés`);
+      } else {
+        throw new Error(data?.error || "Erreur inconnue");
+      }
+    } catch (error) {
+      console.error('Sign out all error:', error);
+      toast.error("Erreur lors de la déconnexion des utilisateurs");
+    } finally {
+      setSigningOutAll(false);
     }
   };
 
@@ -331,6 +365,65 @@ const AdminSecurityAudit = () => {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Session Management */}
+      <Card className="border-orange-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-500">
+            <Users className="h-5 w-5" />
+            Gestion des Sessions
+          </CardTitle>
+          <CardDescription>
+            Actions de sécurité sur les sessions utilisateurs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+            <div>
+              <p className="font-medium">Déconnecter tous les utilisateurs</p>
+              <p className="text-sm text-muted-foreground">
+                Force la déconnexion de tous les utilisateurs (sauf vous)
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  disabled={signingOutAll}
+                  className="gap-2"
+                >
+                  {signingOutAll ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4" />
+                  )}
+                  Déconnecter tous
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmer la déconnexion</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action va déconnecter <strong>tous les utilisateurs</strong> de la plateforme 
+                    (sauf vous). Ils devront se reconnecter pour accéder à leur compte.
+                    <br /><br />
+                    Êtes-vous sûr de vouloir continuer ?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleSignOutAllUsers}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Oui, déconnecter tous
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
       </Card>
 
