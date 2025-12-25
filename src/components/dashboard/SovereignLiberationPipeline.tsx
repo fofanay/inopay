@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Loader2, 
   CheckCircle2, 
@@ -19,7 +21,9 @@ import {
   Shield,
   Play,
   Clock,
-  Zap
+  Zap,
+  Key,
+  FileCode
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -114,6 +118,33 @@ export function SovereignLiberationPipeline({
       throw new Error(t('sovereignPipeline.sessionExpired'));
     }
 
+    // Build request body based on phase
+    const requestBody: Record<string, unknown> = {
+      phase: phaseId,
+      projectName,
+      repoName: 'inopay-sovereign-core',
+      serverId,
+    };
+
+    if (phaseId === 'github') {
+      requestBody.files = filesArray;
+    }
+
+    // Add Supabase credentials for phase 2
+    if (phaseId === 'supabase') {
+      requestBody.targetSupabaseUrl = targetSupabaseUrl;
+      requestBody.targetSupabaseServiceKey = targetSupabaseServiceKey;
+      requestBody.targetAnonKey = targetAnonKey;
+      requestBody.files = filesArray; // Include migration files
+      requestBody.secretsToSync = [
+        'STRIPE_SECRET_KEY',
+        'STRIPE_WEBHOOK_SECRET',
+        'RESEND_API_KEY',
+        'DEEPSEEK_API_KEY',
+        'GITHUB_PERSONAL_ACCESS_TOKEN'
+      ];
+    }
+
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sovereign-liberation`,
       {
@@ -122,13 +153,7 @@ export function SovereignLiberationPipeline({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          phase: phaseId,
-          files: phaseId === 'github' ? filesArray : undefined,
-          projectName,
-          repoName: 'inopay-sovereign-core',
-          serverId,
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
@@ -146,6 +171,17 @@ export function SovereignLiberationPipeline({
     const phaseResult = result.results?.[0];
     if (!phaseResult) {
       return { success: false, error: t('sovereignPipeline.invalidResponse'), data: { duration } };
+    }
+
+    // Update migration progress for supabase phase
+    if (phaseId === 'supabase' && phaseResult.data?.migrations) {
+      const migrations = phaseResult.data.migrations as { executed: number; total: number; current: string };
+      setMigrationProgress({
+        currentFile: migrations.executed,
+        totalFiles: migrations.total,
+        fileName: migrations.current || '',
+        status: 'running'
+      });
     }
 
     return {
@@ -209,17 +245,39 @@ export function SovereignLiberationPipeline({
 
       // ==================== PHASE 2: SUPABASE ====================
       setCurrentPhase(1);
+      setMigrationProgress(null);
+      
+      // Validate credentials
+      if (!targetSupabaseUrl || !targetSupabaseServiceKey) {
+        setPipelineError(t('sovereignPipeline.credentialsRequiredDesc'));
+        toast.error(t('sovereignPipeline.credentialsRequired'), { 
+          description: t('sovereignPipeline.credentialsRequiredDesc') 
+        });
+        setIsRunning(false);
+        return;
+      }
+      
       updatePhase('supabase', { 
         status: 'running', 
-        message: t('sovereignPipeline.connectingSupabase')
+        message: t('sovereignPipeline.runningMigrations')
       });
 
-      const supabaseResult = await runPhase('supabase', []);
+      const supabaseResult = await runPhase('supabase', filesArray);
+      
+      // Build success message with migration details
+      let successMessage = t('sovereignPipeline.supabaseOperational');
+      if (supabaseResult.data?.migrations) {
+        const m = supabaseResult.data.migrations as { executed: number; skipped: number; failed: number };
+        successMessage = `${t('sovereignPipeline.migrationComplete')} - ${t('sovereignPipeline.migrationsExecuted', { executed: m.executed })}`;
+        if (m.skipped > 0) {
+          successMessage += `, ${t('sovereignPipeline.migrationsSkipped', { skipped: m.skipped })}`;
+        }
+      }
       
       updatePhase('supabase', {
         status: supabaseResult.success ? 'success' : 'error',
         message: supabaseResult.success 
-          ? t('sovereignPipeline.supabaseOperational')
+          ? successMessage
           : supabaseResult.error,
         data: supabaseResult.data,
         duration: supabaseResult.data?.duration as number,
@@ -230,11 +288,13 @@ export function SovereignLiberationPipeline({
         setPipelineError(`${t('sovereignPipeline.phase2Failed')}: ${supabaseResult.error}`);
         toast.error(t('sovereignPipeline.phase2Failed'), { description: supabaseResult.error });
         setIsRunning(false);
+        setMigrationProgress(null);
         return;
       }
 
+      setMigrationProgress(null);
       toast.success(t('sovereignPipeline.phase2Complete'), { 
-        description: `${t('sovereignPipeline.supabaseConnected')} - HTTP ${supabaseResult.data?.httpStatus}` 
+        description: successMessage
       });
 
       // Wait for confirmation before Phase 3
@@ -352,6 +412,80 @@ export function SovereignLiberationPipeline({
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Supabase Credentials Configuration */}
+        <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-primary" />
+            <div>
+              <h4 className="font-semibold">{t('sovereignPipeline.targetSupabaseConfig')}</h4>
+              <p className="text-sm text-muted-foreground">{t('sovereignPipeline.targetSupabaseConfigDesc')}</p>
+            </div>
+          </div>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="targetSupabaseUrl">{t('sovereignPipeline.targetSupabaseUrl')}</Label>
+              <Input
+                id="targetSupabaseUrl"
+                placeholder={t('sovereignPipeline.targetSupabaseUrlPlaceholder')}
+                value={targetSupabaseUrl}
+                onChange={(e) => setTargetSupabaseUrl(e.target.value)}
+                disabled={isRunning}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="targetAnonKey">{t('sovereignPipeline.targetAnonKey')}</Label>
+              <Input
+                id="targetAnonKey"
+                type="password"
+                placeholder={t('sovereignPipeline.targetAnonKeyPlaceholder')}
+                value={targetAnonKey}
+                onChange={(e) => setTargetAnonKey(e.target.value)}
+                disabled={isRunning}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="targetSupabaseServiceKey">{t('sovereignPipeline.targetSupabaseServiceKey')}</Label>
+            <Input
+              id="targetSupabaseServiceKey"
+              type="password"
+              placeholder={t('sovereignPipeline.targetSupabaseServiceKeyPlaceholder')}
+              value={targetSupabaseServiceKey}
+              onChange={(e) => setTargetSupabaseServiceKey(e.target.value)}
+              disabled={isRunning}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Migration Progress Bar (visible during Supabase phase) */}
+        {migrationProgress && currentPhase === 1 && (
+          <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileCode className="h-5 w-5 text-primary animate-pulse" />
+              <span className="font-medium">
+                {t('sovereignPipeline.migrationProgress', { 
+                  current: migrationProgress.currentFile, 
+                  total: migrationProgress.totalFiles 
+                })}
+              </span>
+            </div>
+            <Progress 
+              value={(migrationProgress.currentFile / migrationProgress.totalFiles) * 100} 
+              className="h-2" 
+            />
+            {migrationProgress.fileName && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {t('sovereignPipeline.executingMigration', { file: migrationProgress.fileName })}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Progress Bar */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">

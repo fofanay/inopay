@@ -1610,6 +1610,25 @@
     "launchPhases": "Lancer les 3 phases",
     "close": "Fermer",
     "footerInfo": "Exécution séquentielle isolée • Arrêt automatique en cas d'erreur • Validation HTTP 200/201 requise",
-    "view": "Voir"
+    "view": "Voir",
+    "targetSupabaseConfig": "Configuration Supabase Cible",
+    "targetSupabaseConfigDesc": "Entrez les credentials de votre instance Supabase privée pour la migration",
+    "targetSupabaseUrl": "URL Supabase",
+    "targetSupabaseUrlPlaceholder": "https://votre-projet.supabase.co",
+    "targetSupabaseServiceKey": "Service Role Key",
+    "targetSupabaseServiceKeyPlaceholder": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "targetAnonKey": "Anon Key",
+    "targetAnonKeyPlaceholder": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "migrationProgress": "Migration {{current}}/{{total}}",
+    "executingMigration": "Exécution : {{file}}",
+    "migrationComplete": "Migrations terminées",
+    "migrationsExecuted": "{{executed}} exécutées",
+    "migrationsSkipped": "{{skipped}} ignorées",
+    "migrationsFailed": "{{failed}} échouées",
+    "secretsSynced": "Secrets synchronisés",
+    "deployScriptGenerated": "Script de déploiement généré",
+    "credentialsRequired": "Credentials requis",
+    "credentialsRequiredDesc": "Veuillez entrer l'URL et la Service Role Key de votre Supabase privé",
+    "runningMigrations": "Exécution des migrations SQL..."
   }
 }
