@@ -102,14 +102,50 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
 
-    if (!authHeader) throw new Error("No authorization header provided");
-    if (!token) throw new Error("No token provided");
+    // If there is no auth header/token, treat as free tier (do not fail hard)
+    if (!authHeader || !token) {
+      logStep("Unauthenticated request", { hasAuthHeader: !!authHeader, hasToken: !!token });
+      return new Response(
+        JSON.stringify({
+          subscribed: false,
+          plan_type: "free",
+          limits: { maxFiles: 100, maxRepos: 3 },
+          limit_source: "free",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
 
     const { data: userData, error: userError } = await authClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+
+    // If the session was revoked (e.g. "sign out all"), auth can return "Auth session missing!".
+    // In that case, respond gracefully as free tier to avoid client blank screens.
+    if (userError || !userData.user?.email) {
+      const message = userError
+        ? `Authentication error: ${userError.message}`
+        : "User not authenticated or email not available";
+
+      logStep("Unauthenticated request", { message });
+
+      return new Response(
+        JSON.stringify({
+          error: message,
+          subscribed: false,
+          plan_type: "free",
+          limits: { maxFiles: 100, maxRepos: 3 },
+          limit_source: "free",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
 
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
