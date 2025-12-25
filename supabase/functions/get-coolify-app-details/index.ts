@@ -12,6 +12,7 @@ interface CoolifyApp {
   fqdn: string | null;
   git_repository: string | null;
   git_branch: string | null;
+  git_commit_sha: string | null;
   build_pack: string | null;
   status: string | null;
   description: string | null;
@@ -122,8 +123,9 @@ serve(async (req) => {
         build_pack: app.build_pack,
         base_directory: app.base_directory,
         dockerfile_location: app.dockerfile_location,
-        git_repository: app.git_repository ? '***' : null,
-        git_branch: app.git_branch
+        git_repository: app.git_repository ? '***configured***' : null,
+        git_branch: app.git_branch,
+        git_commit_sha: app.git_commit_sha
       }));
       
       const appDetails: CoolifyApp = {
@@ -132,6 +134,7 @@ serve(async (req) => {
         fqdn: app.fqdn,
         git_repository: app.git_repository,
         git_branch: app.git_branch,
+        git_commit_sha: app.git_commit_sha || null,
         build_pack: app.build_pack,
         status: app.status,
         description: app.description,

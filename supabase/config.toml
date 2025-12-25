@@ -200,3 +200,6 @@ verify_jwt = false
 
 [functions.auto-fix-dockerfile]
 verify_jwt = false
+
+[functions.inspect-github-repo]
+verify_jwt = false

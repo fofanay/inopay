@@ -313,6 +313,20 @@ serve(async (req) => {
 
     console.log('[auto-fix-dockerfile] Successfully pushed fix');
 
+    // Step 8: Verify the commit is on the branch by re-fetching
+    let verifiedCommit = false;
+    try {
+      const verifyRes = await fetch(`https://api.github.com/repos/${owner}/${repoClean}/commits/${newCommitSha}`, {
+        headers: githubHeaders
+      });
+      if (verifyRes.ok) {
+        console.log('[auto-fix-dockerfile] Commit verified on GitHub');
+        verifiedCommit = true;
+      }
+    } catch (e) {
+      console.warn('[auto-fix-dockerfile] Could not verify commit:', e);
+    }
+
     // Log activity
     await supabase.from('admin_activity_logs').insert({
       user_id: user.id,
@@ -324,12 +338,15 @@ serve(async (req) => {
         github_repo: `${owner}/${repoClean}`,
         fix_type,
         commit_sha: newCommitSha,
-        branch: defaultBranch
+        branch: defaultBranch,
+        verified: verifiedCommit
       }
     });
 
     // Auto-redeploy if requested
     let redeployResult = null;
+    let redeployDebug: Record<string, unknown> = {};
+    
     if (auto_redeploy && coolify_app_uuid && server_id) {
       console.log('[auto-fix-dockerfile] Triggering auto-redeploy...');
       try {
@@ -362,28 +379,62 @@ serve(async (req) => {
           };
 
           // Wait a bit for GitHub to propagate the commit
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // PATCH the Coolify app to ensure correct branch and commit SHA before deploying
+          // PATCH the Coolify app with correct branch, commit SHA, base_directory and dockerfile_location
           console.log(`[auto-fix-dockerfile] Patching Coolify app with git_branch=${defaultBranch}, git_commit_sha=${newCommitSha}`);
+          
+          const patchPayload: Record<string, string> = {
+            git_branch: defaultBranch,
+            git_commit_sha: newCommitSha,
+            base_directory: '/',
+            dockerfile_location: '/Dockerfile'
+          };
+          
+          redeployDebug.patch_payload = patchPayload;
+          
           try {
             const patchRes = await fetch(`${coolifyUrl}/api/v1/applications/${coolify_app_uuid}`, {
               method: 'PATCH',
               headers: coolifyHeaders,
-              body: JSON.stringify({
-                git_branch: defaultBranch,
-                git_commit_sha: newCommitSha
-              })
+              body: JSON.stringify(patchPayload)
             });
 
+            const patchStatus = patchRes.status;
+            let patchData: unknown = null;
+            try {
+              patchData = await patchRes.json();
+            } catch {
+              patchData = await patchRes.text();
+            }
+            
+            redeployDebug.patch_status = patchStatus;
+            redeployDebug.patch_response = patchData;
+
             if (patchRes.ok) {
-              console.log('[auto-fix-dockerfile] Coolify app patched with correct branch and commit');
+              console.log('[auto-fix-dockerfile] Coolify app patched successfully');
+              redeployDebug.patch_success = true;
             } else {
-              const patchErr = await patchRes.text();
-              console.warn('[auto-fix-dockerfile] PATCH failed (continuing with deploy):', patchErr.slice(0, 100));
+              console.warn('[auto-fix-dockerfile] PATCH returned error (continuing):', JSON.stringify(patchData).slice(0, 200));
+              redeployDebug.patch_success = false;
+              
+              // Try patching only git_branch if full patch fails
+              const minimalPatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${coolify_app_uuid}`, {
+                method: 'PATCH',
+                headers: coolifyHeaders,
+                body: JSON.stringify({ git_branch: defaultBranch })
+              });
+              
+              redeployDebug.minimal_patch_status = minimalPatchRes.status;
+              redeployDebug.minimal_patch_success = minimalPatchRes.ok;
+              
+              if (minimalPatchRes.ok) {
+                console.log('[auto-fix-dockerfile] Minimal patch (git_branch only) succeeded');
+              }
             }
           } catch (patchError) {
-            console.warn('[auto-fix-dockerfile] PATCH error (continuing with deploy):', patchError);
+            console.warn('[auto-fix-dockerfile] PATCH error (continuing):', patchError);
+            redeployDebug.patch_error = patchError instanceof Error ? patchError.message : String(patchError);
           }
 
           // Trigger redeploy with force=true to bypass cache
@@ -399,27 +450,34 @@ serve(async (req) => {
             const deployData = await deployRes.json();
             redeployResult = {
               success: true,
-              deployment_uuid: deployData.deployment_uuid || deployData.uuid,
+              deployment_uuid: deployData.deployment_uuid || deployData.uuid || deployData.deployments?.[0]?.deployment_uuid,
               branch: defaultBranch,
               commit_sha: newCommitSha,
               message: 'Redéploiement lancé avec la bonne branche'
             };
+            redeployDebug.deploy_response = deployData;
             console.log('[auto-fix-dockerfile] Redeploy triggered:', redeployResult.deployment_uuid);
           } else {
             const errText = await deployRes.text();
             console.error('[auto-fix-dockerfile] Redeploy failed:', errText);
             redeployResult = {
               success: false,
-              message: `Redeploy failed: ${errText.slice(0, 100)}`
+              message: `Redeploy failed: ${errText.slice(0, 100)}`,
+              branch: defaultBranch,
+              commit_sha: newCommitSha
             };
+            redeployDebug.deploy_error = errText;
           }
         }
       } catch (redeployError) {
         console.error('[auto-fix-dockerfile] Redeploy error:', redeployError);
         redeployResult = {
           success: false,
-          message: redeployError instanceof Error ? redeployError.message : 'Redeploy error'
+          message: redeployError instanceof Error ? redeployError.message : 'Redeploy error',
+          branch: defaultBranch,
+          commit_sha: newCommitSha
         };
+        redeployDebug.error = redeployError instanceof Error ? redeployError.message : String(redeployError);
       }
     }
 
@@ -429,9 +487,11 @@ serve(async (req) => {
         message: 'Dockerfile corrigé et commité avec succès',
         commit_sha: newCommitSha,
         branch: defaultBranch,
+        verified_commit: verifiedCommit,
         files_modified: filesToAdd.map(f => f.path),
         commit_url: `https://github.com/${owner}/${repoClean}/commit/${newCommitSha}`,
-        redeploy: redeployResult
+        redeploy: redeployResult,
+        redeploy_debug: Object.keys(redeployDebug).length > 0 ? redeployDebug : undefined
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
