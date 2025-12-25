@@ -80,9 +80,7 @@ import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDots";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
-import { LiberationPipeline } from "@/components/dashboard/LiberationPipeline";
-import { LiberationWizard } from "@/components/dashboard/LiberationWizard";
-import { SovereignLiberationPipeline } from "@/components/dashboard/SovereignLiberationPipeline";
+import { SimpleLiberationFlow } from "@/components/dashboard/SimpleLiberationFlow";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -903,41 +901,9 @@ const Dashboard = () => {
               />
             )}
 
-            {/* Tab: Liberation Pipeline */}
+            {/* Tab: Liberation Pipeline - SIMPLIFIÉ */}
             {activeTab === "liberation" && (
-              <div className="space-y-6">
-                {/* Liberation Wizard - Assistant guidé */}
-                <LiberationWizard />
-                
-                {/* Pipeline avancé si fichiers déjà chargés */}
-                {extractedFiles.size > 0 && (
-                  <>
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">{t("dashboard.messages.orUseAdvancedPipeline")}</span>
-                      </div>
-                    </div>
-                    
-                    <LiberationPipeline
-                      files={extractedFiles}
-                      projectName={fileName || "Projet"}
-                      projectId={result?.id}
-                      onComplete={(liberationResult) => {
-                        if (liberationResult.success) {
-                          toast({
-                            title: t("dashboard.toast.liberationSuccess"),
-                            description: t("dashboard.toast.liberationSuccessDesc"),
-                          });
-                          fetchHistory();
-                        }
-                      }}
-                    />
-                  </>
-                )}
-              </div>
+              <SimpleLiberationFlow />
             )}
 
             {/* Tab: Import */}
@@ -1436,12 +1402,6 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Tab: Liberation Pipeline */}
-            {activeTab === "liberation" && (
-              <div className="space-y-6">
-                <SovereignLiberationPipeline />
-              </div>
-            )}
 
             {/* Tab: Deploy Choice */}
             {activeTab === "deploy-choice" && (
