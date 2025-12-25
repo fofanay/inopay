@@ -37,6 +37,13 @@ interface PhaseConfig {
   duration?: number;
 }
 
+interface MigrationProgress {
+  currentFile: number;
+  totalFiles: number;
+  fileName: string;
+  status: string;
+}
+
 interface SovereignLiberationPipelineProps {
   files?: Map<string, string>;
   projectName?: string;
@@ -57,6 +64,10 @@ export function SovereignLiberationPipeline({
   const { t } = useTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<number>(-1);
+  const [targetSupabaseUrl, setTargetSupabaseUrl] = useState('');
+  const [targetSupabaseServiceKey, setTargetSupabaseServiceKey] = useState('');
+  const [targetAnonKey, setTargetAnonKey] = useState('');
+  const [migrationProgress, setMigrationProgress] = useState<MigrationProgress | null>(null);
   const [phases, setPhases] = useState<PhaseConfig[]>([
     { 
       id: 'github', 
