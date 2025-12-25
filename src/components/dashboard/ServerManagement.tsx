@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { SecurityBadge } from '@/components/ui/security-badge';
@@ -24,13 +25,15 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Settings2
+  Settings2,
+  Wifi
 } from 'lucide-react';
 import { VPSOnboarding } from './VPSOnboarding';
 import { ServerSetupWizard } from './ServerSetupWizard';
 import { CoolifyTokenConfig } from './CoolifyTokenConfig';
 import { FirstDeploymentWizard } from './FirstDeploymentWizard';
 import { ServerSettingsDialog } from './ServerSettingsDialog';
+import { ServerConnectionTest } from './ServerConnectionTest';
 import { useTranslation } from 'react-i18next';
 
 interface UserServer {
@@ -243,7 +246,20 @@ export function ServerManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <Tabs defaultValue="servers" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="servers" className="gap-2">
+              <Server className="h-4 w-4" />
+              Serveurs ({servers.length})
+            </TabsTrigger>
+            <TabsTrigger value="diagnostic" className="gap-2">
+              <Wifi className="h-4 w-4" />
+              Diagnostic Connexion
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="servers">
+            <div className="grid gap-4">
           {servers.map((server) => {
             const statusConfig = STATUS_CONFIG[server.status] || STATUS_CONFIG.pending;
             const StatusIcon = statusConfig.icon;
@@ -407,9 +423,17 @@ export function ServerManagement() {
               </Card>
             );
           })}
-        </div>
-      )}
+            </div>
+          </TabsContent>
 
+          <TabsContent value="diagnostic">
+            <ServerConnectionTest 
+              servers={servers}
+              onRefresh={fetchServers}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
       {/* Delete confirmation dialog */}
       <Dialog open={!!deleteServerId} onOpenChange={() => setDeleteServerId(null)}>
         <DialogContent>

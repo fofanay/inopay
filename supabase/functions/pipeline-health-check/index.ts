@@ -166,7 +166,34 @@ serve(async (req) => {
     console.log('[pipeline-health-check] Checking Coolify servers...');
     const { data: servers } = await supabase
       .from('user_servers')
-      .select('id, name, coolify_url, coolify_token, status');
+      .select('id, name, coolify_url, coolify_token, status, ip_address');
+
+    // Helper function to validate Coolify URL
+    const validateCoolifyUrl = (url: string | null): { valid: boolean; suggestion?: string } => {
+      if (!url) return { valid: false };
+      try {
+        const parsed = new URL(url);
+        // Check for port - Coolify typically uses port 8000
+        if (!parsed.port && !url.includes(':8000')) {
+          return { 
+            valid: false, 
+            suggestion: `${parsed.protocol}//${parsed.hostname}:8000`
+          };
+        }
+        return { valid: true };
+      } catch {
+        return { valid: false };
+      }
+    };
+
+    // Check for duplicate IPs
+    const ipCounts: Record<string, number> = {};
+    servers?.forEach(s => {
+      if (s.ip_address) {
+        ipCounts[s.ip_address] = (ipCounts[s.ip_address] || 0) + 1;
+      }
+    });
+    const duplicateIPs = Object.entries(ipCounts).filter(([_, count]) => count > 1);
 
     if (servers && servers.length > 0) {
       result.checks.coolify.servers_total = servers.length;
@@ -177,63 +204,121 @@ serve(async (req) => {
           connected: false
         };
 
-        if (server.coolify_url && server.coolify_token) {
-          try {
-            const versionResponse = await fetch(`${server.coolify_url}/api/v1/version`, {
-              headers: {
-                'Authorization': `Bearer ${server.coolify_token}`,
-                'Accept': 'application/json'
-              }
-            });
+        // First validate the URL format
+        const urlValidation = validateCoolifyUrl(server.coolify_url);
+        
+        if (!urlValidation.valid) {
+          if (urlValidation.suggestion) {
+            serverDetail.error = `URL sans port. Essayez: ${urlValidation.suggestion}`;
+          } else if (!server.coolify_url) {
+            serverDetail.error = 'URL Coolify non configurée';
+          } else {
+            serverDetail.error = 'URL Coolify invalide';
+          }
+          result.checks.coolify.details.push(serverDetail);
+          continue;
+        }
 
-            if (versionResponse.ok) {
-              const versionData = await versionResponse.json();
-              serverDetail.connected = true;
-              serverDetail.version = versionData.version || 'unknown';
-              result.checks.coolify.servers_connected++;
+        if (!server.coolify_token) {
+          serverDetail.error = 'Token Coolify non configuré';
+          result.checks.coolify.details.push(serverDetail);
+          continue;
+        }
 
-              // Get apps count
+        // Check for duplicate IP
+        if (duplicateIPs.some(([ip]) => ip === server.ip_address)) {
+          serverDetail.error = `IP en doublon (${server.ip_address}) - supprimez les doublons`;
+        }
+
+        try {
+          const versionResponse = await fetch(`${server.coolify_url}/api/v1/version`, {
+            headers: {
+              'Authorization': `Bearer ${server.coolify_token}`,
+              'Accept': 'application/json'
+            },
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+          });
+
+          if (versionResponse.ok) {
+            let versionData;
+            const contentType = versionResponse.headers.get('content-type') || '';
+            
+            if (contentType.includes('application/json')) {
+              versionData = await versionResponse.json();
+            } else {
+              // Handle non-JSON response (common error when hitting wrong endpoint)
+              const textResponse = await versionResponse.text();
+              serverDetail.error = `Réponse non-JSON. L'URL ${server.coolify_url} ne semble pas être une API Coolify valide.`;
+              result.checks.coolify.details.push(serverDetail);
+              continue;
+            }
+            
+            serverDetail.connected = true;
+            serverDetail.version = versionData.version || 'unknown';
+            result.checks.coolify.servers_connected++;
+
+            // Get apps count
+            try {
               const appsResponse = await fetch(`${server.coolify_url}/api/v1/applications`, {
                 headers: {
                   'Authorization': `Bearer ${server.coolify_token}`,
                   'Accept': 'application/json'
-                }
+                },
+                signal: AbortSignal.timeout(10000)
               });
               if (appsResponse.ok) {
                 const apps = await appsResponse.json();
                 serverDetail.apps_count = Array.isArray(apps) ? apps.length : 0;
               }
-
-              result.checks.coolify.servers_healthy++;
-            } else {
-              serverDetail.error = `HTTP ${versionResponse.status}`;
+            } catch (appsError) {
+              console.log(`[pipeline-health-check] Could not fetch apps for ${server.name}:`, appsError);
             }
-          } catch (e) {
-            serverDetail.error = `Connection failed: ${e}`;
+
+            result.checks.coolify.servers_healthy++;
+          } else {
+            const statusText = versionResponse.statusText || 'Unknown error';
+            serverDetail.error = `HTTP ${versionResponse.status}: ${statusText}`;
+            
+            // Check if it's an auth error
+            if (versionResponse.status === 401 || versionResponse.status === 403) {
+              serverDetail.error = 'Token Coolify invalide ou expiré';
+            }
           }
-        } else {
-          serverDetail.error = 'No Coolify credentials configured';
+        } catch (e: any) {
+          if (e.name === 'TimeoutError' || e.message?.includes('timeout')) {
+            serverDetail.error = 'Timeout - Le serveur ne répond pas (vérifiez que le port est correct)';
+          } else if (e.message?.includes('JSON')) {
+            serverDetail.error = `L'URL ne retourne pas de JSON. Vérifiez que ${server.coolify_url} pointe vers l'API Coolify (port 8000)`;
+          } else {
+            serverDetail.error = `Connexion échouée: ${e.message || e}`;
+          }
         }
 
         result.checks.coolify.details.push(serverDetail);
       }
 
+      // Add warning about duplicates
+      if (duplicateIPs.length > 0) {
+        result.checks.coolify.message = `${duplicateIPs.length} IP(s) en doublon détectée(s). `;
+        scoreDeductions += 10;
+      }
+
       const healthyRatio = result.checks.coolify.servers_healthy / result.checks.coolify.servers_total;
-      if (healthyRatio === 1) {
+      if (healthyRatio === 1 && duplicateIPs.length === 0) {
         result.checks.coolify.status = 'ok';
-        result.checks.coolify.message = `All ${servers.length} servers healthy`;
+        result.checks.coolify.message += `Tous les ${servers.length} serveurs sont sains`;
       } else if (healthyRatio >= 0.5) {
         result.checks.coolify.status = 'warning';
-        result.checks.coolify.message = `${result.checks.coolify.servers_healthy}/${servers.length} servers healthy`;
+        result.checks.coolify.message += `${result.checks.coolify.servers_healthy}/${servers.length} serveurs connectés`;
         scoreDeductions += 15;
       } else {
         result.checks.coolify.status = 'error';
-        result.checks.coolify.message = `Only ${result.checks.coolify.servers_healthy}/${servers.length} servers healthy`;
+        result.checks.coolify.message += `Seulement ${result.checks.coolify.servers_healthy}/${servers.length} serveurs connectés`;
         scoreDeductions += 25;
       }
     } else {
       result.checks.coolify.status = 'warning';
-      result.checks.coolify.message = 'No servers configured';
+      result.checks.coolify.message = 'Aucun serveur configuré';
       scoreDeductions += 10;
     }
 
