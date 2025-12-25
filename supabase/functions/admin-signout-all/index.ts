@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +21,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
     if (!serviceRoleKey) {
       throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
@@ -32,20 +33,19 @@ serve(async (req) => {
       throw new Error("No authorization header provided");
     }
 
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
     const authClient = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false },
-      global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: userData, error: userError } = await authClient.auth.getUser();
+    const { data: userData, error: userError } = await authClient.auth.getUser(token);
     if (userError || !userData.user) {
       throw new Error("Authentication failed");
     }
 
     logStep("User authenticated", { userId: userData.user.id });
 
-    // Check if user is admin
+    // Check if user is admin using service role client
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
@@ -66,11 +66,8 @@ serve(async (req) => {
 
     logStep("Admin access confirmed");
 
-    // Get all users from auth.users via Admin API
-    // We'll use the Supabase Admin API to invalidate all refresh tokens
-    const adminAuthUrl = `${supabaseUrl}/auth/v1/admin/users`;
-    
-    const usersResponse = await fetch(adminAuthUrl, {
+    // Use the Admin API to sign out all users
+    const usersResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users?per_page=1000`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${serviceRoleKey}`,
@@ -92,43 +89,41 @@ serve(async (req) => {
     let signedOutCount = 0;
     const errors: string[] = [];
 
-    // Sign out each user by invalidating their refresh tokens
+    // Sign out each user by temporarily banning then unbanning
     for (const user of users) {
+      // Skip the current admin user
+      if (user.id === userData.user.id) {
+        logStep("Skipping current admin user", { userId: user.id });
+        continue;
+      }
+
       try {
-        // Use the Admin API to sign out user (invalidate all sessions)
-        const signoutUrl = `${supabaseUrl}/auth/v1/admin/users/${user.id}/factors`;
-        
-        // Actually, the proper way is to use the logout endpoint or update the user
-        // Let's use the admin API to sign out the user by revoking sessions
-        const logoutUrl = `${supabaseUrl}/auth/v1/logout?scope=global`;
-        
-        // For each user, we need to sign them out
-        // The cleanest way is to use signOut with their session, but we don't have it
-        // Instead, we'll update the user to invalidate their sessions
-        
-        // Using the admin API to force sign out by setting a new refresh token version
-        const updateUrl = `${supabaseUrl}/auth/v1/admin/users/${user.id}`;
-        const updateResponse = await fetch(updateUrl, {
+        // Ban user briefly to invalidate sessions
+        const banResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${user.id}`, {
           method: "PUT",
           headers: {
             "Authorization": `Bearer ${serviceRoleKey}`,
             "apikey": serviceRoleKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            // Force re-authentication by updating banned_until temporarily
-            // Actually, let's just leave this as a marker that invalidates sessions
-            app_metadata: {
-              ...user.app_metadata,
-              force_signout_at: new Date().toISOString(),
-            },
-          }),
+          body: JSON.stringify({ ban_duration: "1s" }),
         });
 
-        if (updateResponse.ok) {
+        if (banResponse.ok) {
+          // Immediately unban
+          await fetch(`${supabaseUrl}/auth/v1/admin/users/${user.id}`, {
+            method: "PUT",
+            headers: {
+              "Authorization": `Bearer ${serviceRoleKey}`,
+              "apikey": serviceRoleKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ ban_duration: "none" }),
+          });
           signedOutCount++;
+          logStep("User signed out", { userId: user.id });
         } else {
-          const errorText = await updateResponse.text();
+          const errorText = await banResponse.text();
           errors.push(`User ${user.id}: ${errorText}`);
         }
       } catch (err) {
@@ -136,25 +131,23 @@ serve(async (req) => {
       }
     }
 
-    // Also delete all sessions from auth.sessions if accessible
-    // This is the most reliable way to force sign out
-    logStep("Signed out users", { signedOutCount, errorsCount: errors.length });
+    logStep("Sign out operation completed", { signedOutCount, errorsCount: errors.length });
 
     // Log this admin action
     await supabaseClient.from("admin_activity_logs").insert({
       user_id: userData.user.id,
       action_type: "signout_all_users",
       title: "Déconnexion de tous les utilisateurs",
-      description: `${signedOutCount} utilisateurs déconnectés`,
+      description: `${signedOutCount} utilisateurs déconnectés sur ${users.length - 1}`,
       status: errors.length === 0 ? "success" : "partial",
-      metadata: { signedOutCount, errors: errors.slice(0, 10) },
+      metadata: { signedOutCount, totalUsers: users.length - 1, errors: errors.slice(0, 10) },
     });
 
     return new Response(JSON.stringify({
       success: true,
       message: `${signedOutCount} utilisateurs ont été déconnectés`,
       signedOutCount,
-      totalUsers: users.length,
+      totalUsers: users.length - 1,
       errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
