@@ -863,26 +863,6 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     </AlertDescription>
                   </Alert>
                 )}
-                    {preflightCheck.commit_sha && (
-                      <p><strong>Commit:</strong> <code className="text-xs">{preflightCheck.commit_sha.slice(0, 7)}</code></p>
-                    )}
-                  </div>
-                )}
-
-                {/* Actions taken */}
-                {preflightCheck.actions_taken.length > 0 && (
-                  <Alert className="bg-blue-500/10 border-blue-500">
-                    <FileCheck className="h-4 w-4 text-blue-500" />
-                    <AlertDescription>
-                      <strong>Actions effectuées:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        {preflightCheck.actions_taken.map((action, i) => (
-                          <li key={i}>{action}</li>
-                        ))}
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                )}
 
                 {/* Warnings */}
                 {preflightCheck.warnings.map((warn, i) => (
