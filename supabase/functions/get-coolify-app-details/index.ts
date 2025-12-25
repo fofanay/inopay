@@ -15,6 +15,11 @@ interface CoolifyApp {
   build_pack: string | null;
   status: string | null;
   description: string | null;
+  base_directory: string | null;
+  dockerfile_location: string | null;
+  ports_exposes: string | null;
+  is_static: boolean | null;
+  updated_at: string | null;
 }
 
 serve(async (req) => {
@@ -46,19 +51,14 @@ serve(async (req) => {
       });
     }
 
-    // Check if user is admin
+    // Check admin access or allow user to see their own server apps
     const { data: userRole } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (!userRole || userRole.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Accès admin requis' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const isAdmin = userRole?.role === 'admin';
 
     const { server_id, app_uuid } = await req.json();
 
@@ -69,12 +69,17 @@ serve(async (req) => {
       });
     }
 
-    // Get server with Coolify credentials
-    const { data: server, error: serverError } = await supabase
+    // Get server with Coolify credentials - admin can access any, user only their own
+    const serverQuery = supabase
       .from('user_servers')
-      .select('coolify_url, coolify_token')
-      .eq('id', server_id)
-      .single();
+      .select('coolify_url, coolify_token, user_id')
+      .eq('id', server_id);
+    
+    if (!isAdmin) {
+      serverQuery.eq('user_id', user.id);
+    }
+    
+    const { data: server, error: serverError } = await serverQuery.single();
 
     if (serverError || !server) {
       return new Response(JSON.stringify({ error: 'Serveur non trouvé' }), {
@@ -96,19 +101,31 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // If app_uuid is provided, get specific app details
+    // If app_uuid is provided, get specific app details with full configuration
     if (app_uuid) {
       console.log(`[Coolify] Fetching details for app ${app_uuid}`);
       const appResponse = await fetch(`${server.coolify_url}/api/v1/applications/${app_uuid}`, { headers });
       
       if (!appResponse.ok) {
-        return new Response(JSON.stringify({ error: `Application non trouvée: ${appResponse.status}` }), {
+        const errText = await appResponse.text();
+        console.error(`[Coolify] Failed to fetch app: ${errText}`);
+        return new Response(JSON.stringify({ error: `Application non trouvée: ${appResponse.status}`, details: errText }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
       const app = await appResponse.json();
+      console.log(`[Coolify] App details:`, JSON.stringify({
+        uuid: app.uuid,
+        name: app.name,
+        build_pack: app.build_pack,
+        base_directory: app.base_directory,
+        dockerfile_location: app.dockerfile_location,
+        git_repository: app.git_repository ? '***' : null,
+        git_branch: app.git_branch
+      }));
+      
       const appDetails: CoolifyApp = {
         uuid: app.uuid,
         name: app.name,
@@ -118,9 +135,34 @@ serve(async (req) => {
         build_pack: app.build_pack,
         status: app.status,
         description: app.description,
+        base_directory: app.base_directory || '/',
+        dockerfile_location: app.dockerfile_location || '/Dockerfile',
+        ports_exposes: app.ports_exposes,
+        is_static: app.is_static || false,
+        updated_at: app.updated_at,
       };
       
-      return new Response(JSON.stringify({ app: appDetails }), {
+      // Also get recent deployments for this app
+      let deployments: unknown[] = [];
+      try {
+        const deploymentsRes = await fetch(`${server.coolify_url}/api/v1/applications/${app_uuid}/deployments`, { headers });
+        if (deploymentsRes.ok) {
+          deployments = await deploymentsRes.json();
+        }
+      } catch (e) {
+        console.warn('[Coolify] Could not fetch deployments:', e);
+      }
+      
+      return new Response(JSON.stringify({ 
+        app: appDetails,
+        deployments: Array.isArray(deployments) ? deployments.slice(0, 5) : [],
+        diagnostics: {
+          build_pack_ok: app.build_pack === 'dockerfile',
+          base_directory_ok: !app.base_directory || app.base_directory === '/' || app.base_directory === './',
+          dockerfile_location_ok: !app.dockerfile_location || app.dockerfile_location === '/Dockerfile' || app.dockerfile_location === 'Dockerfile',
+          git_configured: !!app.git_repository
+        }
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -147,15 +189,20 @@ serve(async (req) => {
     const apps = await appsResponse.json();
     console.log(`[Coolify] Found ${apps.length} applications`);
     
-    const appsList: CoolifyApp[] = apps.map((app: any) => ({
-      uuid: app.uuid,
-      name: app.name,
-      fqdn: app.fqdn,
-      git_repository: app.git_repository,
-      git_branch: app.git_branch,
-      build_pack: app.build_pack,
-      status: app.status,
-      description: app.description,
+    const appsList: CoolifyApp[] = apps.map((app: Record<string, unknown>) => ({
+      uuid: app.uuid as string,
+      name: app.name as string,
+      fqdn: app.fqdn as string | null,
+      git_repository: app.git_repository as string | null,
+      git_branch: app.git_branch as string | null,
+      build_pack: app.build_pack as string | null,
+      status: app.status as string | null,
+      description: app.description as string | null,
+      base_directory: (app.base_directory as string) || '/',
+      dockerfile_location: (app.dockerfile_location as string) || '/Dockerfile',
+      ports_exposes: app.ports_exposes as string | null,
+      is_static: app.is_static as boolean | null,
+      updated_at: app.updated_at as string | null,
     }));
 
     // Find apps that might be related to inopay

@@ -74,7 +74,8 @@ serve(async (req) => {
       github_repo_url, 
       domain,
       env_vars,
-      auto_deploy = true 
+      auto_deploy = true,
+      force_rebuild = true // Force clean rebuild by default
     } = await req.json();
 
     if (!server_id || !project_name || !github_repo_url) {
@@ -393,26 +394,73 @@ serve(async (req) => {
       }
     }
 
-    // Step 7: Deploy if requested
+    // Step 7: Verify configuration before deployment
+    console.log('[auto-configure-coolify] Step 7: Verifying app configuration...');
+    let appConfig: Record<string, unknown> | null = null;
+    try {
+      const verifyRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+        method: 'GET',
+        headers: coolifyHeaders
+      });
+
+      if (verifyRes.ok) {
+        const { data } = await safeJsonParse(verifyRes);
+        appConfig = data as Record<string, unknown>;
+        console.log('[auto-configure-coolify] Current app config:', JSON.stringify({
+          uuid: appConfig?.uuid,
+          build_pack: appConfig?.build_pack,
+          base_directory: appConfig?.base_directory,
+          dockerfile_location: appConfig?.dockerfile_location,
+          git_repository: appConfig?.git_repository ? '***configured***' : 'missing',
+          git_branch: appConfig?.git_branch
+        }));
+        
+        steps.push({ 
+          step: 'verify', 
+          status: 'success', 
+          message: `Config: build_pack=${appConfig?.build_pack}, base_dir=${appConfig?.base_directory || '/'}`
+        });
+      } else {
+        console.warn('[auto-configure-coolify] Could not verify app config');
+        steps.push({ step: 'verify', status: 'error', message: 'Impossible de vérifier la config' });
+      }
+    } catch (e) {
+      console.warn('[auto-configure-coolify] Verification failed:', e);
+    }
+
+    // Step 8: Deploy if requested with force rebuild option
     let deploymentUuid: string | null = null;
     if (auto_deploy) {
-      console.log('[auto-configure-coolify] Step 7: Triggering deployment...');
+      console.log(`[auto-configure-coolify] Step 8: Triggering deployment (force_rebuild=${force_rebuild})...`);
       try {
-        const deployRes = await fetch(`${coolifyUrl}/api/v1/deploy?uuid=${appUuid}&force=true`, {
+        // Use force=true to bypass Docker cache and do a clean rebuild
+        const deployUrl = `${coolifyUrl}/api/v1/deploy?uuid=${appUuid}&force=${force_rebuild}`;
+        console.log('[auto-configure-coolify] Deploy URL:', deployUrl.replace(server.coolify_token!, '***'));
+        
+        const deployRes = await fetch(deployUrl, {
           method: 'GET',
           headers: coolifyHeaders
         });
 
         if (!deployRes.ok) {
           const errText = await deployRes.text();
-          throw new Error(`Deploy trigger failed: ${errText}`);
+          throw new Error(`Deploy trigger failed (${deployRes.status}): ${errText.slice(0, 150)}`);
         }
 
         const deployData = await deployRes.json();
         deploymentUuid = deployData.deployment_uuid || deployData.uuid || null;
-        steps.push({ step: 'deploy', status: 'success', message: `Déploiement lancé${deploymentUuid ? `: ${deploymentUuid.slice(0, 8)}...` : ''}` });
+        
+        console.log('[auto-configure-coolify] Deployment triggered:', JSON.stringify(deployData));
+        
+        steps.push({ 
+          step: 'deploy', 
+          status: 'success', 
+          message: `Déploiement lancé${force_rebuild ? ' (rebuild forcé)' : ''}${deploymentUuid ? `: ${deploymentUuid.slice(0, 8)}...` : ''}` 
+        });
       } catch (e) {
-        steps.push({ step: 'deploy', status: 'error', message: String(e) });
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.error('[auto-configure-coolify] Deploy failed:', errorMessage);
+        steps.push({ step: 'deploy', status: 'error', message: errorMessage });
       }
     } else {
       steps.push({ step: 'deploy', status: 'pending', message: 'Déploiement manuel requis' });
@@ -442,6 +490,13 @@ serve(async (req) => {
         project_uuid: projectUuid,
         deployment_uuid: deploymentUuid,
         deployment_id: deployment?.id,
+        app_config: appConfig ? {
+          build_pack: appConfig.build_pack,
+          base_directory: appConfig.base_directory,
+          dockerfile_location: appConfig.dockerfile_location,
+          git_branch: appConfig.git_branch,
+          ports_exposes: appConfig.ports_exposes
+        } : null,
         steps,
         message: 'Application configurée avec succès'
       }),
