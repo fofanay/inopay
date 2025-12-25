@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.inspect-github-repo]
 verify_jwt = false
+
+[functions.detect-missing-env-vars]
+verify_jwt = false

@@ -23,7 +23,9 @@ import {
   GitCommit,
   RotateCw,
   Search,
-  Settings
+  Settings,
+  Key,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -264,6 +266,36 @@ interface RepoInspectionResult {
   errors: string[];
 }
 
+interface MissingEnvVar {
+  key: string;
+  description: string;
+  isBuildTime: boolean;
+  required: boolean;
+  suggestedValue?: string;
+}
+
+interface EnvVarsResult {
+  current_env_vars: Array<{
+    key: string;
+    is_build_time: boolean;
+    has_value: boolean;
+  }>;
+  missing_required: MissingEnvVar[];
+  missing_optional: MissingEnvVar[];
+  warnings: string[];
+  auto_fix_results?: {
+    fixed: string[];
+    failed: Array<{ key: string; error: string }>;
+  };
+  summary: {
+    total_current: number;
+    missing_required_count: number;
+    missing_optional_count: number;
+    warnings_count: number;
+    is_ready: boolean;
+  };
+}
+
 export function CoolifyDeploymentErrorHandler({ 
   logs, 
   githubRepoUrl,
@@ -283,6 +315,9 @@ export function CoolifyDeploymentErrorHandler({
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   const [repoInspection, setRepoInspection] = useState<RepoInspectionResult | null>(null);
+  const [isCheckingEnvVars, setIsCheckingEnvVars] = useState(false);
+  const [envVarsResult, setEnvVarsResult] = useState<EnvVarsResult | null>(null);
+  const [isFixingEnvVars, setIsFixingEnvVars] = useState(false);
 
   // Detect errors in logs
   const detectedErrors: DetectedError[] = [];
@@ -463,6 +498,78 @@ export function CoolifyDeploymentErrorHandler({
     }
   };
 
+  const handleCheckEnvVars = async () => {
+    if (!coolifyAppUuid || !serverId) {
+      toast.error('UUID de l\'application et ID du serveur requis');
+      return;
+    }
+
+    setIsCheckingEnvVars(true);
+    setEnvVarsResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('detect-missing-env-vars', {
+        body: {
+          server_id: serverId,
+          app_uuid: coolifyAppUuid,
+          auto_fix: false
+        }
+      });
+
+      if (error) throw error;
+
+      setEnvVarsResult(data);
+      
+      if (data.summary.missing_required_count > 0) {
+        toast.warning(`${data.summary.missing_required_count} variable(s) requise(s) manquante(s)`);
+      } else if (data.warnings.length > 0) {
+        toast.warning(`${data.warnings.length} avertissement(s)`);
+      } else {
+        toast.success('Variables d\'environnement OK');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      toast.error('Échec de la vérification', { description: errorMessage });
+    } finally {
+      setIsCheckingEnvVars(false);
+    }
+  };
+
+  const handleFixEnvVars = async () => {
+    if (!coolifyAppUuid || !serverId) {
+      toast.error('UUID de l\'application et ID du serveur requis');
+      return;
+    }
+
+    setIsFixingEnvVars(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('detect-missing-env-vars', {
+        body: {
+          server_id: serverId,
+          app_uuid: coolifyAppUuid,
+          auto_fix: true
+        }
+      });
+
+      if (error) throw error;
+
+      setEnvVarsResult(data);
+      
+      if (data.auto_fix_results?.fixed.length > 0) {
+        toast.success(`${data.auto_fix_results.fixed.length} variable(s) ajoutée(s)`);
+      }
+      if (data.auto_fix_results?.failed.length > 0) {
+        toast.warning(`${data.auto_fix_results.failed.length} variable(s) en échec`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      toast.error('Échec de la correction', { description: errorMessage });
+    } finally {
+      setIsFixingEnvVars(false);
+    }
+  };
+
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error': return <AlertCircle className="h-5 w-5 text-destructive" />;
@@ -557,19 +664,34 @@ export function CoolifyDeploymentErrorHandler({
             </Button>
           )}
           {coolifyAppUuid && serverId && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDiagnostics}
-              disabled={isDiagnosing}
-            >
-              {isDiagnosing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              <span className="ml-2 hidden sm:inline">Diagnostic Coolify</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDiagnostics}
+                disabled={isDiagnosing}
+              >
+                {isDiagnosing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                <span className="ml-2 hidden sm:inline">Diagnostic</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckEnvVars}
+                disabled={isCheckingEnvVars}
+              >
+                {isCheckingEnvVars ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4" />
+                )}
+                <span className="ml-2 hidden sm:inline">Env Vars</span>
+              </Button>
+            </>
           )}
           <Badge variant="destructive">{detectedErrors.length}</Badge>
         </div>
@@ -753,6 +875,126 @@ export function CoolifyDeploymentErrorHandler({
               <p className="text-xs text-muted-foreground">
                 Dernier déploiement: {diagnostics.deployments[0]?.status}
               </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Environment Variables Check Results */}
+      {envVarsResult && (
+        <Card className={`border-2 ${envVarsResult.summary.is_ready ? 'border-green-500/50 bg-green-500/5' : 'border-orange-500/50 bg-orange-500/5'}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Variables d'environnement
+              </div>
+              {!envVarsResult.summary.is_ready && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={handleFixEnvVars}
+                  disabled={isFixingEnvVars}
+                >
+                  {isFixingEnvVars ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
+                  Auto-fix
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            {/* Summary */}
+            <div className="flex items-center gap-4 text-xs">
+              <Badge variant={envVarsResult.summary.is_ready ? 'default' : 'destructive'}>
+                {envVarsResult.summary.total_current} configurée(s)
+              </Badge>
+              {envVarsResult.summary.missing_required_count > 0 && (
+                <Badge variant="destructive">
+                  {envVarsResult.summary.missing_required_count} requise(s) manquante(s)
+                </Badge>
+              )}
+              {envVarsResult.summary.warnings_count > 0 && (
+                <Badge variant="outline" className="border-orange-500 text-orange-500">
+                  {envVarsResult.summary.warnings_count} avertissement(s)
+                </Badge>
+              )}
+            </div>
+
+            {/* Current env vars */}
+            {envVarsResult.current_env_vars.length > 0 && (
+              <div className="text-xs">
+                <p className="font-medium mb-1">Variables actuelles:</p>
+                <div className="flex flex-wrap gap-1">
+                  {envVarsResult.current_env_vars.map((env) => (
+                    <Badge 
+                      key={env.key} 
+                      variant="outline" 
+                      className={`text-xs ${env.is_build_time ? 'border-blue-500' : ''}`}
+                    >
+                      {env.key}
+                      {env.is_build_time && <span className="ml-1 text-blue-500">⚡</span>}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Missing required */}
+            {envVarsResult.missing_required.length > 0 && (
+              <div className="text-xs space-y-1">
+                <p className="font-medium text-destructive">Variables requises manquantes:</p>
+                {envVarsResult.missing_required.map((env) => (
+                  <div key={env.key} className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>{env.key}</span>
+                    <span className="text-muted-foreground">- {env.description}</span>
+                    {env.suggestedValue && (
+                      <Badge variant="outline" className="text-xs text-green-600">
+                        Auto-fix disponible
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Warnings */}
+            {envVarsResult.warnings.length > 0 && (
+              <div className="text-xs space-y-1">
+                <p className="font-medium text-orange-500">Avertissements:</p>
+                {envVarsResult.warnings.map((warn, i) => (
+                  <div key={i} className="flex items-start gap-2 text-orange-500">
+                    <AlertTriangle className="h-3 w-3 mt-0.5" />
+                    <span>{warn}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Auto-fix results */}
+            {envVarsResult.auto_fix_results && (
+              <div className="text-xs space-y-1 border-t pt-2">
+                {envVarsResult.auto_fix_results.fixed.length > 0 && (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Variables ajoutées: {envVarsResult.auto_fix_results.fixed.join(', ')}</span>
+                  </div>
+                )}
+                {envVarsResult.auto_fix_results.failed.length > 0 && (
+                  <div className="space-y-1">
+                    {envVarsResult.auto_fix_results.failed.map((fail) => (
+                      <div key={fail.key} className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-3 w-3" />
+                        <span>{fail.key}: {fail.error}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
