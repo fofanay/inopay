@@ -1633,5 +1633,81 @@
     "downloadSqlScript": "Télécharger SQL",
     "sqlScriptDownloaded": "Script SQL téléchargé",
     "sqlScriptInstructions": "Téléchargez le script SQL, puis exécutez-le dans le SQL Editor de votre Supabase privé avant de lancer le pipeline."
+  },
+  "adminMigration": {
+    "title": "Outils de Migration Souveraine",
+    "subtitle": "Diagnostiquez et gérez votre infrastructure de libération",
+    "diagnostic": {
+      "title": "Diagnostic Pipeline Complet",
+      "description": "Vérifiez l'état de tous les composants du système de libération",
+      "button": "Lancer le Diagnostic",
+      "running": "Diagnostic en cours...",
+      "overallScore": "Score Global",
+      "healthy": "Sain",
+      "degraded": "Dégradé",
+      "critical": "Critique",
+      "github": {
+        "title": "GitHub",
+        "tokenValid": "Token valide",
+        "tokenInvalid": "Token invalide",
+        "scopes": "Scopes"
+      },
+      "coolify": {
+        "title": "Coolify",
+        "servers": "serveur(s) vérifié(s)",
+        "noServers": "Aucun serveur configuré"
+      },
+      "database": {
+        "title": "Base de Données",
+        "tables": "Tables vérifiées",
+        "totalRecords": "Enregistrements totaux"
+      },
+      "secrets": {
+        "title": "Secrets",
+        "configured": "Configuré(s)",
+        "missing": "Manquant(s)"
+      },
+      "edgeFunctions": {
+        "title": "Edge Functions",
+        "expected": "attendues"
+      },
+      "error": "Erreur lors du diagnostic",
+      "noData": "Aucune donnée de diagnostic disponible"
+    },
+    "reset": {
+      "title": "Reset Global du Système",
+      "description": "Nettoie complètement l'infrastructure pour repartir à zéro",
+      "warning": "⚠️ Cette action est irréversible. Toutes les données sélectionnées seront définitivement supprimées.",
+      "targets": {
+        "coolify": "Coolify (apps & projets)",
+        "coolifyDesc": "Supprime tous les déploiements Coolify",
+        "database": "Base de données",
+        "databaseDesc": "Vide les tables de déploiement, sync et historique",
+        "github": "Dépôts GitHub",
+        "githubDesc": "Supprime les dépôts créés (inopay-sovereign-core)"
+      },
+      "dryRun": "Mode Simulation",
+      "dryRunDesc": "Exécuter sans effectuer de modifications réelles",
+      "execute": "Exécuter le Reset",
+      "simulate": "Simuler le Reset",
+      "executing": "Reset en cours...",
+      "confirmTitle": "Confirmer le Reset Global",
+      "confirmMessage": "Tapez RESET pour confirmer la suppression définitive",
+      "confirmPlaceholder": "Tapez RESET",
+      "confirm": "Confirmer",
+      "cancel": "Annuler",
+      "success": "Reset effectué avec succès",
+      "simulationSuccess": "Simulation terminée",
+      "error": "Erreur lors du reset",
+      "noTargets": "Sélectionnez au moins une cible à reset",
+      "summary": {
+        "title": "Résumé du Reset",
+        "coolifyDeleted": "Apps Coolify supprimées",
+        "tablesCleared": "Tables vidées",
+        "recordsDeleted": "Enregistrements supprimés",
+        "githubDeleted": "Dépôts GitHub supprimés",
+        "errors": "Erreurs"
+      }
+    }
   }
 }
