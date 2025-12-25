@@ -1738,5 +1738,81 @@
     "downloadSqlScript": "Download SQL",
     "sqlScriptDownloaded": "SQL script downloaded",
     "sqlScriptInstructions": "Download the SQL script, then run it in your private Supabase SQL Editor before launching the pipeline."
+  },
+  "adminMigration": {
+    "title": "Sovereign Migration Tools",
+    "subtitle": "Diagnose and manage your liberation infrastructure",
+    "diagnostic": {
+      "title": "Complete Pipeline Diagnostic",
+      "description": "Check the status of all liberation system components",
+      "button": "Run Diagnostic",
+      "running": "Running diagnostic...",
+      "overallScore": "Overall Score",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "critical": "Critical",
+      "github": {
+        "title": "GitHub",
+        "tokenValid": "Token valid",
+        "tokenInvalid": "Token invalid",
+        "scopes": "Scopes"
+      },
+      "coolify": {
+        "title": "Coolify",
+        "servers": "server(s) checked",
+        "noServers": "No servers configured"
+      },
+      "database": {
+        "title": "Database",
+        "tables": "Tables checked",
+        "totalRecords": "Total records"
+      },
+      "secrets": {
+        "title": "Secrets",
+        "configured": "Configured",
+        "missing": "Missing"
+      },
+      "edgeFunctions": {
+        "title": "Edge Functions",
+        "expected": "expected"
+      },
+      "error": "Diagnostic error",
+      "noData": "No diagnostic data available"
+    },
+    "reset": {
+      "title": "Global System Reset",
+      "description": "Completely clean the infrastructure to start fresh",
+      "warning": "⚠️ This action is irreversible. All selected data will be permanently deleted.",
+      "targets": {
+        "coolify": "Coolify (apps & projects)",
+        "coolifyDesc": "Delete all Coolify deployments",
+        "database": "Database",
+        "databaseDesc": "Clear deployment, sync, and history tables",
+        "github": "GitHub Repositories",
+        "githubDesc": "Delete created repositories (inopay-sovereign-core)"
+      },
+      "dryRun": "Simulation Mode",
+      "dryRunDesc": "Run without making actual changes",
+      "execute": "Execute Reset",
+      "simulate": "Simulate Reset",
+      "executing": "Resetting...",
+      "confirmTitle": "Confirm Global Reset",
+      "confirmMessage": "Type RESET to confirm permanent deletion",
+      "confirmPlaceholder": "Type RESET",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "success": "Reset completed successfully",
+      "simulationSuccess": "Simulation completed",
+      "error": "Reset error",
+      "noTargets": "Select at least one target to reset",
+      "summary": {
+        "title": "Reset Summary",
+        "coolifyDeleted": "Coolify apps deleted",
+        "tablesCleared": "Tables cleared",
+        "recordsDeleted": "Records deleted",
+        "githubDeleted": "GitHub repos deleted",
+        "errors": "Errors"
+      }
+    }
   }
 }
