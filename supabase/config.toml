@@ -185,3 +185,9 @@ verify_jwt = false
 
 [functions.get-coolify-app-details]
 verify_jwt = false
+
+[functions.global-reset]
+verify_jwt = false
+
+[functions.pipeline-health-check]
+verify_jwt = false
