@@ -73,10 +73,12 @@ serve(async (req) => {
       project_name, 
       github_repo_url,
       git_branch, // Optional: if not provided, will fetch from GitHub 
+      git_commit_sha, // Optional: specific commit to deploy
       domain,
       env_vars,
       auto_deploy = true,
-      force_rebuild = true // Force clean rebuild by default
+      force_rebuild = true, // Force clean rebuild by default
+      skip_pre_check = false // Skip pre-deploy checks if already done
     } = await req.json();
 
     if (!server_id || !project_name || !github_repo_url) {
@@ -86,37 +88,46 @@ serve(async (req) => {
       );
     }
 
-    // Get the correct branch from GitHub if not provided
+    // Get the correct branch and commit from GitHub if not provided
     let gitBranchToUse = git_branch;
-    if (!gitBranchToUse) {
-      const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
-      if (urlMatch) {
-        const [, ghOwner, ghRepo] = urlMatch;
-        const repoClean = ghRepo.replace(/\.git$/, '');
-        const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
-        const ghHeaders: Record<string, string> = {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Inopay-Deployer'
-        };
-        if (githubToken) {
-          ghHeaders['Authorization'] = `token ${githubToken}`;
+    let gitCommitShaToUse = git_commit_sha;
+    
+    const urlMatch = github_repo_url.match(/github\.com[/:]([^/]+)\/([^/.#?]+)/i);
+    if (urlMatch && (!gitBranchToUse || !gitCommitShaToUse)) {
+      const [, ghOwner, ghRepo] = urlMatch;
+      const repoClean = ghRepo.replace(/\.git$/, '');
+      const githubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
+      const ghHeaders: Record<string, string> = {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Inopay-Deployer'
+      };
+      if (githubToken) {
+        ghHeaders['Authorization'] = `token ${githubToken}`;
+      }
+      
+      try {
+        const repoRes = await fetch(`https://api.github.com/repos/${ghOwner}/${repoClean}`, { headers: ghHeaders });
+        if (repoRes.ok) {
+          const repoData = await repoRes.json();
+          gitBranchToUse = gitBranchToUse || repoData.default_branch || 'main';
+          console.log(`[auto-configure-coolify] Detected default branch: ${gitBranchToUse}`);
         }
         
-        try {
-          const repoRes = await fetch(`https://api.github.com/repos/${ghOwner}/${repoClean}`, { headers: ghHeaders });
-          if (repoRes.ok) {
-            const repoData = await repoRes.json();
-            gitBranchToUse = repoData.default_branch || 'main';
-            console.log(`[auto-configure-coolify] Detected default branch: ${gitBranchToUse}`);
+        // Get latest commit SHA if not provided
+        if (!gitCommitShaToUse && gitBranchToUse) {
+          const refRes = await fetch(`https://api.github.com/repos/${ghOwner}/${repoClean}/git/ref/heads/${gitBranchToUse}`, { headers: ghHeaders });
+          if (refRes.ok) {
+            const refData = await refRes.json();
+            gitCommitShaToUse = refData.object.sha;
+            console.log(`[auto-configure-coolify] Detected commit SHA: ${gitCommitShaToUse}`);
           }
-        } catch (e) {
-          console.warn('[auto-configure-coolify] Could not fetch default branch, using main');
-          gitBranchToUse = 'main';
         }
+      } catch (e) {
+        console.warn('[auto-configure-coolify] Could not fetch GitHub info:', e);
       }
     }
     gitBranchToUse = gitBranchToUse || 'main';
-    console.log(`[auto-configure-coolify] Using git_branch: ${gitBranchToUse}`);
+    console.log(`[auto-configure-coolify] Using git_branch: ${gitBranchToUse}, commit: ${gitCommitShaToUse || 'latest'}`);
 
     console.log(`[auto-configure-coolify] Starting for ${project_name}`);
 
@@ -342,15 +353,22 @@ serve(async (req) => {
       );
     }
 
-    // Step 5: Configure application with correct build settings
+    // Step 5: Configure application with correct build settings INCLUDING git_commit_sha
     // Split into multiple calls to handle rejected parameters
     console.log('[auto-configure-coolify] Step 5: Configuring application...');
     try {
-      // First PATCH: Core build settings only (these are typically accepted)
+      // First PATCH: Core build settings with git_commit_sha (CRUCIAL for deploying correct commit)
       const corePatchBody: Record<string, unknown> = {
         build_pack: 'dockerfile',
-        ports_exposes: '80'
+        ports_exposes: '80',
+        git_branch: gitBranchToUse
       };
+      
+      // Add commit SHA if we have it (ensures Coolify builds the right commit)
+      if (gitCommitShaToUse) {
+        corePatchBody.git_commit_sha = gitCommitShaToUse;
+        console.log(`[auto-configure-coolify] Setting git_commit_sha: ${gitCommitShaToUse}`);
+      }
 
       const corePatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
         method: 'PATCH',
@@ -359,25 +377,44 @@ serve(async (req) => {
       });
 
       if (corePatchRes.ok) {
-        console.log('[auto-configure-coolify] Core settings applied');
+        console.log('[auto-configure-coolify] Core settings + git_commit_sha applied');
       } else {
         const errText = await corePatchRes.text();
         console.warn('[auto-configure-coolify] Core PATCH warning:', errText);
+        
+        // Try without git_commit_sha if it fails (some Coolify versions may not support it)
+        const fallbackPatch = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
+          method: 'PATCH',
+          headers: coolifyHeaders,
+          body: JSON.stringify({
+            build_pack: 'dockerfile',
+            ports_exposes: '80',
+            git_branch: gitBranchToUse
+          })
+        });
+        if (fallbackPatch.ok) {
+          console.log('[auto-configure-coolify] Fallback PATCH (without commit SHA) succeeded');
+        }
       }
 
-      // Second PATCH: Try base_directory (may be rejected in some Coolify versions)
+      // Second PATCH: Try base_directory and dockerfile_location
       try {
         const dirPatchRes = await fetch(`${coolifyUrl}/api/v1/applications/${appUuid}`, {
           method: 'PATCH',
           headers: coolifyHeaders,
-          body: JSON.stringify({ base_directory: '/' })
+          body: JSON.stringify({ 
+            base_directory: '/',
+            dockerfile_location: '/Dockerfile'
+          })
         });
         if (!dirPatchRes.ok) {
           const errText = await dirPatchRes.text();
-          console.log('[auto-configure-coolify] base_directory not accepted (normal for some versions):', errText.slice(0, 100));
+          console.log('[auto-configure-coolify] base_directory/dockerfile_location not accepted:', errText.slice(0, 100));
+        } else {
+          console.log('[auto-configure-coolify] base_directory and dockerfile_location configured');
         }
       } catch (e) {
-        console.log('[auto-configure-coolify] base_directory patch failed (non-critical)');
+        console.log('[auto-configure-coolify] Directory patch failed (non-critical)');
       }
 
       // Third PATCH: Try domain if provided (fqdn is often rejected via PATCH)
@@ -400,7 +437,7 @@ serve(async (req) => {
         }
       }
 
-      steps.push({ step: 'configuration', status: 'success', message: 'Build pack: dockerfile, port: 80' });
+      steps.push({ step: 'configuration', status: 'success', message: `Build pack: dockerfile, branch: ${gitBranchToUse}${gitCommitShaToUse ? `, commit: ${gitCommitShaToUse.slice(0,7)}` : ''}` });
     } catch (e) {
       steps.push({ step: 'configuration', status: 'error', message: String(e) });
       // Continue anyway
