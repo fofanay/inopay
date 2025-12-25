@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,9 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { validateCoolifyUrl, CoolifyUrlValidation } from '@/lib/coolifyUrlValidator';
+import { cn } from '@/lib/utils';
 
 interface ServerSettingsDialogProps {
   open: boolean;
@@ -36,27 +38,30 @@ export function ServerSettingsDialog({
   const [name, setName] = useState(server.name);
   const [coolifyUrl, setCoolifyUrl] = useState(server.coolify_url || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [urlValidation, setUrlValidation] = useState<CoolifyUrlValidation | null>(null);
   const { toast } = useToast();
 
   const isUrlChanged = coolifyUrl !== (server.coolify_url || '');
   const hasToken = !!server.coolify_token;
 
-  const validateUrl = (url: string): boolean => {
-    if (!url) return true; // Empty is allowed
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
+  // Validate URL on change
+  useEffect(() => {
+    const validation = validateCoolifyUrl(coolifyUrl);
+    setUrlValidation(validation);
+  }, [coolifyUrl]);
+
+  const handleApplySuggestion = () => {
+    if (urlValidation?.suggestedUrl) {
+      setCoolifyUrl(urlValidation.suggestedUrl);
     }
   };
 
   const handleSave = async () => {
     // Validate URL format
-    if (coolifyUrl && !validateUrl(coolifyUrl)) {
+    if (urlValidation && !urlValidation.isValid) {
       toast({
         title: "URL invalide",
-        description: "L'URL doit commencer par http:// ou https://",
+        description: urlValidation.error || "Veuillez corriger l'URL Coolify",
         variant: "destructive",
       });
       return;
@@ -145,14 +150,57 @@ export function ServerSettingsDialog({
               id="coolify-url"
               value={coolifyUrl}
               onChange={(e) => setCoolifyUrl(e.target.value)}
-              placeholder="https://vps.example.com"
+              placeholder="http://209.46.125.157:8000"
+              className={cn(
+                urlValidation?.error && "border-destructive focus-visible:ring-destructive"
+              )}
             />
             <p className="text-xs text-muted-foreground">
-              Exemple: https://vps.getinopay.com ou http://209.46.125.157:8000
+              Format: http://IP:8000 ou https://coolify.example.com
             </p>
+            
+            {/* Validation error */}
+            {urlValidation?.error && (
+              <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                <div className="text-sm flex-1">
+                  <p className="font-medium text-destructive">{urlValidation.error}</p>
+                  {urlValidation.suggestedUrl && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 h-auto text-primary"
+                      onClick={handleApplySuggestion}
+                    >
+                      Utiliser : {urlValidation.suggestedUrl}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Validation warning */}
+            {urlValidation?.warning && !urlValidation?.error && (
+              <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                <Info className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                <div className="text-sm flex-1">
+                  <p className="text-muted-foreground">{urlValidation.warning}</p>
+                  {urlValidation.suggestedUrl && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 h-auto text-primary"
+                      onClick={handleApplySuggestion}
+                    >
+                      Utiliser le port standard : {urlValidation.suggestedUrl}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {isUrlChanged && hasToken && (
+          {isUrlChanged && hasToken && !urlValidation?.error && (
             <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
               <div className="text-sm">
@@ -169,7 +217,10 @@ export function ServerSettingsDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving || (urlValidation ? !urlValidation.isValid : false)}
+          >
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
