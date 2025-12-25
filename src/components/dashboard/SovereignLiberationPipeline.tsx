@@ -60,22 +60,22 @@ export function SovereignLiberationPipeline({
   const [phases, setPhases] = useState<PhaseConfig[]>([
     { 
       id: 'github', 
-      label: 'Phase 1 : GitHub',
-      description: 'Création du dépôt inopay-sovereign-core',
+      label: t('sovereignPipeline.phase1Label'),
+      description: t('sovereignPipeline.phase1Desc'),
       icon: <Github className="h-5 w-5" />, 
       status: 'pending' 
     },
     { 
       id: 'supabase', 
-      label: 'Phase 2 : Supabase',
-      description: 'Connexion et migration du schéma',
+      label: t('sovereignPipeline.phase2Label'),
+      description: t('sovereignPipeline.phase2Desc'),
       icon: <Database className="h-5 w-5" />, 
       status: 'pending' 
     },
     { 
       id: 'coolify', 
-      label: 'Phase 3 : Coolify',
-      description: 'Déploiement sur VPS IONOS',
+      label: t('sovereignPipeline.phase3Label'),
+      description: t('sovereignPipeline.phase3Desc'),
       icon: <Server className="h-5 w-5" />, 
       status: 'pending' 
     },
@@ -100,7 +100,7 @@ export function SovereignLiberationPipeline({
     
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      throw new Error('Session expirée');
+      throw new Error(t('sovereignPipeline.sessionExpired'));
     }
 
     const response = await fetch(
@@ -134,7 +134,7 @@ export function SovereignLiberationPipeline({
 
     const phaseResult = result.results?.[0];
     if (!phaseResult) {
-      return { success: false, error: 'Réponse invalide', data: { duration } };
+      return { success: false, error: t('sovereignPipeline.invalidResponse'), data: { duration } };
     }
 
     return {
@@ -167,7 +167,7 @@ export function SovereignLiberationPipeline({
       setCurrentPhase(0);
       updatePhase('github', { 
         status: 'running', 
-        message: 'Nettoyage et push vers GitHub...' 
+        message: t('sovereignPipeline.cleaningAndPush')
       });
 
       const githubResult = await runPhase('github', filesArray);
@@ -175,7 +175,7 @@ export function SovereignLiberationPipeline({
       updatePhase('github', {
         status: githubResult.success ? 'success' : 'error',
         message: githubResult.success 
-          ? `Dépôt créé avec ${githubResult.data?.filesCount || 0} fichiers`
+          ? `${t('sovereignPipeline.repoCreated')} (${githubResult.data?.filesCount || 0} files)`
           : githubResult.error,
         data: githubResult.data,
         duration: githubResult.data?.duration as number,
@@ -183,14 +183,14 @@ export function SovereignLiberationPipeline({
       });
 
       if (!githubResult.success) {
-        setPipelineError(`Phase 1 échouée: ${githubResult.error}`);
-        toast.error('Phase 1 échouée', { description: githubResult.error });
+        setPipelineError(`${t('sovereignPipeline.phase1Failed')}: ${githubResult.error}`);
+        toast.error(t('sovereignPipeline.phase1Failed'), { description: githubResult.error });
         setIsRunning(false);
         return;
       }
 
-      toast.success('Phase 1 terminée', { 
-        description: `Dépôt GitHub créé - HTTP ${githubResult.data?.httpStatus}` 
+      toast.success(t('sovereignPipeline.phase1Complete'), { 
+        description: `${t('sovereignPipeline.githubRepoCreated')} - HTTP ${githubResult.data?.httpStatus}` 
       });
 
       // Wait for confirmation before Phase 2
@@ -200,7 +200,7 @@ export function SovereignLiberationPipeline({
       setCurrentPhase(1);
       updatePhase('supabase', { 
         status: 'running', 
-        message: 'Connexion et validation Supabase...' 
+        message: t('sovereignPipeline.connectingSupabase')
       });
 
       const supabaseResult = await runPhase('supabase', []);
@@ -208,7 +208,7 @@ export function SovereignLiberationPipeline({
       updatePhase('supabase', {
         status: supabaseResult.success ? 'success' : 'error',
         message: supabaseResult.success 
-          ? 'Instance Supabase opérationnelle'
+          ? t('sovereignPipeline.supabaseOperational')
           : supabaseResult.error,
         data: supabaseResult.data,
         duration: supabaseResult.data?.duration as number,
@@ -216,14 +216,14 @@ export function SovereignLiberationPipeline({
       });
 
       if (!supabaseResult.success) {
-        setPipelineError(`Phase 2 échouée: ${supabaseResult.error}`);
-        toast.error('Phase 2 échouée', { description: supabaseResult.error });
+        setPipelineError(`${t('sovereignPipeline.phase2Failed')}: ${supabaseResult.error}`);
+        toast.error(t('sovereignPipeline.phase2Failed'), { description: supabaseResult.error });
         setIsRunning(false);
         return;
       }
 
-      toast.success('Phase 2 terminée', { 
-        description: `Supabase connecté - HTTP ${supabaseResult.data?.httpStatus}` 
+      toast.success(t('sovereignPipeline.phase2Complete'), { 
+        description: `${t('sovereignPipeline.supabaseConnected')} - HTTP ${supabaseResult.data?.httpStatus}` 
       });
 
       // Wait for confirmation before Phase 3
@@ -233,7 +233,7 @@ export function SovereignLiberationPipeline({
       setCurrentPhase(2);
       updatePhase('coolify', { 
         status: 'running', 
-        message: 'Déploiement sur VPS via Coolify...' 
+        message: t('sovereignPipeline.deployingVPS')
       });
 
       const coolifyResult = await runPhase('coolify', []);
@@ -242,8 +242,8 @@ export function SovereignLiberationPipeline({
         status: coolifyResult.success ? 'success' : 'error',
         message: coolifyResult.success 
           ? coolifyResult.data?.deploymentTriggered 
-            ? 'Build déclenché sur Coolify'
-            : 'Application créée (déploiement manuel)'
+            ? t('sovereignPipeline.buildTriggered')
+            : t('sovereignPipeline.appCreatedManual')
           : coolifyResult.error,
         data: coolifyResult.data,
         duration: coolifyResult.data?.duration as number,
@@ -252,10 +252,10 @@ export function SovereignLiberationPipeline({
 
       if (!coolifyResult.success) {
         // Phase 3 failure is not blocking - we still have GitHub + Supabase
-        toast.warning('Phase 3 partielle', { description: coolifyResult.error });
+        toast.warning(t('sovereignPipeline.phase3Partial'), { description: coolifyResult.error });
       } else {
-        toast.success('Phase 3 terminée', { 
-          description: `Déploiement Coolify - HTTP ${coolifyResult.data?.httpStatus}` 
+        toast.success(t('sovereignPipeline.phase3Complete'), { 
+          description: `${t('sovereignPipeline.coolifyDeployment')} - HTTP ${coolifyResult.data?.httpStatus}` 
         });
       }
 
@@ -263,16 +263,16 @@ export function SovereignLiberationPipeline({
       const totalTime = Date.now() - pipelineStart;
       setTotalDuration(totalTime);
 
-      toast.success('🎉 Pipeline complet !', {
-        description: `3 phases en ${(totalTime / 1000).toFixed(1)}s`,
+      toast.success(`🎉 ${t('sovereignPipeline.pipelineComplete')}`, {
+        description: t('sovereignPipeline.phasesInSeconds', { seconds: (totalTime / 1000).toFixed(1) }),
       });
 
       onComplete?.(phases);
 
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur inconnue';
+      const message = err instanceof Error ? err.message : t('sovereignPipeline.unknownError');
       setPipelineError(message);
-      toast.error('Erreur pipeline', { description: message });
+      toast.error(t('sovereignPipeline.pipelineError'), { description: message });
     } finally {
       setIsRunning(false);
       setCurrentPhase(-1);
@@ -320,14 +320,14 @@ export function SovereignLiberationPipeline({
             </div>
             <div>
               <CardTitle className="flex items-center gap-2">
-                Pipeline de Libération Souveraine
+                {t('sovereignPipeline.title')}
                 <Badge variant="outline" className="ml-2 border-primary/30">
                   <Shield className="h-3 w-3 mr-1" />
-                  3 Phases
+                  3 {t('sovereignPipeline.phases')}
                 </Badge>
               </CardTitle>
               <CardDescription>
-                GitHub → Supabase → Coolify | Exécution séquentielle avec validation
+                {t('sovereignPipeline.description')}
               </CardDescription>
             </div>
           </div>
@@ -346,7 +346,7 @@ export function SovereignLiberationPipeline({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground flex items-center gap-2">
               <Play className="h-4 w-4" />
-              Progression globale
+              {t('sovereignPipeline.overallProgress')}
             </span>
             <span className="font-medium">{Math.round(getOverallProgress())}%</span>
           </div>
@@ -402,15 +402,15 @@ export function SovereignLiberationPipeline({
                     </span>
                     {phase.status === 'success' && (
                       <Badge variant="outline" className="text-green-600 border-green-500/30">
-                        Validé
+                        {t('sovereignPipeline.validated')}
                       </Badge>
                     )}
                     {phase.status === 'error' && (
-                      <Badge variant="destructive">Échec</Badge>
+                      <Badge variant="destructive">{t('sovereignPipeline.failed')}</Badge>
                     )}
                     {phase.status === 'running' && (
                       <Badge variant="secondary" className="animate-pulse">
-                        En cours...
+                        {t('sovereignPipeline.inProgress')}
                       </Badge>
                     )}
                     {getHttpStatusBadge(phase.httpStatus)}
@@ -445,7 +445,7 @@ export function SovereignLiberationPipeline({
                         onClick={() => window.open(phase.data?.repoUrl as string, '_blank')}
                       >
                         <ExternalLink className="h-4 w-4 mr-1" />
-                        Voir
+                        {t('sovereignPipeline.view')}
                       </Button>
                     )}
                   </div>
@@ -459,12 +459,12 @@ export function SovereignLiberationPipeline({
         {pipelineError && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Pipeline interrompu</AlertTitle>
+            <AlertTitle>{t('sovereignPipeline.pipelineInterrupted')}</AlertTitle>
             <AlertDescription>
               {pipelineError}
               <br />
               <span className="text-sm mt-2 block opacity-80">
-                Corrigez l'erreur et relancez le pipeline.
+                {t('sovereignPipeline.fixAndRelaunch')}
               </span>
             </AlertDescription>
           </Alert>
@@ -479,10 +479,10 @@ export function SovereignLiberationPipeline({
               </div>
               <div>
                 <h4 className="font-semibold text-green-600">
-                  🎉 Infrastructure Souveraine Complète
+                  🎉 {t('sovereignPipeline.sovereignInfraComplete')}
                 </h4>
                 <p className="text-sm text-muted-foreground">
-                  Les 3 phases ont été exécutées avec succès en {(totalDuration / 1000).toFixed(1)}s
+                  {t('sovereignPipeline.phasesSuccessIn', { seconds: (totalDuration / 1000).toFixed(1) })}
                 </p>
               </div>
             </div>
@@ -491,17 +491,17 @@ export function SovereignLiberationPipeline({
               <div className="p-2 bg-background/50 rounded-lg">
                 <Github className="h-4 w-4 mx-auto mb-1" />
                 <p className="text-xs font-medium">GitHub</p>
-                <p className="text-xs text-muted-foreground">Dépôt créé</p>
+                <p className="text-xs text-muted-foreground">{t('sovereignPipeline.repoCreated')}</p>
               </div>
               <div className="p-2 bg-background/50 rounded-lg">
                 <Database className="h-4 w-4 mx-auto mb-1" />
                 <p className="text-xs font-medium">Supabase</p>
-                <p className="text-xs text-muted-foreground">Connecté</p>
+                <p className="text-xs text-muted-foreground">{t('sovereignPipeline.connected')}</p>
               </div>
               <div className="p-2 bg-background/50 rounded-lg">
                 <Server className="h-4 w-4 mx-auto mb-1" />
                 <p className="text-xs font-medium">Coolify</p>
-                <p className="text-xs text-muted-foreground">Déployé</p>
+                <p className="text-xs text-muted-foreground">{t('sovereignPipeline.deployed')}</p>
               </div>
             </div>
           </div>
@@ -511,10 +511,9 @@ export function SovereignLiberationPipeline({
         {!files && (
           <Alert className="border-primary/30 bg-primary/5">
             <AlertTriangle className="h-4 w-4 text-primary" />
-            <AlertTitle>Aucun projet sélectionné</AlertTitle>
+            <AlertTitle>{t('sovereignPipeline.noProjectSelected')}</AlertTitle>
             <AlertDescription>
-              Pour lancer le pipeline de libération, analysez d'abord un projet depuis l'onglet 
-              <strong> Importer</strong> ou sélectionnez un projet existant dans <strong>Mes Projets</strong>.
+              {t('sovereignPipeline.noProjectSelectedDesc')}
             </AlertDescription>
           </Alert>
         )}
@@ -530,32 +529,31 @@ export function SovereignLiberationPipeline({
             {isRunning ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Phase {currentPhase + 1}/3 en cours...
+                {t('sovereignPipeline.phaseProgress', { current: currentPhase + 1 })}
               </>
             ) : phases.some(p => p.status === 'success') ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Relancer le pipeline
+                {t('sovereignPipeline.relaunchPipeline')}
               </>
             ) : (
               <>
                 <Rocket className="h-4 w-4 mr-2" />
-                Lancer les 3 phases
+                {t('sovereignPipeline.launchPhases')}
               </>
             )}
           </Button>
           
           {onClose && (
             <Button variant="outline" onClick={onClose} disabled={isRunning}>
-              Fermer
+              {t('sovereignPipeline.close')}
             </Button>
           )}
         </div>
 
         {/* Info Footer */}
         <p className="text-xs text-muted-foreground text-center pt-2">
-          Exécution séquentielle isolée • Arrêt automatique en cas d'erreur • 
-          Validation HTTP 200/201 requise
+          {t('sovereignPipeline.footerInfo')}
         </p>
       </CardContent>
     </Card>
