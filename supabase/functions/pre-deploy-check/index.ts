@@ -14,31 +14,61 @@ interface PreDeployCheckResult {
   warnings: string[];
   blocking_errors: string[];
   env_vars_needed: { key: string; suggested_value?: string; is_build_time: boolean }[];
-  dockerfile_status: 'exists_valid' | 'exists_fixed' | 'generated' | 'missing';
+  dockerfile_status: 'exists_valid' | 'exists_fixed' | 'generated' | 'missing' | 'invalid';
+  dockerfile_proof?: {
+    raw_content?: string;
+    copy_package_line?: number;
+    npm_install_line?: number;
+    is_valid: boolean;
+  };
   checks: {
     coolify_connection: boolean;
     github_access: boolean;
     package_json: boolean;
     dockerfile: boolean;
+    dockerfile_verified: boolean;
     env_vars: boolean;
   };
 }
 
-// Corrected Dockerfile template
-const CORRECTED_DOCKERFILE = `# Auto-generated Dockerfile by Inopay
+// Corrected Dockerfile template - CRITICAL: COPY package.json MUST come BEFORE npm install
+const CORRECTED_DOCKERFILE = `# ============================================
+# Auto-generated Dockerfile by Inopay
+# Optimized for Vite/React projects
+# ============================================
+
+# Build stage
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# CRITICAL: Copy package files FIRST (before any npm commands)
 COPY package.json ./
 COPY package-lock.json* bun.lockb* ./
+
+# Install dependencies (uses npm install for compatibility)
 RUN npm install --legacy-peer-deps
+
+# Copy all source files AFTER dependencies are installed
 COPY . .
+
+# Build the application
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
+# Production stage
 FROM nginx:alpine AS production
+
+# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Expose port 80
 EXPOSE 80
+
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
 `;
 
@@ -73,6 +103,95 @@ function normalizeCoolifyUrl(url: string): string {
     normalized = urlObj.toString().replace(/\/+$/, '');
   }
   return normalized;
+}
+
+// Line-by-line Dockerfile analysis - returns true if COPY package.json comes BEFORE npm install
+function analyzeDockerfile(content: string): { 
+  isValid: boolean; 
+  copyPackageLine?: number; 
+  npmInstallLine?: number; 
+  details: string;
+} {
+  const lines = content.split('\n');
+  let copyPackageLine: number | undefined;
+  let npmInstallLine: number | undefined;
+
+  lines.forEach((line, idx) => {
+    const lineNum = idx + 1;
+    const trimmedLine = line.trim().toUpperCase();
+    
+    // Find COPY package.json (first occurrence)
+    if (trimmedLine.startsWith('COPY') && 
+        (line.toLowerCase().includes('package.json') || line.toLowerCase().includes('package*.json'))) {
+      if (!copyPackageLine) {
+        copyPackageLine = lineNum;
+      }
+    }
+
+    // Find RUN npm install or npm ci (first occurrence)
+    if (trimmedLine.startsWith('RUN') && 
+        (line.toLowerCase().includes('npm install') || line.toLowerCase().includes('npm ci'))) {
+      if (!npmInstallLine) {
+        npmInstallLine = lineNum;
+      }
+    }
+  });
+
+  // Valid = COPY package.json exists AND comes BEFORE npm install
+  if (!copyPackageLine) {
+    return { 
+      isValid: false, 
+      copyPackageLine, 
+      npmInstallLine, 
+      details: 'COPY package.json not found in Dockerfile' 
+    };
+  }
+
+  if (!npmInstallLine) {
+    return { 
+      isValid: true, 
+      copyPackageLine, 
+      npmInstallLine, 
+      details: 'No npm install found (might use different build method)' 
+    };
+  }
+
+  if (copyPackageLine < npmInstallLine) {
+    return { 
+      isValid: true, 
+      copyPackageLine, 
+      npmInstallLine, 
+      details: `Valid: COPY package.json (line ${copyPackageLine}) before npm install (line ${npmInstallLine})` 
+    };
+  }
+
+  return { 
+    isValid: false, 
+    copyPackageLine, 
+    npmInstallLine, 
+    details: `BROKEN: npm install (line ${npmInstallLine}) comes BEFORE COPY package.json (line ${copyPackageLine})` 
+  };
+}
+
+// Fetch raw Dockerfile content from GitHub
+async function fetchDockerfileRaw(
+  owner: string, 
+  repo: string, 
+  branch: string, 
+  headers: Record<string, string>
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/Dockerfile?ref=${branch}`,
+      { headers: { ...headers, 'Accept': 'application/vnd.github.v3.raw' } }
+    );
+    if (res.ok) {
+      return await res.text();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -129,6 +248,7 @@ serve(async (req) => {
         github_access: false,
         package_json: false,
         dockerfile: false,
+        dockerfile_verified: false,
         env_vars: false
       }
     };
@@ -227,11 +347,12 @@ serve(async (req) => {
 
     // CHECK 3: package.json
     console.log('[pre-deploy-check] Check 3: package.json');
+    let files: string[] = [];
     try {
       const contentsRes = await fetch(`https://api.github.com/repos/${owner}/${repoClean}/contents/?ref=${defaultBranch}`, { headers: githubHeaders });
       if (contentsRes.ok) {
         const contents = await contentsRes.json();
-        const files = contents.map((f: { name: string }) => f.name);
+        files = contents.map((f: { name: string }) => f.name);
         
         if (files.includes('package.json')) {
           result.checks.package_json = true;
@@ -244,99 +365,168 @@ serve(async (req) => {
         if (!files.includes('package-lock.json') && !files.includes('bun.lockb')) {
           result.warnings.push('package-lock.json manquant - npm install sera utilisé à la place de npm ci');
         }
+      }
+    } catch (e) {
+      result.blocking_errors.push(`Erreur lecture dépôt: ${e instanceof Error ? e.message : String(e)}`);
+    }
 
-        // CHECK 4: Dockerfile
-        console.log('[pre-deploy-check] Check 4: Dockerfile');
-        if (files.includes('Dockerfile')) {
-          // Check Dockerfile content for broken patterns
-          const dockerfileRes = await fetch(`https://api.github.com/repos/${owner}/${repoClean}/contents/Dockerfile?ref=${defaultBranch}`, { headers: githubHeaders });
-          if (dockerfileRes.ok) {
-            const dockerfileData = await dockerfileRes.json();
-            const dockerfileContent = atob(dockerfileData.content.replace(/\n/g, ''));
+    // CHECK 4: Dockerfile - ROBUST LINE-BY-LINE ANALYSIS
+    console.log('[pre-deploy-check] Check 4: Dockerfile analysis');
+    
+    let dockerfileContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
+    
+    if (dockerfileContent) {
+      // Analyze the current Dockerfile
+      const analysis = analyzeDockerfile(dockerfileContent);
+      console.log(`[pre-deploy-check] Dockerfile analysis: ${analysis.details}`);
+      
+      result.dockerfile_proof = {
+        raw_content: dockerfileContent.slice(0, 500), // First 500 chars for debugging
+        copy_package_line: analysis.copyPackageLine,
+        npm_install_line: analysis.npmInstallLine,
+        is_valid: analysis.isValid
+      };
+
+      if (!analysis.isValid) {
+        result.dockerfile_status = 'invalid';
+        result.warnings.push(`Dockerfile cassé: ${analysis.details}`);
+        
+        if (auto_fix && githubToken) {
+          console.log('[pre-deploy-check] Auto-fixing Dockerfile...');
+          
+          try {
+            // Get current tree SHA
+            const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
             
-            // Check for broken pattern: RUN npm install before COPY package.json
-            const hasBrokenPattern = /RUN\s+(npm\s+(install|ci)|yarn\s+install)/.test(dockerfileContent) &&
-              !(/COPY\s+package\.json/.test(dockerfileContent.split(/RUN\s+(npm\s+(install|ci)|yarn\s+install)/)[0]));
+            // Create blobs for corrected files
+            const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
+            const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
             
-            const usesNpmCi = /npm\s+ci/.test(dockerfileContent);
+            // Create new tree
+            const newTree = await createTree(owner, repoClean, commitTreeSha, [
+              { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
+              { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
+            ], githubHeaders);
             
-            if (hasBrokenPattern || usesNpmCi) {
-              result.warnings.push('Dockerfile avec pattern problématique détecté');
+            // Create commit
+            const newCommit = await createCommit(
+              owner, repoClean, 
+              '🔧 Pre-deploy fix: Corrected Dockerfile (COPY package.json before npm install)', 
+              newTree, 
+              currentCommitSha, 
+              githubHeaders
+            );
+            
+            // Update ref
+            const updateSuccess = await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
+            
+            if (updateSuccess) {
+              console.log(`[pre-deploy-check] Fix pushed successfully: ${newCommit}`);
+              result.commit_sha = newCommit;
+              result.actions_taken.push('Dockerfile corrigé automatiquement');
               
-              if (auto_fix && githubToken) {
-                // Fix the Dockerfile
-                console.log('[pre-deploy-check] Fixing Dockerfile...');
+              // CRITICAL: Wait and verify the fix was applied
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Re-fetch Dockerfile to VERIFY the fix
+              const verifiedContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
+              if (verifiedContent) {
+                const verifyAnalysis = analyzeDockerfile(verifiedContent);
+                console.log(`[pre-deploy-check] Verification: ${verifyAnalysis.details}`);
                 
-                const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
+                result.dockerfile_proof = {
+                  raw_content: verifiedContent.slice(0, 500),
+                  copy_package_line: verifyAnalysis.copyPackageLine,
+                  npm_install_line: verifyAnalysis.npmInstallLine,
+                  is_valid: verifyAnalysis.isValid
+                };
                 
-                // Create blobs
-                const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
-                const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
-                
-                // Create tree
-                const newTree = await createTree(owner, repoClean, commitTreeSha, [
-                  { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
-                  { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
-                ], githubHeaders);
-                
-                // Create commit
-                const newCommit = await createCommit(
-                  owner, repoClean, 
-                  '🔧 Pre-deploy fix: Corrected Dockerfile for deployment', 
-                  newTree, 
-                  currentCommitSha, 
-                  githubHeaders
-                );
-                
-                // Update ref
-                await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
-                
-                result.commit_sha = newCommit;
-                result.dockerfile_status = 'exists_fixed';
-                result.actions_taken.push('Dockerfile corrigé automatiquement');
-                result.checks.dockerfile = true;
+                if (verifyAnalysis.isValid) {
+                  result.dockerfile_status = 'exists_fixed';
+                  result.checks.dockerfile = true;
+                  result.checks.dockerfile_verified = true;
+                  console.log('[pre-deploy-check] Dockerfile verified as FIXED');
+                } else {
+                  result.blocking_errors.push(`Fix non appliqué: ${verifyAnalysis.details}. Vérifiez les protections de branche ou les permissions du token GitHub.`);
+                  result.dockerfile_status = 'invalid';
+                }
               } else {
-                result.dockerfile_status = 'missing';
+                result.blocking_errors.push('Impossible de vérifier le Dockerfile après correction');
               }
             } else {
-              result.dockerfile_status = 'exists_valid';
-              result.checks.dockerfile = true;
+              result.blocking_errors.push('Échec de mise à jour de la branche GitHub - branche protégée ou token insuffisant');
             }
+          } catch (fixError) {
+            console.error('[pre-deploy-check] Fix error:', fixError);
+            result.blocking_errors.push(`Erreur lors de la correction: ${fixError instanceof Error ? fixError.message : String(fixError)}`);
           }
-        } else if (auto_fix && githubToken) {
-          // Generate Dockerfile
-          console.log('[pre-deploy-check] Generating Dockerfile...');
-          
-          const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
-          
-          const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
-          const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
-          
-          const newTree = await createTree(owner, repoClean, commitTreeSha, [
-            { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
-            { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
-          ], githubHeaders);
-          
-          const newCommit = await createCommit(
-            owner, repoClean,
-            '🔧 Pre-deploy: Generated Dockerfile for deployment',
-            newTree,
-            currentCommitSha,
-            githubHeaders
-          );
-          
-          await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
-          
+        } else {
+          result.blocking_errors.push('Dockerfile invalide et auto-fix désactivé ou token GitHub manquant');
+        }
+      } else {
+        // Dockerfile is valid
+        result.dockerfile_status = 'exists_valid';
+        result.checks.dockerfile = true;
+        result.checks.dockerfile_verified = true;
+        console.log('[pre-deploy-check] Dockerfile is valid');
+      }
+    } else if (files.includes('Dockerfile')) {
+      // Dockerfile exists but couldn't be read
+      result.warnings.push('Dockerfile existe mais impossible à lire');
+      result.dockerfile_status = 'missing';
+    } else if (auto_fix && githubToken) {
+      // No Dockerfile - generate one
+      console.log('[pre-deploy-check] Generating Dockerfile...');
+      
+      try {
+        const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
+        
+        const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
+        const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
+        
+        const newTree = await createTree(owner, repoClean, commitTreeSha, [
+          { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
+          { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
+        ], githubHeaders);
+        
+        const newCommit = await createCommit(
+          owner, repoClean,
+          '🔧 Pre-deploy: Generated Dockerfile for deployment',
+          newTree,
+          currentCommitSha,
+          githubHeaders
+        );
+        
+        const updateSuccess = await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
+        
+        if (updateSuccess) {
           result.commit_sha = newCommit;
           result.dockerfile_status = 'generated';
           result.actions_taken.push('Dockerfile généré automatiquement');
           result.checks.dockerfile = true;
+          
+          // Verify generation
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const verifiedContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
+          if (verifiedContent) {
+            const verifyAnalysis = analyzeDockerfile(verifiedContent);
+            result.checks.dockerfile_verified = verifyAnalysis.isValid;
+            result.dockerfile_proof = {
+              raw_content: verifiedContent.slice(0, 500),
+              copy_package_line: verifyAnalysis.copyPackageLine,
+              npm_install_line: verifyAnalysis.npmInstallLine,
+              is_valid: verifyAnalysis.isValid
+            };
+          }
         } else {
-          result.blocking_errors.push('Dockerfile manquant et auto-fix désactivé');
+          result.blocking_errors.push('Échec de création du Dockerfile - branche protégée ou token insuffisant');
         }
+      } catch (genError) {
+        console.error('[pre-deploy-check] Generate error:', genError);
+        result.blocking_errors.push(`Erreur génération Dockerfile: ${genError instanceof Error ? genError.message : String(genError)}`);
       }
-    } catch (e) {
-      result.blocking_errors.push(`Erreur lecture dépôt: ${e instanceof Error ? e.message : String(e)}`);
+    } else {
+      result.blocking_errors.push('Dockerfile manquant et auto-fix désactivé');
     }
 
     // CHECK 5: Environment variables
@@ -352,14 +542,15 @@ serve(async (req) => {
     ];
     result.checks.env_vars = true;
 
-    // Final readiness check
+    // Final readiness check - MUST have verified dockerfile
     result.ready = result.blocking_errors.length === 0 && 
       result.checks.coolify_connection && 
       result.checks.github_access && 
       result.checks.package_json && 
-      result.checks.dockerfile;
+      result.checks.dockerfile &&
+      result.checks.dockerfile_verified;
 
-    console.log(`[pre-deploy-check] Completed. Ready: ${result.ready}, Actions: ${result.actions_taken.length}`);
+    console.log(`[pre-deploy-check] Completed. Ready: ${result.ready}, Actions: ${result.actions_taken.length}, Errors: ${result.blocking_errors.length}`);
 
     return new Response(
       JSON.stringify(result),
@@ -393,6 +584,9 @@ async function createBlob(owner: string, repo: string, content: string, headers:
     body: JSON.stringify({ content, encoding: 'utf-8' })
   });
   const data = await res.json();
+  if (!data.sha) {
+    throw new Error(`Failed to create blob: ${JSON.stringify(data)}`);
+  }
   return data.sha;
 }
 
@@ -409,6 +603,9 @@ async function createTree(
     body: JSON.stringify({ base_tree: baseTree, tree: entries })
   });
   const data = await res.json();
+  if (!data.sha) {
+    throw new Error(`Failed to create tree: ${JSON.stringify(data)}`);
+  }
   return data.sha;
 }
 
@@ -426,6 +623,9 @@ async function createCommit(
     body: JSON.stringify({ message, tree, parents: [parent] })
   });
   const data = await res.json();
+  if (!data.sha) {
+    throw new Error(`Failed to create commit: ${JSON.stringify(data)}`);
+  }
   return data.sha;
 }
 
@@ -435,10 +635,25 @@ async function updateRef(
   branch: string, 
   sha: string,
   headers: Record<string, string>
-): Promise<void> {
-  await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+): Promise<boolean> {
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sha, force: false })
+    body: JSON.stringify({ sha, force: true }) // Use force: true to ensure push
   });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[pre-deploy-check] updateRef failed: ${res.status} - ${errorText}`);
+    return false;
+  }
+  
+  // Verify the ref was updated
+  const verifyRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`, { headers });
+  if (verifyRes.ok) {
+    const verifyData = await verifyRes.json();
+    return verifyData.object.sha === sha;
+  }
+  
+  return false;
 }
