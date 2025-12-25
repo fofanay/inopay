@@ -18,7 +18,7 @@ interface AuthContextType {
   subscription: SubscriptionInfo;
   role: UserRole;
   isAdmin: boolean;
-  checkSubscription: () => Promise<void>;
+  checkSubscription: (accessToken?: string) => Promise<void>;
   checkRole: () => Promise<void>;
   refreshSession: () => Promise<Session | null>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -88,6 +88,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const clearAuthState = useCallback(async () => {
+    setSession(null);
+    setUser(null);
+    setSubscription({ subscribed: false, planType: "free" });
+    setRole(null);
+
+    try {
+      // "local" clears client storage even if the server-side session is already gone
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      // Ignore: session may already be invalidated server-side
+    }
+  }, []);
+
   // Refresh session and get new tokens
   const refreshSession = useCallback(async (): Promise<Session | null> => {
     // Prevent concurrent refresh attempts
@@ -114,16 +128,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("[AUTH] Session refresh failed:", error);
         refreshingRef.current = false;
         
-        // If refresh token is invalid, sign out the user
-        if (error.message?.includes("refresh_token") || 
-            error.message?.includes("Invalid") ||
-            error.message?.includes("not found")) {
-          console.log("[AUTH] Invalid refresh token, signing out user");
-          setSession(null);
-          setUser(null);
-          setSubscription({ subscribed: false, planType: "free" });
-          setRole(null);
-          await supabase.auth.signOut();
+        // If refresh token/session is invalid, sign out locally (clears storage)
+        if (
+          error.message?.includes("refresh_token") ||
+          error.message?.includes("Invalid") ||
+          error.message?.includes("not found") ||
+          error.message?.includes("session_not_found") ||
+          error.message?.includes("Session from session_id claim")
+        ) {
+          console.log("[AUTH] Invalid refresh token/session, signing out user locally");
+          await clearAuthState();
         }
         return null;
       }
@@ -143,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       refreshingRef.current = false;
       return null;
     }
-  }, [session]);
+  }, [session, clearAuthState]);
 
   const checkSubscription = useCallback(async (accessToken?: string) => {
     let tokenToUse = accessToken || session?.access_token;
@@ -190,22 +204,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         if (!currentSession) {
           console.log("[AUTH] No valid session, user needs to re-login");
-          setSession(null);
-          setUser(null);
-          setSubscription({ subscribed: false, planType: "free" });
-          setRole(null);
+          await clearAuthState();
           return;
         }
-        
+
         const newSession = await refreshSession();
-        
+
         if (!newSession) {
           // Session is truly invalid, user needs to re-login
           console.log("[AUTH] Session invalid, user needs to re-login");
-          setSession(null);
-          setUser(null);
-          setSubscription({ subscribed: false, planType: "free" });
-          setRole(null);
+          await clearAuthState();
           return;
         }
         
@@ -242,7 +250,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error checking subscription:", error);
     }
-  }, [session, refreshSession]);
+  }, [session, refreshSession, clearAuthState]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -353,9 +361,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setSubscription({ subscribed: false, planType: "free" });
-    setRole(null);
+    await clearAuthState();
   };
 
   const isAdmin = role === "admin";
