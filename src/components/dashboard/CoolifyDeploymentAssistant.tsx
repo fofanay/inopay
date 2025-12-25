@@ -17,11 +17,14 @@ import {
   AlertCircle,
   ExternalLink,
   RefreshCw,
-  Copy
+  Copy,
+  AlertTriangle,
+  FileCheck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { CoolifyDeploymentErrorHandler } from './CoolifyDeploymentErrorHandler';
 
 interface Server {
   id: string;
@@ -56,6 +59,14 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
   const [projectName, setProjectName] = useState('');
   const [domain, setDomain] = useState('');
+  const [repoValidation, setRepoValidation] = useState<{
+    valid: boolean;
+    checked: boolean;
+    errors: string[];
+    warnings: string[];
+    suggestions: string[];
+  } | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   
   // Supabase env vars
   const [supabaseUrl, setSupabaseUrl] = useState(import.meta.env.VITE_SUPABASE_URL || '');
@@ -133,8 +144,48 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
 
   const handleRepoUrlChange = (url: string) => {
     setGithubRepoUrl(url);
+    setRepoValidation(null); // Reset validation
     if (!projectName) {
       setProjectName(extractProjectName(url));
+    }
+  };
+
+  const validateGitHubRepo = async () => {
+    if (!githubRepoUrl) return;
+    
+    setIsValidating(true);
+    try {
+      const response = await supabase.functions.invoke('validate-github-repo', {
+        body: { github_repo_url: githubRepoUrl }
+      });
+
+      if (response.error) throw response.error;
+      
+      const data = response.data;
+      setRepoValidation({
+        valid: data.valid,
+        checked: true,
+        errors: data.errors || [],
+        warnings: data.warnings || [],
+        suggestions: data.suggestions || []
+      });
+
+      if (data.valid) {
+        toast.success('Dépôt validé - prêt pour le déploiement!');
+      } else {
+        toast.error('Problèmes détectés dans le dépôt');
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      setRepoValidation({
+        valid: false,
+        checked: true,
+        errors: ['Erreur lors de la validation'],
+        warnings: [],
+        suggestions: []
+      });
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -216,7 +267,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
       case 'server':
         return selectedServer && connectionTested;
       case 'repo':
-        return githubRepoUrl && projectName;
+        return githubRepoUrl && projectName && repoValidation?.valid;
       case 'config':
         return true; // Config is optional
       default:
@@ -382,6 +433,43 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                 Laissez vide pour utiliser l'IP du serveur
               </p>
             </div>
+
+            {/* Pre-validation button */}
+            <Button 
+              onClick={validateGitHubRepo} 
+              disabled={!githubRepoUrl || isValidating}
+              variant={repoValidation?.valid ? 'outline' : 'default'}
+              className="w-full"
+            >
+              {isValidating ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Validation...</>
+              ) : repoValidation?.valid ? (
+                <><CheckCircle2 className="h-4 w-4 mr-2" /> Dépôt validé</>
+              ) : (
+                <><FileCheck className="h-4 w-4 mr-2" /> Valider le dépôt</>
+              )}
+            </Button>
+
+            {/* Validation results */}
+            {repoValidation && (
+              <div className="space-y-2">
+                {repoValidation.errors.map((err, i) => (
+                  <Alert key={i} variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{err}</AlertDescription>
+                  </Alert>
+                ))}
+                {repoValidation.warnings.map((warn, i) => (
+                  <Alert key={i} className="bg-warning/10 border-warning">
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <AlertDescription>{warn}</AlertDescription>
+                  </Alert>
+                ))}
+                {repoValidation.suggestions.map((sug, i) => (
+                  <p key={i} className="text-sm text-muted-foreground">{sug}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
