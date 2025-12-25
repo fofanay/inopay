@@ -82,6 +82,7 @@ import { MobilePaginationDots } from "@/components/dashboard/MobilePaginationDot
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { LiberationPipeline } from "@/components/dashboard/LiberationPipeline";
 import { LiberationWizard } from "@/components/dashboard/LiberationWizard";
+import { SovereignLiberationPipeline } from "@/components/dashboard/SovereignLiberationPipeline";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -1410,10 +1411,21 @@ const Dashboard = () => {
               <div className="space-y-6">
                 <Card className="bg-muted/30 border-dashed mb-4 border-0 shadow-sm">
                   <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <FolderOpen className="h-4 w-4" />
-                      {t("dashboard.messages.selectProjectForDeploy")}
-                    </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4" />
+                        {t("dashboard.messages.selectProjectForDeploy")}
+                      </p>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setActiveTab("liberation")}
+                        className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                      >
+                        <Rocket className="h-4 w-4" />
+                        {t("dashboard.liberation.launchPipeline", "Lancer le Pipeline Souverain")}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
                 <AnalyzedProjects 
@@ -1421,6 +1433,13 @@ const Dashboard = () => {
                   onRefresh={fetchHistory}
                   loadingProjectId={loadingProjectId}
                 />
+              </div>
+            )}
+
+            {/* Tab: Liberation Pipeline */}
+            {activeTab === "liberation" && (
+              <div className="space-y-6">
+                <SovereignLiberationPipeline />
               </div>
             )}
 

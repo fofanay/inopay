@@ -38,8 +38,8 @@ interface PhaseConfig {
 }
 
 interface SovereignLiberationPipelineProps {
-  files: Map<string, string>;
-  projectName: string;
+  files?: Map<string, string>;
+  projectName?: string;
   projectId?: string;
   serverId?: string;
   onComplete?: (results: PhaseConfig[]) => void;
@@ -159,7 +159,7 @@ export function SovereignLiberationPipeline({
       httpStatus: undefined,
     })));
 
-    const filesArray = Array.from(files.entries()).map(([path, content]) => ({ path, content }));
+    const filesArray = files ? Array.from(files.entries()).map(([path, content]) => ({ path, content })) : [];
     const pipelineStart = Date.now();
 
     try {
@@ -507,11 +507,23 @@ export function SovereignLiberationPipeline({
           </div>
         )}
 
+        {/* Standalone mode - no project selected */}
+        {!files && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertTriangle className="h-4 w-4 text-primary" />
+            <AlertTitle>Aucun projet sélectionné</AlertTitle>
+            <AlertDescription>
+              Pour lancer le pipeline de libération, analysez d'abord un projet depuis l'onglet 
+              <strong> Importer</strong> ou sélectionnez un projet existant dans <strong>Mes Projets</strong>.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <Button 
             onClick={runPipeline} 
-            disabled={isRunning || files.size === 0}
+            disabled={isRunning || !files || files.size === 0}
             className="flex-1"
             size="lg"
           >
