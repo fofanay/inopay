@@ -1734,6 +1734,9 @@
     "deployScriptGenerated": "Deploy script generated",
     "credentialsRequired": "Credentials required",
     "credentialsRequiredDesc": "Please enter the URL and Service Role Key of your private Supabase",
-    "runningMigrations": "Running SQL migrations..."
+    "runningMigrations": "Running SQL migrations...",
+    "downloadSqlScript": "Download SQL",
+    "sqlScriptDownloaded": "SQL script downloaded",
+    "sqlScriptInstructions": "Download the SQL script, then run it in your private Supabase SQL Editor before launching the pipeline."
   }
 }
