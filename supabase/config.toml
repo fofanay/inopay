@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.validate-github-repo]
 verify_jwt = false
+
+[functions.auto-fix-dockerfile]
+verify_jwt = false
