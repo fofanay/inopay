@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { withRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
@@ -70,19 +70,17 @@ serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader ? authHeader.replace(/^Bearer\s+/i, "") : "";
 
-  // Auth client uses the incoming Authorization header (no session storage in functions)
+  // Auth client for validating the incoming JWT
   const authClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false },
-    global: {
-      headers: authHeader ? { Authorization: authHeader } : {},
-    },
   });
 
   let userId: string | null = null;
 
-  if (authHeader) {
-    const { data } = await authClient.auth.getUser();
+  if (token) {
+    const { data } = await authClient.auth.getUser(token);
     userId = data.user?.id ?? null;
   }
 
@@ -105,8 +103,9 @@ serve(async (req) => {
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
 
     if (!authHeader) throw new Error("No authorization header provided");
+    if (!token) throw new Error("No token provided");
 
-    const { data: userData, error: userError } = await authClient.auth.getUser();
+    const { data: userData, error: userError } = await authClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
 
     const user = userData.user;
