@@ -21,7 +21,9 @@ import {
   GitBranch,
   Loader2,
   GitCommit,
-  RotateCw
+  RotateCw,
+  Search,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -212,6 +214,30 @@ interface AutoFixResult {
   };
 }
 
+interface DiagnosticsResult {
+  app?: {
+    uuid: string;
+    name: string;
+    build_pack: string | null;
+    base_directory: string | null;
+    dockerfile_location: string | null;
+    git_repository: string | null;
+    git_branch: string | null;
+    status: string | null;
+  };
+  diagnostics?: {
+    build_pack_ok: boolean;
+    base_directory_ok: boolean;
+    dockerfile_location_ok: boolean;
+    git_configured: boolean;
+  };
+  deployments?: Array<{
+    uuid: string;
+    status: string;
+    created_at: string;
+  }>;
+}
+
 export function CoolifyDeploymentErrorHandler({ 
   logs, 
   githubRepoUrl,
@@ -227,6 +253,8 @@ export function CoolifyDeploymentErrorHandler({
   const [isFixing, setIsFixing] = useState<string | null>(null);
   const [fixResult, setFixResult] = useState<AutoFixResult | null>(null);
   const [autoRedeploy, setAutoRedeploy] = useState(true);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
 
   // Detect errors in logs
   const detectedErrors: DetectedError[] = [];
@@ -328,6 +356,48 @@ export function CoolifyDeploymentErrorHandler({
     toast.success('Logs copiés!');
   };
 
+  const handleDiagnostics = async () => {
+    if (!coolifyAppUuid || !serverId) {
+      toast.error('UUID de l\'application et ID du serveur requis');
+      return;
+    }
+
+    setIsDiagnosing(true);
+    setDiagnostics(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('get-coolify-app-details', {
+        body: {
+          server_id: serverId,
+          app_uuid: coolifyAppUuid
+        }
+      });
+
+      if (error) throw error;
+
+      setDiagnostics(data);
+      
+      if (data.diagnostics) {
+        const issues = [];
+        if (!data.diagnostics.build_pack_ok) issues.push('build_pack');
+        if (!data.diagnostics.base_directory_ok) issues.push('base_directory');
+        if (!data.diagnostics.dockerfile_location_ok) issues.push('dockerfile_location');
+        if (!data.diagnostics.git_configured) issues.push('git');
+        
+        if (issues.length > 0) {
+          toast.warning(`Configuration à vérifier: ${issues.join(', ')}`);
+        } else {
+          toast.success('Configuration Coolify OK');
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      toast.error('Échec du diagnostic', { description: errorMessage });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'error': return <AlertCircle className="h-5 w-5 text-destructive" />;
@@ -405,8 +475,83 @@ export function CoolifyDeploymentErrorHandler({
           <Wrench className="h-5 w-5" />
           {detectedErrors.length} erreur{detectedErrors.length > 1 ? 's' : ''} détectée{detectedErrors.length > 1 ? 's' : ''}
         </h3>
-        <Badge variant="destructive">{detectedErrors.length}</Badge>
+        <div className="flex items-center gap-2">
+          {coolifyAppUuid && serverId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDiagnostics}
+              disabled={isDiagnosing}
+            >
+              {isDiagnosing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              <span className="ml-2 hidden sm:inline">Diagnostic</span>
+            </Button>
+          )}
+          <Badge variant="destructive">{detectedErrors.length}</Badge>
+        </div>
       </div>
+
+      {/* Diagnostics Results */}
+      {diagnostics && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Configuration Coolify
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                {diagnostics.diagnostics?.build_pack_ok ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                )}
+                <span>build_pack: {diagnostics.app?.build_pack || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {diagnostics.diagnostics?.base_directory_ok ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                )}
+                <span>base_directory: {diagnostics.app?.base_directory || '/'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {diagnostics.diagnostics?.dockerfile_location_ok ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                )}
+                <span>dockerfile: {diagnostics.app?.dockerfile_location || '/Dockerfile'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {diagnostics.diagnostics?.git_configured ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                )}
+                <span>git: {diagnostics.diagnostics?.git_configured ? 'configuré' : 'manquant'}</span>
+              </div>
+            </div>
+            {diagnostics.app?.status && (
+              <p className="text-xs text-muted-foreground">
+                Status: <Badge variant="outline" className="text-xs">{diagnostics.app.status}</Badge>
+              </p>
+            )}
+            {diagnostics.deployments && diagnostics.deployments.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Dernier déploiement: {diagnostics.deployments[0]?.status}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-3">
         {detectedErrors.map((error, idx) => (
