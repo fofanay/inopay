@@ -185,12 +185,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           response.data?.error?.includes("Authentication") ||
           response.data?.error?.includes("session missing")) {
         console.log("[AUTH] Got 401, attempting token refresh and retry");
+        
+        // First check if we even have a session still
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) {
+          console.log("[AUTH] No valid session, user needs to re-login");
+          setSession(null);
+          setUser(null);
+          setSubscription({ subscribed: false, planType: "free" });
+          setRole(null);
+          return;
+        }
+        
         const newSession = await refreshSession();
         
         if (!newSession) {
           // Session is truly invalid, user needs to re-login
           console.log("[AUTH] Session invalid, user needs to re-login");
+          setSession(null);
+          setUser(null);
           setSubscription({ subscribed: false, planType: "free" });
+          setRole(null);
           return;
         }
         
@@ -286,15 +301,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Periodic subscription refresh every 60 seconds
   useEffect(() => {
-    if (!session?.access_token) return;
+    if (!session?.access_token || !user) return;
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
+      // Re-check if session is still valid before making the call
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) {
+        console.log("[AUTH] Session expired, stopping periodic refresh");
+        setSession(null);
+        setUser(null);
+        setSubscription({ subscribed: false, planType: "free" });
+        setRole(null);
+        return;
+      }
+      
       console.log("[AUTH] Periodic subscription refresh");
-      checkSubscription(session.access_token);
+      checkSubscription(currentSession.access_token);
     }, 60000); // 60 seconds
 
     return () => clearInterval(interval);
-  }, [session?.access_token, checkSubscription]);
+  }, [session?.access_token, user, checkSubscription]);
 
   // Check role when user changes
   useEffect(() => {
