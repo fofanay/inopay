@@ -241,6 +241,47 @@ export const AdminMigrationTools = () => {
           <p className="text-sm text-muted-foreground mt-2">
             {stats?.usersWithServers || 0} utilisateurs sur {stats?.totalUsers || 0} ont un serveur VPS configuré
           </p>
+      </CardContent>
+      </Card>
+
+      {/* Master SQL Script Download */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-amber-500" />
+            🗃️ Master Script SQL de Migration
+          </CardTitle>
+          <CardDescription>
+            Script complet incluant les 32 migrations fusionnées (ENUM, tables, RLS, triggers)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = '/MASTER_MIGRATION_INOPAY.sql';
+              link.download = 'MASTER_MIGRATION_INOPAY.sql';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              toast.success('Script Master SQL téléchargé');
+            }}
+            className="w-full"
+            variant="default"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            📥 Télécharger MASTER_MIGRATION_INOPAY.sql
+          </Button>
+          
+          <div className="p-3 rounded-lg bg-muted/50 border border-muted-foreground/20">
+            <h4 className="font-medium text-sm mb-2">Instructions d'utilisation :</h4>
+            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+              <li>Téléchargez le fichier SQL ci-dessus</li>
+              <li>Ouvrez le SQL Editor de votre Supabase privé</li>
+              <li>Copiez-collez le contenu du fichier</li>
+              <li>Exécutez le script pour créer toutes les tables et policies</li>
+            </ol>
+          </div>
         </CardContent>
       </Card>
 
