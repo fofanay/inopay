@@ -74,6 +74,7 @@ import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import { DeploymentChoice } from "@/components/dashboard/DeploymentChoice";
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
+import { CoolifyDeploymentAssistant } from "@/components/dashboard/CoolifyDeploymentAssistant";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -174,6 +175,7 @@ const AdminDashboard = () => {
     { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
     // 🖥️ Infrastructure
     { id: "my-fleet", label: "Ma Flotte Perso", icon: Layers, section: "infra" },
+    { id: "deploy-assistant", label: "Deploy Assistant", icon: Rocket, section: "infra" },
     { id: "deploy-choice", label: "Choix Déploiement", icon: Rocket, section: "infra" },
     { id: "sync-mirror", label: "Sync & Mirror", icon: GitBranch, section: "infra" },
     { id: "import", label: "Import Projets", icon: FolderUp, section: "infra" },
@@ -204,6 +206,7 @@ const AdminDashboard = () => {
       case "overview": return "Statistiques globales de la plateforme Inopay";
       case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
       case "my-fleet": return "Gérez vos propres serveurs Coolify pour les déploiements";
+      case "deploy-assistant": return "Configurez et déployez automatiquement sur Coolify";
       case "deploy-choice": return "Choisissez votre méthode de déploiement préférée";
       case "sync-mirror": return "Synchronisez vos déploiements avec GitHub";
       case "import": return "Importez et analysez de nouveaux projets";
@@ -344,6 +347,11 @@ const AdminDashboard = () => {
               <MyPersonalFleet 
                 onSelectProject={handleSelectProject}
                 onNavigate={handleFleetNavigate}
+              />
+            )}
+            {activeTab === "deploy-assistant" && (
+              <CoolifyDeploymentAssistant 
+                onComplete={(id) => toast.success(`Déploiement créé: ${id}`)} 
               />
             )}
             {activeTab === "deploy-choice" && (
