@@ -18,9 +18,12 @@ import {
   FileCode,
   Package,
   Server,
-  GitBranch
+  GitBranch,
+  Loader2,
+  GitCommit
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ErrorPattern {
   id: string;
@@ -181,7 +184,9 @@ const ERROR_PATTERNS: ErrorPattern[] = [
 
 interface CoolifyDeploymentErrorHandlerProps {
   logs: string;
+  githubRepoUrl?: string;
   onAutoFix?: (fixAction: string) => void;
+  onAutoFixComplete?: () => void;
   showRawLogs?: boolean;
 }
 
@@ -190,13 +195,25 @@ interface DetectedError {
   match: string;
 }
 
+interface AutoFixResult {
+  success: boolean;
+  message?: string;
+  commit_sha?: string;
+  commit_url?: string;
+  files_modified?: string[];
+}
+
 export function CoolifyDeploymentErrorHandler({ 
   logs, 
+  githubRepoUrl,
   onAutoFix,
+  onAutoFixComplete,
   showRawLogs = true 
 }: CoolifyDeploymentErrorHandlerProps) {
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
   const [showLogs, setShowLogs] = useState(false);
+  const [isFixing, setIsFixing] = useState<string | null>(null);
+  const [fixResult, setFixResult] = useState<AutoFixResult | null>(null);
 
   // Detect errors in logs
   const detectedErrors: DetectedError[] = [];
@@ -208,6 +225,59 @@ export function CoolifyDeploymentErrorHandler({
         pattern,
         match: match[0]
       });
+    }
+  }
+
+  const handleAutoFix = async (fixAction: string) => {
+    if (!githubRepoUrl) {
+      toast.error('URL du dépôt GitHub requise pour l\'auto-fix');
+      return;
+    }
+
+    setIsFixing(fixAction);
+    setFixResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-fix-dockerfile', {
+        body: {
+          github_repo_url: githubRepoUrl,
+          fix_type: fixAction
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        setFixResult({
+          success: true,
+          message: data.message,
+          commit_sha: data.commit_sha,
+          commit_url: data.commit_url,
+          files_modified: data.files_modified
+        });
+        toast.success('Dockerfile corrigé avec succès!', {
+          description: `Commit: ${data.commit_sha?.slice(0, 7)}`,
+          action: data.commit_url ? {
+            label: 'Voir',
+            onClick: () => window.open(data.commit_url, '_blank')
+          } : undefined
+        });
+        onAutoFix?.(fixAction);
+        onAutoFixComplete?.();
+      } else {
+        throw new Error(data.error || 'Auto-fix failed');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      setFixResult({
+        success: false,
+        message: errorMessage
+      });
+      toast.error('Échec de l\'auto-fix', { description: errorMessage });
+    } finally {
+      setIsFixing(null);
     }
   }
 
@@ -368,15 +438,63 @@ export function CoolifyDeploymentErrorHandler({
                     </ul>
                   </div>
 
-                  {error.pattern.autoFixable && onAutoFix && error.pattern.fixAction && (
-                    <Button 
-                      size="sm" 
-                      onClick={() => onAutoFix(error.pattern.fixAction!)}
-                      className="w-full"
-                    >
-                      <Wrench className="h-4 w-4 mr-2" />
-                      Corriger automatiquement
-                    </Button>
+                  {error.pattern.autoFixable && githubRepoUrl && error.pattern.fixAction && (
+                    <div className="space-y-2">
+                      {fixResult && fixResult.success && (
+                        <Alert className="bg-green-500/10 border-green-500">
+                          <GitCommit className="h-4 w-4 text-green-500" />
+                          <AlertTitle className="text-green-700 dark:text-green-400">
+                            Correction appliquée
+                          </AlertTitle>
+                          <AlertDescription className="text-sm">
+                            <p>{fixResult.message}</p>
+                            {fixResult.files_modified && (
+                              <p className="text-xs mt-1">
+                                Fichiers modifiés: {fixResult.files_modified.join(', ')}
+                              </p>
+                            )}
+                            {fixResult.commit_url && (
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-0 h-auto mt-1"
+                                onClick={() => window.open(fixResult.commit_url, '_blank')}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Voir le commit
+                              </Button>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {fixResult && !fixResult.success && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Échec de l'auto-fix</AlertTitle>
+                          <AlertDescription>{fixResult.message}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleAutoFix(error.pattern.fixAction!)}
+                        disabled={isFixing !== null}
+                        className="w-full"
+                      >
+                        {isFixing === error.pattern.fixAction ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Correction en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Wrench className="h-4 w-4 mr-2" />
+                            Corriger automatiquement (commit GitHub)
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </CollapsibleContent>
