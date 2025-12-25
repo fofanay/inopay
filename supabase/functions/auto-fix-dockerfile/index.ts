@@ -6,38 +6,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Corrected Dockerfile template that uses npm install instead of npm ci
-const CORRECTED_DOCKERFILE = `# Build stage
-FROM node:18-alpine AS builder
+// Corrected Dockerfile template with debug and proper file handling
+const CORRECTED_DOCKERFILE = `# ============================================
+# Auto-generated Dockerfile by Inopay
+# Optimized for Vite/React projects
+# ============================================
+
+# Build stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY bun.lockb* ./
+# Debug: Show build context
+RUN echo "=== Build context check ===" && pwd
 
-# Install dependencies - using npm install for compatibility
-RUN npm install --legacy-peer-deps
+# Copy package files first (for better layer caching)
+COPY package.json ./
+COPY package-lock.json* bun.lockb* ./
 
-# Copy source code
+# Debug: Verify package.json exists
+RUN echo "=== Package files ===" && ls -la package*.json || echo "WARNING: No package.json found!"
+
+# Install dependencies
+RUN npm install --legacy-peer-deps || (echo "npm install failed" && exit 1)
+
+# Copy all source files
 COPY . .
+
+# Debug: Show what was copied
+RUN echo "=== Source files copied ===" && ls -la
 
 # Build the application
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
+# Debug: Verify build output
+RUN echo "=== Build output ===" && ls -la dist/ || echo "WARNING: No dist folder!"
+
 # Production stage
-FROM nginx:alpine
+FROM nginx:alpine AS production
+
+# Copy nginx config (inline default if missing)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration if exists
-COPY nginx.conf /etc/nginx/conf.d/default.conf 2>/dev/null || echo "Using default nginx config"
-
 # Expose port 80
 EXPOSE 80
 
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
 `;
 
