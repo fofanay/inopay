@@ -66,9 +66,18 @@ interface PreDeployCheck {
     npm_install_line?: number;
     is_valid: boolean;
   };
+  github_info?: {
+    owner: string;
+    repo: string;
+    has_write_permission: boolean;
+    permission_level?: string;
+    dockerfile_fetched: boolean;
+    dockerfile_raw?: string;
+  };
   checks: {
     coolify_connection: boolean;
     github_access: boolean;
+    github_write_permission?: boolean;
     package_json: boolean;
     dockerfile: boolean;
     dockerfile_verified?: boolean;
@@ -137,6 +146,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
     differences: string[];
   } | null>(null);
   const [isComparing, setIsComparing] = useState(false);
+  const [skipDockerfileFix, setSkipDockerfileFix] = useState(false);
   // Load servers on mount
   useEffect(() => {
     loadServers();
@@ -222,7 +232,8 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
           server_id: selectedServer.id,
           github_repo_url: githubRepoUrl,
           project_name: projectName,
-          auto_fix: true
+          auto_fix: true,
+          skip_dockerfile_fix: skipDockerfileFix
         }
       });
 
@@ -673,6 +684,18 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
               />
             </div>
 
+            {/* Skip dockerfile auto-fix option */}
+            <div className="flex items-center space-x-2 pt-2">
+              <Switch
+                id="skip-dockerfile-fix"
+                checked={skipDockerfileFix}
+                onCheckedChange={setSkipDockerfileFix}
+              />
+              <Label htmlFor="skip-dockerfile-fix" className="text-sm text-muted-foreground">
+                Ne pas auto-corriger le Dockerfile (utiliser celui existant)
+              </Label>
+            </div>
+
             <Button
               onClick={runPreflightCheck}
               disabled={!githubRepoUrl || !projectName || isRunningPreflight}
@@ -685,9 +708,42 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
               )}
             </Button>
 
-            {/* Preflight results */}
             {preflightCheck && (
               <div className="space-y-3 mt-4">
+                {/* GitHub Info */}
+                {preflightCheck.github_info && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium flex items-center gap-2">
+                        <GitBranch className="h-4 w-4" />
+                        Dépôt GitHub
+                      </span>
+                      <Badge variant={preflightCheck.github_info.has_write_permission ? 'default' : 'destructive'}>
+                        {preflightCheck.github_info.permission_level || 'N/A'}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
+                      {preflightCheck.github_info.owner}/{preflightCheck.github_info.repo}
+                    </p>
+                    {!preflightCheck.github_info.has_write_permission && (
+                      <Alert className="mt-2 bg-destructive/10 border-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          Token sans droits d'écriture - impossible de corriger automatiquement le Dockerfile
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {preflightCheck.github_info.dockerfile_fetched === false && (
+                      <Alert className="mt-2 bg-warning/10 border-warning">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          Dockerfile non récupéré depuis GitHub - vérifiez que le repo est correct
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+                
                 {/* Check items */}
                 <div className="grid gap-2">
                   <CheckItem 
@@ -699,6 +755,11 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     checked={preflightCheck.checks.github_access} 
                   />
                   <CheckItem 
+                    label="Droits écriture GitHub" 
+                    checked={preflightCheck.checks.github_write_permission || false}
+                    detail={preflightCheck.github_info?.permission_level}
+                  />
+                  <CheckItem 
                     label="package.json présent" 
                     checked={preflightCheck.checks.package_json} 
                   />
@@ -707,6 +768,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     checked={preflightCheck.checks.dockerfile}
                     detail={preflightCheck.dockerfile_status === 'generated' ? '(généré)' : 
                            preflightCheck.dockerfile_status === 'exists_fixed' ? '(corrigé)' : 
+                           preflightCheck.dockerfile_status === 'github_fetch_failed' ? '(non récupéré)' :
                            preflightCheck.checks.dockerfile_verified ? '(vérifié)' : ''}
                   />
                   <CheckItem 
@@ -714,9 +776,8 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     checked={preflightCheck.checks.env_vars} 
                   />
                 </div>
-
-                {/* Dockerfile preview */}
-                {preflightCheck.dockerfile_proof && (
+                {/* Dockerfile preview with raw content from GitHub */}
+                {(preflightCheck.dockerfile_proof || preflightCheck.github_info?.dockerfile_raw) && (
                   <div className="mt-3">
                     <Button
                       variant="ghost"
@@ -726,7 +787,7 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                     >
                       <FileCode className="h-4 w-4 mr-2" />
                       {showDockerfile ? 'Masquer' : 'Voir'} le Dockerfile analysé
-                      {preflightCheck.dockerfile_proof.is_valid ? (
+                      {preflightCheck.dockerfile_proof?.is_valid ? (
                         <Badge variant="default" className="ml-2 bg-green-500">Valide</Badge>
                       ) : (
                         <Badge variant="destructive" className="ml-2">Invalide</Badge>
@@ -737,29 +798,71 @@ export function CoolifyDeploymentAssistant({ onComplete }: CoolifyDeploymentAssi
                       <div className="mt-2 p-3 bg-muted rounded-lg">
                         <div className="flex items-center justify-between mb-2 text-xs">
                           <span className="text-muted-foreground">
-                            COPY package.json: ligne {preflightCheck.dockerfile_proof.copy_package_line || 'N/A'} |
-                            npm install: ligne {preflightCheck.dockerfile_proof.npm_install_line || 'N/A'}
+                            COPY package.json: ligne {preflightCheck.dockerfile_proof?.copy_package_line || 'N/A'} |
+                            npm install: ligne {preflightCheck.dockerfile_proof?.npm_install_line || 'N/A'}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(`${githubRepoUrl}/blob/${preflightCheck.branch}/Dockerfile`, '_blank')}
-                          >
-                            <Eye className="h-3 w-3 mr-1" /> GitHub
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const content = preflightCheck.github_info?.dockerfile_raw || preflightCheck.dockerfile_proof?.raw_content;
+                                if (content) {
+                                  navigator.clipboard.writeText(content);
+                                  toast.success('Dockerfile copié');
+                                }
+                              }}
+                            >
+                              <Copy className="h-3 w-3 mr-1" /> Copier
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(`${githubRepoUrl}/blob/${preflightCheck.branch}/Dockerfile`, '_blank')}
+                            >
+                              <Eye className="h-3 w-3 mr-1" /> GitHub
+                            </Button>
+                          </div>
                         </div>
-                        <pre className="text-xs overflow-x-auto max-h-40 overflow-y-auto bg-black text-green-400 p-2 rounded">
-                          {preflightCheck.dockerfile_proof.raw_content || 'Contenu non disponible'}
+                        <pre className="text-xs overflow-x-auto max-h-60 overflow-y-auto bg-black text-green-400 p-2 rounded whitespace-pre-wrap">
+                          {preflightCheck.github_info?.dockerfile_raw || preflightCheck.dockerfile_proof?.raw_content || 'Contenu non disponible'}
                         </pre>
+                        {preflightCheck.dockerfile_status === 'github_fetch_failed' && (
+                          <Alert className="mt-2 bg-warning/10 border-warning">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription className="text-xs">
+                              ⚠️ Dockerfile non récupéré depuis GitHub. Le repo "{preflightCheck.github_info?.owner}/{preflightCheck.github_info?.repo}" est-il correct?
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
                     )}
                   </div>
                 )}
-
                 {/* Branch and commit info */}
                 {preflightCheck.ready && (
                   <div className="p-3 bg-muted/50 rounded-lg text-sm">
                     <p><strong>Branche:</strong> {preflightCheck.branch}</p>
+                    {preflightCheck.commit_sha && (
+                      <p><strong>Commit:</strong> <code className="text-xs">{preflightCheck.commit_sha.slice(0, 7)}</code></p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions taken */}
+                {preflightCheck.actions_taken.length > 0 && (
+                  <Alert className="bg-blue-500/10 border-blue-500">
+                    <FileCheck className="h-4 w-4 text-blue-500" />
+                    <AlertDescription>
+                      <strong>Actions effectuées:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {preflightCheck.actions_taken.map((action, i) => (
+                          <li key={i}>{action}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
                     {preflightCheck.commit_sha && (
                       <p><strong>Commit:</strong> <code className="text-xs">{preflightCheck.commit_sha.slice(0, 7)}</code></p>
                     )}

@@ -14,16 +14,25 @@ interface PreDeployCheckResult {
   warnings: string[];
   blocking_errors: string[];
   env_vars_needed: { key: string; suggested_value?: string; is_build_time: boolean }[];
-  dockerfile_status: 'exists_valid' | 'exists_fixed' | 'generated' | 'missing' | 'invalid';
+  dockerfile_status: 'exists_valid' | 'exists_fixed' | 'generated' | 'missing' | 'invalid' | 'github_fetch_failed';
   dockerfile_proof?: {
     raw_content?: string;
     copy_package_line?: number;
     npm_install_line?: number;
     is_valid: boolean;
   };
+  github_info?: {
+    owner: string;
+    repo: string;
+    has_write_permission: boolean;
+    permission_level?: string;
+    dockerfile_fetched: boolean;
+    dockerfile_raw?: string;
+  };
   checks: {
     coolify_connection: boolean;
     github_access: boolean;
+    github_write_permission: boolean;
     package_json: boolean;
     dockerfile: boolean;
     dockerfile_verified: boolean;
@@ -237,7 +246,13 @@ serve(async (req) => {
       );
     }
 
-    const { server_id, github_repo_url, project_name, auto_fix = true } = await req.json();
+    const { 
+      server_id, 
+      github_repo_url, 
+      project_name, 
+      auto_fix = true,
+      skip_dockerfile_fix = false 
+    } = await req.json();
 
     if (!server_id || !github_repo_url) {
       return new Response(
@@ -260,6 +275,7 @@ serve(async (req) => {
       checks: {
         coolify_connection: false,
         github_access: false,
+        github_write_permission: false,
         package_json: false,
         dockerfile: false,
         dockerfile_verified: false,
@@ -330,6 +346,9 @@ serve(async (req) => {
     let defaultBranch = 'main';
     let currentCommitSha = '';
 
+    let hasWritePermission = false;
+    let permissionLevel = 'none';
+    
     try {
       const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repoClean}`, { headers: githubHeaders });
       if (repoRes.ok) {
@@ -337,13 +356,42 @@ serve(async (req) => {
         defaultBranch = repoData.default_branch || 'main';
         result.branch = defaultBranch;
         result.checks.github_access = true;
-        console.log(`[pre-deploy-check] GitHub access OK, branch: ${defaultBranch}`);
+        
+        // Check permissions from repo data
+        if (repoData.permissions) {
+          hasWritePermission = repoData.permissions.push === true || repoData.permissions.admin === true;
+          permissionLevel = repoData.permissions.admin ? 'admin' : 
+                           repoData.permissions.push ? 'write' : 
+                           repoData.permissions.pull ? 'read' : 'none';
+        }
+        
+        result.checks.github_write_permission = hasWritePermission;
+        
+        // Store GitHub info for UI
+        result.github_info = {
+          owner,
+          repo: repoClean,
+          has_write_permission: hasWritePermission,
+          permission_level: permissionLevel,
+          dockerfile_fetched: false
+        };
+        
+        console.log(`[pre-deploy-check] GitHub access OK, branch: ${defaultBranch}, permission: ${permissionLevel}, write: ${hasWritePermission}`);
       } else {
-        result.blocking_errors.push(`Dépôt GitHub inaccessible (${repoRes.status})`);
+        const errorText = await repoRes.text();
+        console.error(`[pre-deploy-check] GitHub repo access failed: ${repoRes.status} - ${errorText}`);
+        result.github_info = {
+          owner,
+          repo: repoClean,
+          has_write_permission: false,
+          permission_level: 'error',
+          dockerfile_fetched: false
+        };
+        result.blocking_errors.push(`Dépôt GitHub inaccessible (${repoRes.status}). Vérifiez que le repo "${owner}/${repoClean}" existe et que le token a les droits d'accès.`);
         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     } catch (e) {
-      result.blocking_errors.push('Erreur accès GitHub');
+      result.blocking_errors.push(`Erreur accès GitHub: ${e instanceof Error ? e.message : String(e)}`);
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -389,13 +437,22 @@ serve(async (req) => {
     
     let dockerfileContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
     
+    // Log raw content for debugging
     if (dockerfileContent) {
+      console.log(`[pre-deploy-check] Dockerfile fetched (${dockerfileContent.length} bytes)`);
+      console.log(`[pre-deploy-check] Dockerfile first 200 chars: ${dockerfileContent.slice(0, 200).replace(/\n/g, '\\n')}`);
+      
+      if (result.github_info) {
+        result.github_info.dockerfile_fetched = true;
+        result.github_info.dockerfile_raw = dockerfileContent.slice(0, 1000); // Store first 1000 chars for UI
+      }
+      
       // Analyze the current Dockerfile
       const analysis = analyzeDockerfile(dockerfileContent);
       console.log(`[pre-deploy-check] Dockerfile analysis: ${analysis.details}`);
       
       result.dockerfile_proof = {
-        raw_content: dockerfileContent.slice(0, 500), // First 500 chars for debugging
+        raw_content: dockerfileContent.slice(0, 500),
         copy_package_line: analysis.copyPackageLine,
         npm_install_line: analysis.npmInstallLine,
         is_valid: analysis.isValid
@@ -405,24 +462,29 @@ serve(async (req) => {
         result.dockerfile_status = 'invalid';
         result.warnings.push(`Dockerfile cassé: ${analysis.details}`);
         
-        if (auto_fix && githubToken) {
+        // Check if we should attempt auto-fix
+        if (skip_dockerfile_fix) {
+          console.log('[pre-deploy-check] Auto-fix skipped by user request');
+          result.warnings.push('Auto-correction du Dockerfile désactivée par l\'utilisateur');
+        } else if (!githubToken) {
+          console.log('[pre-deploy-check] No GitHub token available for auto-fix');
+          result.blocking_errors.push('Token GitHub non configuré - impossible de corriger automatiquement');
+        } else if (!hasWritePermission) {
+          console.log('[pre-deploy-check] No write permission on GitHub repo');
+          result.blocking_errors.push(`Token GitHub sans droits d'écriture (niveau: ${permissionLevel}). Veuillez utiliser un token avec les droits "Contents: write" ou corriger le Dockerfile manuellement.`);
+        } else if (auto_fix) {
           console.log('[pre-deploy-check] Auto-fixing Dockerfile...');
           
           try {
-            // Get current tree SHA
             const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
-            
-            // Create blobs for corrected files
             const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
             const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
             
-            // Create new tree
             const newTree = await createTree(owner, repoClean, commitTreeSha, [
               { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
               { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
             ], githubHeaders);
             
-            // Create commit
             const newCommit = await createCommit(
               owner, repoClean, 
               '🔧 Pre-deploy fix: Corrected Dockerfile (COPY package.json before npm install)', 
@@ -431,7 +493,6 @@ serve(async (req) => {
               githubHeaders
             );
             
-            // Update ref
             const updateSuccess = await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
             
             if (updateSuccess) {
@@ -439,10 +500,8 @@ serve(async (req) => {
               result.commit_sha = newCommit;
               result.actions_taken.push('Dockerfile corrigé automatiquement');
               
-              // CRITICAL: Wait and verify the fix was applied
               await new Promise(resolve => setTimeout(resolve, 2000));
               
-              // Re-fetch Dockerfile to VERIFY the fix
               const verifiedContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
               if (verifiedContent) {
                 const verifyAnalysis = analyzeDockerfile(verifiedContent);
@@ -461,86 +520,94 @@ serve(async (req) => {
                   result.checks.dockerfile_verified = true;
                   console.log('[pre-deploy-check] Dockerfile verified as FIXED');
                 } else {
-                  result.blocking_errors.push(`Fix non appliqué: ${verifyAnalysis.details}. Vérifiez les protections de branche ou les permissions du token GitHub.`);
+                  result.blocking_errors.push(`Fix non appliqué: ${verifyAnalysis.details}`);
                   result.dockerfile_status = 'invalid';
                 }
               } else {
                 result.blocking_errors.push('Impossible de vérifier le Dockerfile après correction');
               }
             } else {
-              result.blocking_errors.push('Échec de mise à jour de la branche GitHub - branche protégée ou token insuffisant');
+              result.blocking_errors.push('Échec de mise à jour de la branche - branche protégée?');
             }
           } catch (fixError) {
             console.error('[pre-deploy-check] Fix error:', fixError);
-            result.blocking_errors.push(`Erreur lors de la correction: ${fixError instanceof Error ? fixError.message : String(fixError)}`);
+            result.blocking_errors.push(`Erreur correction: ${fixError instanceof Error ? fixError.message : String(fixError)}`);
           }
         } else {
-          result.blocking_errors.push('Dockerfile invalide et auto-fix désactivé ou token GitHub manquant');
+          result.blocking_errors.push('Dockerfile invalide et auto-fix désactivé');
         }
-      } else {
-        // Dockerfile is valid
-        result.dockerfile_status = 'exists_valid';
-        result.checks.dockerfile = true;
-        result.checks.dockerfile_verified = true;
-        console.log('[pre-deploy-check] Dockerfile is valid');
-      }
-    } else if (files.includes('Dockerfile')) {
-      // Dockerfile exists but couldn't be read
-      result.warnings.push('Dockerfile existe mais impossible à lire');
-      result.dockerfile_status = 'missing';
-    } else if (auto_fix && githubToken) {
-      // No Dockerfile - generate one
-      console.log('[pre-deploy-check] Generating Dockerfile...');
-      
-      try {
-        const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
-        
-        const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
-        const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
-        
-        const newTree = await createTree(owner, repoClean, commitTreeSha, [
-          { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
-          { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
-        ], githubHeaders);
-        
-        const newCommit = await createCommit(
-          owner, repoClean,
-          '🔧 Pre-deploy: Generated Dockerfile for deployment',
-          newTree,
-          currentCommitSha,
-          githubHeaders
-        );
-        
-        const updateSuccess = await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
-        
-        if (updateSuccess) {
-          result.commit_sha = newCommit;
-          result.dockerfile_status = 'generated';
-          result.actions_taken.push('Dockerfile généré automatiquement');
-          result.checks.dockerfile = true;
-          
-          // Verify generation
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          const verifiedContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
-          if (verifiedContent) {
-            const verifyAnalysis = analyzeDockerfile(verifiedContent);
-            result.checks.dockerfile_verified = verifyAnalysis.isValid;
-            result.dockerfile_proof = {
-              raw_content: verifiedContent.slice(0, 500),
-              copy_package_line: verifyAnalysis.copyPackageLine,
-              npm_install_line: verifyAnalysis.npmInstallLine,
-              is_valid: verifyAnalysis.isValid
-            };
-          }
-        } else {
-          result.blocking_errors.push('Échec de création du Dockerfile - branche protégée ou token insuffisant');
-        }
-      } catch (genError) {
-        console.error('[pre-deploy-check] Generate error:', genError);
-        result.blocking_errors.push(`Erreur génération Dockerfile: ${genError instanceof Error ? genError.message : String(genError)}`);
       }
     } else {
-      result.blocking_errors.push('Dockerfile manquant et auto-fix désactivé');
+      // Dockerfile could not be fetched from GitHub
+      console.log(`[pre-deploy-check] Dockerfile fetch failed for ${owner}/${repoClean}`);
+      result.dockerfile_status = 'github_fetch_failed';
+      
+      if (result.github_info) {
+        result.github_info.dockerfile_fetched = false;
+      }
+      
+      if (files.includes('Dockerfile')) {
+        // Dockerfile exists in file list but couldn't be read via raw API
+        result.warnings.push('Dockerfile existe mais impossible à lire via l\'API GitHub - vérifiez les permissions');
+        result.blocking_errors.push(`Impossible de lire le Dockerfile depuis ${owner}/${repoClean}. Vérifiez que le repo est correct et accessible.`);
+      } else if (!skip_dockerfile_fix && auto_fix && githubToken && hasWritePermission) {
+        // No Dockerfile - generate one
+        console.log('[pre-deploy-check] Generating Dockerfile...');
+        
+        try {
+          const commitTreeSha = await getTreeSha(owner, repoClean, currentCommitSha, githubHeaders);
+          
+          const dockerBlob = await createBlob(owner, repoClean, CORRECTED_DOCKERFILE, githubHeaders);
+          const nginxBlob = await createBlob(owner, repoClean, NGINX_CONFIG, githubHeaders);
+          
+          const newTree = await createTree(owner, repoClean, commitTreeSha, [
+            { path: 'Dockerfile', mode: '100644', type: 'blob', sha: dockerBlob },
+            { path: 'nginx.conf', mode: '100644', type: 'blob', sha: nginxBlob }
+          ], githubHeaders);
+          
+          const newCommit = await createCommit(
+            owner, repoClean,
+            '🔧 Pre-deploy: Generated Dockerfile for deployment',
+            newTree,
+            currentCommitSha,
+            githubHeaders
+          );
+          
+          const updateSuccess = await updateRef(owner, repoClean, defaultBranch, newCommit, githubHeaders);
+          
+          if (updateSuccess) {
+            result.commit_sha = newCommit;
+            result.dockerfile_status = 'generated';
+            result.actions_taken.push('Dockerfile généré automatiquement');
+            result.checks.dockerfile = true;
+            
+            // Verify generation
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const verifiedContent = await fetchDockerfileRaw(owner, repoClean, defaultBranch, githubHeaders);
+            if (verifiedContent) {
+              const verifyAnalysis = analyzeDockerfile(verifiedContent);
+              result.checks.dockerfile_verified = verifyAnalysis.isValid;
+              result.dockerfile_proof = {
+                raw_content: verifiedContent.slice(0, 500),
+                copy_package_line: verifyAnalysis.copyPackageLine,
+                npm_install_line: verifyAnalysis.npmInstallLine,
+                is_valid: verifyAnalysis.isValid
+              };
+            }
+          } else {
+            result.blocking_errors.push('Échec de création du Dockerfile - branche protégée ou token insuffisant');
+          }
+        } catch (genError) {
+          console.error('[pre-deploy-check] Generate error:', genError);
+          result.blocking_errors.push(`Erreur génération Dockerfile: ${genError instanceof Error ? genError.message : String(genError)}`);
+        }
+      } else if (!hasWritePermission && !skip_dockerfile_fix) {
+        result.blocking_errors.push(`Dockerfile manquant et token GitHub sans droits d'écriture (niveau: ${permissionLevel})`);
+      } else if (skip_dockerfile_fix) {
+        result.blocking_errors.push('Dockerfile manquant et auto-correction désactivée');
+      } else {
+        result.blocking_errors.push('Dockerfile manquant et auto-fix désactivé');
+      }
     }
 
     // CHECK 5: Environment variables
