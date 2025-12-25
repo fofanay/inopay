@@ -223,6 +223,7 @@ interface DiagnosticsResult {
     dockerfile_location: string | null;
     git_repository: string | null;
     git_branch: string | null;
+    git_commit_sha: string | null;
     status: string | null;
   };
   diagnostics?: {
@@ -236,6 +237,31 @@ interface DiagnosticsResult {
     status: string;
     created_at: string;
   }>;
+}
+
+interface RepoInspectionResult {
+  valid: boolean;
+  owner: string;
+  repo: string;
+  default_branch: string;
+  root_files: string[];
+  has_package_json: boolean;
+  has_dockerfile: boolean;
+  has_package_lock: boolean;
+  has_bun_lockb: boolean;
+  dockerfile_analysis: {
+    exists: boolean;
+    content?: string;
+    has_broken_pattern: boolean;
+    broken_pattern_details?: string;
+    has_copy_package_before_install: boolean;
+    line_numbers?: {
+      copy_package?: number;
+      npm_install?: number;
+    };
+  };
+  warnings: string[];
+  errors: string[];
 }
 
 export function CoolifyDeploymentErrorHandler({ 
@@ -255,6 +281,8 @@ export function CoolifyDeploymentErrorHandler({
   const [autoRedeploy, setAutoRedeploy] = useState(true);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsResult | null>(null);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [repoInspection, setRepoInspection] = useState<RepoInspectionResult | null>(null);
 
   // Detect errors in logs
   const detectedErrors: DetectedError[] = [];
@@ -354,6 +382,43 @@ export function CoolifyDeploymentErrorHandler({
   const copyLogs = () => {
     navigator.clipboard.writeText(logs);
     toast.success('Logs copiés!');
+  };
+
+  const handleInspectRepo = async () => {
+    if (!githubRepoUrl) {
+      toast.error('URL du dépôt GitHub requise');
+      return;
+    }
+
+    setIsInspecting(true);
+    setRepoInspection(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('inspect-github-repo', {
+        body: {
+          github_repo_url: githubRepoUrl
+        }
+      });
+
+      if (error) throw error;
+
+      setRepoInspection(data);
+      
+      if (data.dockerfile_analysis?.has_broken_pattern) {
+        toast.error('Dockerfile cassé détecté!', {
+          description: data.dockerfile_analysis.broken_pattern_details
+        });
+      } else if (data.errors?.length > 0) {
+        toast.warning(`${data.errors.length} problème(s) trouvé(s)`);
+      } else {
+        toast.success('Dépôt validé avec succès');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      toast.error('Échec de l\'inspection', { description: errorMessage });
+    } finally {
+      setIsInspecting(false);
+    }
   };
 
   const handleDiagnostics = async () => {
@@ -475,7 +540,22 @@ export function CoolifyDeploymentErrorHandler({
           <Wrench className="h-5 w-5" />
           {detectedErrors.length} erreur{detectedErrors.length > 1 ? 's' : ''} détectée{detectedErrors.length > 1 ? 's' : ''}
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {githubRepoUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleInspectRepo}
+              disabled={isInspecting}
+            >
+              {isInspecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileCode className="h-4 w-4" />
+              )}
+              <span className="ml-2 hidden sm:inline">Inspecter Repo</span>
+            </Button>
+          )}
           {coolifyAppUuid && serverId && (
             <Button
               variant="outline"
@@ -488,12 +568,108 @@ export function CoolifyDeploymentErrorHandler({
               ) : (
                 <Search className="h-4 w-4" />
               )}
-              <span className="ml-2 hidden sm:inline">Diagnostic</span>
+              <span className="ml-2 hidden sm:inline">Diagnostic Coolify</span>
             </Button>
           )}
           <Badge variant="destructive">{detectedErrors.length}</Badge>
         </div>
       </div>
+
+      {/* Repo Inspection Results */}
+      {repoInspection && (
+        <Card className={`border-2 ${repoInspection.valid ? 'border-green-500/50 bg-green-500/5' : 'border-destructive/50 bg-destructive/5'}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Inspection du dépôt: {repoInspection.owner}/{repoInspection.repo}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-3 w-3 text-primary" />
+                <span>Branche: <strong>{repoInspection.default_branch}</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                {repoInspection.has_package_json ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 text-destructive" />
+                )}
+                <span>package.json</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {repoInspection.has_dockerfile ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-3 w-3 text-warning" />
+                )}
+                <span>Dockerfile</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {repoInspection.has_package_lock || repoInspection.has_bun_lockb ? (
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-3 w-3 text-warning" />
+                )}
+                <span>{repoInspection.has_package_lock ? 'package-lock.json' : repoInspection.has_bun_lockb ? 'bun.lockb' : 'Pas de lock file'}</span>
+              </div>
+            </div>
+
+            {/* Dockerfile Analysis */}
+            {repoInspection.dockerfile_analysis?.exists && (
+              <div className={`p-2 rounded text-xs ${repoInspection.dockerfile_analysis.has_broken_pattern ? 'bg-destructive/20 border border-destructive' : 'bg-green-500/10'}`}>
+                <div className="flex items-center gap-2 font-medium">
+                  {repoInspection.dockerfile_analysis.has_broken_pattern ? (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                      <span className="text-destructive">Dockerfile cassé!</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span className="text-green-600 dark:text-green-400">Dockerfile valide</span>
+                    </>
+                  )}
+                </div>
+                {repoInspection.dockerfile_analysis.broken_pattern_details && (
+                  <p className="mt-1 text-destructive">{repoInspection.dockerfile_analysis.broken_pattern_details}</p>
+                )}
+                {repoInspection.dockerfile_analysis.line_numbers && (
+                  <p className="text-muted-foreground mt-1">
+                    COPY package: L{repoInspection.dockerfile_analysis.line_numbers.copy_package || '?'} | 
+                    npm install: L{repoInspection.dockerfile_analysis.line_numbers.npm_install || '?'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Errors */}
+            {repoInspection.errors.length > 0 && (
+              <div className="space-y-1">
+                {repoInspection.errors.map((err, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-destructive">
+                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Warnings */}
+            {repoInspection.warnings.length > 0 && (
+              <div className="space-y-1">
+                {repoInspection.warnings.map((warn, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-warning">
+                    <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <span>{warn}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Diagnostics Results */}
       {diagnostics && (
@@ -539,6 +715,35 @@ export function CoolifyDeploymentErrorHandler({
                 <span>git: {diagnostics.diagnostics?.git_configured ? 'configuré' : 'manquant'}</span>
               </div>
             </div>
+            
+            {/* Git Branch and Commit Info */}
+            {diagnostics.app?.git_branch && (
+              <div className="flex items-center gap-4 text-xs border-t pt-2 mt-2">
+                <div className="flex items-center gap-1">
+                  <GitBranch className="h-3 w-3" />
+                  <span>Branche: <strong>{diagnostics.app.git_branch}</strong></span>
+                </div>
+                {diagnostics.app.git_commit_sha && (
+                  <div className="flex items-center gap-1">
+                    <GitCommit className="h-3 w-3" />
+                    <span>Commit: <code className="bg-muted px-1 rounded">{diagnostics.app.git_commit_sha.slice(0, 7)}</code></span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Branch mismatch warning */}
+            {repoInspection && diagnostics.app?.git_branch && 
+             repoInspection.default_branch !== diagnostics.app.git_branch && (
+              <Alert variant="destructive" className="py-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <strong>Attention:</strong> Coolify utilise la branche <code>{diagnostics.app.git_branch}</code> mais 
+                  la branche par défaut du dépôt est <code>{repoInspection.default_branch}</code>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {diagnostics.app?.status && (
               <p className="text-xs text-muted-foreground">
                 Status: <Badge variant="outline" className="text-xs">{diagnostics.app.status}</Badge>
