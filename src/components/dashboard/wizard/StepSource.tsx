@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Github, CheckCircle2, Loader2, Eye, EyeOff, ExternalLink, HelpCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Github, CheckCircle2, Loader2, Eye, EyeOff, ExternalLink, HelpCircle, AlertCircle, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useWizard, Platform } from "@/contexts/WizardContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  storeSensitive, 
+  getSensitive, 
+  enableIncognitoMode, 
+  disableIncognitoMode,
+  isIncognitoModeActive 
+} from "@/lib/incognito-mode";
 
 // Platform logos
 import lovableLogo from "@/assets/platforms/lovable-logo.png";
@@ -96,6 +104,41 @@ export function StepSource() {
   
   const [showToken, setShowToken] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [incognitoMode, setIncognitoMode] = useState(isIncognitoModeActive());
+
+  // Gestion du mode incognito
+  useEffect(() => {
+    // Activer le mode incognito par défaut pour la sécurité
+    enableIncognitoMode();
+    setIncognitoMode(true);
+    
+    // Restaurer le token depuis sessionStorage si disponible
+    const savedToken = getSensitive('githubToken');
+    if (savedToken && !state.source.token) {
+      dispatch({ type: "UPDATE_SOURCE", payload: { token: savedToken } });
+    }
+    
+    return () => {
+      // Le mode incognito reste actif jusqu'à fermeture de l'onglet
+    };
+  }, []);
+
+  // Sauvegarder le token dans sessionStorage (jamais en backend sauf VPS)
+  const handleTokenChange = (token: string) => {
+    dispatch({ type: "UPDATE_SOURCE", payload: { token } });
+    if (incognitoMode) {
+      storeSensitive('githubToken', token);
+    }
+  };
+
+  const toggleIncognitoMode = (enabled: boolean) => {
+    if (enabled) {
+      enableIncognitoMode();
+    } else {
+      disableIncognitoMode();
+    }
+    setIncognitoMode(enabled);
+  };
 
   const parseGitHubUrl = (url: string) => {
     const match = url.match(/github\.com\/([^\/]+)\/([^\/\?#]+)/);
@@ -251,6 +294,18 @@ export function StepSource() {
           )}
         </div>
         
+        {/* Incognito Mode Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-success" />
+            <div>
+              <p className="text-sm font-medium">Mode Incognito</p>
+              <p className="text-xs text-muted-foreground">Tokens stockés en session uniquement</p>
+            </div>
+          </div>
+          <Switch checked={incognitoMode} onCheckedChange={toggleIncognitoMode} />
+        </div>
+
         {/* Token input */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -263,7 +318,7 @@ export function StepSource() {
               type={showToken ? "text" : "password"}
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
               value={state.source.token}
-              onChange={(e) => dispatch({ type: "UPDATE_SOURCE", payload: { token: e.target.value } })}
+              onChange={(e) => handleTokenChange(e.target.value)}
               className="pr-10"
             />
             <button
@@ -274,6 +329,12 @@ export function StepSource() {
               {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+          {incognitoMode && (
+            <p className="text-xs text-success flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Token protégé - effacé à la fermeture de l'onglet
+            </p>
+          )}
         </div>
         
         {state.source.isValidated && (

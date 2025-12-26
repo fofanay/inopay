@@ -1,0 +1,251 @@
+# INOPAY Self-Host Docker Compose
+# Déploie une instance miroir complète d'Inopay sur votre VPS
+# 
+# Usage: docker-compose -f docker-compose.inopay.yml up -d
+#
+# Prérequis:
+# - Docker & Docker Compose installés
+# - Ports 80, 443, 8080, 5432, 9000 disponibles
+# - Minimum 4GB RAM, 20GB SSD
+
+version: '3.8'
+
+services:
+  # ============================================
+  # INOPAY FRONTEND
+  # ============================================
+  inopay-frontend:
+    image: ghcr.io/inopay/inopay-frontend:latest
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        - VITE_INFRA_MODE=self-hosted
+        - VITE_SUPABASE_URL=http://supabase-kong:8000
+    container_name: inopay-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_INFRA_MODE=self-hosted
+      - VITE_SUPABASE_URL=http://supabase-kong:8000
+      - VITE_SUPABASE_PUBLISHABLE_KEY=${SUPABASE_ANON_KEY}
+      - VITE_MINIO_URL=http://minio:9000
+      - VITE_OLLAMA_BASE_URL=http://ollama:11434
+      - VITE_MEILISEARCH_URL=http://meilisearch:7700
+    depends_on:
+      - supabase-kong
+      - minio
+    networks:
+      - inopay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # SUPABASE (All-in-One Self-Hosted)
+  # ============================================
+  supabase-db:
+    image: supabase/postgres:15.1.0.147
+    container_name: inopay-supabase-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-your-super-secret-password}
+      - POSTGRES_DB=postgres
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - inopay-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  supabase-kong:
+    image: kong:2.8.1
+    container_name: inopay-supabase-kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    environment:
+      - KONG_DATABASE=off
+      - KONG_DECLARATIVE_CONFIG=/var/lib/kong/kong.yml
+      - KONG_DNS_ORDER=LAST,A,CNAME
+      - KONG_PLUGINS=request-transformer,cors,key-auth,acl
+    volumes:
+      - ./kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - inopay-network
+
+  supabase-auth:
+    image: supabase/gotrue:v2.99.0
+    container_name: inopay-supabase-auth
+    restart: unless-stopped
+    environment:
+      - GOTRUE_API_HOST=0.0.0.0
+      - GOTRUE_API_PORT=9999
+      - API_EXTERNAL_URL=${API_EXTERNAL_URL:-http://localhost:8000}
+      - GOTRUE_DB_DRIVER=postgres
+      - GOTRUE_DB_DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@supabase-db:5432/postgres?search_path=auth
+      - GOTRUE_SITE_URL=${SITE_URL:-http://localhost:8080}
+      - GOTRUE_URI_ALLOW_LIST=${ADDITIONAL_REDIRECT_URLS:-}
+      - GOTRUE_DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}
+      - GOTRUE_JWT_ADMIN_ROLES=service_role
+      - GOTRUE_JWT_AUD=authenticated
+      - GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
+      - GOTRUE_JWT_EXP=${JWT_EXPIRY:-3600}
+      - GOTRUE_JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-token-at-least-32-chars}
+      - GOTRUE_MAILER_AUTOCONFIRM=true
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - inopay-network
+
+  supabase-rest:
+    image: postgrest/postgrest:v11.2.0
+    container_name: inopay-supabase-rest
+    restart: unless-stopped
+    environment:
+      - PGRST_DB_URI=postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@supabase-db:5432/postgres
+      - PGRST_DB_SCHEMAS=public,storage
+      - PGRST_DB_ANON_ROLE=anon
+      - PGRST_JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-token-at-least-32-chars}
+      - PGRST_DB_USE_LEGACY_GUCS=false
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    networks:
+      - inopay-network
+
+  supabase-storage:
+    image: supabase/storage-api:v0.40.4
+    container_name: inopay-supabase-storage
+    restart: unless-stopped
+    environment:
+      - ANON_KEY=${SUPABASE_ANON_KEY:-your-anon-key}
+      - SERVICE_KEY=${SUPABASE_SERVICE_KEY:-your-service-key}
+      - POSTGREST_URL=http://supabase-rest:3000
+      - PGRST_JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-token-at-least-32-chars}
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@supabase-db:5432/postgres
+      - FILE_SIZE_LIMIT=52428800
+      - STORAGE_BACKEND=file
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+      - TENANT_ID=stub
+      - REGION=stub
+      - GLOBAL_S3_BUCKET=stub
+    volumes:
+      - supabase-storage-data:/var/lib/storage
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-rest:
+        condition: service_started
+    networks:
+      - inopay-network
+
+  # ============================================
+  # MINIO (S3-Compatible Storage)
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: inopay-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - inopay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # OLLAMA (Local AI)
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: inopay-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - inopay-network
+    # Décommentez pour GPU NVIDIA
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # ============================================
+  # MEILISEARCH (Search Engine)
+  # ============================================
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: inopay-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_API_KEY:-masterKey123}
+      - MEILI_ENV=production
+    volumes:
+      - meilisearch-data:/meili_data
+    networks:
+      - inopay-network
+
+  # ============================================
+  # CADDY (Reverse Proxy + Auto SSL)
+  # ============================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: inopay-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - inopay-frontend
+      - supabase-kong
+    networks:
+      - inopay-network
+
+networks:
+  inopay-network:
+    driver: bridge
+
+volumes:
+  supabase-db-data:
+  supabase-storage-data:
+  minio-data:
+  ollama-data:
+  meilisearch-data:
+  caddy-data:
+  caddy-config:
