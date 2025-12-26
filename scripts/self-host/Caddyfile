@@ -1,0 +1,80 @@
+# INOPAY Caddyfile
+# Configuration du reverse proxy avec SSL automatique
+#
+# Remplacez {$DOMAIN} par votre domaine (ex: inopay.votredomaine.com)
+
+{$DOMAIN:localhost} {
+    # Frontend Inopay
+    handle /* {
+        reverse_proxy inopay-frontend:80
+    }
+    
+    # API Supabase
+    handle /rest/v1/* {
+        reverse_proxy supabase-kong:8000
+    }
+    
+    handle /auth/v1/* {
+        reverse_proxy supabase-kong:8000
+    }
+    
+    handle /storage/v1/* {
+        reverse_proxy supabase-kong:8000
+    }
+    
+    handle /realtime/v1/* {
+        reverse_proxy supabase-kong:8000
+    }
+    
+    handle /functions/v1/* {
+        reverse_proxy supabase-kong:8000
+    }
+    
+    # MinIO Storage
+    handle /s3/* {
+        uri strip_prefix /s3
+        reverse_proxy minio:9000
+    }
+    
+    # MeiliSearch
+    handle /search/* {
+        uri strip_prefix /search
+        reverse_proxy meilisearch:7700
+    }
+    
+    # Ollama AI
+    handle /ai/* {
+        uri strip_prefix /ai
+        reverse_proxy ollama:11434
+    }
+    
+    # Headers de sécurité
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        # Supprimer les headers révélant l'infrastructure
+        -Server
+        -X-Powered-By
+    }
+    
+    # Compression
+    encode gzip zstd
+    
+    # Logs
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Console MinIO (admin)
+minio.{$DOMAIN:localhost} {
+    reverse_proxy minio:9001
+}
+
+# Console MeiliSearch (admin)
+search.{$DOMAIN:localhost} {
+    reverse_proxy meilisearch:7700
+}
