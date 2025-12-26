@@ -1,4 +1,124 @@
 {
+  "wizard": {
+    "secrets": {
+      "title": "Secret Mapping",
+      "description": "Replace Lovable API keys with your own private keys",
+      "detected": "detected",
+      "scanning": "Scanning environment variables...",
+      "scanningFiles": "Scanning {{count}} files",
+      "noSecrets": "No API keys detected",
+      "noSecretsDescription": "Your project doesn't seem to use proprietary API keys.",
+      "toReplace": "To replace",
+      "toKeep": "To keep",
+      "toDelete": "To delete",
+      "importantWarning": "Important",
+      "warningMessage": "These keys are used in your project. If you don't replace them, your application may not work correctly after deployment.",
+      "variable": "Variable",
+      "category": "Category",
+      "action": "Action",
+      "newValue": "New value",
+      "files": "Files",
+      "keep": "Keep",
+      "replace": "Replace",
+      "delete": "Delete",
+      "enterNewKey": "Enter your new key...",
+      "originalKept": "Original value kept",
+      "willBeDeleted": "Will be deleted from code",
+      "missingValues": "Please enter a new value for: {{keys}}",
+      "continueToClean": "Continue to Cleaning",
+      "back": "Back",
+      "categories": {
+        "payment": "Payment",
+        "email": "Email",
+        "ai": "AI",
+        "database": "Database",
+        "storage": "Storage",
+        "search": "Search",
+        "realtime": "Realtime",
+        "auth": "Authentication",
+        "other": "Other"
+      }
+    },
+    "tips": {
+      "title": "Sovereignty Tips",
+      "learnMore": "Learn more",
+      "categories": {
+        "security": "Security",
+        "performance": "Performance",
+        "maintenance": "Maintenance",
+        "architecture": "Architecture"
+      },
+      "rls": {
+        "title": "Row Level Security (RLS)",
+        "description": "PostgreSQL RLS protects your data at the database level. Each query is automatically filtered based on the logged-in user, preventing unauthorized access."
+      },
+      "backups": {
+        "title": "Automatic Backups",
+        "description": "Set up regular backups with pg_dump or via Coolify. A sovereign VPS belongs to you: back it up however you want."
+      },
+      "ssl": {
+        "title": "Free SSL Certificates",
+        "description": "Coolify automatically generates SSL certificates via Let's Encrypt. Your app will be accessible via HTTPS without manual configuration."
+      },
+      "monitoring": {
+        "title": "Open Source Monitoring",
+        "description": "Uptime Kuma is an excellent open source tool to monitor your applications' availability. Get instant alerts when problems occur."
+      },
+      "updates": {
+        "title": "Regular Updates",
+        "description": "Remember to update your npm dependencies every month. Use 'npm audit' to detect known vulnerabilities."
+      },
+      "logs": {
+        "title": "Log Management",
+        "description": "Coolify stores your application logs for 7 days. Check them regularly to anticipate problems."
+      },
+      "sovereignty": {
+        "title": "Digital Sovereignty",
+        "description": "Your code runs on your server. No third-party dependency, no lock-in. You're free to migrate wherever you want, whenever you want."
+      },
+      "docker": {
+        "title": "Docker Containerization",
+        "description": "Your application is containerized with Docker. It can run on any compatible server, from Hetzner to OVH to AWS."
+      },
+      "secrets": {
+        "title": "Secret Management",
+        "description": "Never store API keys in code. Use secure environment variables via Coolify or a secrets manager."
+      },
+      "privacy": {
+        "title": "Private Data",
+        "description": "Your user data stays on your infrastructure. No telemetry, no tracking, no third-party collection."
+      }
+    },
+    "launch": {
+      "title": "Liberation Launch",
+      "titleSuccess": "Liberation Successful!",
+      "description": "Summary and final deployment",
+      "descriptionSuccess": "Your code is now 100% sovereign",
+      "recap": "Summary",
+      "codeSource": "Source code",
+      "secretsMapped": "Secrets mapped",
+      "secretsReplaced": "{{count}} key(s) replaced",
+      "noSecretsModified": "No secrets modified",
+      "filesCleaned": "Files cleaned",
+      "filesCleanedValue": "{{count}} files ({{score}}%)",
+      "destination": "Destination",
+      "vpsDestination": "VPS Ubuntu + Coolify",
+      "ftpNotConfigured": "not configured",
+      "supabaseMigration": "Supabase Migration",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "deployConsole": "Deployment console",
+      "sovereignCode": "Your sovereign code is available:",
+      "back": "Back",
+      "liberating": "Liberation in progress...",
+      "liberate": "Liberate my application",
+      "newLiberation": "New liberation",
+      "viewRepo": "View repository",
+      "envExampleTitle": ".env.example file generated",
+      "envExampleDescription": "An .env.example file was added with {{count}} detected variables",
+      "downloadEnvExample": "Download .env.example"
+    }
+  },
   "adminExcessPayments": {
     "supplementRevenue": "Supplement Revenue",
     "paidProjects": "Paid Projects",

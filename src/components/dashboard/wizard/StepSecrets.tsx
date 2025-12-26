@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useWizard, DetectedSecret } from "@/contexts/WizardContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 // Patterns d'environnement pour détecter les clés API
 const ENV_PATTERNS: { pattern: RegExp; name: string; category: DetectedSecret["category"] }[] = [
@@ -63,22 +64,23 @@ const categoryIcons: Record<DetectedSecret["category"], React.ElementType> = {
   other: Key,
 };
 
-const categoryLabels: Record<DetectedSecret["category"], string> = {
-  payment: "Paiement",
-  email: "Email",
-  ai: "IA",
-  database: "Base de données",
-  storage: "Stockage",
-  search: "Recherche",
-  realtime: "Temps réel",
-  auth: "Authentification",
-  other: "Autre",
-};
-
 export function StepSecrets() {
+  const { t } = useTranslation();
   const { state, dispatch, nextStep, prevStep } = useWizard();
   const [isScanning, setIsScanning] = useState(false);
   const [showValues, setShowValues] = useState<Record<number, boolean>>({});
+
+  const categoryLabels: Record<DetectedSecret["category"], string> = {
+    payment: t("wizard.secrets.categories.payment"),
+    email: t("wizard.secrets.categories.email"),
+    ai: t("wizard.secrets.categories.ai"),
+    database: t("wizard.secrets.categories.database"),
+    storage: t("wizard.secrets.categories.storage"),
+    search: t("wizard.secrets.categories.search"),
+    realtime: t("wizard.secrets.categories.realtime"),
+    auth: t("wizard.secrets.categories.auth"),
+    other: t("wizard.secrets.categories.other"),
+  };
 
   // Scanner les fichiers pour détecter les variables d'environnement
   useEffect(() => {
@@ -151,7 +153,7 @@ export function StepSecrets() {
     );
 
     if (missingValues.length > 0) {
-      toast.error(`Veuillez entrer une nouvelle valeur pour : ${missingValues.map(s => s.name).join(", ")}`);
+      toast.error(t("wizard.secrets.missingValues", { keys: missingValues.map(s => s.name).join(", ") }));
       return;
     }
 
@@ -183,16 +185,16 @@ export function StepSecrets() {
           </div>
           <div>
             <CardTitle className="flex items-center gap-2">
-              Mapping des Secrets
+              {t("wizard.secrets.title")}
               {state.secrets.detectedSecrets.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
                   <AlertTriangle className="h-3 w-3" />
-                  {state.secrets.detectedSecrets.length} détectés
+                  {state.secrets.detectedSecrets.length} {t("wizard.secrets.detected")}
                 </Badge>
               )}
             </CardTitle>
             <CardDescription>
-              Remplacez les clés API Lovable par vos propres clés privées
+              {t("wizard.secrets.description")}
             </CardDescription>
           </div>
         </div>
@@ -208,9 +210,9 @@ export function StepSecrets() {
               <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-primary animate-pulse" />
             </div>
             <div className="text-center">
-              <p className="font-medium">Analyse des variables d'environnement...</p>
+              <p className="font-medium">{t("wizard.secrets.scanning")}</p>
               <p className="text-sm text-muted-foreground">
-                Scan de {state.cleaning.fetchedFiles.length} fichiers
+                {t("wizard.secrets.scanningFiles", { count: state.cleaning.fetchedFiles.length })}
               </p>
             </div>
           </div>
@@ -220,9 +222,9 @@ export function StepSecrets() {
               <Check className="h-8 w-8 text-success" />
             </div>
             <div>
-              <p className="font-medium text-lg">Aucune clé API détectée</p>
+              <p className="font-medium text-lg">{t("wizard.secrets.noSecrets")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Votre projet semble ne pas utiliser de clés API propriétaires.
+                {t("wizard.secrets.noSecretsDescription")}
               </p>
             </div>
           </div>
@@ -232,15 +234,15 @@ export function StepSecrets() {
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-muted/50 p-3 text-center">
                 <p className="text-2xl font-bold text-primary">{secretsToReplace}</p>
-                <p className="text-xs text-muted-foreground">À remplacer</p>
+                <p className="text-xs text-muted-foreground">{t("wizard.secrets.toReplace")}</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
                 <p className="text-2xl font-bold text-muted-foreground">{secretsToKeep}</p>
-                <p className="text-xs text-muted-foreground">À conserver</p>
+                <p className="text-xs text-muted-foreground">{t("wizard.secrets.toKeep")}</p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
                 <p className="text-2xl font-bold text-destructive">{secretsToDelete}</p>
-                <p className="text-xs text-muted-foreground">À supprimer</p>
+                <p className="text-xs text-muted-foreground">{t("wizard.secrets.toDelete")}</p>
               </div>
             </div>
 
@@ -248,10 +250,9 @@ export function StepSecrets() {
             <div className="flex items-start gap-3 rounded-lg bg-warning/10 border border-warning/30 p-4">
               <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-warning">Important</p>
+                <p className="font-medium text-warning">{t("wizard.secrets.importantWarning")}</p>
                 <p className="text-muted-foreground mt-1">
-                  Ces clés sont utilisées dans votre projet. Si vous ne les remplacez pas,
-                  votre application risque de ne pas fonctionner correctement après le déploiement.
+                  {t("wizard.secrets.warningMessage")}
                 </p>
               </div>
             </div>
@@ -261,11 +262,11 @@ export function StepSecrets() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Variable</TableHead>
-                    <TableHead className="w-[100px]">Catégorie</TableHead>
-                    <TableHead className="w-[120px]">Action</TableHead>
-                    <TableHead>Nouvelle valeur</TableHead>
-                    <TableHead className="w-[80px] text-right">Fichiers</TableHead>
+                    <TableHead className="w-[200px]">{t("wizard.secrets.variable")}</TableHead>
+                    <TableHead className="w-[100px]">{t("wizard.secrets.category")}</TableHead>
+                    <TableHead className="w-[120px]">{t("wizard.secrets.action")}</TableHead>
+                    <TableHead>{t("wizard.secrets.newValue")}</TableHead>
+                    <TableHead className="w-[80px] text-right">{t("wizard.secrets.files")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -295,9 +296,9 @@ export function StepSecrets() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="keep">Conserver</SelectItem>
-                              <SelectItem value="replace">Remplacer</SelectItem>
-                              <SelectItem value="delete">Supprimer</SelectItem>
+                              <SelectItem value="keep">{t("wizard.secrets.keep")}</SelectItem>
+                              <SelectItem value="replace">{t("wizard.secrets.replace")}</SelectItem>
+                              <SelectItem value="delete">{t("wizard.secrets.delete")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -306,7 +307,7 @@ export function StepSecrets() {
                             <div className="flex items-center gap-2">
                               <Input
                                 type={showValues[index] ? "text" : "password"}
-                                placeholder="Entrez votre nouvelle clé..."
+                                placeholder={t("wizard.secrets.enterNewKey")}
                                 value={secret.newValue}
                                 onChange={(e) => updateSecretNewValue(index, e.target.value)}
                                 className="h-8 text-xs font-mono"
@@ -327,12 +328,12 @@ export function StepSecrets() {
                           )}
                           {secret.action === "keep" && (
                             <span className="text-xs text-muted-foreground italic">
-                              Valeur originale conservée
+                              {t("wizard.secrets.originalKept")}
                             </span>
                           )}
                           {secret.action === "delete" && (
                             <span className="text-xs text-destructive italic">
-                              Sera supprimée du code
+                              {t("wizard.secrets.willBeDeleted")}
                             </span>
                           )}
                         </TableCell>
@@ -354,10 +355,10 @@ export function StepSecrets() {
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={prevStep}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour
+            {t("wizard.secrets.back")}
           </Button>
           <Button onClick={handleContinue} disabled={isScanning}>
-            Continuer vers le Nettoyage
+            {t("wizard.secrets.continueToClean")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
