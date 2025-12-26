@@ -139,6 +139,14 @@ const Header = () => {
               {t("common.pricing")}
             </Link>
             <Link 
+              to="/services" 
+              className={`text-sm font-medium transition-colors ${
+                isActive("/services") ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              Services
+            </Link>
+            <Link 
               to="/economies" 
               className={`text-sm font-medium transition-colors flex items-center gap-1 ${
                 isActive("/economies") ? "text-white" : "text-white/80 hover:text-white"
@@ -269,6 +277,15 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {t("common.pricing")}
+              </Link>
+              <Link 
+                to="/services" 
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActive("/services") ? "text-primary" : "text-muted-foreground"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Services
               </Link>
               <Link 
                 to="/economies" 

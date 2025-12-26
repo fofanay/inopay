@@ -18,6 +18,7 @@ import Economies from "./pages/Economies";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import LiberationReport from "./pages/LiberationReport";
 import Widget from "./pages/Widget";
+import Services from "./pages/Services";
 import Terms from "./pages/legal/Terms";
 import Privacy from "./pages/legal/Privacy";
 import Imprint from "./pages/legal/Imprint";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/rapport-liberation/:deploymentId" element={<LiberationReport />} />
             <Route path="/widget" element={<Widget />} />
+            <Route path="/services" element={<Services />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/imprint" element={<Imprint />} />
