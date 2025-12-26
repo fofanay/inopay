@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette, Globe, Cloud, Droplets } from "lucide-react";
+import { ArrowRight, Upload, Sparkles, Zap, Code2, Rocket, Quote, Unlock, HelpCircle, Check, Shield, Server, Key, PiggyBank, Terminal, Palette, Globe, Cloud, Droplets, Activity, Package } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useParallax, useMouseParallax } from "@/hooks/useParallax";
@@ -446,6 +446,112 @@ const Index = () => {
                 <p className="text-xs md:text-sm text-muted-foreground">{feature.description}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section - After Features */}
+      <section className="py-12 md:py-16 lg:py-20 bg-gradient-to-b from-muted/30 to-transparent border-y border-border">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8 md:mb-12">
+            <Badge className="mb-3 md:mb-4 bg-primary/10 text-primary border-primary/20">
+              <Package className="h-3 w-3 mr-1" />
+              {t('services.badge', 'Services')}
+            </Badge>
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-2">
+              {t('services.title', 'On vous accompagne après la libération')}
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto">
+              {t('services.subtitle', 'Déploiement, serveurs et monitoring pour mettre votre vibe en production')}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto mb-8">
+            {/* Déploiement */}
+            <div className="relative p-5 md:p-6 rounded-xl border-2 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40 transition-all group">
+              <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                <Rocket className="h-6 w-6 text-emerald-500 group-hover:text-white" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">{t('services.deploy.title', 'Déploiement Assisté')}</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                {t('services.deploy.desc', 'On déploie votre projet sur votre serveur avec Docker, SSL et DNS')}
+              </p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-emerald-500" />
+                  Docker automatisé
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-emerald-500" />
+                  SSL/HTTPS inclus
+                </li>
+              </ul>
+            </div>
+
+            {/* Monitoring */}
+            <div className="relative p-5 md:p-6 rounded-xl border-2 border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all group">
+              <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                <Activity className="h-6 w-6 text-blue-500 group-hover:text-white" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">{t('services.monitoring.title', 'Monitoring 24/7')}</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                {t('services.monitoring.desc', 'Surveillance continue avec alertes et rapports de performance')}
+              </p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-blue-500" />
+                  Alertes en temps réel
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-blue-500" />
+                  Détection de pannes
+                </li>
+              </ul>
+            </div>
+
+            {/* Serveur */}
+            <div className="relative p-5 md:p-6 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 transition-all group">
+              <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-4 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                <Server className="h-6 w-6 text-amber-500 group-hover:text-white" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">{t('services.server.title', 'Serveur VPS')}</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                {t('services.server.desc', 'On configure votre propre serveur Hetzner avec Coolify')}
+              </p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-amber-500" />
+                  VPS optimisé
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-3 w-3 text-amber-500" />
+                  Accès root complet
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Pack Complet CTA */}
+          <div className="max-w-2xl mx-auto">
+            <div className="relative p-5 md:p-6 rounded-xl border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <Badge className="absolute -top-3 left-4 bg-primary text-primary-foreground">
+                <Package className="h-3 w-3 mr-1" />
+                PACK COMPLET -20%
+              </Badge>
+              <div>
+                <h4 className="font-semibold text-lg">{t('services.pack.title', 'Déploiement + Serveur VPS')}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {t('services.pack.desc', 'Tout pour démarrer en 24h')}
+                </p>
+              </div>
+              <Link to="/tarifs">
+                <Button className="whitespace-nowrap">
+                  <Zap className="h-4 w-4 mr-2" />
+                  {t('services.pack.cta', 'Voir les tarifs')}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
