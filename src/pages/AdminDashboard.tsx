@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, 
   FileText, 
@@ -9,24 +10,18 @@ import {
   Home,
   FlaskConical,
   CreditCard,
-  CalendarCheck,
   Settings,
   TrendingUp,
   ShoppingCart,
-  Layers,
-  CheckCircle2,
-  AlertTriangle,
-  X
+  Briefcase,
+  Wrench,
+  LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SheetClose } from "@/components/ui/sheet";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { RoleIndicator, RoleContextBanner } from "@/components/ui/role-indicator";
+import { RoleIndicator } from "@/components/ui/role-indicator";
 import AdminUsersList from "@/components/admin/AdminUsersList";
 import AdminExportsList from "@/components/admin/AdminExportsList";
 import AdminStats from "@/components/admin/AdminStats";
@@ -37,37 +32,18 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminPurchases from "@/components/admin/AdminPurchases";
 import AdminUpsellStats from "@/components/admin/AdminUpsellStats";
+import { AdminBusinessHub } from "@/components/admin/AdminBusinessHub";
+import { AdminUsersHub } from "@/components/admin/AdminUsersHub";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
-import { MobileHeader } from "@/components/dashboard/MobileHeader";
-import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { DashboardShell, DashboardHeader, ModernSidebar } from "@/components/dashboard/shared";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
+
+type AdminTab = "overview" | "business" | "users" | "tools";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [showProjectDetails, setShowProjectDetails] = useState(false);
-
-  // Helper pour obtenir la couleur du score
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return "text-muted-foreground";
-    if (score >= 80) return "text-success";
-    if (score >= 60) return "text-warning";
-    return "text-destructive";
-  };
-
-  // Helper pour obtenir le statut du projet
-  const getStatusBadge = (status: string, score: number | null) => {
-    if (status === "analyzed" && (score ?? 0) >= 70) {
-      return <Badge className="bg-success/20 text-success border-success/30">Prêt à déployer</Badge>;
-    }
-    if (status === "analyzed") {
-      return <Badge className="bg-warning/20 text-warning border-warning/30">Analysé</Badge>;
-    }
-    return <Badge variant="secondary">En attente</Badge>;
-  };
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
   useEffect(() => {
     if (!authLoading) {
@@ -99,54 +75,57 @@ const AdminDashboard = () => {
     return null;
   }
 
-  // Menu simplifié - uniquement l'essentiel
   const menuItems = [
-    // 📊 Business
-    { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "business" },
-    { id: "kpis", label: "KPIs Business", icon: TrendingUp, section: "business" },
-    { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
-    { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "business" },
-    { id: "purchases", label: "Achats Services", icon: ShoppingCart, section: "business" },
-    { id: "upsells", label: "Conversions Upsell", icon: TrendingUp, section: "business" },
-    // 👥 Utilisateurs
-    { id: "users", label: "Utilisateurs", icon: Users, section: "users" },
-    { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
-    // 🛠️ Outils
-    { id: "exports", label: "Exports & Qualité", icon: FileText, section: "tools" },
-    { id: "settings", label: "Paramètres", icon: Settings, section: "tools" },
+    { id: "overview", label: "Vue d'ensemble", icon: LayoutDashboard, section: "main" },
+    { id: "business", label: "Business", icon: Briefcase, section: "main" },
+    { id: "users", label: "Utilisateurs", icon: Users, section: "main" },
+    { id: "tools", label: "Outils", icon: Wrench, section: "main" },
   ];
 
-  const getPageTitle = () => {
-    const item = menuItems.find(m => m.id === activeTab);
-    return item?.label || "Dashboard";
-  };
+  const sections = [
+    { id: "main", label: "Navigation" },
+  ];
 
-  const getPageDescription = () => {
+  const getPageInfo = () => {
     switch (activeTab) {
-      case "overview": return "Statistiques globales de la plateforme Inopay";
-      case "kpis": return "Revenus, taux de succès et métriques business";
-      case "payments": return "Revenus, paiements et remboursements Stripe";
-      case "subscriptions": return "Abonnements actifs, coupons et MRR";
-      case "purchases": return "Tous les achats de services par utilisateur";
-      case "upsells": return "Conversions et impressions des offres post-libération";
-      case "users": return "Gérez les utilisateurs et leurs accès";
-      case "testers": return "Gérez les comptes avec accès Pro gratuit à vie";
-      case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
-      case "settings": return "Configuration globale de l'application";
-      default: return "";
+      case "overview":
+        return { 
+          title: "Vue d'ensemble", 
+          description: "Statistiques globales de la plateforme Inopay",
+          icon: <BarChart3 className="h-5 w-5 text-primary" />
+        };
+      case "business":
+        return { 
+          title: "Business", 
+          description: "Paiements, abonnements, achats et conversions",
+          icon: <Briefcase className="h-5 w-5 text-primary" />
+        };
+      case "users":
+        return { 
+          title: "Utilisateurs", 
+          description: "Gestion des utilisateurs et testeurs",
+          icon: <Users className="h-5 w-5 text-primary" />
+        };
+      case "tools":
+        return { 
+          title: "Outils", 
+          description: "Exports, qualité et paramètres",
+          icon: <Wrench className="h-5 w-5 text-primary" />
+        };
+      default:
+        return { title: "Dashboard", description: "", icon: null };
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Admin Context Banner */}
-      <RoleContextBanner role="admin" />
-      
-      <div className="flex flex-1">
+  const pageInfo = getPageInfo();
+
+  const sidebar = (
+    <>
+      {/* Mobile Sidebar */}
       <MobileSidebar
         menuItems={menuItems}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => setActiveTab(tab as AdminTab)}
         logo={<img src={inopayLogo} alt="Inopay" className="h-10 object-contain" />}
         planBadge={
           <Badge className="bg-primary/20 text-primary-foreground border-primary/30">
@@ -155,225 +134,90 @@ const AdminDashboard = () => {
         }
         bottomActions={
           <>
-            <SheetClose asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 h-11 text-secondary-foreground/80"
-                onClick={() => navigate("/dashboard")}
-              >
-                <Home className="h-4 w-4" />
-                Dashboard Standard
-              </Button>
-            </SheetClose>
-            <SheetClose asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 h-11 text-destructive"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-                Déconnexion
-              </Button>
-            </SheetClose>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 text-muted-foreground"
+              onClick={() => navigate("/dashboard")}
+            >
+              <Home className="h-4 w-4" />
+              Dashboard Standard
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 text-destructive"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+              Déconnexion
+            </Button>
           </>
         }
       />
 
-      {/* Desktop Sidebar - hidden on mobile */}
-      <aside className="hidden md:flex w-72 bg-secondary flex-col">
-        {/* Logo Header */}
-        <div className="p-6 border-b border-secondary/50">
-          <div className="flex items-center justify-center mb-3">
-            <img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <RoleIndicator role="admin" size="md" />
-            <span className="text-xs text-secondary-foreground/60">
-              Gestion plateforme Inopay
-            </span>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => (
+      {/* Desktop Sidebar */}
+      <ModernSidebar
+        logo={<img src={inopayLogo} alt="Inopay" className="h-12 object-contain" />}
+        planBadge={<RoleIndicator role="admin" size="md" />}
+        menuItems={menuItems}
+        sections={sections}
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as AdminTab)}
+        bottomActions={
+          <>
             <Button
-              key={item.id}
               variant="ghost"
-              className={`w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 ${
-                activeTab === item.id 
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
-                  : ""
-              }`}
-              onClick={() => setActiveTab(item.id)}
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/dashboard")}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <Home className="h-4 w-4" />
+              Dashboard Standard
             </Button>
-          ))}
-        </nav>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+              Déconnexion
+            </Button>
+          </>
+        }
+      />
+    </>
+  );
 
-        {/* Bottom Actions */}
-        <div className="p-4 border-t border-secondary/50 space-y-2">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10"
-            onClick={() => navigate("/dashboard")}
+  const header = (
+    <DashboardHeader
+      title={pageInfo.title}
+      description={pageInfo.description}
+      icon={pageInfo.icon}
+    />
+  );
+
+  return (
+    <DashboardShell sidebar={sidebar} header={header}>
+      <div className="max-w-7xl mx-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
           >
-            <Home className="h-4 w-4" />
-            Dashboard Standard
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4" />
-            Déconnexion
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <MobileHeader 
-          title={getPageTitle()} 
-          description={getPageDescription()} 
-        />
-
-        {/* Content Area */}
-        <div className="p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
             {activeTab === "overview" && <AdminStats />}
-            {activeTab === "kpis" && <AdminKPIs />}
-            {activeTab === "payments" && <AdminPayments />}
-            {activeTab === "subscriptions" && <AdminSubscriptions />}
-            {activeTab === "purchases" && <AdminPurchases />}
-            {activeTab === "upsells" && <AdminUpsellStats />}
-            {activeTab === "users" && <AdminUsersList />}
-            {activeTab === "testers" && <AdminTesters />}
-            {activeTab === "exports" && <AdminExportsList />}
-            {activeTab === "settings" && <AdminSettings />}
-          </div>
-        </div>
-      </main>
+            {activeTab === "business" && <AdminBusinessHub />}
+            {activeTab === "users" && <AdminUsersHub />}
+            {activeTab === "tools" && (
+              <div className="space-y-6">
+                <AdminExportsList />
+                <AdminSettings />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      {/* Project Details Sheet */}
-      <Sheet open={showProjectDetails} onOpenChange={setShowProjectDetails}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              Détails du Projet
-            </SheetTitle>
-            <SheetDescription>
-              Informations détaillées et actions disponibles
-            </SheetDescription>
-          </SheetHeader>
-
-          {selectedProject && (
-            <div className="mt-6 space-y-6">
-              {/* Project Header */}
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-foreground">{selectedProject.project_name}</h3>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(selectedProject.status, selectedProject.portability_score)}
-                  <span className="text-xs text-muted-foreground">
-                    Créé {formatDistanceToNow(new Date(selectedProject.created_at), { addSuffix: true, locale: fr })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Score Card */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Score de Portabilité</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                    <div className={`text-4xl font-bold ${getScoreColor(selectedProject.portability_score)}`}>
-                      {selectedProject.portability_score ?? "N/A"}
-                    </div>
-                    <div className="flex-1">
-                      <Progress 
-                        value={selectedProject.portability_score ?? 0} 
-                        className="h-3"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {(selectedProject.portability_score ?? 0) >= 70 
-                          ? "Prêt pour le déploiement" 
-                          : "Optimisation recommandée"}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Issues Detected */}
-              {selectedProject.detected_issues && Array.isArray(selectedProject.detected_issues) && selectedProject.detected_issues.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                      Problèmes Détectés ({selectedProject.detected_issues.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {selectedProject.detected_issues.slice(0, 5).map((issue: any, idx: number) => (
-                        <div key={idx} className="text-sm p-2 bg-muted/50 rounded-md">
-                          {typeof issue === "string" ? issue : JSON.stringify(issue)}
-                        </div>
-                      ))}
-                      {selectedProject.detected_issues.length > 5 && (
-                        <p className="text-xs text-muted-foreground">
-                          + {selectedProject.detected_issues.length - 5} autres problèmes
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recommendations */}
-              {selectedProject.recommendations && Array.isArray(selectedProject.recommendations) && selectedProject.recommendations.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                      Recommandations ({selectedProject.recommendations.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {selectedProject.recommendations.slice(0, 5).map((rec: any, idx: number) => (
-                        <div key={idx} className="text-sm p-2 bg-success/5 rounded-md border-l-2 border-success">
-                          {typeof rec === "string" ? rec : JSON.stringify(rec)}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Actions */}
-              <div className="space-y-3 pt-4 border-t">
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => setShowProjectDetails(false)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Fermer
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-    </div>
+    </DashboardShell>
   );
 };
 
