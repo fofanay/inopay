@@ -33,7 +33,7 @@ const Services = () => {
       title: "Déploiement Assisté",
       subtitle: "De Lovable à votre serveur en 10 minutes",
       description: "Notre équipe vous accompagne de A à Z pour déployer votre application sur votre propre infrastructure. Fini les contraintes des hébergeurs propriétaires.",
-      price: "29€",
+      price: "39$",
       priceNote: "paiement unique",
       features: [
         "Configuration Dockerfile optimisée",
@@ -57,7 +57,7 @@ const Services = () => {
       title: "Monitoring 24/7",
       subtitle: "Votre app surveillée en continu",
       description: "Surveillance proactive de votre application avec alertes instantanées et redémarrage automatique. Dormez tranquille, on veille.",
-      price: "9€",
+      price: "12$",
       priceNote: "/mois",
       features: [
         "Vérification uptime toutes les 60 secondes",
@@ -81,7 +81,7 @@ const Services = () => {
       title: "Serveur VPS Dédié",
       subtitle: "Votre infrastructure souveraine",
       description: "Un serveur VPS configuré et optimisé pour vos applications. Hébergement européen, performances garanties, contrôle total.",
-      price: "19€",
+      price: "25$",
       priceNote: "/mois",
       features: [
         "VPS 2 vCPU / 4 Go RAM / 40 Go SSD",
@@ -103,15 +103,15 @@ const Services = () => {
 
   const testimonials = [
     {
-      quote: "J'ai économisé 400€/mois en passant de Vercel Pro + Supabase à mon propre VPS avec Inopay. Le déploiement assisté m'a fait gagner une journée entière.",
+      quote: "J'ai économisé 500$/mois en passant de Vercel Pro + Supabase à mon propre VPS avec Inopay. Le déploiement assisté m'a fait gagner une journée entière.",
       author: "Thomas L.",
       role: "Fondateur, SaaS B2B",
       avatar: "TL",
       rating: 5,
-      savings: "400€/mois économisés"
+      savings: "500$/mois économisés"
     },
     {
-      quote: "Le monitoring m'a alerté d'un problème à 3h du matin et a redémarré mon app automatiquement. Mes clients n'ont rien remarqué. Ça vaut largement les 9€/mois.",
+      quote: "Le monitoring m'a alerté d'un problème à 3h du matin et a redémarré mon app automatiquement. Mes clients n'ont rien remarqué. Ça vaut largement les 12$/mois.",
       author: "Marie D.",
       role: "CTO, Startup HealthTech",
       avatar: "MD",
@@ -294,9 +294,9 @@ const Services = () => {
                   </p>
                   
                   <div className="flex items-baseline gap-4 mb-6">
-                    <span className="text-5xl font-bold text-primary">57€</span>
+                    <span className="text-5xl font-bold text-primary">76$</span>
                     <div className="text-muted-foreground">
-                      <span className="line-through">72€</span>
+                      <span className="line-through">95$</span>
                       <span className="ml-2">première année</span>
                     </div>
                   </div>
@@ -314,7 +314,7 @@ const Services = () => {
                     <Rocket className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Déploiement Assisté</p>
-                      <p className="text-sm text-muted-foreground">Valeur 29€</p>
+                      <p className="text-sm text-muted-foreground">Valeur 39$</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
@@ -322,7 +322,7 @@ const Services = () => {
                     <Server className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Serveur VPS 12 mois</p>
-                      <p className="text-sm text-muted-foreground">Valeur 228€/an</p>
+                      <p className="text-sm text-muted-foreground">Valeur 300$/an</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
@@ -330,7 +330,7 @@ const Services = () => {
                     <Activity className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Monitoring 12 mois</p>
-                      <p className="text-sm text-muted-foreground">Valeur 108€/an</p>
+                      <p className="text-sm text-muted-foreground">Valeur 144$/an</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
