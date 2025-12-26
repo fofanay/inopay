@@ -4,7 +4,7 @@ import {
   Check, Sparkles, Zap, ArrowRight, Loader2, Globe, Key, 
   Shield, Rocket, Lock, Activity, Building2, User, Infinity,
   FileCode, Calculator, SlidersHorizontal, RefreshCw, Plus, 
-  Palette, Terminal
+  Palette, Terminal, Package, Server
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,24 +34,27 @@ const STRIPE_ADDONS = {
     redeploy: "price_1Sgr89BYLQpzPb0yTaGeD7uk",    // 49 CAD
     monitoring: "price_1Sgr8iBYLQpzPb0yo15IvGVU",  // 19 CAD/mois
     server: "price_1Sgr9zBYLQpzPb0yZJS7N412",      // 79 CAD
+    pack: "price_1SiRSjBYLQpzPb0y7DH2KSKV",        // 102.40 CAD (Pack Complet -20%)
   },
   USD: {
     redeploy: "price_1Sgr8LBYLQpzPb0yX0NHl6PS",    // 39 USD
     monitoring: "price_1Sgr8rBYLQpzPb0yReXWuS1J",  // 15 USD/mois
     server: "price_1SgrAsBYLQpzPb0ybNWYjt2p",      // 59 USD
+    pack: "price_1SiRStBYLQpzPb0yZKknxEYI",        // 78.40 USD (Pack Complet -20%)
   },
   EUR: {
     redeploy: "price_1Sgr8VBYLQpzPb0y3MKtI4Gh",    // 35 EUR
     monitoring: "price_1Sgr9VBYLQpzPb0yX1LCrf4N",  // 13 EUR/mois
     server: "price_1SgrC6BYLQpzPb0yvYbly0EL",      // 55 EUR
+    pack: "price_1SiRT4BYLQpzPb0yP3MFE0mo",        // 72 EUR (Pack Complet -20%)
   },
 };
 
 // Prix affichés par devise pour les add-ons
 const ADDON_PRICES = {
-  CAD: { redeploy: "49 $", monitoring: "19 $", server: "79 $", symbol: "CAD" },
-  USD: { redeploy: "39 $", monitoring: "15 $", server: "59 $", symbol: "USD" },
-  EUR: { redeploy: "35 €", monitoring: "13 €", server: "55 €", symbol: "EUR" },
+  CAD: { redeploy: "49 $", monitoring: "19 $", server: "79 $", pack: "102 $", packOriginal: "128 $", symbol: "CAD" },
+  USD: { redeploy: "39 $", monitoring: "15 $", server: "59 $", pack: "78 $", packOriginal: "98 $", symbol: "USD" },
+  EUR: { redeploy: "35 €", monitoring: "13 €", server: "55 €", pack: "72 €", packOriginal: "90 €", symbol: "EUR" },
 };
 
 // Cost calculation constants
@@ -59,7 +62,7 @@ const COST_PER_FILE_CONFORT = 0.04;
 const COST_PER_FILE_BYOK = 0.018;
 const PLATFORM_FEE_SOUVERAIN = 29;
 
-type AddonType = "redeploy" | "monitoring" | "server";
+type AddonType = "redeploy" | "monitoring" | "server" | "pack";
 
 const Pricing = () => {
   const { user } = useAuth();
@@ -622,6 +625,73 @@ const Pricing = () => {
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : null}
                     {t('pricing.server.cta')}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pack Complet - Best Value */}
+            <div className="max-w-2xl mx-auto">
+              <Card className="relative border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 overflow-hidden">
+                <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground">
+                  <Package className="h-3 w-3 mr-1" />
+                  -20%
+                </Badge>
+                <CardHeader className="text-center pb-4">
+                  <div className="mx-auto h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                    <Package className="h-7 w-7 text-primary" />
+                  </div>
+                  <CardTitle className="text-2xl">Pack Complet</CardTitle>
+                  <CardDescription className="text-base">
+                    Déploiement assisté + Serveur VPS configuré
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                          <Rocket className="h-4 w-4 text-emerald-500" />
+                        </div>
+                        <span className="text-sm">Déploiement assisté inclus</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Server className="h-4 w-4 text-amber-500" />
+                        </div>
+                        <span className="text-sm">Serveur VPS configuré</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Zap className="h-4 w-4 text-primary" />
+                        </div>
+                        <span className="text-sm">Livraison en 24h</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center md:text-right">
+                      <div className="text-sm text-muted-foreground line-through">
+                        {ADDON_PRICES[currency].packOriginal}
+                      </div>
+                      <div className="flex items-baseline justify-center md:justify-end gap-1">
+                        <span className="text-4xl font-bold text-primary">{ADDON_PRICES[currency].pack}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Économisez 20%</p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full mt-6 h-12 text-base"
+                    onClick={() => handleAddonCheckout("pack")}
+                    disabled={loadingPlan !== null}
+                  >
+                    {loadingPlan === "pack" ? (
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    ) : (
+                      <Rocket className="h-5 w-5 mr-2" />
+                    )}
+                    Commander le Pack Complet
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </CardContent>
               </Card>
