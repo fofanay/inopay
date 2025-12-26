@@ -51,11 +51,11 @@ export function ModernSidebar({
 
   return (
     <aside className={cn(
-      "hidden md:flex w-72 bg-secondary/50 backdrop-blur-sm flex-col border-r border-border/50",
+      "hidden md:flex w-72 bg-slate-900 flex-col border-r border-slate-700",
       className
     )}>
       {/* Header with Logo */}
-      <div className="p-6 border-b border-border/50">
+      <div className="p-6 border-b border-slate-700">
         <div className="flex items-center justify-center mb-4">
           {logo}
         </div>
@@ -73,8 +73,8 @@ export function ModernSidebar({
             <div key={group.id}>
               {group.label && (
                 <div className="flex items-center gap-2 px-3 mb-2">
-                  {group.icon && <group.icon className="h-3.5 w-3.5 text-muted-foreground/60" />}
-                  <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                  {group.icon && <group.icon className="h-3.5 w-3.5 text-slate-400" />}
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     {group.label}
                   </span>
                 </div>
@@ -94,8 +94,8 @@ export function ModernSidebar({
                         className={cn(
                           "w-full justify-start gap-3 h-11 font-medium transition-all duration-200",
                           isActive
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-md shadow-primary/20"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            ? "bg-primary text-white hover:bg-primary/90 hover:text-white shadow-md shadow-primary/30"
+                            : "text-white/80 hover:text-white hover:bg-slate-800"
                         )}
                         onClick={() => onTabChange(item.id)}
                       >
@@ -109,7 +109,7 @@ export function ModernSidebar({
                             variant="secondary"
                             className={cn(
                               "ml-auto text-[10px] px-1.5 py-0",
-                              isActive && "bg-primary-foreground/20 text-primary-foreground"
+                              isActive ? "bg-white/20 text-white" : "bg-slate-700 text-white"
                             )}
                           >
                             {item.badge}
@@ -130,7 +130,7 @@ export function ModernSidebar({
 
       {/* Bottom Actions */}
       {bottomActions && (
-        <div className="p-4 border-t border-border/50 space-y-1">
+        <div className="p-4 border-t border-slate-700 space-y-1">
           {bottomActions}
         </div>
       )}
