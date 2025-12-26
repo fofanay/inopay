@@ -11,7 +11,8 @@ import {
   Home,
   Server,
   Flame,
-  LayoutDashboard
+  LayoutDashboard,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RoleIndicator } from "@/components/ui/role-indicator";
 import { SovereignLiberationWizard } from "@/components/dashboard/SovereignLiberationWizard";
 import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
+import { SovereigntyAuditReport } from "@/components/dashboard/SovereigntyAuditReport";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { DashboardShell, DashboardHeader, ModernSidebar, ActionHero, QuickStatsBar } from "@/components/dashboard/shared";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
@@ -31,9 +33,9 @@ import { supabase } from "@/integrations/supabase/client";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 import FofyChat from "@/components/FofyChat";
 
-type DashboardTab = "overview" | "liberation" | "fleet";
+type DashboardTab = "overview" | "liberation" | "fleet" | "audit";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "audit"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -142,6 +144,7 @@ const Dashboard = () => {
     { id: "overview", label: t("dashboard.overview"), icon: LayoutDashboard, section: "main" },
     { id: "liberation", label: t("dashboard.liberation"), icon: Flame, section: "main", badge: "🚀" },
     { id: "fleet", label: "Ma Flotte", icon: Server, section: "main" },
+    { id: "audit", label: "Audit Souveraineté", icon: ShieldCheck, section: "main" },
   ];
 
   const sections = [
@@ -167,6 +170,12 @@ const Dashboard = () => {
           title: "Ma Flotte", 
           description: "Serveurs, déploiements et synchronisations",
           icon: <Server className="h-5 w-5 text-primary" />
+        };
+      case "audit":
+        return { 
+          title: "Audit Souveraineté", 
+          description: "Vérifiez que votre projet est 100% souverain",
+          icon: <ShieldCheck className="h-5 w-5 text-primary" />
         };
       default:
         return { title: t("dashboard.title"), description: "", icon: null };
@@ -333,6 +342,10 @@ const Dashboard = () => {
 
             {activeTab === "fleet" && (
               <MyPersonalFleet />
+            )}
+
+            {activeTab === "audit" && (
+              <SovereigntyAuditReport />
             )}
           </motion.div>
         </AnimatePresence>
