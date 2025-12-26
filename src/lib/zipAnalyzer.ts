@@ -1,28 +1,14 @@
 import JSZip from "jszip";
-
-// Dictionnaire de détection des patterns propriétaires
-const PROPRIETARY_PATTERNS = {
-  packages: [
-    "@lovable/",
-    "@gptengineer/",
-    "lovable-tagger",
-    "supabase-management",
-  ],
-  imports: [
-    "use-mobile",
-    "use-toast",
-    "@/hooks/use-mobile",
-    "@/hooks/use-toast",
-    "@lovable/",
-    "@gptengineer/",
-  ],
-  files: [
-    ".lovable",
-    ".gptengineer",
-    "lovable.config",
-    ".bolt",
-  ],
-};
+import { analyzeCostlyServices, CostAnalysisResult } from "./costOptimization";
+import {
+  PROPRIETARY_IMPORTS,
+  PROPRIETARY_FILES,
+  SUSPICIOUS_PACKAGES,
+  TELEMETRY_DOMAINS,
+  PROPRIETARY_ASSET_CDNS,
+  shouldRemoveFile,
+  needsCleaning as checkNeedsCleaning,
+} from "./clientProprietaryPatterns";
 
 export interface AnalysisIssue {
   file: string;
@@ -39,9 +25,6 @@ export interface DependencyItem {
   note: string;
 }
 
-// Import cost analysis
-import { analyzeCostlyServices, CostAnalysisResult } from "./costOptimization";
-
 export interface RealAnalysisResult {
   score: number;
   platform: string | null;
@@ -52,6 +35,8 @@ export interface RealAnalysisResult {
   recommendations: string[];
   extractedFiles: Map<string, string>;
   costAnalysis?: CostAnalysisResult;
+  filesToRemove: string[];
+  proprietaryCDNs: string[];
 }
 
 export type ProgressCallback = (progress: number, message: string) => void;
@@ -72,6 +57,12 @@ function detectPlatform(issues: AnalysisIssue[], dependencies: DependencyItem[])
   if (allPatterns.includes("v0")) {
     return "v0";
   }
+  if (allPatterns.includes("cursor")) {
+    return "Cursor";
+  }
+  if (allPatterns.includes("replit")) {
+    return "Replit";
+  }
   return null;
 }
 
@@ -91,8 +82,8 @@ function analyzePackageJson(content: string): DependencyItem[] {
       let note = "Librairie standard";
 
       // Vérifier si c'est une dépendance propriétaire
-      const isProprietaryPackage = PROPRIETARY_PATTERNS.packages.some(
-        pattern => name.includes(pattern)
+      const isProprietaryPackage = SUSPICIOUS_PACKAGES.some(
+        pattern => name.includes(pattern) || name === pattern
       );
 
       if (isProprietaryPackage) {
@@ -133,14 +124,13 @@ function analyzeSourceFile(
 
   lines.forEach((line, index) => {
     // Vérifier les imports propriétaires
-    for (const pattern of PROPRIETARY_PATTERNS.imports) {
-      if (line.includes(pattern)) {
-        // Déterminer la sévérité
+    for (const pattern of PROPRIETARY_IMPORTS) {
+      const regex = new RegExp(pattern.source, pattern.flags);
+      if (regex.test(line)) {
         let severity: AnalysisIssue["severity"] = "critical";
-        let description = `Import propriétaire détecté: ${pattern}`;
+        let description = `Import propriétaire détecté: ${pattern.source}`;
 
-        if (pattern.includes("use-mobile") || pattern.includes("use-toast")) {
-          // Ces hooks peuvent être des versions propriétaires ou standards
+        if (pattern.source.includes("use-mobile") || pattern.source.includes("use-toast")) {
           if (line.includes("@lovable") || line.includes("@gptengineer")) {
             severity = "critical";
             description = `Hook propriétaire Lovable/GPT Engineer`;
@@ -153,9 +143,35 @@ function analyzeSourceFile(
         issues.push({
           file: filePath,
           line: index + 1,
-          pattern,
+          pattern: pattern.source,
           severity,
           description,
+        });
+      }
+    }
+    
+    // Vérifier les domaines de télémétrie
+    for (const domain of TELEMETRY_DOMAINS) {
+      if (line.includes(domain)) {
+        issues.push({
+          file: filePath,
+          line: index + 1,
+          pattern: domain,
+          severity: "critical",
+          description: `Domaine de télémétrie propriétaire: ${domain}`,
+        });
+      }
+    }
+    
+    // Vérifier les CDN propriétaires
+    for (const cdn of PROPRIETARY_ASSET_CDNS) {
+      if (line.includes(cdn)) {
+        issues.push({
+          file: filePath,
+          line: index + 1,
+          pattern: cdn,
+          severity: "warning",
+          description: `Asset CDN propriétaire: ${cdn}`,
         });
       }
     }
@@ -168,7 +184,8 @@ function analyzeSourceFile(
 function calculateScore(
   issues: AnalysisIssue[],
   dependencies: DependencyItem[],
-  totalFiles: number
+  totalFiles: number,
+  filesToRemove: number
 ): number {
   let score = 100;
 
@@ -185,9 +202,12 @@ function calculateScore(
 
   score -= incompatibleDeps * 10; // -10 points par dépendance incompatible
   score -= warningDeps * 3;       // -3 points par warning
+  
+  // Pénalité pour les fichiers à supprimer
+  score -= filesToRemove * 5;
 
   // Bonus pour un projet propre
-  if (criticalIssues === 0 && incompatibleDeps === 0) {
+  if (criticalIssues === 0 && incompatibleDeps === 0 && filesToRemove === 0) {
     score = Math.min(score + 5, 100);
   }
 
@@ -197,10 +217,22 @@ function calculateScore(
 // Générer les recommandations
 function generateRecommendations(
   issues: AnalysisIssue[],
-  dependencies: DependencyItem[]
+  dependencies: DependencyItem[],
+  filesToRemove: string[],
+  proprietaryCDNs: string[]
 ): string[] {
   const recommendations: string[] = [];
   const seenPatterns = new Set<string>();
+
+  // Fichiers à supprimer
+  if (filesToRemove.length > 0) {
+    recommendations.push(`Supprimer ${filesToRemove.length} fichier(s) de configuration propriétaire`);
+  }
+  
+  // CDN propriétaires
+  if (proprietaryCDNs.length > 0) {
+    recommendations.push(`Remplacer ${proprietaryCDNs.length} URL(s) de CDN propriétaire par des assets locaux`);
+  }
 
   // Recommandations basées sur les issues
   for (const issue of issues) {
@@ -208,13 +240,22 @@ function generateRecommendations(
     seenPatterns.add(issue.pattern);
 
     if (issue.pattern.includes("use-mobile")) {
-      recommendations.push("Remplacer use-mobile par une implémentation standard (ex: react-responsive ou custom hook avec window.matchMedia)");
+      recommendations.push("Remplacer use-mobile par une implémentation standard (hook avec window.matchMedia)");
     }
     if (issue.pattern.includes("use-toast")) {
-      recommendations.push("Remplacer use-toast par une librairie de notifications standard (ex: react-hot-toast, sonner)");
+      recommendations.push("Remplacer use-toast par sonner ou react-hot-toast");
     }
     if (issue.pattern.includes("@lovable") || issue.pattern.includes("@gptengineer")) {
-      recommendations.push("Supprimer les imports @lovable/ et @gptengineer/ et remplacer par des alternatives open-source");
+      recommendations.push("Supprimer les imports @lovable/ et @gptengineer/");
+    }
+    if (issue.pattern.includes("@v0") || issue.pattern.includes("v0-")) {
+      recommendations.push("Supprimer les imports @v0/ et v0-*");
+    }
+    if (issue.pattern.includes("@bolt")) {
+      recommendations.push("Supprimer les imports @bolt/");
+    }
+    if (issue.pattern.includes("componentTagger")) {
+      recommendations.push("Supprimer le plugin componentTagger de vite.config");
     }
   }
 
@@ -232,7 +273,6 @@ function generateRecommendations(
   // Recommandations générales
   recommendations.push("Configurer les alias de chemin (@/) dans votre bundler (Vite/Webpack)");
   recommendations.push("Mettre à jour les variables d'environnement selon votre hébergeur");
-  recommendations.push("Tester l'application localement avec npm run dev avant déploiement");
 
   return [...new Set(recommendations)]; // Supprimer les doublons
 }
@@ -244,6 +284,8 @@ export async function analyzeZipFile(
 ): Promise<RealAnalysisResult> {
   const issues: AnalysisIssue[] = [];
   const dependencies: DependencyItem[] = [];
+  const filesToRemove: string[] = [];
+  const proprietaryCDNs: string[] = [];
   let totalFiles = 0;
   let analyzedFiles = 0;
 
@@ -255,6 +297,21 @@ export async function analyzeZipFile(
   totalFiles = files.length;
 
   onProgress(15, `Archive extraite (${totalFiles} fichiers)`);
+
+  // Identifier les fichiers propriétaires à supprimer
+  onProgress(18, "Détection des fichiers propriétaires...");
+  
+  for (const filePath of files) {
+    if (shouldRemoveFile(filePath)) {
+      filesToRemove.push(filePath);
+      issues.push({
+        file: filePath,
+        pattern: filePath,
+        severity: "critical",
+        description: "Fichier de configuration propriétaire - sera supprimé",
+      });
+    }
+  }
 
   // Chercher et analyser package.json
   onProgress(20, "Recherche du package.json...");
@@ -274,21 +331,25 @@ export async function analyzeZipFile(
   
   for (const filePath of files) {
     const fileName = filePath.split("/").pop() || "";
-    for (const pattern of PROPRIETARY_PATTERNS.files) {
-      if (fileName.includes(pattern)) {
-        issues.push({
-          file: filePath,
-          pattern: fileName,
-          severity: "critical",
-          description: `Fichier de configuration propriétaire`,
-        });
+    for (const pattern of PROPRIETARY_FILES) {
+      if (fileName === pattern || fileName.includes(pattern)) {
+        if (!filesToRemove.includes(filePath)) {
+          filesToRemove.push(filePath);
+          issues.push({
+            file: filePath,
+            pattern: fileName,
+            severity: "critical",
+            description: `Fichier de configuration propriétaire`,
+          });
+        }
       }
     }
   }
 
   // Analyser les fichiers sources
   const sourceFiles = files.filter(
-    f => (f.endsWith(".tsx") || f.endsWith(".ts") || f.endsWith(".jsx") || f.endsWith(".js")) &&
+    f => (f.endsWith(".tsx") || f.endsWith(".ts") || f.endsWith(".jsx") || f.endsWith(".js") || 
+          f.endsWith(".html") || f.endsWith(".json")) &&
          !f.includes("node_modules") &&
          !zip.files[f].dir
   );
@@ -299,11 +360,24 @@ export async function analyzeZipFile(
 
   for (let i = 0; i < sourceFiles.length; i++) {
     const filePath = sourceFiles[i];
+    
+    // Skip files to remove
+    if (filesToRemove.includes(filePath)) continue;
+    
     const content = await zip.files[filePath].async("string");
     extractedFiles.set(filePath, content);
+    
+    // Analyser le fichier
     const fileIssues = analyzeSourceFile(filePath, content);
     issues.push(...fileIssues);
     analyzedFiles++;
+    
+    // Vérifier les CDN propriétaires
+    for (const cdn of PROPRIETARY_ASSET_CDNS) {
+      if (content.includes(cdn) && !proprietaryCDNs.includes(cdn)) {
+        proprietaryCDNs.push(cdn);
+      }
+    }
 
     // Mise à jour de la progression
     const progress = 40 + Math.floor((i / sourceFiles.length) * 50);
@@ -315,12 +389,12 @@ export async function analyzeZipFile(
   onProgress(92, "Calcul du score de portabilité...");
 
   // Calculer le score
-  const score = calculateScore(issues, dependencies, totalFiles);
+  const score = calculateScore(issues, dependencies, totalFiles, filesToRemove.length);
 
   onProgress(94, "Génération des recommandations...");
 
   // Générer les recommandations
-  const recommendations = generateRecommendations(issues, dependencies);
+  const recommendations = generateRecommendations(issues, dependencies, filesToRemove, proprietaryCDNs);
 
   // Détecter la plateforme
   const platform = detectPlatform(issues, dependencies);
@@ -344,6 +418,8 @@ export async function analyzeZipFile(
     recommendations,
     extractedFiles,
     costAnalysis,
+    filesToRemove,
+    proprietaryCDNs,
   };
 }
 
@@ -360,6 +436,8 @@ export async function analyzeFromGitHub(
 ): Promise<RealAnalysisResult> {
   const issues: AnalysisIssue[] = [];
   const dependencies: DependencyItem[] = [];
+  const filesToRemove: string[] = [];
+  const proprietaryCDNs: string[] = [];
   const totalFiles = files.length;
   let analyzedFiles = 0;
 
@@ -367,8 +445,22 @@ export async function analyzeFromGitHub(
 
   // Créer une Map des fichiers extraits
   const extractedFiles = new Map<string, string>();
+  
+  // Identifier les fichiers propriétaires à supprimer
+  onProgress(15, "Détection des fichiers propriétaires...");
+  
   for (const file of files) {
-    extractedFiles.set(file.path, file.content);
+    if (shouldRemoveFile(file.path)) {
+      filesToRemove.push(file.path);
+      issues.push({
+        file: file.path,
+        pattern: file.path,
+        severity: "critical",
+        description: "Fichier de configuration propriétaire - sera supprimé",
+      });
+    } else {
+      extractedFiles.set(file.path, file.content);
+    }
   }
 
   // Chercher et analyser package.json
@@ -389,22 +481,27 @@ export async function analyzeFromGitHub(
   
   for (const file of files) {
     const fileName = file.path.split("/").pop() || "";
-    for (const pattern of PROPRIETARY_PATTERNS.files) {
-      if (fileName.includes(pattern)) {
-        issues.push({
-          file: file.path,
-          pattern: fileName,
-          severity: "critical",
-          description: `Fichier de configuration propriétaire`,
-        });
+    for (const pattern of PROPRIETARY_FILES) {
+      if (fileName === pattern || fileName.includes(pattern)) {
+        if (!filesToRemove.includes(file.path)) {
+          filesToRemove.push(file.path);
+          issues.push({
+            file: file.path,
+            pattern: fileName,
+            severity: "critical",
+            description: `Fichier de configuration propriétaire`,
+          });
+        }
       }
     }
   }
 
   // Analyser les fichiers sources
   const sourceFiles = files.filter(
-    f => f.path.endsWith(".tsx") || f.path.endsWith(".ts") || 
-         f.path.endsWith(".jsx") || f.path.endsWith(".js")
+    f => (f.path.endsWith(".tsx") || f.path.endsWith(".ts") || 
+         f.path.endsWith(".jsx") || f.path.endsWith(".js") ||
+         f.path.endsWith(".html") || f.path.endsWith(".json")) &&
+         !filesToRemove.includes(f.path)
   );
 
   onProgress(40, `Analyse des fichiers sources (0/${sourceFiles.length})...`);
@@ -414,6 +511,13 @@ export async function analyzeFromGitHub(
     const fileIssues = analyzeSourceFile(file.path, file.content);
     issues.push(...fileIssues);
     analyzedFiles++;
+    
+    // Vérifier les CDN propriétaires
+    for (const cdn of PROPRIETARY_ASSET_CDNS) {
+      if (file.content.includes(cdn) && !proprietaryCDNs.includes(cdn)) {
+        proprietaryCDNs.push(cdn);
+      }
+    }
 
     // Mise à jour de la progression
     const progress = 40 + Math.floor((i / sourceFiles.length) * 50);
@@ -425,12 +529,12 @@ export async function analyzeFromGitHub(
   onProgress(92, "Calcul du score de portabilité...");
 
   // Calculer le score
-  const score = calculateScore(issues, dependencies, totalFiles);
+  const score = calculateScore(issues, dependencies, totalFiles, filesToRemove.length);
 
   onProgress(94, "Génération des recommandations...");
 
   // Générer les recommandations
-  const recommendations = generateRecommendations(issues, dependencies);
+  const recommendations = generateRecommendations(issues, dependencies, filesToRemove, proprietaryCDNs);
 
   // Détecter la plateforme
   const platform = detectPlatform(issues, dependencies);
@@ -453,5 +557,7 @@ export async function analyzeFromGitHub(
     recommendations,
     extractedFiles,
     costAnalysis,
+    filesToRemove,
+    proprietaryCDNs,
   };
 }
