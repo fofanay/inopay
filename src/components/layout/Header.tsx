@@ -139,23 +139,12 @@ const Header = () => {
               {t("common.pricing")}
             </Link>
             <Link 
-              to="/services" 
-              className={`text-sm font-medium transition-colors ${
-                isActive("/services") ? "text-white" : "text-white/80 hover:text-white"
-              }`}
-            >
-              Services
-            </Link>
-            <Link 
               to="/economies" 
-              className={`text-sm font-medium transition-colors flex items-center gap-1 ${
+              className={`text-sm font-medium transition-colors ${
                 isActive("/economies") ? "text-white" : "text-white/80 hover:text-white"
               }`}
             >
               {t("common.savings")}
-              <Badge className="bg-white/20 text-white border-white/30 text-xs px-1.5 py-0">
-                {t("common.new")}
-              </Badge>
             </Link>
             <Link 
               to="/dashboard" 
@@ -164,14 +153,6 @@ const Header = () => {
               }`}
             >
               {t("common.dashboard")}
-            </Link>
-            <Link 
-              to="/historique" 
-              className={`text-sm font-medium transition-colors ${
-                isActive("/historique") ? "text-white" : "text-white/80 hover:text-white"
-              }`}
-            >
-              {t("common.history")}
             </Link>
           </div>
           
@@ -279,25 +260,13 @@ const Header = () => {
                 {t("common.pricing")}
               </Link>
               <Link 
-                to="/services" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive("/services") ? "text-primary" : "text-muted-foreground"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Services
-              </Link>
-              <Link 
                 to="/economies" 
-                className={`text-sm font-medium transition-colors hover:text-primary flex items-center gap-2 ${
+                className={`text-sm font-medium transition-colors hover:text-primary ${
                   isActive("/economies") ? "text-primary" : "text-muted-foreground"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {t("common.savings")}
-                <Badge className="bg-success/10 text-success border-success/20 text-xs px-1.5 py-0">
-                  {t("common.new")}
-                </Badge>
               </Link>
               <Link 
                 to="/dashboard" 
@@ -307,15 +276,6 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {t("common.dashboard")}
-              </Link>
-              <Link 
-                to="/historique" 
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  isActive("/historique") ? "text-primary" : "text-muted-foreground"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {t("common.history")}
               </Link>
               <div className="pt-4 border-t border-border flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t("common.settings")}</span>

@@ -757,32 +757,28 @@
     },
     "faq": {
       "badge": "Questions fréquentes",
-      "title": "Confort vs Souverain : vos questions",
-      "subtitle": "Tout ce que vous devez savoir pour choisir le bon pack",
+      "title": "Vos questions sur la Libération",
+      "subtitle": "Tout ce que vous devez savoir sur notre service",
       "items": {
-        "difference": {
-          "question": "Quelle est la différence principale entre les deux packs ?",
-          "answer": "Le Pack Confort est une solution tout-en-un où Inopay gère les coûts IA (49$/mois). Le Pack Souverain (29$/mois) vous permet d'utiliser votre propre clé API (BYOK) et de payer les tokens IA directement à votre fournisseur, ce qui est plus économique pour les gros volumes."
+        "howItWorks": {
+          "question": "Comment fonctionne la Libération ?",
+          "answer": "Vous uploadez votre projet (ZIP ou GitHub), notre IA analyse et supprime les dépendances propriétaires, puis nous déployons le code nettoyé sur votre VPS. Tout le processus prend environ 10 minutes."
         },
-        "byok": {
-          "question": "Qu'est-ce que BYOK (Bring Your Own Key) ?",
-          "answer": "BYOK signifie 'Apportez Votre Propre Clé'. Avec le Pack Souverain, vous connectez votre propre compte API (OpenAI, Anthropic, DeepSeek) et vous payez les tokens au prix du fournisseur, souvent 50-70% moins cher que via Inopay."
+        "oneTime": {
+          "question": "Pourquoi un paiement unique au lieu d'un abonnement ?",
+          "answer": "Nous croyons que votre code vous appartient. Une fois libéré, il est à vous pour toujours. Pas de frais mensuels, pas de lock-in. Payez une fois, possédez votre code."
         },
-        "tokens": {
-          "question": "Comment sont calculés les coûts de tokens ?",
-          "answer": "Environ 0.018$/fichier avec BYOK vs 0.04$/fichier avec le Pack Confort. Pour un projet de 2000 fichiers : ~36$ en tokens BYOK vs ~80$ tout inclus avec Confort. Plus votre projet est gros, plus le BYOK est avantageux."
-        },
-        "switch": {
-          "question": "Puis-je changer de pack après inscription ?",
-          "answer": "Oui, vous pouvez passer du Pack Confort au Pack Souverain à tout moment via les paramètres. Il suffit d'ajouter votre clé API pour activer le mode BYOK et bénéficier des tarifs réduits."
-        },
-        "volume": {
-          "question": "À partir de combien de fichiers le Pack Souverain est-il rentable ?",
-          "answer": "Généralement à partir de 1000+ fichiers par mois. Utilisez notre calculateur de coûts ci-dessus pour comparer selon votre volume exact. Pour les petits projets ponctuels, le Pack Confort reste plus simple."
+        "packPro": {
+          "question": "Que contient le Pack Pro ?",
+          "answer": "Le Pack Pro inclut la Libération complète (99$) + un VPS dédié configuré (59$) + le Monitoring 24/7 pendant 1 an (180$). Soit 217$ de services pour seulement 149$, une économie de 68$."
         },
         "security": {
-          "question": "Mes clés API sont-elles sécurisées ?",
-          "answer": "Absolument. Les clés sont chiffrées avec AES-256 et stockées via Supabase Vault. Elles ne sont jamais exposées dans le code et sont utilisées uniquement pendant le nettoyage puis immédiatement effacées de la mémoire."
+          "question": "Mes données sont-elles sécurisées ?",
+          "answer": "Absolument. Nous utilisons une architecture Zero-Knowledge : vos credentials ne sont jamais stockés. Le nettoyage se fait en mémoire et tout est effacé après le déploiement."
+        },
+        "support": {
+          "question": "Quel support est inclus ?",
+          "answer": "La Libération Unique inclut un support prioritaire pendant 48h pour le déploiement initial. Le Pack Pro inclut un support prioritaire illimité pendant toute la durée du monitoring (1 an)."
         }
       }
     },

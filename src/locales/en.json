@@ -757,32 +757,28 @@
     },
     "faq": {
       "badge": "Frequently asked questions",
-      "title": "Comfort vs Sovereign: your questions",
-      "subtitle": "Everything you need to know to choose the right pack",
+      "title": "Your Liberation Questions",
+      "subtitle": "Everything you need to know about our service",
       "items": {
-        "difference": {
-          "question": "What is the main difference between the two packs?",
-          "answer": "The Comfort Pack is an all-in-one solution where Inopay handles AI costs ($49/month). The Sovereign Pack ($29/month) lets you use your own API key (BYOK) and pay AI tokens directly to your provider, which is more economical for large volumes."
+        "howItWorks": {
+          "question": "How does Liberation work?",
+          "answer": "You upload your project (ZIP or GitHub), our AI analyzes and removes proprietary dependencies, then we deploy the cleaned code to your VPS. The whole process takes about 10 minutes."
         },
-        "byok": {
-          "question": "What is BYOK (Bring Your Own Key)?",
-          "answer": "BYOK means 'Bring Your Own Key'. With the Sovereign Pack, you connect your own API account (OpenAI, Anthropic, DeepSeek) and pay for tokens at the provider's price, often 50-70% cheaper than through Inopay."
+        "oneTime": {
+          "question": "Why a one-time payment instead of a subscription?",
+          "answer": "We believe your code belongs to you. Once liberated, it's yours forever. No monthly fees, no lock-in. Pay once, own your code."
         },
-        "tokens": {
-          "question": "How are token costs calculated?",
-          "answer": "About $0.018/file with BYOK vs $0.04/file with Comfort Pack. For a 2000-file project: ~$36 in BYOK tokens vs ~$80 all-inclusive with Comfort. The bigger your project, the more advantageous BYOK becomes."
-        },
-        "switch": {
-          "question": "Can I switch packs after signing up?",
-          "answer": "Yes, you can switch from Comfort Pack to Sovereign Pack anytime via settings. Just add your API key to activate BYOK mode and benefit from reduced rates."
-        },
-        "volume": {
-          "question": "At how many files does the Sovereign Pack become worth it?",
-          "answer": "Generally from 1000+ files per month. Use our cost calculator above to compare based on your exact volume. For small one-off projects, the Comfort Pack remains simpler."
+        "packPro": {
+          "question": "What's included in the Pro Pack?",
+          "answer": "The Pro Pack includes full Liberation ($99) + a dedicated configured VPS ($59) + 24/7 Monitoring for 1 year ($180). That's $217 of services for only $149, a $68 savings."
         },
         "security": {
-          "question": "Are my API keys secure?",
-          "answer": "Absolutely. Keys are encrypted with AES-256 and stored via Supabase Vault. They are never exposed in code and are used only during cleaning, then immediately cleared from memory."
+          "question": "Is my data secure?",
+          "answer": "Absolutely. We use a Zero-Knowledge architecture: your credentials are never stored. Cleaning happens in memory and everything is erased after deployment."
+        },
+        "support": {
+          "question": "What support is included?",
+          "answer": "Single Liberation includes priority support for 48h for the initial deployment. The Pro Pack includes unlimited priority support for the entire monitoring period (1 year)."
         }
       }
     },
