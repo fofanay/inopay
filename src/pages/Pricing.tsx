@@ -1,143 +1,60 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
-import { 
-  Check, Sparkles, Zap, ArrowRight, Loader2, Globe, Key, 
-  Shield, Rocket, Lock, Activity, Building2, User, Infinity,
-  FileCode, Calculator, SlidersHorizontal, RefreshCw, Plus, 
-  Palette, Terminal, Package, Server
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
+import { Check, Sparkles, Rocket, Server, Activity, Gift, ArrowRight, Zap, Shield, Clock, Package, Crown } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import FofyChat from "@/components/FofyChat";
-import PackComparison from "@/components/pricing/PackComparison";
-import PricingFAQ from "@/components/pricing/PricingFAQ";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useCurrencyDetection, type Currency } from "@/hooks/useCurrencyDetection";
+import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import PricingFAQ from "@/components/pricing/PricingFAQ";
+import FofyChat from "@/components/FofyChat";
 
-// Stripe Price IDs - Packs principaux
-const STRIPE_PACKS = {
-  confort: "price_1ShZJ0BYLQpzPb0yKitTVhTg",
-  souverain: "price_1ShZLLBYLQpzPb0yZIYAEbhA",
+// Stripe Price IDs - Nouveaux produits one-time
+const STRIPE_PRICES = {
+  liberation: "price_1SidiQBYLQpzPb0ylzyXYhjj", // Libération Unique 99$
+  packPro: "price_1SidifBYLQpzPb0y2rStqOJb", // Pack Pro 149$
 };
 
-// Stripe Price IDs - Add-ons par devise
+// Add-ons existants (gardés)
 const STRIPE_ADDONS = {
-  CAD: {
-    redeploy: "price_1Sgr89BYLQpzPb0yTaGeD7uk",    // 49 CAD
-    monitoring: "price_1Sgr8iBYLQpzPb0yo15IvGVU",  // 19 CAD/mois
-    server: "price_1Sgr9zBYLQpzPb0yZJS7N412",      // 79 CAD
-    pack: "price_1SiRSjBYLQpzPb0y7DH2KSKV",        // 102.40 CAD (Pack Complet -20%)
-  },
-  USD: {
-    redeploy: "price_1Sgr8LBYLQpzPb0yX0NHl6PS",    // 39 USD
-    monitoring: "price_1Sgr8rBYLQpzPb0yReXWuS1J",  // 15 USD/mois
-    server: "price_1SgrAsBYLQpzPb0ybNWYjt2p",      // 59 USD
-    pack: "price_1SiRStBYLQpzPb0yZKknxEYI",        // 78.40 USD (Pack Complet -20%)
-  },
-  EUR: {
-    redeploy: "price_1Sgr8VBYLQpzPb0y3MKtI4Gh",    // 35 EUR
-    monitoring: "price_1Sgr9VBYLQpzPb0yX1LCrf4N",  // 13 EUR/mois
-    server: "price_1SgrC6BYLQpzPb0yvYbly0EL",      // 55 EUR
-    pack: "price_1SiRT4BYLQpzPb0yP3MFE0mo",        // 72 EUR (Pack Complet -20%)
-  },
+  redeploy: "price_1Sd1YtBYLQpzPb0yQJhHvF0e", // Re-déploiement 39$
+  monitoring: "price_1Sd1b2BYLQpzPb0y3xqFmOYS", // Monitoring mensuel 15$/mois
+  server: "price_1Sd1cpBYLQpzPb0yMnPVnfSz", // Serveur VPS 59$
 };
-
-// Prix affichés par devise pour les add-ons
-const ADDON_PRICES = {
-  CAD: { redeploy: "49 $", monitoring: "19 $", server: "79 $", pack: "102 $", packOriginal: "128 $", symbol: "CAD" },
-  USD: { redeploy: "39 $", monitoring: "15 $", server: "59 $", pack: "78 $", packOriginal: "98 $", symbol: "USD" },
-  EUR: { redeploy: "35 €", monitoring: "13 €", server: "55 €", pack: "72 €", packOriginal: "90 €", symbol: "EUR" },
-};
-
-// Cost calculation constants
-const COST_PER_FILE_CONFORT = 0.04;
-const COST_PER_FILE_BYOK = 0.018;
-const PLATFORM_FEE_SOUVERAIN = 29;
-
-type AddonType = "redeploy" | "monitoring" | "server" | "pack";
 
 const Pricing = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { t } = useTranslation();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const { currency, setCurrency } = useCurrencyDetection();
-  const [fileCount, setFileCount] = useState<number[]>([2000]);
 
-  // Calculate costs based on file count
-  const costs = useMemo(() => {
-    const files = fileCount[0];
-    const confortTotal = Math.max(49, Math.ceil(files * COST_PER_FILE_CONFORT));
-    const byokTokens = Math.ceil(files * COST_PER_FILE_BYOK);
-    const souverainTotal = PLATFORM_FEE_SOUVERAIN + byokTokens;
-    const savings = confortTotal - souverainTotal;
-    const savingsPercent = Math.round((savings / confortTotal) * 100);
-    
-    return {
-      confortTotal,
-      souverainTotal,
-      byokTokens,
-      savings: Math.max(0, savings),
-      savingsPercent: Math.max(0, savingsPercent),
-    };
-  }, [fileCount]);
-
-  const handleSelectPack = async (plan: "confort" | "souverain") => {
+  const handleCheckout = async (priceId: string, planName: string, mode: "payment" | "subscription" = "payment") => {
     if (!user) {
       navigate("/auth");
       return;
     }
 
-    setLoadingPlan(plan);
-
+    setLoadingPlan(planName);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId, mode, serviceType: planName },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
 
-      if (plan === "souverain") {
-        await supabase
-          .from("user_settings")
-          .upsert({
-            user_id: user.id,
-            preferred_deploy_platform: "byok",
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "user_id" });
-        
-        toast({
-          title: t('pricing.souverain.activatedTitle'),
-          description: t('pricing.souverain.activatedDesc'),
-        });
-        
-        navigate("/parametres");
-        return;
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
       }
-
-      const response = await supabase.functions.invoke("create-checkout", {
-        body: {
-          priceId: STRIPE_PACKS[plan],
-          mode: "subscription",
-          serviceType: plan,
-        },
-        headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`,
-        },
-      });
-
-      if (response.error) throw new Error(response.error.message);
-      if (response.data?.url) window.open(response.data.url, "_blank");
-    } catch (error) {
-      console.error("Checkout error:", error);
+    } catch (error: any) {
       toast({
-        title: t('common.error'),
-        description: t('errors.checkoutFailed'),
+        title: t("common.error"),
+        description: error.message || "Erreur lors de la création du checkout",
         variant: "destructive",
       });
     } finally {
@@ -145,595 +62,306 @@ const Pricing = () => {
     }
   };
 
-  const handleAddonCheckout = async (addonType: AddonType) => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+  const mainOffers = [
+    {
+      id: "free",
+      name: "Analyse Gratuite",
+      price: "0$",
+      period: "",
+      description: "Découvrez votre Vibe-Score™ et identifiez les dépendances propriétaires",
+      icon: Sparkles,
+      popular: false,
+      features: [
+        "Score de portabilité complet",
+        "Audit des dépendances",
+        "Prévisualisation du nettoyage",
+        "Recommandations personnalisées",
+      ],
+      cta: user ? "Analyser mon projet" : "Commencer gratuitement",
+      action: () => navigate(user ? "/dashboard" : "/auth"),
+    },
+    {
+      id: "liberation",
+      name: "Libération Unique",
+      price: "99$",
+      period: "one-time",
+      description: "Nettoyage IA complet + Déploiement sur votre serveur",
+      icon: Rocket,
+      popular: true,
+      features: [
+        "Nettoyage IA de tout le code",
+        "Suppression des dépendances propriétaires",
+        "Export vers GitHub personnel",
+        "Déploiement VPS assisté",
+        "SSL + PostgreSQL inclus",
+        "Support prioritaire 48h",
+      ],
+      cta: "Libérer mon projet",
+      action: () => handleCheckout(STRIPE_PRICES.liberation, "liberation"),
+    },
+    {
+      id: "packPro",
+      name: "Pack Pro",
+      price: "149$",
+      originalPrice: "217$",
+      period: "one-time",
+      description: "Libération + VPS dédié + Monitoring 24/7 pendant 1 an",
+      icon: Crown,
+      popular: false,
+      badge: "Économisez 68$",
+      features: [
+        "Tout de la Libération Unique",
+        "VPS dédié configuré pour vous",
+        "Monitoring 24/7 pendant 1 an",
+        "Alertes instantanées",
+        "Sauvegardes automatiques",
+        "Support prioritaire illimité",
+      ],
+      cta: "Choisir le Pack Pro",
+      action: () => handleCheckout(STRIPE_PRICES.packPro, "packPro"),
+    },
+  ];
 
-    setLoadingPlan(addonType);
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const isSubscription = addonType === "monitoring";
-      
-      const response = await supabase.functions.invoke("create-checkout", {
-        body: {
-          priceId: STRIPE_ADDONS[currency][addonType],
-          mode: isSubscription ? "subscription" : "payment",
-          serviceType: addonType,
-        },
-        headers: {
-          Authorization: `Bearer ${sessionData.session?.access_token}`,
-        },
-      });
-
-      if (response.error) throw new Error(response.error.message);
-      if (response.data?.url) window.open(response.data.url, "_blank");
-    } catch (error) {
-      console.error("Checkout error:", error);
-      toast({
-        title: t('common.error'),
-        description: t('errors.checkoutFailed'),
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPlan(null);
-    }
-  };
+  const addons = [
+    {
+      id: "redeploy",
+      name: "Re-déploiement",
+      price: "39$",
+      description: "Mise à jour de votre application déployée",
+      icon: Zap,
+      action: () => handleCheckout(STRIPE_ADDONS.redeploy, "redeploy"),
+    },
+    {
+      id: "monitoring",
+      name: "Monitoring 24/7",
+      price: "15$/mois",
+      description: "Surveillance et alertes en temps réel",
+      icon: Activity,
+      action: () => handleCheckout(STRIPE_ADDONS.monitoring, "monitoring", "subscription"),
+    },
+    {
+      id: "server",
+      name: "Serveur VPS",
+      price: "59$",
+      description: "Configuration VPS supplémentaire",
+      icon: Server,
+      action: () => handleCheckout(STRIPE_ADDONS.server, "server"),
+    },
+  ];
 
   return (
     <Layout>
-      <section className="py-16 md:py-24">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden py-16 md:py-24">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-primary/5" />
+        <div className="container mx-auto px-4 text-center">
+          <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
+            <Gift className="h-3 w-3 mr-1" />
+            Modèle Simple & Transparent
+          </Badge>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <span className="text-foreground">Un prix. </span>
+            <span className="text-primary">Une libération.</span>
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            Pas d'abonnement mensuel obligatoire. Payez une fois, possédez votre code pour toujours.
+          </p>
+        </div>
+      </section>
+
+      {/* Main Offers */}
+      <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
-          {/* Header */}
-          <div className="text-center mb-12 md:mb-16">
-            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
-              <Palette className="h-3 w-3 mr-1" />
-              🎨 {t('hero.vibeToProduction')}
-            </Badge>
-            <h1 className="text-3xl md:text-5xl font-bold mb-4 text-foreground">
-              {t('pricing.unified.title')}
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-2">
-              {t('pricing.unified.subtitle')}
-            </p>
-            <p className="text-sm md:text-base text-primary font-medium">
-              {t('pricing.features')}
-            </p>
-            
-            {/* Currency Selector */}
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <Select value={currency} onValueChange={(value: Currency) => setCurrency(value)}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Devise" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CAD">🇨🇦 CAD</SelectItem>
-                  <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                  <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Main Packs */}
-          <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-5xl mx-auto mb-16">
-            {/* Pack Confort */}
-            <Card className="relative border-2 border-emerald-500/30 bg-gradient-to-b from-emerald-500/5 to-transparent hover:border-emerald-500/50 transition-all duration-300">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-emerald-500 text-white px-4 py-1">
-                  <Zap className="h-3 w-3 mr-1" />
-                  {t('pricing.confort.badge')}
-                </Badge>
-              </div>
-
-              <CardHeader className="text-center pt-10 pb-6">
-                <div className="mx-auto h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                  <Zap className="h-8 w-8 text-emerald-500" />
-                </div>
-                <CardTitle className="text-2xl md:text-3xl font-bold">{t('pricing.confort.name')}</CardTitle>
-                <CardDescription className="text-base flex items-center justify-center gap-2 mt-2">
-                  <User className="h-4 w-4" />
-                  {t('pricing.confort.target')}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-6">
-                <div className="text-center">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold text-foreground">49$</span>
-                    <span className="text-muted-foreground">/ {t('common.month')}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{t('pricing.confort.priceNote')}</p>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.confort.feature1')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.confort.feature1Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <FileCode className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.confort.feature2')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.confort.feature2Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <Rocket className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.confort.feature3')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.confort.feature3Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <Shield className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.confort.feature4')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.confort.feature4Desc')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-emerald-500/10 rounded-lg p-4 text-center">
-                  <p className="text-sm font-medium text-emerald-400">
-                    ✨ {t('pricing.confort.highlight')}
-                  </p>
-                </div>
-
-                <Button 
-                  className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700"
-                  onClick={() => handleSelectPack("confort")}
-                  disabled={loadingPlan !== null}
-                >
-                  {loadingPlan === "confort" ? (
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  ) : (
-                    <Zap className="h-5 w-5 mr-2" />
-                  )}
-                  {t('pricing.confort.cta')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Pack Souverain */}
-            <Card className="relative border-2 border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent hover:border-amber-500/50 transition-all duration-300">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 px-4 py-1">
-                  <Key className="h-3 w-3 mr-1" />
-                  {t('pricing.souverain.badge')}
-                </Badge>
-              </div>
-
-              <CardHeader className="text-center pt-10 pb-6">
-                <div className="mx-auto h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
-                  <Key className="h-8 w-8 text-amber-500" />
-                </div>
-                <CardTitle className="text-2xl md:text-3xl font-bold">{t('pricing.souverain.name')}</CardTitle>
-                <CardDescription className="text-base flex items-center justify-center gap-2 mt-2">
-                  <Building2 className="h-4 w-4" />
-                  {t('pricing.souverain.target')}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-6">
-                <div className="text-center">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold text-foreground">29$</span>
-                    <span className="text-muted-foreground">/ {t('common.month')}</span>
-                  </div>
-                  <p className="text-sm text-amber-400 mt-1">{t('pricing.souverain.priceNote')}</p>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <Infinity className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.souverain.feature1')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.souverain.feature1Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <Key className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.souverain.feature2')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.souverain.feature2Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <Shield className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.souverain.feature3')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.souverain.feature3Desc')}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                      <Lock className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{t('pricing.souverain.feature4')}</p>
-                      <p className="text-sm text-muted-foreground">{t('pricing.souverain.feature4Desc')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-amber-500/10 rounded-lg p-4 text-center">
-                  <p className="text-sm font-medium text-amber-400">
-                    💰 {t('pricing.souverain.highlight')}
-                  </p>
-                </div>
-
-                <Button 
-                  className="w-full h-12 text-base bg-amber-600 hover:bg-amber-700"
-                  onClick={() => handleSelectPack("souverain")}
-                  disabled={loadingPlan !== null}
-                >
-                  {loadingPlan === "souverain" ? (
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  ) : (
-                    <Key className="h-5 w-5 mr-2" />
-                  )}
-                  {t('pricing.souverain.cta')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Cost Comparison Calculator */}
-          <div className="max-w-3xl mx-auto mb-16">
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Calculator className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{t('pricing.calculator.title')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('pricing.calculator.subtitle')}</p>
-                  </div>
-                </div>
-
-                <div className="bg-background rounded-lg p-4 border mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{t('pricing.calculator.fileCount')}</span>
-                    </div>
-                    <Badge variant="secondary" className="text-lg px-3 py-1">
-                      <FileCode className="h-4 w-4 mr-1" />
-                      {fileCount[0].toLocaleString()}
-                    </Badge>
-                  </div>
-                  <Slider
-                    value={fileCount}
-                    onValueChange={setFileCount}
-                    min={100}
-                    max={5000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                    <span>100 {t('pricing.calculator.files')}</span>
-                    <span>5000 {t('pricing.calculator.files')}</span>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-background rounded-lg p-4 border">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">{t('pricing.confort.name')}</span>
-                      <Badge className="bg-emerald-500/20 text-emerald-400 border-0">
-                        <Zap className="h-3 w-3 mr-1" />
-                        {t('pricing.calculator.simple')}
-                      </Badge>
-                    </div>
-                    <p className="text-2xl font-bold">~{costs.confortTotal}$</p>
-                    <p className="text-xs text-muted-foreground">{t('pricing.calculator.allInclusive')}</p>
-                  </div>
-
-                  <div className="bg-background rounded-lg p-4 border border-amber-500/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">{t('pricing.souverain.name')}</span>
-                      <Badge className="bg-amber-500/20 text-amber-400 border-0">
-                        <Key className="h-3 w-3 mr-1" />
-                        BYOK
-                      </Badge>
-                    </div>
-                    <p className="text-2xl font-bold">~{costs.souverainTotal}$</p>
-                    <p className="text-xs text-muted-foreground">29$ + {t('pricing.calculator.yourTokens')} (~{costs.byokTokens}$)</p>
-                  </div>
-                </div>
-
-                {costs.savings > 0 && (
-                  <div className="mt-4 p-3 bg-success/10 rounded-lg text-center">
-                    <p className="text-sm font-medium text-success">
-                      🎉 {t('pricing.calculator.savingsPrefix')} {costs.savings}$ ({costs.savingsPercent}%) {t('pricing.calculator.savingsSuffix')}
-                    </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {mainOffers.map((offer) => (
+              <Card
+                key={offer.id}
+                className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl ${
+                  offer.popular
+                    ? "border-2 border-primary shadow-lg scale-[1.02]"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                {offer.popular && (
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
+                    POPULAIRE
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Add-ons Section */}
-          <div className="max-w-5xl mx-auto mb-16">
-            <div className="text-center mb-8">
-              <Badge className="mb-4 bg-secondary/50 text-secondary-foreground border-secondary/30">
-                <Plus className="h-3 w-3 mr-1" />
-                {t('pricing.addons.badge')}
-              </Badge>
-              <h2 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">
-                {t('pricing.addons.title')}
-              </h2>
-              <p className="text-muted-foreground">
-                {t('pricing.addons.subtitle')}
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Redeploy */}
-              <Card className="border hover:border-primary/50 transition-all">
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                    <RefreshCw className="h-6 w-6 text-primary" />
+                {offer.badge && (
+                  <div className="absolute top-0 left-0 bg-success text-success-foreground px-3 py-1 text-xs font-semibold rounded-br-lg">
+                    {offer.badge}
                   </div>
-                  <CardTitle className="text-lg">{t('pricing.redeploy.name')}</CardTitle>
-                  <CardDescription className="text-sm">{t('pricing.redeploy.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center mb-4">
-                    <span className="text-3xl font-bold">{ADDON_PRICES[currency].redeploy}</span>
-                    <span className="text-sm text-muted-foreground"> / {t('common.perUpdate')}</span>
-                  </div>
-                  <ul className="space-y-2 mb-4 text-sm">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.redeploy.feature1')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.redeploy.feature2')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.redeploy.feature3')}
-                    </li>
-                  </ul>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => handleAddonCheckout("redeploy")}
-                    disabled={loadingPlan !== null}
-                  >
-                    {loadingPlan === "redeploy" ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {t('pricing.redeploy.cta')}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Monitoring */}
-              <Card className="border hover:border-primary/50 transition-all">
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                    <Activity className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t('pricing.monitoring.name')}</CardTitle>
-                  <CardDescription className="text-sm">{t('pricing.monitoring.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center mb-4">
-                    <span className="text-3xl font-bold">{ADDON_PRICES[currency].monitoring}</span>
-                    <span className="text-sm text-muted-foreground"> / {t('common.month')} / {t('common.perApp')}</span>
-                  </div>
-                  <ul className="space-y-2 mb-4 text-sm">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.monitoring.feature1')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.monitoring.feature2')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.monitoring.feature3')}
-                    </li>
-                  </ul>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => handleAddonCheckout("monitoring")}
-                    disabled={loadingPlan !== null}
-                  >
-                    {loadingPlan === "monitoring" ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {t('pricing.monitoring.cta')}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Server */}
-              <Card className="border hover:border-primary/50 transition-all">
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                    <Plus className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{t('pricing.server.name')}</CardTitle>
-                  <CardDescription className="text-sm">{t('pricing.server.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center mb-4">
-                    <span className="text-3xl font-bold">{ADDON_PRICES[currency].server}</span>
-                    <span className="text-sm text-muted-foreground"> / {t('common.perServer')}</span>
-                  </div>
-                  <ul className="space-y-2 mb-4 text-sm">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.server.feature1')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.server.feature2')}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-success" />
-                      {t('pricing.server.feature3')}
-                    </li>
-                  </ul>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => handleAddonCheckout("server")}
-                    disabled={loadingPlan !== null}
-                  >
-                    {loadingPlan === "server" ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {t('pricing.server.cta')}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pack Complet - Best Value */}
-            <div className="max-w-2xl mx-auto">
-              <Card className="relative border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 overflow-hidden">
-                <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground">
-                  <Package className="h-3 w-3 mr-1" />
-                  -20%
-                </Badge>
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                    <Package className="h-7 w-7 text-primary" />
-                  </div>
-                  <CardTitle className="text-2xl">Pack Complet</CardTitle>
-                  <CardDescription className="text-base">
-                    Déploiement assisté + Serveur VPS configuré
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                          <Rocket className="h-4 w-4 text-emerald-500" />
-                        </div>
-                        <span className="text-sm">Déploiement assisté inclus</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                          <Server className="h-4 w-4 text-amber-500" />
-                        </div>
-                        <span className="text-sm">Serveur VPS configuré</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Zap className="h-4 w-4 text-primary" />
-                        </div>
-                        <span className="text-sm">Livraison en 24h</span>
-                      </div>
+                )}
+                <CardHeader className="pb-4 pt-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+                      offer.popular ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                    }`}>
+                      <offer.icon className="h-6 w-6" />
                     </div>
-                    
-                    <div className="text-center md:text-right">
-                      <div className="text-sm text-muted-foreground line-through">
-                        {ADDON_PRICES[currency].packOriginal}
-                      </div>
-                      <div className="flex items-baseline justify-center md:justify-end gap-1">
-                        <span className="text-4xl font-bold text-primary">{ADDON_PRICES[currency].pack}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Économisez 20%</p>
+                    <div>
+                      <CardTitle className="text-xl">{offer.name}</CardTitle>
                     </div>
                   </div>
-                  
-                  <Button 
-                    className="w-full mt-6 h-12 text-base"
-                    onClick={() => handleAddonCheckout("pack")}
-                    disabled={loadingPlan !== null}
-                  >
-                    {loadingPlan === "pack" ? (
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    ) : (
-                      <Rocket className="h-5 w-5 mr-2" />
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-foreground">{offer.price}</span>
+                    {offer.originalPrice && (
+                      <span className="text-lg text-muted-foreground line-through">{offer.originalPrice}</span>
                     )}
-                    Commander le Pack Complet
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    {offer.period && (
+                      <span className="text-sm text-muted-foreground">
+                        {offer.period === "one-time" ? "paiement unique" : `/${offer.period}`}
+                      </span>
+                    )}
+                  </div>
+                  <CardDescription className="mt-3">{offer.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <ul className="space-y-3">
+                    {offer.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-sm text-muted-foreground">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    onClick={offer.action}
+                    disabled={loadingPlan === offer.id}
+                    className={`w-full ${
+                      offer.popular
+                        ? "bg-primary hover:bg-primary/90"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    }`}
+                    size="lg"
+                  >
+                    {loadingPlan === offer.id ? (
+                      <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Chargement...
+                      </span>
+                    ) : (
+                      <>
+                        {offer.cta}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
-            </div>
-          </div>
-
-          {/* Pack Comparison Table */}
-          <div className="max-w-4xl mx-auto mb-16">
-            <PackComparison />
-          </div>
-
-          {/* FAQ Section */}
-          <div className="mb-16">
-            <PricingFAQ />
-          </div>
-
-          {/* CTA Section */}
-          <div className="max-w-3xl mx-auto text-center">
-            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Vibe-to-Production
-            </Badge>
-            <h2 className="text-3xl font-bold mb-6 text-foreground">
-              {t('cta.title')}
-            </h2>
-            <p className="text-lg text-muted-foreground mb-10">
-              {t('cta.description')}
-            </p>
-            <Link to={user ? "/dashboard" : "/auth"}>
-              <Button size="lg" className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all">
-                <Badge variant="secondary" className="mr-2 text-xs bg-primary-foreground/20 text-primary-foreground border-0">
-                  <Terminal className="h-3 w-3 mr-1" />
-                  {t('features.noTerminal.badge')}
-                </Badge>
-                <Rocket className="mr-2 h-5 w-5" />
-                {user ? t('cta.buttonLoggedIn') : t('cta.button')}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Process Section - 3 Steps */}
+      <section className="py-12 md:py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">Comment ça marche ?</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              De l'analyse à la production en 10 minutes
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              { step: "1", title: "Analysez", desc: "Upload votre ZIP ou connectez GitHub", icon: Sparkles },
+              { step: "2", title: "Nettoyez", desc: "L'IA supprime les dépendances propriétaires", icon: Zap },
+              { step: "3", title: "Déployez", desc: "Votre code tourne sur votre VPS", icon: Rocket },
+            ].map((item, index) => (
+              <div key={index} className="text-center">
+                <div className="relative inline-flex items-center justify-center mb-4">
+                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <item.icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                    {item.step}
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Add-ons Section */}
+      <section className="py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-muted text-muted-foreground">Options</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">Besoin de plus ?</h2>
+            <p className="text-muted-foreground">Services additionnels à la carte</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {addons.map((addon) => (
+              <Card key={addon.id} className="border-border hover:border-primary/50 transition-colors">
+                <CardContent className="p-6 text-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <addon.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-1">{addon.name}</h3>
+                  <p className="text-2xl font-bold text-primary mb-2">{addon.price}</p>
+                  <p className="text-sm text-muted-foreground mb-4">{addon.description}</p>
+                  <Button
+                    variant="outline"
+                    onClick={addon.action}
+                    disabled={loadingPlan === addon.id}
+                    className="w-full"
+                  >
+                    {loadingPlan === addon.id ? "Chargement..." : "Ajouter"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Badges */}
+      <section className="py-12 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap justify-center gap-8 items-center">
+            {[
+              { icon: Shield, text: "Zero-Knowledge" },
+              { icon: Clock, text: "Déploiement en 10 min" },
+              { icon: Package, text: "Code 100% à vous" },
+            ].map((badge, index) => (
+              <div key={index} className="flex items-center gap-2 text-muted-foreground">
+                <badge.icon className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">{badge.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-12 md:py-16">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <PricingFAQ />
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-16 md:py-24 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">
+            Prêt à libérer votre création ?
+          </h2>
+          <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+            Analysez gratuitement votre projet et découvrez votre Vibe-Score™
+          </p>
+          <Link to={user ? "/dashboard" : "/auth"}>
+            <Button size="lg" className="rounded-full px-8">
+              {user ? "Aller au Dashboard" : "Commencer gratuitement"}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
       <FofyChat />
     </Layout>
   );

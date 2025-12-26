@@ -12,12 +12,11 @@ const PricingFAQ = () => {
   const { t } = useTranslation();
 
   const faqItems = [
-    { key: "difference" },
-    { key: "byok" },
-    { key: "tokens" },
-    { key: "switch" },
-    { key: "volume" },
+    { key: "howItWorks" },
+    { key: "oneTime" },
+    { key: "packPro" },
     { key: "security" },
+    { key: "support" },
   ];
 
   return (
