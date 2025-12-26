@@ -60,6 +60,7 @@ import { ServerDeploymentsManager } from "@/components/dashboard/ServerDeploymen
 import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
 import EnhancedOverview from "@/components/dashboard/EnhancedOverview";
 import UserPurchases from "@/components/dashboard/UserPurchases";
+import { UserServicesHub } from "@/components/dashboard/UserServicesHub";
 import { ServerManagement } from "@/components/dashboard/ServerManagement";
 import { MigrationWizard } from "@/components/dashboard/MigrationWizard";
 import { UserMigrationTools } from "@/components/dashboard/UserMigrationTools";
@@ -1373,8 +1374,7 @@ const Dashboard = () => {
             {/* Tab: Services */}
             {activeTab === "services" && (
               <div className="space-y-6">
-                <UserPurchases />
-                <UserExportsHistory />
+                <UserServicesHub />
               </div>
             )}
           </div>

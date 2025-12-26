@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Rocket,
@@ -25,27 +25,30 @@ const STRIPE_ADDONS = {
     redeploy: "price_1Sgr89BYLQpzPb0yTaGeD7uk",
     monitoring: "price_1Sgr8iBYLQpzPb0yo15IvGVU",
     server: "price_1Sgr9zBYLQpzPb0yZJS7N412",
+    pack: "price_1SiRSjBYLQpzPb0y7DH2KSKV",
   },
   USD: {
     redeploy: "price_1Sgr8LBYLQpzPb0yX0NHl6PS",
     monitoring: "price_1Sgr8rBYLQpzPb0yReXWuS1J",
     server: "price_1SgrAsBYLQpzPb0ybNWYjt2p",
+    pack: "price_1SiRStBYLQpzPb0yZKknxEYI",
   },
   EUR: {
     redeploy: "price_1Sgr8VBYLQpzPb0y3MKtI4Gh",
     monitoring: "price_1Sgr9VBYLQpzPb0yX1LCrf4N",
     server: "price_1SgrC6BYLQpzPb0yvYbly0EL",
+    pack: "price_1SiRT4BYLQpzPb0yP3MFE0mo",
   },
 };
 
 // Prix affichés par devise
 const ADDON_PRICES = {
-  CAD: { redeploy: 49, monitoring: 19, server: 79, symbol: "$", suffix: "CAD" },
-  USD: { redeploy: 39, monitoring: 15, server: 59, symbol: "$", suffix: "USD" },
-  EUR: { redeploy: 35, monitoring: 13, server: 55, symbol: "€", suffix: "EUR" },
+  CAD: { redeploy: 49, monitoring: 19, server: 79, pack: 102.40, symbol: "$", suffix: "CAD" },
+  USD: { redeploy: 39, monitoring: 15, server: 59, pack: 78.40, symbol: "$", suffix: "USD" },
+  EUR: { redeploy: 35, monitoring: 13, server: 55, pack: 72, symbol: "€", suffix: "EUR" },
 };
 
-type AddonType = "redeploy" | "monitoring" | "server";
+type AddonType = "redeploy" | "monitoring" | "server" | "pack";
 
 interface PostLiberationOffersProps {
   projectName: string;
@@ -118,8 +121,50 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
   const { currency } = useCurrencyDetection();
   const [loadingOffer, setLoadingOffer] = useState<AddonType | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [viewId, setViewId] = useState<string | null>(null);
 
   const prices = ADDON_PRICES[currency];
+
+  // Track impression on mount
+  useEffect(() => {
+    const trackImpression = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("liberation_upsell_views")
+          .insert({
+            user_id: user.id,
+            project_name: projectName,
+            files_count: filesCount,
+            offers_shown: ["redeploy", "monitoring", "server", "pack"],
+          })
+          .select("id")
+          .single();
+
+        if (!error && data) {
+          setViewId(data.id);
+        }
+      } catch (err) {
+        console.error("Error tracking upsell impression:", err);
+      }
+    };
+
+    trackImpression();
+  }, [user, projectName, filesCount]);
+
+  const trackClick = async (offer: AddonType) => {
+    if (!viewId) return;
+
+    try {
+      await supabase
+        .from("liberation_upsell_views")
+        .update({ offer_clicked: offer })
+        .eq("id", viewId);
+    } catch (err) {
+      console.error("Error tracking click:", err);
+    }
+  };
 
   const handleCheckout = async (addonType: AddonType) => {
     if (!user) {
@@ -127,6 +172,9 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
       navigate("/auth");
       return;
     }
+
+    // Track the click
+    await trackClick(addonType);
 
     setLoadingOffer(addonType);
 
@@ -143,6 +191,7 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
             projectName,
             filesCount,
             source: "post_liberation",
+            upsellViewId: viewId,
           },
         },
         headers: {
@@ -168,11 +217,6 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
   };
 
   if (dismissed) return null;
-
-  // Calculer le prix du pack complet avec réduction
-  const packPrice = prices.redeploy + prices.server;
-  const packDiscount = Math.round(packPrice * 0.20);
-  const packFinal = packPrice - packDiscount;
 
   return (
     <Card className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-primary/5">
@@ -206,7 +250,7 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
         <div className="grid md:grid-cols-3 gap-4">
           {OFFERS.map((offer) => {
             const Icon = offer.icon;
-            const price = prices[offer.id];
+            const price = prices[offer.id as keyof typeof prices];
             
             return (
               <div
@@ -273,22 +317,19 @@ export function PostLiberationOffers({ projectName, filesCount, onDismiss }: Pos
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-sm text-muted-foreground line-through">
-                  {packPrice}{prices.symbol}
+                  {prices.redeploy + prices.server}{prices.symbol}
                 </div>
                 <div className="text-2xl font-bold text-primary">
-                  {packFinal}{prices.symbol}
+                  {prices.pack}{prices.symbol}
                 </div>
               </div>
               
               <Button
-                onClick={() => {
-                  // D'abord le serveur, puis le déploiement
-                  handleCheckout("server");
-                }}
+                onClick={() => handleCheckout("pack")}
                 disabled={loadingOffer !== null}
                 className="whitespace-nowrap"
               >
-                {loadingOffer ? (
+                {loadingOffer === "pack" ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Rocket className="h-4 w-4 mr-2" />
