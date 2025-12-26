@@ -1,10 +1,11 @@
-import { Check, FolderInput, Wand2, Server, Rocket } from "lucide-react";
+import { Check, FolderInput, Key, Wand2, Server, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useWizard, WizardStep, StepStatus } from "@/contexts/WizardContext";
 
 const steps: { id: WizardStep; label: string; icon: React.ElementType; description: string }[] = [
   { id: "source", label: "Source", icon: FolderInput, description: "Connexion GitHub" },
+  { id: "secrets", label: "Secrets", icon: Key, description: "Mapping des clés" },
   { id: "cleaning", label: "Nettoyage", icon: Wand2, description: "Purification IA" },
   { id: "destination", label: "Destination", icon: Server, description: "Configuration cible" },
   { id: "launch", label: "Lancement", icon: Rocket, description: "Déploiement final" },
@@ -42,7 +43,7 @@ export function WizardProgressBar() {
           Zero-Knowledge
         </Badge>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-          Étape {currentStepNum}/4
+          Étape {currentStepNum}/5
         </Badge>
       </div>
 

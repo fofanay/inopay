@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Rocket, CheckCircle2, Loader2, ExternalLink, Copy, Check, PartyPopper, Github, Server, Database, Shield } from "lucide-react";
+import { Rocket, CheckCircle2, Loader2, ExternalLink, Copy, Check, PartyPopper, Github, Server, Database, Shield, Key } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+import { SovereigntyTips } from "./SovereigntyTips";
 
 export function StepLaunch() {
   const { state, dispatch, prevStep, reset } = useWizard();
@@ -145,6 +146,9 @@ export function StepLaunch() {
     reset();
   };
 
+  // Count secrets to replace
+  const secretsToReplace = state.secrets.detectedSecrets.filter(s => s.action === "replace").length;
+
   // Recap items
   const recapItems = [
     { 
@@ -152,6 +156,12 @@ export function StepLaunch() {
       label: "Code source", 
       value: `${state.source.owner}/${state.source.repo}`,
       status: state.stepStatuses.source === "completed"
+    },
+    { 
+      icon: Key, 
+      label: "Secrets mappés", 
+      value: secretsToReplace > 0 ? `${secretsToReplace} clé(s) remplacée(s)` : "Aucun secret modifié",
+      status: state.stepStatuses.secrets === "completed"
     },
     { 
       icon: Shield, 
@@ -252,7 +262,13 @@ export function StepLaunch() {
             </div>
             
             {state.launch.isDeploying && (
-              <Progress value={state.launch.progress} className="h-2" />
+              <>
+                <Progress value={state.launch.progress} className="h-2" />
+                {/* Sovereignty Tips pendant le déploiement */}
+                <div className="mt-4">
+                  <SovereigntyTips />
+                </div>
+              </>
             )}
           </div>
         )}
