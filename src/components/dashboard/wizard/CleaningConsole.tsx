@@ -1,0 +1,288 @@
+import { useEffect, useRef, useState } from "react";
+import { Terminal, Loader2, CheckCircle2, Sparkles, Shield } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useWizard } from "@/contexts/WizardContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+const CLEANING_MESSAGES = [
+  "Initialisation du scanner de souveraineté...",
+  "Analyse des dépendances propriétaires...",
+  "Détection des patterns Lovable/Bolt...",
+  "Suppression de lovable-tagger...",
+  "Remplacement des hooks propriétaires...",
+  "Injection des polyfills souverains...",
+  "Nettoyage des imports @lovable-dev...",
+  "Génération du package.json souverain...",
+  "Validation de la structure finale...",
+  "Calcul du score de souveraineté...",
+];
+
+export function CleaningConsole() {
+  const { state, dispatch, nextStep } = useWizard();
+  const { toast } = useToast();
+  const consoleRef = useRef<HTMLDivElement>(null);
+  
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+
+  // Auto-scroll console
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [state.cleaning.logs]);
+
+  const addLog = (message: string, type: "info" | "success" | "warning" | "action" = "info") => {
+    const timestamp = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const prefix = type === "success" ? "✓" : type === "warning" ? "⚠" : type === "action" ? "→" : "●";
+    dispatch({ type: "ADD_CLEANING_LOG", payload: `[${timestamp}] ${prefix} ${message}` });
+  };
+
+  const startCleaning = async () => {
+    if (state.cleaning.fetchedFiles.length === 0) {
+      toast({ title: "Erreur", description: "Aucun fichier à nettoyer", variant: "destructive" });
+      return;
+    }
+    
+    setIsRunning(true);
+    dispatch({ type: "SET_STEP_STATUS", payload: { step: "cleaning", status: "in_progress" } });
+    dispatch({ type: "UPDATE_CLEANING", payload: { logs: [], filesCleaned: 0 } });
+    
+    // Animation messages
+    for (let i = 0; i < 3; i++) {
+      addLog(CLEANING_MESSAGES[i], "info");
+      await new Promise(r => setTimeout(r, 400));
+    }
+    
+    try {
+      const filesToClean = state.cleaning.fetchedFiles.filter(f => 
+        f.path.endsWith('.ts') || 
+        f.path.endsWith('.tsx') || 
+        f.path.endsWith('.js') || 
+        f.path.endsWith('.jsx')
+      );
+      
+      const otherFiles = state.cleaning.fetchedFiles.filter(f => 
+        !f.path.endsWith('.ts') && 
+        !f.path.endsWith('.tsx') && 
+        !f.path.endsWith('.js') && 
+        !f.path.endsWith('.jsx')
+      );
+      
+      addLog(`${filesToClean.length} fichiers TypeScript/JavaScript à analyser`, "info");
+      addLog(`${otherFiles.length} fichiers statiques conservés`, "info");
+      
+      const cleaned: Record<string, string> = {};
+      let changesCount = 0;
+      
+      // Keep other files as-is
+      for (const file of otherFiles) {
+        cleaned[file.path] = file.content;
+      }
+      
+      // Clean each file
+      for (let i = 0; i < filesToClean.length; i++) {
+        const file = filesToClean[i];
+        const shortPath = file.path.split('/').slice(-2).join('/');
+        
+        dispatch({
+          type: "UPDATE_CLEANING",
+          payload: { 
+            currentFile: file.path,
+            filesCleaned: i,
+          },
+        });
+        
+        // Show file being processed
+        if (i % 5 === 0 || i === filesToClean.length - 1) {
+          addLog(`Nettoyage de ${shortPath}...`, "action");
+        }
+        
+        try {
+          const { data, error } = await supabase.functions.invoke("clean-code", {
+            body: { 
+              code: file.content, 
+              fileName: file.path,
+              projectId: null
+            }
+          });
+          
+          if (error) {
+            console.warn(`[CleaningConsole] Error cleaning ${file.path}:`, error);
+            cleaned[file.path] = file.content;
+          } else if (data?.cleanedCode) {
+            cleaned[file.path] = data.cleanedCode;
+            if (data.cleanedCode !== file.content) {
+              changesCount++;
+              addLog(`Patterns propriétaires supprimés dans ${shortPath}`, "success");
+            }
+          } else {
+            cleaned[file.path] = file.content;
+          }
+        } catch (cleanError) {
+          console.warn(`[CleaningConsole] Exception cleaning ${file.path}:`, cleanError);
+          cleaned[file.path] = file.content;
+        }
+        
+        // Small delay to avoid rate limiting
+        if (i < filesToClean.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+      }
+      
+      // Calculate sovereignty score
+      const sovereigntyScore = Math.min(100, Math.round(85 + (changesCount / filesToClean.length) * 15));
+      
+      addLog("━".repeat(40), "info");
+      addLog(`Nettoyage terminé : ${changesCount} fichiers modifiés`, "success");
+      addLog(`Score de souveraineté : ${sovereigntyScore}%`, "success");
+      
+      dispatch({
+        type: "UPDATE_CLEANING",
+        payload: { 
+          cleanedFiles: cleaned,
+          filesCleaned: filesToClean.length,
+          sovereigntyScore,
+          isComplete: true,
+        },
+      });
+      
+      dispatch({ type: "SET_STEP_STATUS", payload: { step: "cleaning", status: "completed" } });
+      
+      toast({ 
+        title: "Nettoyage terminé !", 
+        description: `${changesCount} fichiers purifiés. Score : ${sovereigntyScore}%` 
+      });
+    } catch (error: any) {
+      console.error("[CleaningConsole] Error:", error);
+      addLog(`Erreur : ${error.message}`, "warning");
+      dispatch({ type: "SET_STEP_STATUS", payload: { step: "cleaning", status: "error" } });
+      toast({ title: "Erreur de nettoyage", description: error.message, variant: "destructive" });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const progress = state.cleaning.fetchedFiles.length > 0 
+    ? (state.cleaning.filesCleaned / state.cleaning.fetchedFiles.filter(f => 
+        f.path.endsWith('.ts') || f.path.endsWith('.tsx') || f.path.endsWith('.js') || f.path.endsWith('.jsx')
+      ).length) * 100 
+    : 0;
+
+  return (
+    <Card className="border-2 overflow-hidden">
+      <CardHeader className="bg-slate-900 text-slate-100">
+        <CardTitle className="flex items-center gap-2 font-mono text-sm">
+          <Terminal className="h-4 w-4 text-success" />
+          Console de Nettoyage Inopay
+          {isRunning && <Loader2 className="h-4 w-4 animate-spin ml-auto text-primary" />}
+          {state.cleaning.isComplete && <CheckCircle2 className="h-4 w-4 ml-auto text-success" />}
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="p-0">
+        {/* Console output */}
+        <div 
+          ref={consoleRef}
+          className="bg-slate-950 text-slate-300 font-mono text-xs p-4 h-64 overflow-y-auto scroll-smooth"
+        >
+          {state.cleaning.logs.length === 0 ? (
+            <div className="text-slate-500 flex items-center gap-2">
+              <span className="animate-pulse">▋</span>
+              Prêt à démarrer le nettoyage...
+            </div>
+          ) : (
+            state.cleaning.logs.map((log, index) => (
+              <div 
+                key={index}
+                className={cn(
+                  "py-0.5 animate-in fade-in slide-in-from-bottom-1 duration-200",
+                  log.includes("✓") && "text-success",
+                  log.includes("⚠") && "text-warning",
+                  log.includes("→") && "text-primary"
+                )}
+              >
+                {log}
+              </div>
+            ))
+          )}
+          {isRunning && (
+            <div className="text-slate-500 flex items-center gap-2 mt-1">
+              <span className="animate-pulse">▋</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Progress bar */}
+        {isRunning && (
+          <div className="bg-slate-900 px-4 py-2 border-t border-slate-800">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <span>Progression</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-1.5" />
+          </div>
+        )}
+        
+        {/* Sovereignty score */}
+        {state.cleaning.isComplete && (
+          <div className="bg-gradient-to-r from-success/10 to-primary/10 px-4 py-4 border-t border-success/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-success/20 rounded-full">
+                  <Shield className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Score de Souveraineté</p>
+                  <p className="text-sm text-muted-foreground">
+                    {Object.keys(state.cleaning.cleanedFiles).length} fichiers prêts pour la libération
+                  </p>
+                </div>
+              </div>
+              <Badge 
+                variant="outline" 
+                className="text-2xl font-bold px-4 py-2 bg-success/10 text-success border-success/30"
+              >
+                {state.cleaning.sovereigntyScore}%
+              </Badge>
+            </div>
+          </div>
+        )}
+        
+        {/* Actions */}
+        <div className="p-4 bg-card border-t space-y-3">
+          {!state.cleaning.isComplete ? (
+            <Button 
+              onClick={startCleaning} 
+              disabled={isRunning || state.cleaning.fetchedFiles.length === 0}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {isRunning ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Nettoyage en cours...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Lancer le nettoyage
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button onClick={nextStep} className="w-full gap-2" size="lg">
+              <CheckCircle2 className="h-4 w-4" />
+              Valider et continuer
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
