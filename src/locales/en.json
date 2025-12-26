@@ -1814,5 +1814,145 @@
         "errors": "Errors"
       }
     }
+  },
+  "wizard": {
+    "title": "Liberation Wizard",
+    "subtitle": "From prototype to sovereign production in 4 steps",
+    "zeroKnowledge": "Zero-Knowledge",
+    "step": "Step",
+    "of": "of",
+    "footer": {
+      "dataLocal": "Your data stays local",
+      "noDependency": "No Inopay dependency",
+      "sovereign": "100% sovereign"
+    },
+    "source": {
+      "title": "Where is your project from?",
+      "description": "Connect to your GitHub repository to start the liberation",
+      "platformLabel": "Original platform",
+      "repoUrl": "Your GitHub repository URL",
+      "repoUrlPlaceholder": "https://github.com/user/my-project",
+      "detected": "Detected",
+      "tokenLabel": "GitHub Token (optional for public repos)",
+      "tokenGuide": "Where to find my token?",
+      "validated": "Repository validated!",
+      "filesReady": "files ready for analysis",
+      "verifyConnection": "Verify connection",
+      "verifying": "Verifying...",
+      "continue": "Continue"
+    },
+    "cleaning": {
+      "consoleTitle": "Inopay Cleaning Console",
+      "readyToStart": "Ready to start cleaning...",
+      "startCleaning": "Start cleaning",
+      "cleaning": "Cleaning in progress...",
+      "sovereigntyScore": "Sovereignty Score",
+      "filesReady": "files ready for liberation",
+      "validateContinue": "Validate and continue",
+      "logs": {
+        "init": "Initializing sovereignty scanner...",
+        "analyzing": "Analyzing proprietary dependencies...",
+        "detecting": "Detecting Lovable/Bolt patterns...",
+        "removing": "Removing lovable-tagger...",
+        "replacing": "Replacing proprietary hooks...",
+        "injecting": "Injecting sovereign polyfills...",
+        "cleaningImports": "Cleaning @lovable-dev imports...",
+        "generating": "Generating sovereign package.json...",
+        "validating": "Validating final structure...",
+        "calculating": "Calculating sovereignty score...",
+        "complete": "Cleaning complete",
+        "filesModified": "files modified"
+      }
+    },
+    "destination": {
+      "title": "Destination configuration",
+      "description": "Define where your liberated code will be deployed",
+      "github": {
+        "title": "Destination GitHub repository",
+        "tokenLabel": "GitHub Token (to create the repository)",
+        "connected": "Connected",
+        "connectedAs": "Connected as",
+        "repoName": "New repository name",
+        "validate": "Validate"
+      },
+      "hosting": {
+        "vps": "Ubuntu VPS",
+        "traditional": "Web Host",
+        "vpsDesc": "Automatic installation: Copy this command and run it on your Ubuntu VPS. It will automatically install Docker, Coolify and PostgreSQL.",
+        "vpsIp": "Your VPS IP (optional)",
+        "generateCommand": "Generate installation command",
+        "oneLiner": "Installation command (one-liner)",
+        "copy": "Copy",
+        "copied": "Copied",
+        "rootNote": "Run this command as root on your Ubuntu VPS.",
+        "traditionalDesc": "For traditional hosts (OVH, IONOS, etc.), Inopay will generate a GitHub Action for automatic deployment on each push.",
+        "ftpHost": "FTP Host",
+        "ftpUser": "FTP User",
+        "ftpPassword": "FTP Password"
+      },
+      "supabase": {
+        "title": "Supabase Migration",
+        "optional": "Optional",
+        "sourceUrl": "Source Supabase URL",
+        "sourceKey": "Source Service Role Key",
+        "destUrl": "Destination Supabase URL",
+        "destKey": "Destination Service Role Key"
+      },
+      "back": "Back",
+      "continue": "Continue",
+      "githubRequired": "GitHub required"
+    },
+    "launch": {
+      "title": "Liberation launch",
+      "successTitle": "Liberation successful!",
+      "description": "Summary and final deployment",
+      "successDescription": "Your code is now 100% sovereign",
+      "recap": "Summary",
+      "recapItems": {
+        "source": "Source code",
+        "cleaned": "Cleaned files",
+        "destination": "Destination",
+        "supabase": "Supabase Migration",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "files": "files"
+      },
+      "console": "Deployment console",
+      "deployButton": "Liberate my application",
+      "deploying": "Liberation in progress...",
+      "newLiberation": "New liberation",
+      "viewRepo": "View repository",
+      "urlLabel": "Your sovereign code is available",
+      "logs": {
+        "starting": "Starting liberation...",
+        "creatingRepo": "Creating GitHub repository...",
+        "repoCreated": "Repository created",
+        "generatingAction": "Generating GitHub Action for FTP...",
+        "actionConfigured": "GitHub Action configured for automatic deployment",
+        "savingHistory": "Saving to history...",
+        "success": "LIBERATION COMPLETED SUCCESSFULLY!"
+      }
+    },
+    "toast": {
+      "urlRequired": "URL required",
+      "enterUrl": "Enter your GitHub repository URL",
+      "sourceValidated": "Source validated!",
+      "filesFetched": "{{count}} files fetched from {{owner}}/{{repo}}",
+      "cleaningComplete": "Cleaning complete!",
+      "cleaningResult": "{{changed}} files purified. Score: {{score}}%",
+      "liberationSuccess": "Liberation successful!",
+      "sovereignCode": "Your code is now 100% sovereign",
+      "githubConnected": "GitHub connected!",
+      "welcome": "Welcome {{username}}",
+      "setupCreated": "Setup created!",
+      "copyCommand": "Copy the command and run it on your VPS",
+      "copied": "Copied!",
+      "copiedToClipboard": "Command copied to clipboard",
+      "error": "Error",
+      "noFilesToClean": "No files to clean",
+      "connectionError": "Connection error",
+      "cleaningError": "Cleaning error",
+      "deploymentError": "Deployment error"
+    }
   }
 }
