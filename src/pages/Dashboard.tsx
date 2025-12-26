@@ -73,7 +73,7 @@ import { OnboardingHebergeur } from "@/components/dashboard/OnboardingHebergeur"
 import { SyncMirror } from "@/components/dashboard/SyncMirror";
 import { SovereignDeploymentWizard } from "@/components/dashboard/SovereignDeploymentWizard";
 import { SovereigntySetupWizard } from "@/components/dashboard/SovereigntySetupWizard";
-import { SovereigntyWizard } from "@/components/dashboard/SovereigntyWizard";
+import { SovereignLiberationWizard } from "@/components/dashboard/SovereignLiberationWizard";
 import GitHubMultiRepoSelector, { GitHubRepo as MultiRepoGitHubRepo } from "@/components/dashboard/GitHubMultiRepoSelector";
 import BatchAnalysisProgress, { BatchAnalysisResult } from "@/components/dashboard/BatchAnalysisProgress";
 import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
@@ -888,9 +888,9 @@ const Dashboard = () => {
             )}
 
 
-            {/* Tab: Liberation Pipeline - SIMPLIFIÉ */}
+            {/* Tab: Liberation Pipeline - Wizard Inopay 2.0 */}
             {activeTab === "liberation" && (
-              <SimpleLiberationFlow />
+              <SovereignLiberationWizard />
             )}
 
             {/* L'import est maintenant géré par SimpleLiberationFlow */}

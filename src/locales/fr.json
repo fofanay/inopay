@@ -1709,5 +1709,145 @@
         "errors": "Erreurs"
       }
     }
+  },
+  "wizard": {
+    "title": "Wizard de Libération",
+    "subtitle": "Du prototype à la production souveraine en 4 étapes",
+    "zeroKnowledge": "Zero-Knowledge",
+    "step": "Étape",
+    "of": "sur",
+    "footer": {
+      "dataLocal": "Vos données restent locales",
+      "noDependency": "Aucune dépendance Inopay",
+      "sovereign": "100% souverain"
+    },
+    "source": {
+      "title": "D'où vient votre projet ?",
+      "description": "Connectez-vous à votre dépôt GitHub pour commencer la libération",
+      "platformLabel": "Plateforme d'origine",
+      "repoUrl": "URL de votre dépôt GitHub",
+      "repoUrlPlaceholder": "https://github.com/user/mon-projet",
+      "detected": "Détecté",
+      "tokenLabel": "Token GitHub (optionnel pour les dépôts publics)",
+      "tokenGuide": "Où trouver mon token ?",
+      "validated": "Dépôt validé !",
+      "filesReady": "fichiers prêts pour l'analyse",
+      "verifyConnection": "Vérifier la connexion",
+      "verifying": "Vérification en cours...",
+      "continue": "Continuer"
+    },
+    "cleaning": {
+      "consoleTitle": "Console de Nettoyage Inopay",
+      "readyToStart": "Prêt à démarrer le nettoyage...",
+      "startCleaning": "Lancer le nettoyage",
+      "cleaning": "Nettoyage en cours...",
+      "sovereigntyScore": "Score de Souveraineté",
+      "filesReady": "fichiers prêts pour la libération",
+      "validateContinue": "Valider et continuer",
+      "logs": {
+        "init": "Initialisation du scanner de souveraineté...",
+        "analyzing": "Analyse des dépendances propriétaires...",
+        "detecting": "Détection des patterns Lovable/Bolt...",
+        "removing": "Suppression de lovable-tagger...",
+        "replacing": "Remplacement des hooks propriétaires...",
+        "injecting": "Injection des polyfills souverains...",
+        "cleaningImports": "Nettoyage des imports @lovable-dev...",
+        "generating": "Génération du package.json souverain...",
+        "validating": "Validation de la structure finale...",
+        "calculating": "Calcul du score de souveraineté...",
+        "complete": "Nettoyage terminé",
+        "filesModified": "fichiers modifiés"
+      }
+    },
+    "destination": {
+      "title": "Configuration de la destination",
+      "description": "Définissez où votre code libéré sera déployé",
+      "github": {
+        "title": "Dépôt GitHub de destination",
+        "tokenLabel": "Token GitHub (pour créer le dépôt)",
+        "connected": "Connecté",
+        "connectedAs": "Connecté en tant que",
+        "repoName": "Nom du nouveau dépôt",
+        "validate": "Valider"
+      },
+      "hosting": {
+        "vps": "VPS Ubuntu",
+        "traditional": "Hébergeur Web",
+        "vpsDesc": "Installation automatique : Copiez cette commande et exécutez-la sur votre VPS Ubuntu. Elle installera automatiquement Docker, Coolify et PostgreSQL.",
+        "vpsIp": "IP de votre VPS (optionnel)",
+        "generateCommand": "Générer la commande d'installation",
+        "oneLiner": "Commande d'installation (one-liner)",
+        "copy": "Copier",
+        "copied": "Copié",
+        "rootNote": "Exécutez cette commande en tant que root sur votre VPS Ubuntu.",
+        "traditionalDesc": "Pour les hébergeurs traditionnels (OVH, IONOS, etc.), Inopay génèrera une GitHub Action pour déployer automatiquement à chaque push.",
+        "ftpHost": "Hôte FTP",
+        "ftpUser": "Utilisateur FTP",
+        "ftpPassword": "Mot de passe FTP"
+      },
+      "supabase": {
+        "title": "Migration Supabase",
+        "optional": "Optionnel",
+        "sourceUrl": "URL Supabase source",
+        "sourceKey": "Service Role Key source",
+        "destUrl": "URL Supabase destination",
+        "destKey": "Service Role Key destination"
+      },
+      "back": "Retour",
+      "continue": "Continuer",
+      "githubRequired": "GitHub requis"
+    },
+    "launch": {
+      "title": "Lancement de la libération",
+      "successTitle": "Libération réussie !",
+      "description": "Récapitulatif et déploiement final",
+      "successDescription": "Votre code est maintenant 100% souverain",
+      "recap": "Récapitulatif",
+      "recapItems": {
+        "source": "Code source",
+        "cleaned": "Fichiers nettoyés",
+        "destination": "Destination",
+        "supabase": "Migration Supabase",
+        "enabled": "Activée",
+        "disabled": "Désactivée",
+        "files": "fichiers"
+      },
+      "console": "Console de déploiement",
+      "deployButton": "Libérer mon application",
+      "deploying": "Libération en cours...",
+      "newLiberation": "Nouvelle libération",
+      "viewRepo": "Voir le dépôt",
+      "urlLabel": "Votre code souverain est disponible",
+      "logs": {
+        "starting": "Démarrage de la libération...",
+        "creatingRepo": "Création du dépôt GitHub...",
+        "repoCreated": "Dépôt créé",
+        "generatingAction": "Génération de la GitHub Action pour FTP...",
+        "actionConfigured": "GitHub Action configurée pour déploiement automatique",
+        "savingHistory": "Enregistrement dans l'historique...",
+        "success": "LIBÉRATION TERMINÉE AVEC SUCCÈS !"
+      }
+    },
+    "toast": {
+      "urlRequired": "URL requise",
+      "enterUrl": "Entrez l'URL de votre dépôt GitHub",
+      "sourceValidated": "Source validée !",
+      "filesFetched": "{{count}} fichiers récupérés depuis {{owner}}/{{repo}}",
+      "cleaningComplete": "Nettoyage terminé !",
+      "cleaningResult": "{{changed}} fichiers purifiés. Score : {{score}}%",
+      "liberationSuccess": "Libération réussie !",
+      "sovereignCode": "Votre code est maintenant 100% souverain",
+      "githubConnected": "GitHub connecté !",
+      "welcome": "Bienvenue {{username}}",
+      "setupCreated": "Setup créé !",
+      "copyCommand": "Copiez la commande et exécutez-la sur votre VPS",
+      "copied": "Copié !",
+      "copiedToClipboard": "Commande copiée dans le presse-papier",
+      "error": "Erreur",
+      "noFilesToClean": "Aucun fichier à nettoyer",
+      "connectionError": "Erreur de connexion",
+      "cleaningError": "Erreur de nettoyage",
+      "deploymentError": "Erreur de déploiement"
+    }
   }
 }
