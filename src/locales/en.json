@@ -2070,5 +2070,71 @@
       "cleaningError": "Cleaning error",
       "deploymentError": "Deployment error"
     }
+  },
+  "pricingPage": {
+    "hero": {
+      "badge": "Simple & Transparent Pricing",
+      "title1": "One price.",
+      "title2": "One liberation.",
+      "subtitle": "No mandatory monthly subscription. Pay once, own your code forever."
+    },
+    "free": {
+      "name": "Free Analysis",
+      "description": "Discover your Vibe-Score™ and identify proprietary dependencies",
+      "features": ["Complete portability score", "Dependency audit", "Cleaning preview", "Personalized recommendations"],
+      "cta": "Analyze my project",
+      "ctaLoggedIn": "Start for free"
+    },
+    "liberation": {
+      "name": "Single Liberation",
+      "price": "$99",
+      "period": "one-time",
+      "description": "AI cleanup + Deployment on your server",
+      "features": ["Full AI code cleanup", "Remove proprietary dependencies", "Export to personal GitHub", "Assisted VPS deployment", "SSL + PostgreSQL included", "48h priority support"],
+      "cta": "Liberate my project"
+    },
+    "packPro": {
+      "name": "Pro Pack",
+      "price": "$149",
+      "originalPrice": "$217",
+      "period": "one-time",
+      "badge": "Save $68",
+      "description": "Liberation + Dedicated VPS + 24/7 Monitoring for 1 year",
+      "features": ["Everything in Single Liberation", "Dedicated VPS configured for you", "24/7 monitoring for 1 year", "Instant alerts", "Automatic backups", "Unlimited priority support"],
+      "cta": "Choose Pro Pack"
+    },
+    "process": {
+      "title": "How it works?",
+      "subtitle": "From analysis to production in 10 minutes",
+      "steps": [
+        { "step": "1", "title": "Analyze", "desc": "Upload your ZIP or connect GitHub" },
+        { "step": "2", "title": "Clean", "desc": "AI removes proprietary dependencies" },
+        { "step": "3", "title": "Deploy", "desc": "Your code runs on your VPS" }
+      ]
+    },
+    "addons": {
+      "badge": "Options",
+      "title": "Need more?",
+      "subtitle": "Additional services à la carte",
+      "items": {
+        "redeploy": { "name": "Re-deployment", "price": "$39", "desc": "Update your deployed application" },
+        "monitoring": { "name": "24/7 Monitoring", "price": "$15/month", "desc": "Real-time monitoring and alerts" },
+        "server": { "name": "VPS Server", "price": "$59", "desc": "Additional VPS configuration" }
+      }
+    },
+    "trust": {
+      "zeroKnowledge": "Zero-Knowledge",
+      "deployment": "Deployment in 10 min",
+      "ownership": "100% your code"
+    },
+    "finalCta": {
+      "title": "Ready to liberate your creation?",
+      "subtitle": "Analyze your project for free and discover your Vibe-Score™",
+      "button": "Start for free",
+      "buttonLoggedIn": "Go to Dashboard"
+    },
+    "popular": "POPULAR",
+    "oneTimePayment": "one-time payment",
+    "loading": "Loading..."
   }
 }

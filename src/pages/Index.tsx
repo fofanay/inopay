@@ -531,26 +531,50 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Pack Complet CTA */}
-          <div className="max-w-2xl mx-auto">
-            <div className="relative p-5 md:p-6 rounded-xl border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <Badge className="absolute -top-3 left-4 bg-primary text-primary-foreground">
-                <Package className="h-3 w-3 mr-1" />
-                PACK COMPLET -20%
-              </Badge>
-              <div>
-                <h4 className="font-semibold text-lg">{t('services.pack.title', 'Déploiement + Serveur VPS')}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {t('services.pack.desc', 'Tout pour démarrer en 24h')}
+          {/* Offres Principales */}
+          <div className="max-w-3xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Libération Unique */}
+              <div className="relative p-5 md:p-6 rounded-xl border-2 border-primary/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 hover:border-primary transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-lg">{t('pricing.liberation.title', 'Libération Unique')}</h4>
+                  <span className="text-2xl font-bold text-primary">99$</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t('pricing.liberation.desc', 'Nettoyage IA + Déploiement sur votre serveur')}
                 </p>
+                <Link to="/pricing">
+                  <Button variant="outline" className="w-full">
+                    <Rocket className="h-4 w-4 mr-2" />
+                    {t('common.learnMore', 'En savoir plus')}
+                  </Button>
+                </Link>
               </div>
-              <Link to="/services">
-                <Button className="whitespace-nowrap">
-                  <Zap className="h-4 w-4 mr-2" />
-                  {t('services.pack.cta', 'Découvrir nos services')}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+
+              {/* Pack Pro */}
+              <div className="relative p-5 md:p-6 rounded-xl border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10">
+                <Badge className="absolute -top-3 left-4 bg-primary text-primary-foreground">
+                  <Package className="h-3 w-3 mr-1" />
+                  {t('pricing.packPro.badge', 'ÉCONOMISEZ 68$')}
+                </Badge>
+                <div className="flex items-center justify-between mb-3 pt-2">
+                  <h4 className="font-semibold text-lg">{t('pricing.packPro.title', 'Pack Pro')}</h4>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-primary">149$</span>
+                    <span className="text-sm text-muted-foreground line-through ml-2">217$</span>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t('pricing.packPro.desc', 'Libération + VPS + Monitoring 1 an')}
+                </p>
+                <Link to="/pricing">
+                  <Button className="w-full">
+                    <Zap className="h-4 w-4 mr-2" />
+                    {t('pricing.packPro.cta', 'Choisir le Pack Pro')}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
