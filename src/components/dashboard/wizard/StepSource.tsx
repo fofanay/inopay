@@ -197,16 +197,9 @@ export function StepSource() {
       
       console.log(`[StepSource] Fetched ${data.files.length} files`);
       
-      // Save token if provided
-      if (state.source.token && user) {
-        await supabase
-          .from("user_settings")
-          .upsert({ 
-            user_id: user.id, 
-            github_source_token: state.source.token,
-            updated_at: new Date().toISOString()
-          }, { onConflict: "user_id" });
-      }
+      // INOPAY SOVEREIGN: NE JAMAIS sauvegarder le token GitHub en base de données
+      // Les tokens restent exclusivement en mémoire volatile (sessionStorage)
+      // Cette ligne a été supprimée intentionnellement pour la sécurité souveraine
       
       dispatch({
         type: "UPDATE_SOURCE",

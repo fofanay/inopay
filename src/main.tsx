@@ -3,25 +3,32 @@ import App from "./App.tsx";
 import "./index.css";
 import "./lib/i18n";
 import { startDOMCleaner, cleanDOMSignatures } from "./lib/security-cleaner";
-import { performIntegrityCheck } from "./config/sovereign-adapter";
+import { performStartupCheck, secureLog } from "./lib/infrastructure/config-manager";
 
-// Vérification d'intégrité au démarrage
-const integrityResult = performIntegrityCheck();
-if (!integrityResult.authorized && integrityResult.shouldAlert) {
-  console.warn('[INOPAY]', integrityResult.message);
+// INOPAY: Vérification de sécurité au démarrage
+const startupResult = performStartupCheck();
+
+if (!startupResult.healthy) {
+  secureLog('warn', 'Configuration incomplète', {
+    mode: startupResult.mode,
+    warnings: startupResult.warnings,
+  });
 }
 
-// Activer le nettoyage DOM en production
+// Log le mode d'infrastructure (sans données sensibles)
+secureLog('log', `Mode infrastructure: ${startupResult.mode}`);
+
+// INOPAY SOVEREIGN: Nettoyer toutes les signatures de plateformes du DOM
+// Actif en production pour garantir l'anonymat du code source
 if (import.meta.env.PROD) {
-  // Nettoyer les signatures existantes
   document.addEventListener('DOMContentLoaded', () => {
     const removed = cleanDOMSignatures();
     if (removed > 0) {
-      console.log(`[INOPAY] Cleaned ${removed} IDE signatures from DOM`);
+      secureLog('log', `Nettoyé ${removed} signatures IDE du DOM`);
     }
   });
   
-  // Observer les nouveaux éléments
+  // Observer les nouveaux éléments pour nettoyage continu
   startDOMCleaner();
 }
 
