@@ -684,6 +684,53 @@ export type Database = {
           },
         ]
       }
+      liberation_upsell_views: {
+        Row: {
+          converted: boolean | null
+          converted_at: string | null
+          created_at: string | null
+          files_count: number | null
+          id: string
+          offer_clicked: string | null
+          offers_shown: string[] | null
+          project_name: string
+          purchase_id: string | null
+          user_id: string
+        }
+        Insert: {
+          converted?: boolean | null
+          converted_at?: string | null
+          created_at?: string | null
+          files_count?: number | null
+          id?: string
+          offer_clicked?: string | null
+          offers_shown?: string[] | null
+          project_name: string
+          purchase_id?: string | null
+          user_id: string
+        }
+        Update: {
+          converted?: boolean | null
+          converted_at?: string | null
+          created_at?: string | null
+          files_count?: number | null
+          id?: string
+          offer_clicked?: string | null
+          offers_shown?: string[] | null
+          project_name?: string
+          purchase_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liberation_upsell_views_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "user_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       newsletter_subscribers: {
         Row: {
           email: string
