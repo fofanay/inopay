@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info } from "lucide-react";
+import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Layout from "@/components/layout/Layout";
+import { SovereignExit } from "@/components/dashboard/SovereignExit";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -489,6 +490,22 @@ const Settings = () => {
                   </ul>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Sovereign Exit Card */}
+          <Card className="mt-6 border-emerald-500/30 bg-emerald-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-emerald-400" />
+                {t("settings.sovereignExit", "Sovereign Exit")}
+              </CardTitle>
+              <CardDescription>
+                {t("settings.sovereignExitDesc", "Inopay garantit votre liberté : vous pouvez partir à tout moment avec vos données et votre code.")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SovereignExit />
             </CardContent>
           </Card>
         </div>
