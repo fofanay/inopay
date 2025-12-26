@@ -36,6 +36,7 @@ import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminKPIs from "@/components/admin/AdminKPIs";
 import AdminPurchases from "@/components/admin/AdminPurchases";
+import AdminUpsellStats from "@/components/admin/AdminUpsellStats";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import { formatDistanceToNow } from "date-fns";
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
     { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
     { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "business" },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart, section: "business" },
+    { id: "upsells", label: "Conversions Upsell", icon: TrendingUp, section: "business" },
     // 👥 Utilisateurs
     { id: "users", label: "Utilisateurs", icon: Users, section: "users" },
     { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
@@ -126,6 +128,7 @@ const AdminDashboard = () => {
       case "payments": return "Revenus, paiements et remboursements Stripe";
       case "subscriptions": return "Abonnements actifs, coupons et MRR";
       case "purchases": return "Tous les achats de services par utilisateur";
+      case "upsells": return "Conversions et impressions des offres post-libération";
       case "users": return "Gérez les utilisateurs et leurs accès";
       case "testers": return "Gérez les comptes avec accès Pro gratuit à vie";
       case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
@@ -247,6 +250,7 @@ const AdminDashboard = () => {
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "subscriptions" && <AdminSubscriptions />}
             {activeTab === "purchases" && <AdminPurchases />}
+            {activeTab === "upsells" && <AdminUpsellStats />}
             {activeTab === "users" && <AdminUsersList />}
             {activeTab === "testers" && <AdminTesters />}
             {activeTab === "exports" && <AdminExportsList />}
