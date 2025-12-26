@@ -544,10 +544,10 @@ const Index = () => {
                   {t('services.pack.desc', 'Tout pour démarrer en 24h')}
                 </p>
               </div>
-              <Link to="/tarifs">
+              <Link to="/services">
                 <Button className="whitespace-nowrap">
                   <Zap className="h-4 w-4 mr-2" />
-                  {t('services.pack.cta', 'Voir les tarifs')}
+                  {t('services.pack.cta', 'Découvrir nos services')}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
