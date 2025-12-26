@@ -1,10 +1,19 @@
 import { createContext, useContext, useReducer, ReactNode, useCallback } from "react";
 
 // Types
-export type WizardStep = "source" | "cleaning" | "destination" | "launch";
+export type WizardStep = "source" | "secrets" | "cleaning" | "destination" | "launch";
 export type StepStatus = "pending" | "in_progress" | "completed" | "error";
 export type Platform = "lovable" | "bolt" | "v0" | "cursor" | "other";
 export type HostingType = "vps" | "traditional";
+
+export interface DetectedSecret {
+  name: string;
+  category: "ai" | "auth" | "email" | "payment" | "storage" | "database" | "realtime" | "search" | "other";
+  value: string;
+  newValue: string;
+  action: "keep" | "replace" | "delete";
+  detectedIn: string[];
+}
 
 export interface SourceData {
   platform: Platform;
@@ -12,6 +21,12 @@ export interface SourceData {
   owner: string;
   repo: string;
   token: string;
+  isValidated: boolean;
+}
+
+export interface SecretsData {
+  detectedSecrets: DetectedSecret[];
+  isScanned: boolean;
   isValidated: boolean;
 }
 
@@ -65,6 +80,7 @@ export interface WizardState {
   currentStep: WizardStep;
   stepStatuses: Record<WizardStep, StepStatus>;
   source: SourceData;
+  secrets: SecretsData;
   cleaning: CleaningData;
   destination: DestinationData;
   launch: LaunchData;
@@ -75,6 +91,8 @@ type WizardAction =
   | { type: "SET_STEP"; payload: WizardStep }
   | { type: "SET_STEP_STATUS"; payload: { step: WizardStep; status: StepStatus } }
   | { type: "UPDATE_SOURCE"; payload: Partial<SourceData> }
+  | { type: "UPDATE_SECRETS"; payload: Partial<SecretsData> }
+  | { type: "UPDATE_SECRET_ITEM"; payload: { index: number; updates: Partial<DetectedSecret> } }
   | { type: "UPDATE_CLEANING"; payload: Partial<CleaningData> }
   | { type: "ADD_CLEANING_LOG"; payload: string }
   | { type: "UPDATE_DESTINATION"; payload: Partial<DestinationData> }
@@ -87,6 +105,7 @@ const initialState: WizardState = {
   currentStep: "source",
   stepStatuses: {
     source: "pending",
+    secrets: "pending",
     cleaning: "pending",
     destination: "pending",
     launch: "pending",
@@ -97,6 +116,11 @@ const initialState: WizardState = {
     owner: "",
     repo: "",
     token: "",
+    isValidated: false,
+  },
+  secrets: {
+    detectedSecrets: [],
+    isScanned: false,
     isValidated: false,
   },
   cleaning: {
@@ -161,6 +185,25 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
         source: { ...state.source, ...action.payload },
       };
     
+    case "UPDATE_SECRETS":
+      return {
+        ...state,
+        secrets: { ...state.secrets, ...action.payload },
+      };
+    
+    case "UPDATE_SECRET_ITEM":
+      return {
+        ...state,
+        secrets: {
+          ...state.secrets,
+          detectedSecrets: state.secrets.detectedSecrets.map((secret, idx) =>
+            idx === action.payload.index
+              ? { ...secret, ...action.payload.updates }
+              : secret
+          ),
+        },
+      };
+    
     case "UPDATE_CLEANING":
       return {
         ...state,
@@ -220,7 +263,7 @@ interface WizardContextType {
 
 const WizardContext = createContext<WizardContextType | null>(null);
 
-const stepOrder: WizardStep[] = ["source", "cleaning", "destination", "launch"];
+const stepOrder: WizardStep[] = ["source", "secrets", "cleaning", "destination", "launch"];
 
 export function WizardProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(wizardReducer, initialState);

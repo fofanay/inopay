@@ -1,12 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X, Shield, Zap, Lock, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { X, Shield, Zap, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { WizardProvider, useWizard } from "@/contexts/WizardContext";
 import { WizardProgressBar } from "./wizard/WizardProgressBar";
 import { StepSource } from "./wizard/StepSource";
+import { StepSecrets } from "./wizard/StepSecrets";
 import { CleaningConsole } from "./wizard/CleaningConsole";
 import { StepDestination } from "./wizard/StepDestination";
 import { StepLaunch } from "./wizard/StepLaunch";
@@ -27,6 +27,8 @@ function WizardContent({ onClose }: SovereignLiberationWizardProps) {
     switch (state.currentStep) {
       case "source":
         return <StepSource />;
+      case "secrets":
+        return <StepSecrets />;
       case "cleaning":
         return <CleaningConsole />;
       case "destination":
