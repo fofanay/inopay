@@ -1,14 +1,15 @@
+import { motion, AnimatePresence } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { X, Shield, Zap, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { WizardProvider, useWizard } from "@/contexts/WizardContext";
-import { WizardProgressBar } from "./wizard/WizardProgressBar";
+import { LibertyProgressBar } from "./wizard/LibertyProgressBar";
 import { StepSource } from "./wizard/StepSource";
 import { StepSecrets } from "./wizard/StepSecrets";
 import { CleaningConsole } from "./wizard/CleaningConsole";
-import { StepDestination } from "./wizard/StepDestination";
+import { InfrastructureStep } from "./wizard/InfrastructureStep";
 import { StepLaunch } from "./wizard/StepLaunch";
 
 interface SovereignLiberationWizardProps {
@@ -32,7 +33,7 @@ function WizardContent({ onClose }: SovereignLiberationWizardProps) {
       case "cleaning":
         return <CleaningConsole />;
       case "destination":
-        return <StepDestination />;
+        return <InfrastructureStep />;
       case "launch":
         return <StepLaunch />;
       default:
@@ -41,16 +42,20 @@ function WizardContent({ onClose }: SovereignLiberationWizardProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="w-full max-w-4xl mx-auto space-y-6"
+    >
+      {/* Header - Dark theme styling */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            Wizard de Libération
+            Wizard de Libération Souveraine
           </h1>
           <p className="text-muted-foreground">
-            Du prototype à la production souveraine en 4 étapes
+            Du prototype à la production 100% souveraine en 5 étapes
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -66,16 +71,30 @@ function WizardContent({ onClose }: SovereignLiberationWizardProps) {
         </div>
       </div>
 
-      {/* Progress bar */}
-      <WizardProgressBar />
+      {/* Progress bar with Liberty Score */}
+      <LibertyProgressBar />
 
-      {/* Current step content */}
-      <div className="min-h-[400px]">
-        {renderStep()}
-      </div>
+      {/* Current step content with animations */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={state.currentStep}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="min-h-[400px]"
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Footer info */}
-      <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="flex items-center justify-center gap-6 text-sm text-muted-foreground"
+      >
         <div className="flex items-center gap-1.5">
           <Shield className="h-4 w-4 text-success" />
           <span>Vos données restent locales</span>
@@ -90,8 +109,8 @@ function WizardContent({ onClose }: SovereignLiberationWizardProps) {
           <Lock className="h-4 w-4 text-info" />
           <span>100% souverain</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
