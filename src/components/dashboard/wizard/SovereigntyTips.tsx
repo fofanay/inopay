@@ -5,12 +5,13 @@ import {
   Server, Cloud, Key, Eye, CheckCircle2, ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface SovereigntyTip {
   id: string;
   icon: React.ElementType;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   category: "security" | "performance" | "maintenance" | "architecture";
   link?: string;
 }
@@ -19,73 +20,73 @@ const tips: SovereigntyTip[] = [
   {
     id: "rls",
     icon: Shield,
-    title: "Row Level Security (RLS)",
-    description: "Le RLS de PostgreSQL protège vos données au niveau de la base. Chaque requête est filtrée automatiquement selon l'utilisateur connecté, empêchant tout accès non autorisé.",
+    titleKey: "wizard.tips.rls.title",
+    descriptionKey: "wizard.tips.rls.description",
     category: "security",
     link: "https://supabase.com/docs/guides/auth/row-level-security",
   },
   {
     id: "backups",
     icon: Database,
-    title: "Sauvegardes Automatiques",
-    description: "Configurez des sauvegardes régulières avec pg_dump ou via Coolify. Un VPS souverain vous appartient : sauvegardez-le comme vous le souhaitez.",
+    titleKey: "wizard.tips.backups.title",
+    descriptionKey: "wizard.tips.backups.description",
     category: "maintenance",
   },
   {
     id: "ssl",
     icon: Lock,
-    title: "Certificats SSL Gratuits",
-    description: "Coolify génère automatiquement des certificats SSL via Let's Encrypt. Votre application sera accessible en HTTPS sans configuration manuelle.",
+    titleKey: "wizard.tips.ssl.title",
+    descriptionKey: "wizard.tips.ssl.description",
     category: "security",
   },
   {
     id: "monitoring",
     icon: Activity,
-    title: "Monitoring Open Source",
-    description: "Uptime Kuma est un excellent outil open source pour surveiller la disponibilité de vos applications. Recevez des alertes instantanées en cas de problème.",
+    titleKey: "wizard.tips.monitoring.title",
+    descriptionKey: "wizard.tips.monitoring.description",
     category: "performance",
     link: "https://github.com/louislam/uptime-kuma",
   },
   {
     id: "updates",
     icon: RefreshCw,
-    title: "Mises à Jour Régulières",
-    description: "Pensez à mettre à jour vos dépendances npm tous les mois. Utilisez 'npm audit' pour détecter les vulnérabilités connues.",
+    titleKey: "wizard.tips.updates.title",
+    descriptionKey: "wizard.tips.updates.description",
     category: "maintenance",
   },
   {
     id: "logs",
     icon: FileText,
-    title: "Gestion des Logs",
-    description: "Coolify stocke les logs de votre application pendant 7 jours. Consultez-les régulièrement pour anticiper les problèmes.",
+    titleKey: "wizard.tips.logs.title",
+    descriptionKey: "wizard.tips.logs.description",
     category: "performance",
   },
   {
     id: "sovereignty",
     icon: Server,
-    title: "Souveraineté Numérique",
-    description: "Votre code tourne sur votre serveur. Aucune dépendance à un tiers, aucun lock-in. Vous êtes libre de migrer où vous voulez, quand vous voulez.",
+    titleKey: "wizard.tips.sovereignty.title",
+    descriptionKey: "wizard.tips.sovereignty.description",
     category: "architecture",
   },
   {
     id: "docker",
     icon: Cloud,
-    title: "Conteneurisation Docker",
-    description: "Votre application est conteneurisée avec Docker. Elle peut tourner sur n'importe quel serveur compatible, de Hetzner à OVH en passant par AWS.",
+    titleKey: "wizard.tips.docker.title",
+    descriptionKey: "wizard.tips.docker.description",
     category: "architecture",
   },
   {
     id: "secrets",
     icon: Key,
-    title: "Gestion des Secrets",
-    description: "Ne stockez jamais vos clés API dans le code. Utilisez des variables d'environnement sécurisées via Coolify ou un gestionnaire de secrets.",
+    titleKey: "wizard.tips.secrets.title",
+    descriptionKey: "wizard.tips.secrets.description",
     category: "security",
   },
   {
     id: "privacy",
     icon: Eye,
-    title: "Données Privées",
-    description: "Vos données utilisateurs restent sur votre infrastructure. Aucune télémétrie, aucun tracking, aucune collecte par des tiers.",
+    titleKey: "wizard.tips.privacy.title",
+    descriptionKey: "wizard.tips.privacy.description",
     category: "security",
   },
 ];
@@ -97,19 +98,20 @@ const categoryColors: Record<SovereigntyTip["category"], string> = {
   architecture: "from-info/20 to-info/5 border-info/30",
 };
 
-const categoryLabels: Record<SovereigntyTip["category"], string> = {
-  security: "Sécurité",
-  performance: "Performance",
-  maintenance: "Maintenance",
-  architecture: "Architecture",
-};
-
 interface SovereigntyTipsProps {
   className?: string;
 }
 
 export function SovereigntyTips({ className }: SovereigntyTipsProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const categoryLabels: Record<SovereigntyTip["category"], string> = {
+    security: t("wizard.tips.categories.security"),
+    performance: t("wizard.tips.categories.performance"),
+    maintenance: t("wizard.tips.categories.maintenance"),
+    architecture: t("wizard.tips.categories.architecture"),
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -128,7 +130,7 @@ export function SovereigntyTips({ className }: SovereigntyTipsProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-success" />
-          <span className="text-sm font-medium">Conseils de Souveraineté</span>
+          <span className="text-sm font-medium">{t("wizard.tips.title")}</span>
         </div>
         <div className="flex gap-1">
           {tips.map((_, idx) => (
@@ -165,13 +167,13 @@ export function SovereigntyTips({ className }: SovereigntyTipsProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-medium text-sm">{currentTip.title}</h4>
+                <h4 className="font-medium text-sm">{t(currentTip.titleKey)}</h4>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-background/50 text-muted-foreground">
                   {categoryLabels[currentTip.category]}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {currentTip.description}
+                {t(currentTip.descriptionKey)}
               </p>
               {currentTip.link && (
                 <a
@@ -180,7 +182,7 @@ export function SovereigntyTips({ className }: SovereigntyTipsProps) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
                 >
-                  En savoir plus
+                  {t("wizard.tips.learnMore")}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}
@@ -205,7 +207,7 @@ export function SovereigntyTips({ className }: SovereigntyTipsProps) {
               )}
             >
               <TipIcon className="h-3 w-3" />
-              <span className="hidden sm:inline">{tip.title.split(" ")[0]}</span>
+              <span className="hidden sm:inline">{t(tip.titleKey).split(" ")[0]}</span>
             </button>
           );
         })}

@@ -1,4 +1,124 @@
 {
+  "wizard": {
+    "secrets": {
+      "title": "Mapping des Secrets",
+      "description": "Remplacez les clés API Lovable par vos propres clés privées",
+      "detected": "détectés",
+      "scanning": "Analyse des variables d'environnement...",
+      "scanningFiles": "Scan de {{count}} fichiers",
+      "noSecrets": "Aucune clé API détectée",
+      "noSecretsDescription": "Votre projet semble ne pas utiliser de clés API propriétaires.",
+      "toReplace": "À remplacer",
+      "toKeep": "À conserver",
+      "toDelete": "À supprimer",
+      "importantWarning": "Important",
+      "warningMessage": "Ces clés sont utilisées dans votre projet. Si vous ne les remplacez pas, votre application risque de ne pas fonctionner correctement après le déploiement.",
+      "variable": "Variable",
+      "category": "Catégorie",
+      "action": "Action",
+      "newValue": "Nouvelle valeur",
+      "files": "Fichiers",
+      "keep": "Conserver",
+      "replace": "Remplacer",
+      "delete": "Supprimer",
+      "enterNewKey": "Entrez votre nouvelle clé...",
+      "originalKept": "Valeur originale conservée",
+      "willBeDeleted": "Sera supprimée du code",
+      "missingValues": "Veuillez entrer une nouvelle valeur pour : {{keys}}",
+      "continueToClean": "Continuer vers le Nettoyage",
+      "back": "Retour",
+      "categories": {
+        "payment": "Paiement",
+        "email": "Email",
+        "ai": "IA",
+        "database": "Base de données",
+        "storage": "Stockage",
+        "search": "Recherche",
+        "realtime": "Temps réel",
+        "auth": "Authentification",
+        "other": "Autre"
+      }
+    },
+    "tips": {
+      "title": "Conseils de Souveraineté",
+      "learnMore": "En savoir plus",
+      "categories": {
+        "security": "Sécurité",
+        "performance": "Performance",
+        "maintenance": "Maintenance",
+        "architecture": "Architecture"
+      },
+      "rls": {
+        "title": "Row Level Security (RLS)",
+        "description": "Le RLS de PostgreSQL protège vos données au niveau de la base. Chaque requête est filtrée automatiquement selon l'utilisateur connecté, empêchant tout accès non autorisé."
+      },
+      "backups": {
+        "title": "Sauvegardes Automatiques",
+        "description": "Configurez des sauvegardes régulières avec pg_dump ou via Coolify. Un VPS souverain vous appartient : sauvegardez-le comme vous le souhaitez."
+      },
+      "ssl": {
+        "title": "Certificats SSL Gratuits",
+        "description": "Coolify génère automatiquement des certificats SSL via Let's Encrypt. Votre application sera accessible en HTTPS sans configuration manuelle."
+      },
+      "monitoring": {
+        "title": "Monitoring Open Source",
+        "description": "Uptime Kuma est un excellent outil open source pour surveiller la disponibilité de vos applications. Recevez des alertes instantanées en cas de problème."
+      },
+      "updates": {
+        "title": "Mises à Jour Régulières",
+        "description": "Pensez à mettre à jour vos dépendances npm tous les mois. Utilisez 'npm audit' pour détecter les vulnérabilités connues."
+      },
+      "logs": {
+        "title": "Gestion des Logs",
+        "description": "Coolify stocke les logs de votre application pendant 7 jours. Consultez-les régulièrement pour anticiper les problèmes."
+      },
+      "sovereignty": {
+        "title": "Souveraineté Numérique",
+        "description": "Votre code tourne sur votre serveur. Aucune dépendance à un tiers, aucun lock-in. Vous êtes libre de migrer où vous voulez, quand vous voulez."
+      },
+      "docker": {
+        "title": "Conteneurisation Docker",
+        "description": "Votre application est conteneurisée avec Docker. Elle peut tourner sur n'importe quel serveur compatible, de Hetzner à OVH en passant par AWS."
+      },
+      "secrets": {
+        "title": "Gestion des Secrets",
+        "description": "Ne stockez jamais vos clés API dans le code. Utilisez des variables d'environnement sécurisées via Coolify ou un gestionnaire de secrets."
+      },
+      "privacy": {
+        "title": "Données Privées",
+        "description": "Vos données utilisateurs restent sur votre infrastructure. Aucune télémétrie, aucun tracking, aucune collecte par des tiers."
+      }
+    },
+    "launch": {
+      "title": "Lancement de la libération",
+      "titleSuccess": "Libération réussie !",
+      "description": "Récapitulatif et déploiement final",
+      "descriptionSuccess": "Votre code est maintenant 100% souverain",
+      "recap": "Récapitulatif",
+      "codeSource": "Code source",
+      "secretsMapped": "Secrets mappés",
+      "secretsReplaced": "{{count}} clé(s) remplacée(s)",
+      "noSecretsModified": "Aucun secret modifié",
+      "filesCleaned": "Fichiers nettoyés",
+      "filesCleanedValue": "{{count}} fichiers ({{score}}%)",
+      "destination": "Destination",
+      "vpsDestination": "VPS Ubuntu + Coolify",
+      "ftpNotConfigured": "non configuré",
+      "supabaseMigration": "Migration Supabase",
+      "enabled": "Activée",
+      "disabled": "Désactivée",
+      "deployConsole": "Console de déploiement",
+      "sovereignCode": "Votre code souverain est disponible :",
+      "back": "Retour",
+      "liberating": "Libération en cours...",
+      "liberate": "Libérer mon application",
+      "newLiberation": "Nouvelle libération",
+      "viewRepo": "Voir le dépôt",
+      "envExampleTitle": "Fichier .env.example généré",
+      "envExampleDescription": "Un fichier .env.example a été ajouté avec {{count}} variables détectées",
+      "downloadEnvExample": "Télécharger .env.example"
+    }
+  },
   "adminExcessPayments": {
     "supplementRevenue": "Revenus Suppléments",
     "paidProjects": "Projets Payés",
