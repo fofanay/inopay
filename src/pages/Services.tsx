@@ -22,18 +22,71 @@ import {
 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrencyDetection, Currency } from "@/hooks/useCurrencyDetection";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Prix par service et devise
+const PRICES: Record<string, Record<Currency, { price: number; symbol: string }>> = {
+  deployment: {
+    CAD: { price: 39, symbol: "$" },
+    USD: { price: 29, symbol: "$" },
+    EUR: { price: 27, symbol: "€" }
+  },
+  monitoring: {
+    CAD: { price: 12, symbol: "$" },
+    USD: { price: 9, symbol: "$" },
+    EUR: { price: 8, symbol: "€" }
+  },
+  vps: {
+    CAD: { price: 25, symbol: "$" },
+    USD: { price: 19, symbol: "$" },
+    EUR: { price: 17, symbol: "€" }
+  },
+  pack: {
+    CAD: { price: 76, symbol: "$" },
+    USD: { price: 57, symbol: "$" },
+    EUR: { price: 52, symbol: "€" }
+  },
+  packOriginal: {
+    CAD: { price: 95, symbol: "$" },
+    USD: { price: 72, symbol: "$" },
+    EUR: { price: 66, symbol: "€" }
+  },
+  vpsYear: {
+    CAD: { price: 300, symbol: "$" },
+    USD: { price: 228, symbol: "$" },
+    EUR: { price: 204, symbol: "€" }
+  },
+  monitoringYear: {
+    CAD: { price: 144, symbol: "$" },
+    USD: { price: 108, symbol: "$" },
+    EUR: { price: 96, symbol: "€" }
+  },
+  savings: {
+    CAD: { price: 500, symbol: "$" },
+    USD: { price: 400, symbol: "$" },
+    EUR: { price: 350, symbol: "€" }
+  }
+};
+
+const formatPrice = (priceKey: string, currency: Currency, suffix: string = "") => {
+  const priceData = PRICES[priceKey]?.[currency];
+  if (!priceData) return "";
+  return `${priceData.price}${priceData.symbol}${suffix}`;
+};
 
 const Services = () => {
   const { user } = useAuth();
+  const { currency, setCurrency, isLoading, detectedCountry } = useCurrencyDetection();
 
-  const services = [
+  const getServices = () => [
     {
       id: "deployment",
       icon: Rocket,
       title: "Déploiement Assisté",
       subtitle: "De Lovable à votre serveur en 10 minutes",
       description: "Notre équipe vous accompagne de A à Z pour déployer votre application sur votre propre infrastructure. Fini les contraintes des hébergeurs propriétaires.",
-      price: "39$",
+      price: formatPrice("deployment", currency),
       priceNote: "paiement unique",
       features: [
         "Configuration Dockerfile optimisée",
@@ -57,7 +110,7 @@ const Services = () => {
       title: "Monitoring 24/7",
       subtitle: "Votre app surveillée en continu",
       description: "Surveillance proactive de votre application avec alertes instantanées et redémarrage automatique. Dormez tranquille, on veille.",
-      price: "12$",
+      price: formatPrice("monitoring", currency),
       priceNote: "/mois",
       features: [
         "Vérification uptime toutes les 60 secondes",
@@ -81,7 +134,7 @@ const Services = () => {
       title: "Serveur VPS Dédié",
       subtitle: "Votre infrastructure souveraine",
       description: "Un serveur VPS configuré et optimisé pour vos applications. Hébergement européen, performances garanties, contrôle total.",
-      price: "25$",
+      price: formatPrice("vps", currency),
       priceNote: "/mois",
       features: [
         "VPS 2 vCPU / 4 Go RAM / 40 Go SSD",
@@ -103,15 +156,15 @@ const Services = () => {
 
   const testimonials = [
     {
-      quote: "J'ai économisé 500$/mois en passant de Vercel Pro + Supabase à mon propre VPS avec Inopay. Le déploiement assisté m'a fait gagner une journée entière.",
+      quote: `J'ai économisé ${formatPrice("savings", currency)}/mois en passant de Vercel Pro + Supabase à mon propre VPS avec Inopay. Le déploiement assisté m'a fait gagner une journée entière.`,
       author: "Thomas L.",
       role: "Fondateur, SaaS B2B",
       avatar: "TL",
       rating: 5,
-      savings: "500$/mois économisés"
+      savings: `${formatPrice("savings", currency)}/mois économisés`
     },
     {
-      quote: "Le monitoring m'a alerté d'un problème à 3h du matin et a redémarré mon app automatiquement. Mes clients n'ont rien remarqué. Ça vaut largement les 12$/mois.",
+      quote: `Le monitoring m'a alerté d'un problème à 3h du matin et a redémarré mon app automatiquement. Mes clients n'ont rien remarqué. Ça vaut largement les ${formatPrice("monitoring", currency)}/mois.`,
       author: "Marie D.",
       role: "CTO, Startup HealthTech",
       avatar: "MD",
@@ -155,6 +208,8 @@ const Services = () => {
     }
   ];
 
+  const services = getServices();
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -179,6 +234,24 @@ const Services = () => {
             Déploiement, monitoring, hébergement. Tout ce dont vous avez besoin pour faire 
             tourner vos apps en production, sans vous soucier de l'infrastructure.
           </p>
+
+          {/* Currency Selector */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {detectedCountry ? `Détecté: ${detectedCountry}` : "Devise:"}
+            </span>
+            <Select value={currency} onValueChange={(val) => setCurrency(val as Currency)}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CAD">CAD $</SelectItem>
+                <SelectItem value="USD">USD $</SelectItem>
+                <SelectItem value="EUR">EUR €</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/tarifs">
@@ -294,9 +367,9 @@ const Services = () => {
                   </p>
                   
                   <div className="flex items-baseline gap-4 mb-6">
-                    <span className="text-5xl font-bold text-primary">76$</span>
+                    <span className="text-5xl font-bold text-primary">{formatPrice("pack", currency)}</span>
                     <div className="text-muted-foreground">
-                      <span className="line-through">95$</span>
+                      <span className="line-through">{formatPrice("packOriginal", currency)}</span>
                       <span className="ml-2">première année</span>
                     </div>
                   </div>
@@ -314,7 +387,7 @@ const Services = () => {
                     <Rocket className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Déploiement Assisté</p>
-                      <p className="text-sm text-muted-foreground">Valeur 39$</p>
+                      <p className="text-sm text-muted-foreground">Valeur {formatPrice("deployment", currency)}</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
@@ -322,7 +395,7 @@ const Services = () => {
                     <Server className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Serveur VPS 12 mois</p>
-                      <p className="text-sm text-muted-foreground">Valeur 300$/an</p>
+                      <p className="text-sm text-muted-foreground">Valeur {formatPrice("vpsYear", currency)}/an</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
@@ -330,7 +403,7 @@ const Services = () => {
                     <Activity className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">Monitoring 12 mois</p>
-                      <p className="text-sm text-muted-foreground">Valeur 144$/an</p>
+                      <p className="text-sm text-muted-foreground">Valeur {formatPrice("monitoringYear", currency)}/an</p>
                     </div>
                     <Check className="h-6 w-6 text-primary ml-auto" />
                   </div>
