@@ -508,6 +508,8 @@ const Dashboard = () => {
         dependencies,
         recommendations: recommendations.map((r: any) => typeof r === 'string' ? r : r.message || ''),
         extractedFiles: new Map(),
+        filesToRemove: [],
+        proprietaryCDNs: [],
       };
 
       setFileName(project.file_name || project.project_name);
