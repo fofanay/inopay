@@ -40,8 +40,10 @@ import {
   PROPRIETARY_FILES,
 } from "@/lib/clientProprietaryPatterns";
 import JSZip from "jszip";
+import { PostLiberationOffers } from "./PostLiberationOffers";
 
 type FlowStep = "upload" | "analyzing" | "results" | "download";
+
 
 interface CleanedFile {
   path: string;
@@ -96,6 +98,7 @@ export function SimpleLiberationFlow() {
     cdnUrlsReplaced: 0,
   });
   const [isGeneratingArchive, setIsGeneratingArchive] = useState(false);
+  const [showOffers, setShowOffers] = useState(false);
 
   // Reset flow
   const reset = () => {
@@ -117,6 +120,7 @@ export function SimpleLiberationFlow() {
       polyfillsGenerated: 0,
       cdnUrlsReplaced: 0,
     });
+    setShowOffers(false);
   };
 
   // Handle ZIP file drop
@@ -624,6 +628,9 @@ import { useToast } from '@/lib/inopay-compat/use-toast';
       
       toast.success("Archive téléchargée avec succès!");
       
+      // Show offers after download
+      setShowOffers(true);
+      
       // Save to history
       if (user && analysisResult) {
         try {
@@ -999,6 +1006,15 @@ import { useToast } from '@/lib/inopay-compat/use-toast';
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {/* Post-Liberation Offers - shown after download */}
+          {showOffers && !loading && (
+            <PostLiberationOffers
+              projectName={projectName}
+              filesCount={cleanedFiles.length}
+              onDismiss={() => setShowOffers(false)}
+            />
           )}
         </div>
       )}
