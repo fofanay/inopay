@@ -10,31 +10,13 @@ import {
   FlaskConical,
   CreditCard,
   CalendarCheck,
-  Mail,
-  Bell,
   Settings,
-  LineChart,
-  Server,
-  Activity,
-  Shield,
-  Wrench,
   TrendingUp,
   ShoppingCart,
-  Smartphone,
-  Webhook,
-  HardDrive,
-  Calculator,
-  Network,
-  Eye,
   Layers,
-  Rocket,
-  GitBranch,
-  FolderUp,
-  X,
-  ExternalLink,
-  AlertTriangle,
   CheckCircle2,
-  Clock
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,30 +33,11 @@ import AdminStats from "@/components/admin/AdminStats";
 import AdminTesters from "@/components/admin/AdminTesters";
 import AdminPayments from "@/components/admin/AdminPayments";
 import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
-import AdminEmailCMS from "@/components/admin/AdminEmailCMS";
-import AdminReminders from "@/components/admin/AdminReminders";
-import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminSettings from "@/components/admin/AdminSettings";
-import AdminServerFleet from "@/components/admin/AdminServerFleet";
-import AdminActivityMonitor from "@/components/admin/AdminActivityMonitor";
-import AdminSecurityAudit from "@/components/admin/AdminSecurityAudit";
 import AdminKPIs from "@/components/admin/AdminKPIs";
-import AdminSupportTools from "@/components/admin/AdminSupportTools";
 import AdminPurchases from "@/components/admin/AdminPurchases";
-import AdminStripeLogs from "@/components/admin/AdminStripeLogs";
-import { AdminWidgetMonitoring } from "@/components/admin/AdminWidgetMonitoring";
-import AdminMigrationTools from "@/components/admin/AdminMigrationTools";
-import AdminCleaningMargins from "@/components/admin/AdminCleaningMargins";
-import AdminNetworkDiagnostic from "@/components/admin/AdminNetworkDiagnostic";
-import AdminOperationsCenter from "@/components/admin/AdminOperationsCenter";
-import { AdminExcessPayments } from "@/components/admin/AdminExcessPayments";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
-import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
-import { DeploymentChoice } from "@/components/dashboard/DeploymentChoice";
-import { SyncMirror } from "@/components/dashboard/SyncMirror";
-import { AnalyzedProjects } from "@/components/dashboard/AnalyzedProjects";
-import { CoolifyDeploymentAssistant } from "@/components/dashboard/CoolifyDeploymentAssistant";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
@@ -82,32 +45,9 @@ import inopayLogo from "@/assets/inopay-logo-admin.png";
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState("operations");
+  const [activeTab, setActiveTab] = useState("overview");
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
-
-  // Handler pour la navigation depuis MyPersonalFleet
-  const handleFleetNavigate = (tab: string) => {
-    // Mapper les tabs de MyPersonalFleet vers les tabs AdminDashboard
-    const tabMapping: Record<string, string> = {
-      "deploy-choice": "deploy-choice",
-      "sync-mirror": "sync-mirror",
-      "batch-import": "import",
-      "import": "import",
-    };
-    const targetTab = tabMapping[tab] || tab;
-    if (menuItems.some(m => m.id === targetTab)) {
-      setActiveTab(targetTab);
-    } else {
-      toast.info(`Navigation vers: ${tab}`);
-    }
-  };
-
-  // Handler pour la sélection d'un projet
-  const handleSelectProject = (project: any) => {
-    setSelectedProject(project);
-    setShowProjectDetails(true);
-  };
 
   // Helper pour obtenir la couleur du score
   const getScoreColor = (score: number | null) => {
@@ -158,41 +98,20 @@ const AdminDashboard = () => {
     return null;
   }
 
-  // Menu groupé par domaine
+  // Menu simplifié - uniquement l'essentiel
   const menuItems = [
-    // 👥 Utilisateurs
-    { id: "users", label: "Utilisateurs", icon: Users, section: "users" },
-    { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
-    { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "users" },
-    // 💰 Business
-    { id: "operations", label: "Centre Opérations", icon: Eye, section: "business" },
+    // 📊 Business
     { id: "overview", label: "Vue d'ensemble", icon: BarChart3, section: "business" },
     { id: "kpis", label: "KPIs Business", icon: TrendingUp, section: "business" },
     { id: "payments", label: "Paiements", icon: CreditCard, section: "business" },
+    { id: "subscriptions", label: "Abonnements", icon: CalendarCheck, section: "business" },
     { id: "purchases", label: "Achats Services", icon: ShoppingCart, section: "business" },
-    { id: "excess-payments", label: "Suppléments Volume", icon: TrendingUp, section: "business" },
-    { id: "margins", label: "Marges Nettoyage", icon: Calculator, section: "business" },
-    { id: "stripe-logs", label: "Logs Stripe", icon: Webhook, section: "business" },
-    // 🖥️ Infrastructure
-    { id: "my-fleet", label: "Ma Flotte Perso", icon: Layers, section: "infra" },
-    { id: "deploy-assistant", label: "Deploy Assistant", icon: Rocket, section: "infra" },
-    { id: "deploy-choice", label: "Choix Déploiement", icon: Rocket, section: "infra" },
-    { id: "sync-mirror", label: "Sync & Mirror", icon: GitBranch, section: "infra" },
-    { id: "import", label: "Import Projets", icon: FolderUp, section: "infra" },
-    { id: "fleet", label: "Flotte Serveurs", icon: Server, section: "infra" },
-    { id: "widgets", label: "Widgets & Sync", icon: Smartphone, section: "infra" },
-    { id: "monitoring", label: "Monitoring", icon: Activity, section: "infra" },
-    { id: "diagnostic", label: "Diagnostic Réseau", icon: Network, section: "infra" },
-    // 📧 Marketing
-    { id: "emails", label: "Emails (CMS)", icon: Mail, section: "marketing" },
-    { id: "reminders", label: "Relances", icon: Bell, section: "marketing" },
-    { id: "analytics", label: "Analytics", icon: LineChart, section: "marketing" },
-    // 🔐 Sécurité & Support
-    { id: "security", label: "Sécurité", icon: Shield, section: "security" },
-    { id: "support", label: "Support Admin", icon: Wrench, section: "security" },
-    { id: "exports", label: "Exports & Qualité", icon: FileText, section: "security" },
-    { id: "migration", label: "Migration", icon: HardDrive, section: "security" },
-    { id: "settings", label: "Paramètres", icon: Settings, section: "security" },
+    // 👥 Utilisateurs
+    { id: "users", label: "Utilisateurs", icon: Users, section: "users" },
+    { id: "testers", label: "Testeurs", icon: FlaskConical, section: "users" },
+    // 🛠️ Outils
+    { id: "exports", label: "Exports & Qualité", icon: FileText, section: "tools" },
+    { id: "settings", label: "Paramètres", icon: Settings, section: "tools" },
   ];
 
   const getPageTitle = () => {
@@ -202,31 +121,14 @@ const AdminDashboard = () => {
 
   const getPageDescription = () => {
     switch (activeTab) {
-      case "operations": return "Surveillance en temps réel du processus de libération";
       case "overview": return "Statistiques globales de la plateforme Inopay";
-      case "diagnostic": return "Vérifiez la connectivité Supabase, VPS, Coolify et GitHub";
-      case "my-fleet": return "Gérez vos propres serveurs Coolify pour les déploiements";
-      case "deploy-assistant": return "Configurez et déployez automatiquement sur Coolify";
-      case "deploy-choice": return "Choisissez votre méthode de déploiement préférée";
-      case "sync-mirror": return "Synchronisez vos déploiements avec GitHub";
-      case "import": return "Importez et analysez de nouveaux projets";
-      case "fleet": return "Vue temps réel de tous les serveurs et déploiements clients";
-      case "widgets": return "Surveillance des widgets mobiles et synchronisations";
-      case "monitoring": return "Journal d'activité et alertes en temps réel";
-      case "stripe-logs": return "Historique des webhooks Stripe et erreurs de paiement";
       case "kpis": return "Revenus, taux de succès et métriques business";
-      case "purchases": return "Tous les achats de services par utilisateur";
-      case "security": return "Audit Zero-Knowledge et vérification des secrets";
-      case "support": return "Outils d'intervention et notifications utilisateurs";
-      case "users": return "Gérez les utilisateurs et leurs accès";
       case "payments": return "Revenus, paiements et remboursements Stripe";
       case "subscriptions": return "Abonnements actifs, coupons et MRR";
-      case "analytics": return "Graphiques et métriques avancées";
-      case "emails": return "Templates d'emails personnalisables";
-      case "reminders": return "Campagnes d'emails automatiques";
-      case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
-      case "migration": return "Exportez schéma et données pour migrer vers votre Supabase";
+      case "purchases": return "Tous les achats de services par utilisateur";
+      case "users": return "Gérez les utilisateurs et leurs accès";
       case "testers": return "Gérez les comptes avec accès Pro gratuit à vie";
+      case "exports": return "Vérifiez la qualité des fichiers nettoyés par l'IA";
       case "settings": return "Configuration globale de l'application";
       default: return "";
     }
@@ -340,46 +242,14 @@ const AdminDashboard = () => {
         {/* Content Area */}
         <div className="p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
-            {activeTab === "operations" && <AdminOperationsCenter />}
             {activeTab === "overview" && <AdminStats />}
-            {activeTab === "diagnostic" && <AdminNetworkDiagnostic />}
-            {activeTab === "my-fleet" && (
-              <MyPersonalFleet 
-                onSelectProject={handleSelectProject}
-                onNavigate={handleFleetNavigate}
-              />
-            )}
-            {activeTab === "deploy-assistant" && (
-              <CoolifyDeploymentAssistant 
-                onComplete={(id) => toast.success(`Déploiement créé: ${id}`)} 
-              />
-            )}
-            {activeTab === "deploy-choice" && (
-              <DeploymentChoice 
-                onSelect={(option) => toast.success(`Option sélectionnée: ${option}`)} 
-              />
-            )}
-            {activeTab === "sync-mirror" && <SyncMirror />}
-            {activeTab === "import" && <AnalyzedProjects />}
-            {activeTab === "fleet" && <AdminServerFleet />}
-            {activeTab === "widgets" && <AdminWidgetMonitoring />}
-            {activeTab === "monitoring" && <AdminActivityMonitor />}
-            {activeTab === "stripe-logs" && <AdminStripeLogs />}
             {activeTab === "kpis" && <AdminKPIs />}
-            {activeTab === "purchases" && <AdminPurchases />}
-            {activeTab === "excess-payments" && <AdminExcessPayments />}
-            {activeTab === "margins" && <AdminCleaningMargins />}
-            {activeTab === "security" && <AdminSecurityAudit />}
-            {activeTab === "support" && <AdminSupportTools />}
-            {activeTab === "users" && <AdminUsersList />}
             {activeTab === "payments" && <AdminPayments />}
             {activeTab === "subscriptions" && <AdminSubscriptions />}
-            {activeTab === "analytics" && <AdminAnalytics />}
-            {activeTab === "emails" && <AdminEmailCMS />}
-            {activeTab === "reminders" && <AdminReminders />}
-            {activeTab === "exports" && <AdminExportsList />}
-            {activeTab === "migration" && <AdminMigrationTools />}
+            {activeTab === "purchases" && <AdminPurchases />}
+            {activeTab === "users" && <AdminUsersList />}
             {activeTab === "testers" && <AdminTesters />}
+            {activeTab === "exports" && <AdminExportsList />}
             {activeTab === "settings" && <AdminSettings />}
           </div>
         </div>
@@ -486,27 +356,6 @@ const AdminDashboard = () => {
 
               {/* Actions */}
               <div className="space-y-3 pt-4 border-t">
-                <Button 
-                  className="w-full" 
-                  onClick={() => {
-                    setShowProjectDetails(false);
-                    setActiveTab("deploy-choice");
-                  }}
-                >
-                  <Rocket className="h-4 w-4 mr-2" />
-                  Déployer ce projet
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => {
-                    setShowProjectDetails(false);
-                    setActiveTab("sync-mirror");
-                  }}
-                >
-                  <GitBranch className="h-4 w-4 mr-2" />
-                  Configurer la synchronisation
-                </Button>
                 <Button 
                   variant="ghost" 
                   className="w-full"

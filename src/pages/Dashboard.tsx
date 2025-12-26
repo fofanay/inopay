@@ -87,9 +87,9 @@ import inopayLogo from "@/assets/inopay-logo-admin.png";
 
 type AnalysisState = "idle" | "uploading" | "analyzing" | "complete";
 type ImportMethod = "github-oauth" | "zip" | "github-url";
-type DashboardTab = "overview" | "liberation" | "import" | "batch-import" | "fleet" | "projects" | "deployments" | "services" | "servers" | "security" | "migration" | "deploy-choice" | "sovereign-deploy" | "sync-mirror" | "exports";
+type DashboardTab = "overview" | "liberation" | "projects" | "deployments" | "services";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "import", "batch-import", "projects", "deploy-choice", "sovereign-deploy", "sync-mirror", "deployments", "servers", "security", "migration", "services", "exports"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "projects", "deployments", "services"];
 
 interface GitHubRepo {
   id: number;
@@ -513,7 +513,7 @@ const Dashboard = () => {
       setFileName(project.file_name || project.project_name);
       setResult(loadedResult);
       setState("complete");
-      setActiveTab("import");
+      setActiveTab("liberation");
       setDbConfigComplete(true);
       
       toast({
@@ -611,18 +611,12 @@ const Dashboard = () => {
     setIsImportingRepo(false);
   };
 
+  // Menu simplifié - focus sur l'essentiel
   const menuItems = [
     { id: "overview", label: t("dashboard.overview"), icon: BarChart3, section: "espace" },
-    { id: "fleet", label: t("dashboard.fleet"), icon: LayoutGrid, badge: t("dashboard.menu.myProjects"), section: "espace" },
     { id: "liberation", label: t("dashboard.liberation"), icon: Flame, badge: t("dashboard.menu.pipeline"), section: "liberer" },
-    { id: "import", label: t("dashboard.importTab"), icon: Upload, section: "importer" },
-    { id: "batch-import", label: t("dashboard.batchImport"), icon: Layers, badge: t("dashboard.menu.new"), section: "importer" },
     { id: "projects", label: t("dashboard.projects"), icon: Package, section: "espace" },
-    { id: "deploy-choice", label: t("dashboard.deployChoice"), icon: Cloud, section: "liberer" },
-    { id: "sync-mirror", label: t("dashboard.syncMirror"), icon: Zap, section: "liberer" },
     { id: "deployments", label: t("dashboard.deployments"), icon: History, section: "espace" },
-    { id: "servers", label: t("dashboard.servers"), icon: Server, section: "gestion" },
-    { id: "migration", label: t("dashboard.migration"), icon: Database, section: "gestion" },
     { id: "services", label: t("dashboard.services"), icon: Crown, section: "gestion" },
   ];
 
@@ -890,24 +884,14 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Tab: Mon Portfolio Personnel */}
-            {activeTab === "fleet" && (
-              <MyPersonalFleet 
-                onSelectProject={(project) => {
-                  // Load project for deployment
-                  loadProjectForDeployment(project);
-                }}
-                onNavigate={(tab) => setActiveTab(tab as DashboardTab)}
-              />
-            )}
 
             {/* Tab: Liberation Pipeline - SIMPLIFIÉ */}
             {activeTab === "liberation" && (
               <SimpleLiberationFlow />
             )}
 
-            {/* Tab: Import */}
-            {activeTab === "import" && (
+            {/* L'import est maintenant géré par SimpleLiberationFlow */}
+            {false && (
               <div className="space-y-6">
                 {/* Stepper Progress */}
                 <StepperProgress currentStep={getCurrentStep()} />
@@ -1347,31 +1331,6 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Tab: Batch Import */}
-            {activeTab === "batch-import" && (
-              <div className="space-y-6">
-                {batchRepos.length === 0 ? (
-                  <GitHubMultiRepoSelector
-                    onSelectRepos={handleBatchAnalysis}
-                    isLoading={isBatchAnalyzing}
-                    maxSelection={subscription.planType === "pro" ? 50 : 10}
-                  />
-                ) : (
-                  <BatchAnalysisProgress
-                    repos={batchRepos}
-                    results={batchResults}
-                    onComplete={() => {
-                      toast({
-                        title: t("dashboard.batch.complete"),
-                        description: `${batchResults.filter(r => r.status === "complete").length} ${t("dashboard.batch.projectsAnalyzed")}`,
-                      });
-                    }}
-                    onReset={resetBatchAnalysis}
-                  />
-                )}
-              </div>
-            )}
-
             {/* Tab: Projects */}
             {activeTab === "projects" && (
               <div className="space-y-6">
@@ -1389,7 +1348,7 @@ const Dashboard = () => {
                         className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                       >
                         <Rocket className="h-4 w-4" />
-                        {t("dashboard.liberation.launchPipeline", "Lancer le Pipeline Souverain")}
+                        {t("dashboard.liberation.launchPipeline", "Lancer la Libération")}
                       </Button>
                     </div>
                   </CardContent>
@@ -1402,70 +1361,10 @@ const Dashboard = () => {
               </div>
             )}
 
-
-            {/* Tab: Deploy Choice */}
-            {activeTab === "deploy-choice" && (
-              <DeploymentChoice 
-                onSelect={(option: DeploymentOption) => {
-                  if (option === 'zip') {
-                    setActiveTab('import');
-                    toast({
-                      title: t("dashboard.toast.exportZip"),
-                      description: t("dashboard.toast.exportZipDesc"),
-                    });
-                  } else if (option === 'ftp') {
-                    toast({
-                      title: t("dashboard.toast.ftpHosting"),
-                      description: t("dashboard.toast.ftpHostingDesc"),
-                    });
-                    setActiveTab('import');
-                  } else if (option === 'vps') {
-                    setActiveTab('servers');
-                  }
-                }}
-              />
-            )}
-
             {/* Tab: Deployments */}
             {activeTab === "deployments" && (
               <div className="space-y-6">
-                <ServerDeploymentsManager />
                 <DeploymentHistory />
-              </div>
-            )}
-
-            {/* Tab: Servers */}
-            {activeTab === "servers" && (
-              <ServerManagement />
-            )}
-
-            {/* Tab: Migration Tools (User) */}
-            {activeTab === "migration" && (
-              <UserMigrationTools />
-            )}
-
-            {/* Tab: Sync Mirror */}
-            {activeTab === "sync-mirror" && (
-              <div className="space-y-6">
-                <UserWidgetStatus />
-                <SyncMirror />
-              </div>
-            )}
-
-            {/* Tab: Sovereign Deployment */}
-            {activeTab === "sovereign-deploy" && (
-              <div className="space-y-8">
-                <SovereigntySetupWizard
-                  projectName={fileName.replace('.zip', '')}
-                  extractedFiles={extractedFiles}
-                  onComplete={() => {
-                    toast({
-                      title: t("dashboard.toast.sovereignComplete"),
-                      description: t("dashboard.toast.sovereignCompleteDesc"),
-                    });
-                    fetchHistory();
-                  }}
-                />
               </div>
             )}
 
@@ -1475,16 +1374,6 @@ const Dashboard = () => {
                 <UserPurchases />
                 <UserExportsHistory />
               </div>
-            )}
-
-            {/* Tab: Security */}
-            {activeTab === "security" && (
-              <UserSecurityStatus />
-            )}
-
-            {/* Tab: Exports */}
-            {activeTab === "exports" && (
-              <UserExportsHistory />
             )}
           </div>
           {/* Padding for mobile pagination dots */}
@@ -1526,7 +1415,7 @@ const Dashboard = () => {
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav
         currentTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
+        onTabChange={(tab) => setActiveTab(tab as DashboardTab)}
       />
       </div>
       <FofyChat />
