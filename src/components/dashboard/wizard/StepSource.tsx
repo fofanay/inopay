@@ -97,6 +97,8 @@ function GitHubGuideModal() {
   );
 }
 
+type TokenValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid' | 'expired';
+
 export function StepSource() {
   const { state, dispatch, nextStep } = useWizard();
   const { user } = useAuth();
@@ -105,6 +107,9 @@ export function StepSource() {
   const [showToken, setShowToken] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [incognitoMode, setIncognitoMode] = useState(isIncognitoModeActive());
+  const [tokenStatus, setTokenStatus] = useState<TokenValidationStatus>('idle');
+  const [tokenScopes, setTokenScopes] = useState<string[]>([]);
+  const [tokenError, setTokenError] = useState<string>('');
 
   // Gestion du mode incognito
   useEffect(() => {
@@ -122,6 +127,72 @@ export function StepSource() {
       // Le mode incognito reste actif jusqu'à fermeture de l'onglet
     };
   }, []);
+
+  // Validation du token en temps réel avec debounce
+  useEffect(() => {
+    const token = state.source.token;
+    if (!token || token.length < 10) {
+      setTokenStatus('idle');
+      setTokenScopes([]);
+      setTokenError('');
+      return;
+    }
+
+    // Debounce validation
+    const timeoutId = setTimeout(() => {
+      validateToken(token);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [state.source.token]);
+
+  const validateToken = async (token: string) => {
+    setTokenStatus('validating');
+    setTokenError('');
+    
+    try {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Inopay-Token-Validator'
+        }
+      });
+
+      if (response.status === 401) {
+        setTokenStatus('expired');
+        setTokenError('Token invalide ou expiré');
+        return;
+      }
+
+      if (!response.ok) {
+        setTokenStatus('invalid');
+        setTokenError(`Erreur GitHub: ${response.statusText}`);
+        return;
+      }
+
+      // Check scopes from response headers
+      const scopesHeader = response.headers.get('X-OAuth-Scopes') || '';
+      const scopes = scopesHeader.split(',').map(s => s.trim()).filter(Boolean);
+      setTokenScopes(scopes);
+
+      // Check if required scopes are present
+      const hasRepoScope = scopes.includes('repo') || scopes.some(s => s.startsWith('repo'));
+      
+      if (!hasRepoScope) {
+        setTokenStatus('invalid');
+        setTokenError('Le scope "repo" est requis pour accéder aux dépôts privés');
+        return;
+      }
+
+      setTokenStatus('valid');
+      console.log('[StepSource] Token validated successfully, scopes:', scopes);
+    } catch (error) {
+      console.error('[StepSource] Token validation error:', error);
+      setTokenStatus('invalid');
+      setTokenError('Erreur de validation du token');
+    }
+  };
 
   // Sauvegarder le token dans sessionStorage (jamais en backend sauf VPS)
   const handleTokenChange = (token: string) => {
@@ -299,7 +370,7 @@ export function StepSource() {
           <Switch checked={incognitoMode} onCheckedChange={toggleIncognitoMode} />
         </div>
 
-        {/* Token input */}
+        {/* Token input with real-time validation */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="github-token">Token GitHub (optionnel pour les dépôts publics)</Label>
@@ -312,17 +383,60 @@ export function StepSource() {
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
               value={state.source.token}
               onChange={(e) => handleTokenChange(e.target.value)}
-              className="pr-10"
+              className={`pr-20 ${
+                tokenStatus === 'valid' ? 'border-success focus-visible:ring-success' :
+                tokenStatus === 'invalid' || tokenStatus === 'expired' ? 'border-destructive focus-visible:ring-destructive' :
+                ''
+              }`}
             />
-            <button
-              type="button"
-              onClick={() => setShowToken(!showToken)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {/* Token status indicator */}
+              {tokenStatus === 'validating' && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+              {tokenStatus === 'valid' && (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              )}
+              {(tokenStatus === 'invalid' || tokenStatus === 'expired') && (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              )}
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
-          {incognitoMode && (
+          
+          {/* Token validation feedback */}
+          {tokenStatus === 'valid' && tokenScopes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-xs text-success flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Token valide
+              </span>
+              <span className="text-xs text-muted-foreground">•</span>
+              {tokenScopes.slice(0, 4).map((scope) => (
+                <Badge key={scope} variant="outline" className="text-xs py-0 h-5 bg-success/10 text-success border-success/30">
+                  {scope}
+                </Badge>
+              ))}
+              {tokenScopes.length > 4 && (
+                <span className="text-xs text-muted-foreground">+{tokenScopes.length - 4}</span>
+              )}
+            </div>
+          )}
+          
+          {(tokenStatus === 'invalid' || tokenStatus === 'expired') && tokenError && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {tokenError}
+            </p>
+          )}
+          
+          {tokenStatus === 'idle' && incognitoMode && (
             <p className="text-xs text-success flex items-center gap-1">
               <Shield className="h-3 w-3" />
               Token protégé - effacé à la fermeture de l'onglet
