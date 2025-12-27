@@ -594,96 +594,117 @@ export function deepCleanSourceFile(content: string, filePath: string): {
   // ========== PASS 1: Remove ALL proprietary import statements ==========
   const importPatterns = [
     // Lovable/GPT Engineer imports
-    /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@gptengineer\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]lovable-[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@v0\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@bolt\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@cursor\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*.*\s*from\s*['"]@replit\/[^'"]*['"]\s*;?\n?/g,
+    { pattern: /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g, name: 'lovable-tagger import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g, name: '@lovable import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@gptengineer\/[^'"]*['"]\s*;?\n?/g, name: '@gptengineer import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]lovable-[^'"]*['"]\s*;?\n?/g, name: 'lovable- import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@v0\/[^'"]*['"]\s*;?\n?/g, name: '@v0 import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@bolt\/[^'"]*['"]\s*;?\n?/g, name: '@bolt import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@cursor\/[^'"]*['"]\s*;?\n?/g, name: '@cursor import' },
+    { pattern: /import\s*[^;]*\s*from\s*['"]@replit\/[^'"]*['"]\s*;?\n?/g, name: '@replit import' },
   ];
 
-  for (const pattern of importPatterns) {
-    if (pattern.test(cleaned)) {
-      const before = cleaned;
-      cleaned = cleaned.replace(new RegExp(pattern.source, pattern.flags), '');
-      if (cleaned !== before) {
-        changes.push(`Import propriétaire supprimé`);
-      }
+  for (const { pattern, name } of importPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '');
+    if (cleaned !== before) {
+      changes.push(`Import propriétaire supprimé: ${name}`);
     }
   }
 
   // ========== PASS 2: Replace @/integrations/supabase paths with lib paths ==========
+  // CRITICAL FIX: Do replacement directly without .test() to avoid consuming regex
   const supabaseImportReplacements = [
-    { from: /from\s*['"]@\/integrations\/supabase\/client['"]/g, to: "from '@/lib/supabase-client'" },
-    { from: /from\s*['"]@\/integrations\/supabase\/types['"]/g, to: "from '@/lib/supabase-types'" },
-    { from: /from\s*['"]@\/integrations\/supabase[^'"]*['"]/g, to: "from '@/lib/supabase-client'" },
-    { from: /from\s*['"]\.\.\/integrations\/supabase\/client['"]/g, to: "from '@/lib/supabase-client'" },
-    { from: /from\s*['"]\.\.\/\.\.\/integrations\/supabase\/client['"]/g, to: "from '@/lib/supabase-client'" },
-    { from: /from\s*['"]\.\.\/\.\.\/\.\.\/integrations\/supabase\/client['"]/g, to: "from '@/lib/supabase-client'" },
-    { from: /from\s*['"]\.\.\/integrations\/supabase\/types['"]/g, to: "from '@/lib/supabase-types'" },
-    { from: /from\s*['"]\.\.\/\.\.\/integrations\/supabase\/types['"]/g, to: "from '@/lib/supabase-types'" },
+    { pattern: /from\s*['"]@\/integrations\/supabase\/client['"]/g, replacement: "from '@/lib/supabase-client'" },
+    { pattern: /from\s*['"]@\/integrations\/supabase\/types['"]/g, replacement: "from '@/lib/supabase-types'" },
+    { pattern: /from\s*['"]@\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
+    { pattern: /from\s*['"]\.\.\/integrations\/supabase\/client['"]/g, replacement: "from '@/lib/supabase-client'" },
+    { pattern: /from\s*['"]\.\.\/\.\.\/integrations\/supabase\/client['"]/g, replacement: "from '@/lib/supabase-client'" },
+    { pattern: /from\s*['"]\.\.\/\.\.\/\.\.\/integrations\/supabase\/client['"]/g, replacement: "from '@/lib/supabase-client'" },
+    { pattern: /from\s*['"]\.\.\/integrations\/supabase\/types['"]/g, replacement: "from '@/lib/supabase-types'" },
+    { pattern: /from\s*['"]\.\.\/\.\.\/integrations\/supabase\/types['"]/g, replacement: "from '@/lib/supabase-types'" },
+    { pattern: /from\s*['"]\.+\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
   ];
 
-  for (const replacement of supabaseImportReplacements) {
-    if (replacement.from.test(cleaned)) {
-      cleaned = cleaned.replace(replacement.from, replacement.to);
-      changes.push('Imports Supabase redirigés vers lib');
+  for (const { pattern, replacement } of supabaseImportReplacements) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      changes.push('Imports Supabase redirigés vers @/lib/');
     }
   }
 
   // ========== PASS 3: Remove ALL proprietary content patterns ==========
-  for (const pattern of PROPRIETARY_CONTENT) {
-    const regex = new RegExp(pattern.source, pattern.flags);
-    if (regex.test(cleaned)) {
-      cleaned = cleaned.replace(new RegExp(pattern.source, pattern.flags), '');
-      changes.push(`Pattern propriétaire nettoyé`);
+  const contentPatterns = [
+    // Plugin usage in vite.config
+    { pattern: /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g, name: 'componentTagger plugin' },
+    { pattern: /componentTagger\(\)\s*,?\n?/g, name: 'componentTagger call' },
+    // Comment markers
+    { pattern: /\/\/\s*@lovable[^\n]*\n?/gi, name: '@lovable comment' },
+    { pattern: /\/\*\s*@lovable[\s\S]*?\*\//g, name: '@lovable block comment' },
+    { pattern: /\/\/\s*@gptengineer[^\n]*\n?/gi, name: '@gptengineer comment' },
+    { pattern: /\/\*\s*@gptengineer[\s\S]*?\*\//g, name: '@gptengineer block comment' },
+    { pattern: /\/\/\s*@bolt[^\n]*\n?/gi, name: '@bolt comment' },
+    { pattern: /\/\/\s*@v0[^\n]*\n?/gi, name: '@v0 comment' },
+    { pattern: /\/\/\s*Generated by Lovable[^\n]*\n?/gi, name: 'Generated by Lovable' },
+    { pattern: /\/\/\s*Auto-generated[^\n]*lovable[^\n]*\n?/gi, name: 'Auto-generated lovable' },
+    { pattern: /\/\/\s*Built with Lovable[^\n]*\n?/gi, name: 'Built with Lovable' },
+    { pattern: /\/\*[\s\S]*?lovable[\s\S]*?\*\//gi, name: 'lovable block comment' },
+    // Data attributes
+    { pattern: /\s*data-lovable[^=]*="[^"]*"/g, name: 'data-lovable attr' },
+    { pattern: /\s*data-lov-[^=]*="[^"]*"/g, name: 'data-lov attr' },
+    { pattern: /\s*data-gpt[^=]*="[^"]*"/g, name: 'data-gpt attr' },
+    { pattern: /\s*data-bolt[^=]*="[^"]*"/g, name: 'data-bolt attr' },
+    { pattern: /\s*data-v0[^=]*="[^"]*"/g, name: 'data-v0 attr' },
+  ];
+
+  for (const { pattern, name } of contentPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '');
+    if (cleaned !== before) {
+      changes.push(`Pattern nettoyé: ${name}`);
     }
   }
 
   // ========== PASS 4: Remove telemetry domain references ==========
   for (const domain of TELEMETRY_DOMAINS) {
-    const domainPattern = new RegExp(`['"\`][^'"\`]*${domain.replace(/\./g, '\\.')}[^'"\`]*['"\`]`, 'gi');
-    if (domainPattern.test(cleaned)) {
-      cleaned = cleaned.replace(domainPattern, '""');
+    const escapedDomain = domain.replace(/\./g, '\\.');
+    const domainPattern = new RegExp(`['"\`][^'"\`]*${escapedDomain}[^'"\`]*['"\`]`, 'gi');
+    const before = cleaned;
+    cleaned = cleaned.replace(domainPattern, '""');
+    if (cleaned !== before) {
       changes.push(`Télémétrie supprimée: ${domain}`);
     }
   }
 
   // ========== PASS 5: Clean hardcoded Supabase project IDs ==========
-  for (const pattern of SUPABASE_PROJECT_PATTERNS) {
-    const regex = new RegExp(pattern.source, pattern.flags);
-    if (regex.test(cleaned)) {
-      // Replace with placeholder
-      cleaned = cleaned.replace(regex, (match) => {
-        if (match.includes('.supabase.co')) {
-          return 'your-project.supabase.co';
-        }
-        if (match.startsWith('eyJ')) {
-          return 'YOUR_SUPABASE_KEY';
-        }
-        return 'YOUR_PROJECT_ID';
-      });
-      changes.push('ID de projet Supabase remplacé');
+  const supabaseIdPatterns = [
+    { pattern: /[a-z]{20}\.supabase\.co/g, replacement: 'your-project.supabase.co', name: 'Supabase project URL' },
+    { pattern: /eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, replacement: 'YOUR_SUPABASE_KEY', name: 'JWT token' },
+  ];
+
+  for (const { pattern, replacement, name } of supabaseIdPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      changes.push(`ID remplacé: ${name}`);
     }
   }
 
   // ========== PASS 6: Remove exposed API keys ==========
-  for (const pattern of EXPOSED_KEYS_PATTERNS) {
-    const regex = new RegExp(pattern.source, pattern.flags);
-    if (regex.test(cleaned)) {
-      cleaned = cleaned.replace(regex, (match) => {
-        if (match.includes('sk_live') || match.includes('sk_test')) {
-          suspiciousPatterns.push(`Clé Stripe exposée détectée dans ${filePath}`);
-          return match.replace(/sk_(live|test)_[A-Za-z0-9]+/, 'sk_$1_YOUR_KEY');
-        }
-        if (match.includes('pk_live') || match.includes('pk_test')) {
-          return match.replace(/pk_(live|test)_[A-Za-z0-9]+/, 'pk_$1_YOUR_KEY');
-        }
-        return match;
-      });
-      changes.push('Clés API exposées nettoyées');
+  const keyPatterns = [
+    { pattern: /sk_live_[A-Za-z0-9]{20,}/g, replacement: 'sk_live_YOUR_KEY', name: 'Stripe live secret key' },
+    { pattern: /pk_live_[A-Za-z0-9]{20,}/g, replacement: 'pk_live_YOUR_KEY', name: 'Stripe live public key' },
+    { pattern: /sk_test_[A-Za-z0-9]{20,}/g, replacement: 'sk_test_YOUR_KEY', name: 'Stripe test secret key' },
+    { pattern: /pk_test_[A-Za-z0-9]{20,}/g, replacement: 'pk_test_YOUR_KEY', name: 'Stripe test public key' },
+  ];
+
+  for (const { pattern, replacement, name } of keyPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      suspiciousPatterns.push(`Clé exposée détectée dans ${filePath}: ${name}`);
+      changes.push(`Clé nettoyée: ${name}`);
     }
   }
 
@@ -699,73 +720,77 @@ export function deepCleanSourceFile(content: string, filePath: string): {
   ];
 
   for (const pattern of dataAttrPatterns) {
-    if (pattern.test(cleaned)) {
-      cleaned = cleaned.replace(pattern, '');
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '');
+    if (cleaned !== before) {
       changes.push('Attributs data-* supprimés');
     }
   }
 
-  // ========== PASS 8: Detect and flag hidden telemetry ==========
+  // ========== PASS 8: Detect and remove hidden telemetry ==========
   const hiddenTelemetryPatterns = [
     { pattern: /fetch\s*\([^)]*lovable[^)]*\)/gi, name: 'fetch lovable' },
     { pattern: /fetch\s*\([^)]*gptengineer[^)]*\)/gi, name: 'fetch gptengineer' },
-    { pattern: /navigator\.sendBeacon/gi, name: 'sendBeacon' },
+    { pattern: /navigator\.sendBeacon\s*\([^)]*lovable[^)]*\)/gi, name: 'sendBeacon lovable' },
+    { pattern: /navigator\.sendBeacon\s*\([^)]*gptengineer[^)]*\)/gi, name: 'sendBeacon gptengineer' },
     { pattern: /new\s+WebSocket\s*\([^)]*lovable[^)]*\)/gi, name: 'WebSocket lovable' },
     { pattern: /new\s+WebSocket\s*\([^)]*gptengineer[^)]*\)/gi, name: 'WebSocket gptengineer' },
-    { pattern: /\.supabase\.co\/functions/gi, name: 'Supabase edge functions' },
-    { pattern: /supabase\.functions\.invoke/gi, name: 'supabase.functions.invoke' },
   ];
 
   for (const { pattern, name } of hiddenTelemetryPatterns) {
-    if (pattern.test(cleaned)) {
-      suspiciousPatterns.push(`Appel suspect détecté: ${name}`);
-      // Remove the suspicious call
-      cleaned = cleaned.replace(pattern, '/* REMOVED: ' + name + ' */');
-      changes.push(`Appel suspect supprimé: ${name}`);
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '/* REMOVED: telemetry */');
+    if (cleaned !== before) {
+      suspiciousPatterns.push(`Appel suspect supprimé: ${name}`);
+      changes.push(`Télémétrie supprimée: ${name}`);
     }
   }
 
   // ========== PASS 9: Remove VITE_ env vars that are proprietary ==========
   const envVarPatterns = [
-    /import\.meta\.env\.VITE_LOVABLE_[A-Z_]+/g,
-    /import\.meta\.env\.VITE_GPT_[A-Z_]+/g,
-    /import\.meta\.env\.VITE_SUPABASE_PROJECT_ID/g,
-    /process\.env\.VITE_LOVABLE_[A-Z_]+/g,
-    /process\.env\.VITE_GPT_[A-Z_]+/g,
+    { pattern: /import\.meta\.env\.VITE_LOVABLE_[A-Z_]+/g, name: 'VITE_LOVABLE_*' },
+    { pattern: /import\.meta\.env\.VITE_GPT_[A-Z_]+/g, name: 'VITE_GPT_*' },
+    { pattern: /process\.env\.VITE_LOVABLE_[A-Z_]+/g, name: 'process.env VITE_LOVABLE_*' },
+    { pattern: /process\.env\.VITE_GPT_[A-Z_]+/g, name: 'process.env VITE_GPT_*' },
   ];
 
-  for (const pattern of envVarPatterns) {
-    if (pattern.test(cleaned)) {
-      cleaned = cleaned.replace(pattern, '""');
-      changes.push('Variables env propriétaires supprimées');
+  for (const { pattern, name } of envVarPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '""');
+    if (cleaned !== before) {
+      changes.push(`Variable env supprimée: ${name}`);
     }
   }
 
-  // ========== PASS 10: Remove proprietary comments ==========
+  // ========== PASS 10: Remove proprietary comments (comprehensive) ==========
   const commentPatterns = [
-    /\/\/\s*@lovable[^\n]*\n?/gi,
-    /\/\/\s*@gptengineer[^\n]*\n?/gi,
-    /\/\/\s*Generated by Lovable[^\n]*\n?/gi,
-    /\/\/\s*Built with Lovable[^\n]*\n?/gi,
-    /\/\/\s*Created with GPT Engineer[^\n]*\n?/gi,
-    /\/\*\s*@lovable[\s\S]*?\*\//gi,
-    /\/\*\s*@gptengineer[\s\S]*?\*\//gi,
-    /\/\*[\s\S]*?lovable[\s\S]*?\*\//gi,
-    /<!--[\s\S]*?lovable[\s\S]*?-->/gi,
-    /<!--[\s\S]*?gptengineer[\s\S]*?-->/gi,
+    { pattern: /\/\/\s*@lovable[^\n]*\n?/gi, name: '@lovable comment' },
+    { pattern: /\/\/\s*@gptengineer[^\n]*\n?/gi, name: '@gptengineer comment' },
+    { pattern: /\/\/\s*Generated by Lovable[^\n]*\n?/gi, name: 'Generated by Lovable' },
+    { pattern: /\/\/\s*Built with Lovable[^\n]*\n?/gi, name: 'Built with Lovable' },
+    { pattern: /\/\/\s*Created with GPT Engineer[^\n]*\n?/gi, name: 'Created with GPT Engineer' },
+    { pattern: /\/\*\s*@lovable[\s\S]*?\*\//gi, name: '@lovable block' },
+    { pattern: /\/\*\s*@gptengineer[\s\S]*?\*\//gi, name: '@gptengineer block' },
+    { pattern: /<!--[\s\S]*?lovable[\s\S]*?-->/gi, name: 'lovable HTML comment' },
+    { pattern: /<!--[\s\S]*?gptengineer[\s\S]*?-->/gi, name: 'gptengineer HTML comment' },
   ];
 
-  for (const pattern of commentPatterns) {
-    if (pattern.test(cleaned)) {
-      cleaned = cleaned.replace(pattern, '');
-      changes.push('Commentaires propriétaires supprimés');
+  for (const { pattern, name } of commentPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, '');
+    if (cleaned !== before) {
+      changes.push(`Commentaire supprimé: ${name}`);
     }
   }
 
   // ========== FINAL: Clean up excessive whitespace and empty imports ==========
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  cleaned = cleaned.replace(/^\s*\n/gm, '');
   cleaned = cleaned.replace(/import\s*{\s*}\s*from\s*['"][^'"]*['"]\s*;?\n?/g, '');
+  
+  // Remove trailing commas in plugin arrays
+  cleaned = cleaned.replace(/,\s*,/g, ',');
+  cleaned = cleaned.replace(/\[\s*,/g, '[');
+  cleaned = cleaned.replace(/,\s*\]/g, ']');
 
   const wasModified = cleaned !== originalContent;
 
