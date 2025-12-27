@@ -20,6 +20,21 @@ serve(async (req) => {
   }
 
   try {
+    const bodyText = await req.text();
+    console.log('[setup-callback] Raw body received, length:', bodyText.length);
+    
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(bodyText);
+    } catch (parseError) {
+      console.error('[setup-callback] JSON parse error:', parseError);
+      console.error('[setup-callback] Body preview:', bodyText.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const { 
       setup_id, 
       server_ip, 
@@ -32,9 +47,26 @@ serve(async (req) => {
       db_name,
       db_user,
       db_password
-    } = await req.json();
+    } = parsedBody;
+
+    // Detailed logging for debugging
+    console.log('[setup-callback] Parsed body:', {
+      setup_id,
+      server_ip,
+      coolify_port,
+      has_coolify_token: !!coolify_token,
+      coolify_token_length: coolify_token?.length || 0,
+      status,
+      db_host,
+      db_port,
+      db_name,
+      db_user,
+      has_db_password: !!db_password,
+      db_password_length: db_password?.length || 0
+    });
 
     if (!setup_id) {
+      console.error('[setup-callback] Missing setup_id');
       return new Response(
         JSON.stringify({ error: 'setup_id is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
