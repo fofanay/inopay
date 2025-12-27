@@ -30,6 +30,8 @@ interface ServerData {
   coolify_token: string | null;
   setup_id: string | null;
   error_message: string | null;
+  db_password?: string | null;
+  db_host?: string | null;
 }
 
 interface ServerSetupWizardProps {
@@ -67,6 +69,10 @@ const SETUP_STEPS = [
 export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showScript, setShowScript] = useState(false);
+  const [isRecoveringCredentials, setIsRecoveringCredentials] = useState(false);
+
+  // Check if credentials are missing
+  const hasIncompleteCredentials = server.status === 'ready' && (!server.db_password || !server.coolify_token);
 
   const getCurrentStep = () => {
     switch (server.status) {
@@ -122,29 +128,106 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
     }
   };
 
+  const handleRecoverCredentials = async () => {
+    setIsRecoveringCredentials(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        const { data, error } = await supabase.functions.invoke("recover-server-credentials", {
+          body: { server_id: server.id },
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+        });
+        
+        if (error) throw error;
+        
+        if (data?.success) {
+          toast.success("Credentials récupérés avec succès");
+          onRefresh();
+        } else {
+          toast.error(data?.message || "Impossible de récupérer les credentials");
+        }
+      }
+    } catch (error) {
+      console.error("Error recovering credentials:", error);
+      toast.error("Erreur lors de la récupération des credentials");
+    } finally {
+      setIsRecoveringCredentials(false);
+    }
+  };
+
   if (server.status === "ready") {
     return (
-      <Card className="border-success/30 bg-success/5">
+      <Card className={cn(
+        "border-success/30 bg-success/5",
+        hasIncompleteCredentials && "border-warning/30 bg-warning/5"
+      )}>
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-success/10">
-              <CheckCircle2 className="h-6 w-6 text-success" />
+            <div className={cn(
+              "p-3 rounded-xl",
+              hasIncompleteCredentials ? "bg-warning/10" : "bg-success/10"
+            )}>
+              {hasIncompleteCredentials ? (
+                <AlertCircle className="h-6 w-6 text-warning" />
+              ) : (
+                <CheckCircle2 className="h-6 w-6 text-success" />
+              )}
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-success">Serveur opérationnel</h3>
+              <h3 className={cn(
+                "font-semibold",
+                hasIncompleteCredentials ? "text-warning" : "text-success"
+              )}>
+                {hasIncompleteCredentials ? "Credentials incomplets" : "Serveur opérationnel"}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                {server.name} ({server.ip_address}) est prêt à recevoir des déploiements
+                {hasIncompleteCredentials 
+                  ? "Certaines informations sont manquantes. Cliquez sur 'Récupérer' pour les obtenir."
+                  : `${server.name} (${server.ip_address}) est prêt à recevoir des déploiements`
+                }
               </p>
             </div>
-            {server.coolify_url && (
-              <Button variant="outline" size="sm" asChild className="gap-2">
-                <a href={server.coolify_url} target="_blank" rel="noopener noreferrer">
-                  Ouvrir Coolify
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {hasIncompleteCredentials && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRecoverCredentials}
+                  disabled={isRecoveringCredentials}
+                  className="gap-2"
+                >
+                  {isRecoveringCredentials ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Récupérer les credentials
+                </Button>
+              )}
+              {server.coolify_url && (
+                <Button variant="outline" size="sm" asChild className="gap-2">
+                  <a href={server.coolify_url} target="_blank" rel="noopener noreferrer">
+                    Ouvrir Coolify
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
+          
+          {/* Show missing credentials info */}
+          {hasIncompleteCredentials && (
+            <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
+              <p className="text-sm text-warning-foreground">
+                <strong>Manquant:</strong>{" "}
+                {!server.db_password && "Mot de passe PostgreSQL"}{" "}
+                {!server.db_password && !server.coolify_token && "• "}{" "}
+                {!server.coolify_token && "Token Coolify"}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

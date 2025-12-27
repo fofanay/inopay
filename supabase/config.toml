@@ -218,3 +218,6 @@ verify_jwt = false
 
 [functions.import-data-to-supabase]
 verify_jwt = false
+
+[functions.recover-server-credentials]
+verify_jwt = false
