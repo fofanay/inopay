@@ -344,8 +344,16 @@ serve(async (req) => {
     logStep("User plan detected", { userId: user.id, planType, limits });
 
     // Parse request body to get URL and optional user GitHub token
+    // Support both naming conventions for backward compatibility
     const requestBody = await req.json();
-    const { url, github_token } = requestBody;
+    const url = requestBody.url || requestBody.repoUrl;
+    const github_token = requestBody.github_token || requestBody.token;
+    
+    logStep("Request parameters received", { 
+      hasUrl: !!url, 
+      hasToken: !!github_token,
+      paramNames: Object.keys(requestBody) 
+    });
 
     if (!url) {
       return new Response(
