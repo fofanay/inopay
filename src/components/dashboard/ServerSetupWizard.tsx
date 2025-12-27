@@ -217,15 +217,43 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
             </div>
           </div>
           
-          {/* Show missing credentials info */}
+          {/* Show missing credentials info + recovery command */}
           {hasIncompleteCredentials && (
-            <div className="mt-4 p-3 rounded-lg bg-warning/10 border border-warning/20">
-              <p className="text-sm text-warning-foreground">
-                <strong>Manquant:</strong>{" "}
-                {!server.db_password && "Mot de passe PostgreSQL"}{" "}
-                {!server.db_password && !server.coolify_token && "• "}{" "}
-                {!server.coolify_token && "Token Coolify"}
-              </p>
+            <div className="mt-4 space-y-3">
+              <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                <p className="text-sm text-warning-foreground">
+                  <strong>Manquant:</strong>{" "}
+                  {!server.db_password && "Mot de passe PostgreSQL"}{" "}
+                  {!server.db_password && !server.coolify_token && "• "}{" "}
+                  {!server.coolify_token && "Token Coolify"}
+                </p>
+              </div>
+
+              {recoveryCommand && (
+                <div className="p-3 rounded-lg bg-background border border-border">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">Commande de récupération</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(recoveryCommand);
+                        toast.success("Commande copiée");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copier
+                    </Button>
+                  </div>
+                  <pre className="mt-2 bg-muted p-3 rounded text-xs font-mono overflow-x-auto">
+{recoveryCommand}
+                  </pre>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Exécutez cette commande en SSH sur votre VPS (root).
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

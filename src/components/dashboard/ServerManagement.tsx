@@ -307,10 +307,10 @@ export function ServerManagement() {
                   </div>
                 </CardHeader>
 
-                {/* Show setup wizard for pending/installing/error servers */}
-                {server.status !== 'ready' ? (
+                {/* Show setup wizard when not ready OR when credentials are incomplete */}
+                {server.status !== 'ready' || !server.coolify_token || !(server as any).db_password ? (
                   <CardContent>
-                    <ServerSetupWizard server={server} onRefresh={fetchServers} />
+                    <ServerSetupWizard server={server as any} onRefresh={fetchServers} />
                   </CardContent>
                 ) : (
                   <CardContent className="space-y-4">
