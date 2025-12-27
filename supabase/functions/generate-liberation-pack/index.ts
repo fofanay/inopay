@@ -735,26 +735,30 @@ ${includeBackend ? `  handle /api/* {
     ));
 
     // .env.example
+    const dbEnvSection = includeDatabase ? `# Base de données
+POSTGRES_USER=app
+POSTGRES_PASSWORD=  # OBLIGATOIRE
+POSTGRES_DB=app
+DATABASE_URL=postgresql://app:VOTRE_MOT_DE_PASSE@postgres:5432/app
+
+` : '';
+
+    const apiEnvVars = envVarsArray
+      .filter(v => !['PORT', 'NODE_ENV', 'DOMAIN', 'DATABASE_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(v))
+      .map(v => `${v}=`)
+      .join('\n');
+
     const envExample = `# ${projectName} - Configuration
 # Copiez vers .env et remplissez les valeurs
 
 # Domaine
 DOMAIN=
 
-\${includeDatabase ? \`# Base de données
-POSTGRES_USER=app
-POSTGRES_PASSWORD=  # OBLIGATOIRE
-POSTGRES_DB=app
-DATABASE_URL=postgresql://app:VOTRE_MOT_DE_PASSE@postgres:5432/app
-\` : ''}
-# Sécurité
+${dbEnvSection}# Sécurité
 JWT_SECRET=  # OBLIGATOIRE (openssl rand -base64 32)
 
 # APIs (si nécessaire)
-${envVarsArray
-  .filter(v => !['PORT', 'NODE_ENV', 'DOMAIN', 'DATABASE_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(v))
-  .map(v => `${v}=`)
-  .join('\n')}
+${apiEnvVars}
 `;
     zip.file('.env.example', envExample);
 
