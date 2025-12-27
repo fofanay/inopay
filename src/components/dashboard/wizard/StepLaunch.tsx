@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Rocket, CheckCircle2, Loader2, ExternalLink, Copy, Check, PartyPopper, Github, Server, Database, Shield, Key } from "lucide-react";
+import { Rocket, CheckCircle2, Loader2, ExternalLink, Copy, Check, PartyPopper, Github, Server, Database, Shield, Key, Package, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWizard } from "@/contexts/WizardContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { SovereigntyTips } from "./SovereigntyTips";
+import { LiberationPackGenerator } from "../LiberationPackGenerator";
 
 export function StepLaunch() {
   const { state, dispatch, prevStep, reset } = useWizard();
@@ -21,6 +23,7 @@ export function StepLaunch() {
   const consoleRef = useRef<HTMLDivElement>(null);
   
   const [copied, setCopied] = useState(false);
+  const [deploymentMode, setDeploymentMode] = useState<"github" | "pack">("github");
 
   // Auto-scroll logs
   useEffect(() => {
@@ -303,24 +306,26 @@ export function StepLaunch() {
               <Button variant="outline" onClick={prevStep} disabled={state.launch.isDeploying} className="flex-1">
                 Retour
               </Button>
-              <Button 
-                onClick={startDeployment} 
-                disabled={state.launch.isDeploying}
-                className="flex-1 gap-2"
-                size="lg"
-              >
-                {state.launch.isDeploying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Libération en cours...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-4 w-4" />
-                    Libérer mon application
-                  </>
-                )}
-              </Button>
+              {deploymentMode === "github" && (
+                <Button 
+                  onClick={startDeployment} 
+                  disabled={state.launch.isDeploying}
+                  className="flex-1 gap-2"
+                  size="lg"
+                >
+                  {state.launch.isDeploying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Libération en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-4 w-4" />
+                      Libérer mon application
+                    </>
+                  )}
+                </Button>
+              )}
             </>
           ) : (
             <>
