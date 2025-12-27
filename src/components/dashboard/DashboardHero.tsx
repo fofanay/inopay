@@ -15,7 +15,9 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  FolderArchive,
+  Package
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -223,6 +225,17 @@ export function DashboardHero({ onNavigate }: DashboardHeroProps) {
                 <div className="flex items-center gap-3">
                   <Rocket className="h-4 w-4" />
                   <span>Nouvelle libération</span>
+                </div>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button 
+                className="w-full justify-between gap-3 h-11 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white" 
+                onClick={() => onNavigate("pack")}
+              >
+                <div className="flex items-center gap-3">
+                  <FolderArchive className="h-4 w-4" />
+                  <span>Liberation Pack</span>
+                  <Badge className="bg-white/20 text-white text-[10px] py-0">Nouveau</Badge>
                 </div>
                 <ArrowRight className="h-4 w-4" />
               </Button>
