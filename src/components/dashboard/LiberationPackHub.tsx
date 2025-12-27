@@ -17,7 +17,10 @@ import {
   FileCode,
   FolderArchive,
   Rocket,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle,
+  Eye,
+  ShieldCheck
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,10 +40,12 @@ import {
   cleanPackageJson,
   cleanViteConfig,
   cleanIndexHtml,
-  cleanSourceFile,
+  deepCleanSourceFile,
   checkProprietaryCDN,
   detectNeededPolyfills,
+  calculateSovereigntyScore,
   HOOK_POLYFILLS,
+  PROPRIETARY_PATHS,
 } from "@/lib/clientProprietaryPatterns";
 
 type FlowStep = "upload" | "analyzing" | "cleaning" | "ready";
@@ -54,16 +59,21 @@ interface CleanedFile {
 interface CleaningStats {
   filesRemoved: number;
   filesCleaned: number;
+  filesVerified: number;
   packagesRemoved: number;
   polyfillsGenerated: number;
+  suspiciousPatterns: string[];
+  sovereigntyScore: number;
 }
 
 /**
  * LiberationPackHub - Centre de génération de packs de libération autonomes
  * 
+ * VERSION 2.0: Deep cleaning pour 100% de souveraineté
+ * 
  * Permet aux utilisateurs de:
  * 1. Importer un projet (GitHub ou ZIP)
- * 2. Analyser et nettoyer automatiquement
+ * 2. Analyser et nettoyer EN PROFONDEUR
  * 3. Générer un Liberation Pack complet (frontend + backend + DB + docker-compose)
  * 4. Télécharger le pack prêt à déployer sur n'importe quel VPS
  */
@@ -89,8 +99,11 @@ export function LiberationPackHub() {
   const [cleaningStats, setCleaningStats] = useState<CleaningStats>({
     filesRemoved: 0,
     filesCleaned: 0,
+    filesVerified: 0,
     packagesRemoved: 0,
     polyfillsGenerated: 0,
+    suspiciousPatterns: [],
+    sovereigntyScore: 0,
   });
   
   // Pack options
@@ -112,7 +125,15 @@ export function LiberationPackHub() {
     setCleanedFiles({});
     setEdgeFunctions([]);
     setSqlSchema(null);
-    setCleaningStats({ filesRemoved: 0, filesCleaned: 0, packagesRemoved: 0, polyfillsGenerated: 0 });
+    setCleaningStats({ 
+      filesRemoved: 0, 
+      filesCleaned: 0, 
+      filesVerified: 0,
+      packagesRemoved: 0, 
+      polyfillsGenerated: 0,
+      suspiciousPatterns: [],
+      sovereigntyScore: 0,
+    });
     setDownloadUrl(null);
   };
 
@@ -135,8 +156,8 @@ export function LiberationPackHub() {
       setAnalysisResult(result);
       setExtractedFiles(result.extractedFiles);
       
-      // Auto-start cleaning
-      await processAndClean(result.extractedFiles, result);
+      // Auto-start deep cleaning
+      await processAndDeepClean(result.extractedFiles, result);
     } catch (error) {
       console.error("Analysis error:", error);
       toast.error("Erreur lors de l'analyse du fichier");
@@ -204,8 +225,8 @@ export function LiberationPackHub() {
       setAnalysisResult(result);
       setExtractedFiles(result.extractedFiles);
       
-      // Auto-start cleaning
-      await processAndClean(result.extractedFiles, result);
+      // Auto-start deep cleaning
+      await processAndDeepClean(result.extractedFiles, result);
     } catch (error: any) {
       console.error("GitHub import error:", error);
       toast.error(error.message || "Erreur lors de l'import GitHub");
@@ -215,54 +236,85 @@ export function LiberationPackHub() {
     }
   };
 
-  // Process and clean files
-  const processAndClean = async (files: Map<string, string>, analysis: RealAnalysisResult) => {
+  // DEEP CLEAN: Process and clean ALL files comprehensively
+  const processAndDeepClean = async (files: Map<string, string>, analysis: RealAnalysisResult) => {
     setStep("cleaning");
     setProgress(0);
+    setProgressMessage("Nettoyage en profondeur...");
     
     const stats: CleaningStats = {
       filesRemoved: 0,
       filesCleaned: 0,
+      filesVerified: 0,
       packagesRemoved: 0,
       polyfillsGenerated: 0,
+      suspiciousPatterns: [],
+      sovereigntyScore: 0,
     };
     
     const cleaned: Record<string, string> = {};
     const edgeFuncs: Array<{ name: string; content: string }> = [];
     let schema: string | null = null;
     
-    // Filter out proprietary files
+    // Step 1: Filter out proprietary files and paths
     const filteredFiles = new Map<string, string>();
+    
     for (const [path, content] of files) {
+      // Check if file should be completely removed
       if (shouldRemoveFile(path)) {
         stats.filesRemoved++;
-      } else if (analysis.filesToRemove.includes(path)) {
-        stats.filesRemoved++;
-      } else {
-        filteredFiles.set(path, content);
+        continue;
       }
+      
+      // Check if file is in a proprietary path
+      let isProprietaryPath = false;
+      for (const propPath of PROPRIETARY_PATHS) {
+        if (path.includes(propPath)) {
+          isProprietaryPath = true;
+          stats.filesRemoved++;
+          break;
+        }
+      }
+      
+      if (isProprietaryPath) continue;
+      
+      // Check if analysis flagged this file
+      if (analysis.filesToRemove.includes(path)) {
+        stats.filesRemoved++;
+        continue;
+      }
+      
+      filteredFiles.set(path, content);
     }
     
+    setProgress(20);
     setProgressMessage(`${stats.filesRemoved} fichiers propriétaires supprimés`);
     
-    // Detect needed polyfills
+    // Step 2: Detect needed polyfills BEFORE cleaning
     const neededPolyfills = detectNeededPolyfills(filteredFiles);
     
-    // Process files
+    // Step 3: Process and deep clean each file
     const filesToProcess = Array.from(filteredFiles.entries());
     
     for (let i = 0; i < filesToProcess.length; i++) {
       const [path, content] = filesToProcess[i];
       const fileName = path.split('/').pop() || '';
       
-      setProgress(Math.round((i / filesToProcess.length) * 80));
+      const progressPercent = 20 + Math.round((i / filesToProcess.length) * 60);
+      setProgress(progressPercent);
       
-      // Extract edge functions
+      // Extract edge functions (keep for conversion)
       if (path.startsWith('supabase/functions/') && path.endsWith('/index.ts')) {
         const funcName = path.split('/')[2];
         if (funcName && funcName !== '_shared') {
           edgeFuncs.push({ name: funcName, content });
         }
+        continue;
+      }
+      
+      // Skip supabase config
+      if (path.includes('supabase/config.toml')) {
+        stats.filesRemoved++;
         continue;
       }
       
@@ -274,37 +326,80 @@ export function LiberationPackHub() {
       }
       
       let finalContent = content;
+      let wasModified = false;
+      
+      // === DEEP CLEAN based on file type ===
       
       // Clean package.json
       if (fileName === 'package.json') {
         const result = cleanPackageJson(content);
         finalContent = result.cleaned;
         stats.packagesRemoved += result.changes.filter(c => c.includes('Dépendance')).length;
-        if (result.changes.length > 0) stats.filesCleaned++;
+        if (result.changes.length > 0) {
+          stats.filesCleaned++;
+          wasModified = true;
+        }
       }
       // Clean vite.config
       else if (fileName === 'vite.config.ts' || fileName === 'vite.config.js') {
         const result = cleanViteConfig(content);
         finalContent = result.cleaned;
-        if (result.changes.length > 0) stats.filesCleaned++;
+        if (result.changes.length > 0) {
+          stats.filesCleaned++;
+          wasModified = true;
+        }
       }
       // Clean index.html
       else if (fileName === 'index.html') {
         const result = cleanIndexHtml(content);
         finalContent = result.cleaned;
-        if (result.changes.length > 0) stats.filesCleaned++;
+        if (result.changes.length > 0) {
+          stats.filesCleaned++;
+          wasModified = true;
+        }
       }
-      // Clean source files
+      // DEEP CLEAN all source files (.ts, .tsx, .js, .jsx)
       else if (/\.(ts|tsx|js|jsx)$/.test(path)) {
-        const result = cleanSourceFile(content);
+        const result = deepCleanSourceFile(content, path);
         finalContent = result.cleaned;
-        if (result.changes.length > 0) stats.filesCleaned++;
+        
+        if (result.wasModified) {
+          stats.filesCleaned++;
+          wasModified = true;
+        }
+        
+        // Track suspicious patterns
+        if (result.suspiciousPatterns.length > 0) {
+          stats.suspiciousPatterns.push(...result.suspiciousPatterns);
+        }
+      }
+      // Check CSS/SCSS for CDN references
+      else if (/\.(css|scss|sass)$/.test(path)) {
+        const cdnCheck = checkProprietaryCDN(content);
+        if (cdnCheck.found) {
+          // Remove CDN URLs
+          let cleanedCss = content;
+          for (const url of cdnCheck.urls) {
+            cleanedCss = cleanedCss.replace(url, '');
+          }
+          finalContent = cleanedCss;
+          stats.filesCleaned++;
+          wasModified = true;
+        }
+      }
+      
+      // Track verified clean files
+      if (!wasModified) {
+        stats.filesVerified++;
       }
       
       cleaned[path] = finalContent;
     }
     
-    // Generate polyfills
+    setProgress(85);
+    setProgressMessage("Génération des polyfills...");
+    
+    // Step 4: Generate polyfills
     for (const hookName of neededPolyfills) {
       const polyfill = HOOK_POLYFILLS[hookName];
       if (polyfill) {
@@ -318,7 +413,39 @@ export function LiberationPackHub() {
       const exports = neededPolyfills
         .map(name => `export * from './${HOOK_POLYFILLS[name]?.filename.replace('.ts', '')}';`)
         .join('\n');
-      cleaned['src/lib/inopay-compat/index.ts'] = `// Inopay Compatibility Layer\n${exports}\n`;
+      cleaned['src/lib/inopay-compat/index.ts'] = `// Inopay Compatibility Layer\n// Auto-generated polyfills for sovereign code\n${exports}\n`;
+    }
+    
+    // Step 5: Generate Supabase types placeholder
+    cleaned['src/lib/supabase-types.ts'] = `// Supabase Types - Généré par Inopay Liberation
+// Remplacez ces types par ceux de votre propre projet Supabase
+// Utilisez: npx supabase gen types typescript --project-id="votre-project-id"
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export interface Database {
+  public: {
+    Tables: {
+      // Vos tables ici
+    };
+    Views: {};
+    Functions: {};
+    Enums: {};
+  };
+}
+
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+`;
+    
+    setProgress(95);
+    setProgressMessage("Vérification de la souveraineté...");
+    
+    // Step 6: Calculate sovereignty score
+    const sovereigntyCheck = calculateSovereigntyScore(files, cleaned);
+    stats.sovereigntyScore = sovereigntyCheck.score;
+    
+    if (sovereigntyCheck.details.length > 0) {
+      stats.suspiciousPatterns.push(...sovereigntyCheck.details);
     }
     
     setProgress(100);
@@ -329,7 +456,8 @@ export function LiberationPackHub() {
     setIncludeBackend(edgeFuncs.length > 0);
     setIncludeDatabase(!!schema);
     
-    toast.success(`Projet nettoyé: ${stats.filesCleaned} fichiers modifiés`);
+    const totalProcessed = stats.filesCleaned + stats.filesVerified;
+    toast.success(`Nettoyage complet: ${totalProcessed} fichiers traités, score ${stats.sovereigntyScore}%`);
     setStep("ready");
   };
 
@@ -345,7 +473,8 @@ export function LiberationPackHub() {
           edgeFunctions: includeBackend ? edgeFunctions : [],
           sqlSchema: includeDatabase ? sqlSchema : null,
           includeBackend,
-          includeDatabase
+          includeDatabase,
+          sovereigntyScore: cleaningStats.sovereigntyScore
         }
       });
 
@@ -370,6 +499,7 @@ export function LiberationPackHub() {
   };
 
   const frontendFilesCount = Object.keys(cleanedFiles).filter(p => !p.startsWith('supabase/')).length;
+  const totalProcessedFiles = cleaningStats.filesCleaned + cleaningStats.filesVerified;
 
   return (
     <div className="space-y-6">
@@ -381,7 +511,7 @@ export function LiberationPackHub() {
             Liberation Pack Generator
           </h2>
           <p className="text-muted-foreground">
-            Générez un pack autonome prêt à déployer sur n'importe quel VPS
+            Générez un pack autonome 100% souverain prêt à déployer
           </p>
         </div>
         {step !== "upload" && (
@@ -397,7 +527,7 @@ export function LiberationPackHub() {
         {[
           { id: "upload", label: "Import", icon: Upload },
           { id: "analyzing", label: "Analyse", icon: Sparkles },
-          { id: "cleaning", label: "Nettoyage", icon: Shield },
+          { id: "cleaning", label: "Deep Clean", icon: Shield },
           { id: "ready", label: "Pack", icon: Package },
         ].map((s, i) => {
           const Icon = s.icon;
@@ -503,9 +633,9 @@ export function LiberationPackHub() {
               <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
                 <CardContent className="pt-6">
                   <FileCode className="h-8 w-8 text-blue-500 mb-3" />
-                  <h4 className="font-semibold mb-1">Frontend nettoyé</h4>
+                  <h4 className="font-semibold mb-1">Frontend 100% propre</h4>
                   <p className="text-sm text-muted-foreground">
-                    Code React sans dépendances propriétaires + Dockerfile
+                    Deep clean de TOUS les fichiers + Dockerfile
                   </p>
                 </CardContent>
               </Card>
@@ -542,10 +672,15 @@ export function LiberationPackHub() {
               <CardContent className="py-16 text-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-6" />
                 <h3 className="text-xl font-semibold mb-2">
-                  {step === "analyzing" ? "Analyse en cours..." : "Nettoyage en cours..."}
+                  {step === "analyzing" ? "Analyse en cours..." : "Nettoyage en profondeur..."}
                 </h3>
                 <p className="text-muted-foreground mb-6">{progressMessage || "Veuillez patienter"}</p>
                 <Progress value={progress} className="max-w-md mx-auto" />
+                {step === "cleaning" && (
+                  <p className="text-xs text-muted-foreground mt-4">
+                    Suppression des imports propriétaires, télémétrie, et génération des polyfills
+                  </p>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -559,36 +694,90 @@ export function LiberationPackHub() {
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
+            {/* Sovereignty Score */}
+            <Card className={`border-2 ${cleaningStats.sovereigntyScore >= 95 ? 'border-success/50 bg-success/5' : cleaningStats.sovereigntyScore >= 80 ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-destructive/50 bg-destructive/5'}`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className={`h-5 w-5 ${cleaningStats.sovereigntyScore >= 95 ? 'text-success' : cleaningStats.sovereigntyScore >= 80 ? 'text-yellow-500' : 'text-destructive'}`} />
+                    Score de Souveraineté
+                  </CardTitle>
+                  <div className={`text-3xl font-bold ${cleaningStats.sovereigntyScore >= 95 ? 'text-success' : cleaningStats.sovereigntyScore >= 80 ? 'text-yellow-500' : 'text-destructive'}`}>
+                    {cleaningStats.sovereigntyScore}%
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Progress 
+                  value={cleaningStats.sovereigntyScore} 
+                  className="h-3 mb-3"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {cleaningStats.sovereigntyScore >= 95 
+                    ? "✅ Excellent ! Votre code est 100% souverain et prêt à déployer."
+                    : cleaningStats.sovereigntyScore >= 80
+                    ? "⚠️ Bon score. Quelques éléments mineurs pourraient être améliorés."
+                    : "❌ Des éléments propriétaires subsistent. Vérification manuelle recommandée."}
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Summary */}
-            <Card className="border-success/30 bg-success/5">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-success">
-                  <CheckCircle2 className="h-5 w-5" />
-                  Projet "{projectName}" prêt !
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  Projet "{projectName}" nettoyé
                 </CardTitle>
                 <CardDescription>
-                  {analysisResult?.score || 0}% → 100% de portabilité
+                  {analysisResult?.score || 0}% → {cleaningStats.sovereigntyScore}% de souveraineté
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-background rounded-lg">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="text-center p-3 bg-background rounded-lg border">
                     <div className="text-2xl font-bold">{frontendFilesCount}</div>
-                    <div className="text-xs text-muted-foreground">Fichiers frontend</div>
+                    <div className="text-xs text-muted-foreground">Total fichiers</div>
                   </div>
-                  <div className="text-center p-3 bg-background rounded-lg">
+                  <div className="text-center p-3 bg-success/10 rounded-lg border border-success/20">
+                    <div className="text-2xl font-bold text-success">{cleaningStats.filesVerified}</div>
+                    <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Eye className="h-3 w-3" /> Vérifiés
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="text-2xl font-bold text-primary">{cleaningStats.filesCleaned}</div>
+                    <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Shield className="h-3 w-3" /> Nettoyés
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
                     <div className="text-2xl font-bold text-destructive">{cleaningStats.filesRemoved}</div>
                     <div className="text-xs text-muted-foreground">Supprimés</div>
                   </div>
-                  <div className="text-center p-3 bg-background rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{cleaningStats.filesCleaned}</div>
-                    <div className="text-xs text-muted-foreground">Nettoyés</div>
-                  </div>
-                  <div className="text-center p-3 bg-background rounded-lg">
-                    <div className="text-2xl font-bold text-green-500">{edgeFunctions.length}</div>
-                    <div className="text-xs text-muted-foreground">Edge Functions</div>
+                  <div className="text-center p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <div className="text-2xl font-bold text-blue-500">{edgeFunctions.length}</div>
+                    <div className="text-xs text-muted-foreground">Edge Funcs</div>
                   </div>
                 </div>
+
+                {/* Suspicious patterns warning */}
+                {cleaningStats.suspiciousPatterns.length > 0 && (
+                  <Alert className="mt-4" variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>{cleaningStats.suspiciousPatterns.length} avertissements détectés :</strong>
+                      <ul className="list-disc list-inside mt-1 text-sm">
+                        {cleaningStats.suspiciousPatterns.slice(0, 3).map((p, i) => (
+                          <li key={i}>{p}</li>
+                        ))}
+                        {cleaningStats.suspiciousPatterns.length > 3 && (
+                          <li>... et {cleaningStats.suspiciousPatterns.length - 3} autres</li>
+                        )}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
 
@@ -661,7 +850,7 @@ export function LiberationPackHub() {
                     <div>• .env.example pré-rempli</div>
                     <div>• Script quick-deploy.sh</div>
                     <div>• Guide interactif HTML</div>
-                    <div>• README détaillé</div>
+                    <div>• Polyfills de compatibilité</div>
                   </div>
                 </div>
 
@@ -672,7 +861,7 @@ export function LiberationPackHub() {
                     <div className="text-center">
                       <h4 className="font-semibold text-lg">Pack prêt !</h4>
                       <p className="text-sm text-muted-foreground">
-                        Votre Liberation Pack est prêt à être téléchargé
+                        Votre Liberation Pack souverain est prêt à être téléchargé
                       </p>
                     </div>
                     <div className="flex gap-3">
