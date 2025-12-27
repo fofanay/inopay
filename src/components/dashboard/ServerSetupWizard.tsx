@@ -70,6 +70,7 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showScript, setShowScript] = useState(false);
   const [isRecoveringCredentials, setIsRecoveringCredentials] = useState(false);
+  const [recoveryCommand, setRecoveryCommand] = useState<string | null>(null);
 
   // Check if credentials are missing
   const hasIncompleteCredentials = server.status === 'ready' && (!server.db_password || !server.coolify_token);
@@ -101,7 +102,7 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
   };
 
   const handleCopyScript = () => {
-    const scriptUrl = `curl -fsSL https://izqveyvcebolrqpqlmho.supabase.co/functions/v1/serve-setup-script?setup_id=${server.setup_id} | bash`;
+    const scriptUrl = `curl -fsSL https://izqveyvcebolrqpqlmho.supabase.co/functions/v1/serve-setup-script?id=${server.setup_id} | bash`;
     navigator.clipboard.writeText(scriptUrl);
     toast.success("Script copié dans le presse-papiers");
   };
@@ -130,6 +131,7 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
 
   const handleRecoverCredentials = async () => {
     setIsRecoveringCredentials(true);
+    setRecoveryCommand(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session) {
@@ -142,9 +144,9 @@ export function ServerSetupWizard({ server, onRefresh }: ServerSetupWizardProps)
         
         if (error) throw error;
         
-        if (data?.success) {
-          toast.success("Credentials récupérés avec succès");
-          onRefresh();
+        if (data?.success && data?.recovery_command) {
+          setRecoveryCommand(data.recovery_command);
+          toast.success("Commande de récupération générée");
         } else {
           toast.error(data?.message || "Impossible de récupérer les credentials");
         }
