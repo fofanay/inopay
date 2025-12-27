@@ -69,6 +69,8 @@ export function InfrastructureStep() {
   const [dbConnectionStatus, setDbConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [vpsConnectionStatus, setVpsConnectionStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [isCreatingSetup, setIsCreatingSetup] = useState(false);
+  const [installationStatus, setInstallationStatus] = useState<"idle" | "checking" | "pending" | "installing" | "ready" | "error">("idle");
+  const [installationMessage, setInstallationMessage] = useState<string | null>(null);
 
   const toggleShowToken = (key: string) => {
     setShowTokens(prev => ({ ...prev, [key]: !prev[key] }));
@@ -118,19 +120,22 @@ export function InfrastructureStep() {
     try {
       const setupId = crypto.randomUUID();
       
-      const { error } = await supabase.from("user_servers").insert({
+      const { data: insertedData, error } = await supabase.from("user_servers").insert({
         user_id: user.id,
         name: `VPS-${Date.now()}`,
         ip_address: state.destination.vpsIp || "pending",
         setup_id: setupId,
         status: "pending",
-      });
+      }).select().single();
       
       if (error) throw error;
       
       dispatch({
         type: "UPDATE_DESTINATION",
-        payload: { setupId },
+        payload: { 
+          setupId,
+          vpsServerId: insertedData?.id || ""
+        },
       });
       
       toast({ 
@@ -141,6 +146,59 @@ export function InfrastructureStep() {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     } finally {
       setIsCreatingSetup(false);
+    }
+  };
+
+  // Check VPS installation status
+  const checkInstallation = async (silent = false) => {
+    if (!state.destination.vpsServerId) {
+      if (!silent) toast({ title: "Erreur", description: "Aucun serveur configuré", variant: "destructive" });
+      return;
+    }
+    
+    setInstallationStatus("checking");
+    setInstallationMessage(null);
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase.functions.invoke("check-server-status", {
+        body: { server_id: state.destination.vpsServerId },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
+      
+      if (error) throw error;
+      
+      const serverStatus = data?.status || "pending";
+      
+      if (serverStatus === "ready") {
+        setInstallationStatus("ready");
+        setInstallationMessage("✓ Installation terminée ! Votre serveur est prêt.");
+        dispatch({
+          type: "UPDATE_DESTINATION",
+          payload: { 
+            isVpsReady: true,
+            coolifyUrl: data?.coolify_url || ""
+          },
+        });
+        if (!silent) toast({ title: "Serveur prêt !", description: "L'installation est terminée" });
+      } else if (serverStatus === "installing") {
+        setInstallationStatus("installing");
+        setInstallationMessage("Installation en cours sur le VPS...");
+      } else if (serverStatus === "error") {
+        setInstallationStatus("error");
+        setInstallationMessage(data?.message || "Erreur lors de l'installation");
+      } else {
+        setInstallationStatus("pending");
+        setInstallationMessage("En attente de l'exécution du script sur le VPS");
+      }
+    } catch (error: any) {
+      setInstallationStatus("error");
+      setInstallationMessage(error.message || "Erreur de vérification");
+      if (!silent) toast({ title: "Erreur", description: error.message, variant: "destructive" });
     }
   };
 

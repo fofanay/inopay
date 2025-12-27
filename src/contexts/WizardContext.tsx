@@ -56,6 +56,7 @@ export interface DestinationData {
   // VPS fields
   vpsIp: string;
   setupId: string;
+  vpsServerId: string; // ID of the user_servers row
   coolifyToken: string;
   coolifyUrl: string;
   isVpsReady: boolean;
@@ -150,6 +151,7 @@ const initialState: WizardState = {
     hostingType: "vps",
     vpsIp: "",
     setupId: "",
+    vpsServerId: "",
     coolifyToken: "",
     coolifyUrl: "",
     isVpsReady: false,
