@@ -25,6 +25,9 @@ i18n
       caches: ['localStorage'],
       lookupLocalStorage: 'inopay-language',
     },
+    react: {
+      useSuspense: true,
+    },
   });
 
 export default i18n;
