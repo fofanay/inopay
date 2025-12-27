@@ -444,9 +444,43 @@ jobs:
                           {copied ? "Copié" : "Copier"}
                         </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Exécutez en tant que <code className="bg-muted px-1 rounded">root</code> sur votre VPS Ubuntu.
-                      </p>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Exécutez en tant que <code className="bg-muted px-1 rounded">root</code> sur votre VPS Ubuntu.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => checkInstallation(false)}
+                          disabled={!state.destination.vpsServerId || installationStatus === "checking"}
+                        >
+                          {installationStatus === "checking" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wifi className="h-4 w-4" />
+                          )}
+                          Vérifier l’installation
+                        </Button>
+                      </div>
+
+                      {installationStatus !== "idle" && (
+                        <Alert className={cn(
+                          installationStatus === "ready" && "border-success/50 bg-success/5",
+                          installationStatus === "error" && "border-destructive/50 bg-destructive/5",
+                          (installationStatus === "pending" || installationStatus === "installing" || installationStatus === "checking") && "border-info/50 bg-info/5"
+                        )}>
+                          <AlertDescription>
+                            {installationMessage || (
+                              installationStatus === "ready" ? "✓ Serveur prêt" :
+                              installationStatus === "installing" ? "Installation en cours..." :
+                              installationStatus === "checking" ? "Vérification en cours..." :
+                              "En attente de configuration"
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
                   )}
                 </div>
