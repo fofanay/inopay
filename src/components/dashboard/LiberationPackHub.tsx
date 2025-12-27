@@ -20,7 +20,9 @@ import {
   ExternalLink,
   AlertTriangle,
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  Zap
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,15 +42,18 @@ import {
   cleanPackageJson,
   cleanViteConfig,
   cleanIndexHtml,
+  cleanStylesheet,
+  cleanTsConfig,
   deepCleanSourceFile,
   checkProprietaryCDN,
   detectNeededPolyfills,
   calculateSovereigntyScore,
+  finalVerificationPass,
   HOOK_POLYFILLS,
   PROPRIETARY_PATHS,
 } from "@/lib/clientProprietaryPatterns";
 
-type FlowStep = "upload" | "analyzing" | "cleaning" | "ready";
+type FlowStep = "upload" | "analyzing" | "cleaning" | "verifying" | "ready";
 
 interface CleanedFile {
   path: string;
@@ -64,16 +69,19 @@ interface CleaningStats {
   polyfillsGenerated: number;
   suspiciousPatterns: string[];
   sovereigntyScore: number;
+  criticalIssues: number;
+  majorIssues: number;
+  minorIssues: number;
 }
 
 /**
  * LiberationPackHub - Centre de génération de packs de libération autonomes
  * 
- * VERSION 2.0: Deep cleaning pour 100% de souveraineté
+ * VERSION 3.0: MAXIMUM SOVEREIGNTY with exhaustive cleaning
  * 
  * Permet aux utilisateurs de:
  * 1. Importer un projet (GitHub ou ZIP)
- * 2. Analyser et nettoyer EN PROFONDEUR
+ * 2. Analyser et nettoyer EN PROFONDEUR avec vérification finale
  * 3. Générer un Liberation Pack complet (frontend + backend + DB + docker-compose)
  * 4. Télécharger le pack prêt à déployer sur n'importe quel VPS
  */
@@ -104,6 +112,9 @@ export function LiberationPackHub() {
     polyfillsGenerated: 0,
     suspiciousPatterns: [],
     sovereigntyScore: 0,
+    criticalIssues: 0,
+    majorIssues: 0,
+    minorIssues: 0,
   });
   
   // Pack options
@@ -133,6 +144,9 @@ export function LiberationPackHub() {
       polyfillsGenerated: 0,
       suspiciousPatterns: [],
       sovereigntyScore: 0,
+      criticalIssues: 0,
+      majorIssues: 0,
+      minorIssues: 0,
     });
     setDownloadUrl(null);
   };
@@ -236,11 +250,11 @@ export function LiberationPackHub() {
     }
   };
 
-  // DEEP CLEAN: Process and clean ALL files comprehensively
+  // DEEP CLEAN V3: Maximum sovereignty cleaning with verification pass
   const processAndDeepClean = async (files: Map<string, string>, analysis: RealAnalysisResult) => {
     setStep("cleaning");
     setProgress(0);
-    setProgressMessage("Nettoyage en profondeur...");
+    setProgressMessage("Nettoyage en profondeur - Phase 1/3...");
     
     const stats: CleaningStats = {
       filesRemoved: 0,
@@ -250,13 +264,17 @@ export function LiberationPackHub() {
       polyfillsGenerated: 0,
       suspiciousPatterns: [],
       sovereigntyScore: 0,
+      criticalIssues: 0,
+      majorIssues: 0,
+      minorIssues: 0,
     };
     
     const cleaned: Record<string, string> = {};
     const edgeFuncs: Array<{ name: string; content: string }> = [];
     let schema: string | null = null;
     
-    // Step 1: Filter out proprietary files and paths
+    // ========== PHASE 1: Filter out proprietary files and paths ==========
+    setProgressMessage("Phase 1/3: Suppression des fichiers propriétaires...");
     const filteredFiles = new Map<string, string>();
     
     for (const [path, content] of files) {
@@ -284,23 +302,30 @@ export function LiberationPackHub() {
         continue;
       }
       
+      // EXTRA: Remove any integrations folder content
+      if (path.includes('/integrations/')) {
+        stats.filesRemoved++;
+        continue;
+      }
+      
       filteredFiles.set(path, content);
     }
     
     setProgress(20);
-    setProgressMessage(`${stats.filesRemoved} fichiers propriétaires supprimés`);
+    setProgressMessage(`Phase 1 complète: ${stats.filesRemoved} fichiers supprimés`);
     
-    // Step 2: Detect needed polyfills BEFORE cleaning
+    // ========== PHASE 2: Detect needed polyfills BEFORE cleaning ==========
     const neededPolyfills = detectNeededPolyfills(filteredFiles);
     
-    // Step 3: Process and deep clean each file
+    // ========== PHASE 3: Deep clean each file ==========
+    setProgressMessage("Phase 2/3: Nettoyage en profondeur...");
     const filesToProcess = Array.from(filteredFiles.entries());
     
     for (let i = 0; i < filesToProcess.length; i++) {
       const [path, content] = filesToProcess[i];
       const fileName = path.split('/').pop() || '';
       
-      const progressPercent = 20 + Math.round((i / filesToProcess.length) * 60);
+      const progressPercent = 20 + Math.round((i / filesToProcess.length) * 50);
       setProgress(progressPercent);
       
       // Extract edge functions (keep for conversion)
@@ -327,6 +352,7 @@ export function LiberationPackHub() {
       
       let finalContent = content;
       let wasModified = false;
+      let fileChanges: string[] = [];
       
       // === DEEP CLEAN based on file type ===
       
@@ -334,10 +360,11 @@ export function LiberationPackHub() {
       if (fileName === 'package.json') {
         const result = cleanPackageJson(content);
         finalContent = result.cleaned;
-        stats.packagesRemoved += result.changes.filter(c => c.includes('Dépendance')).length;
+        stats.packagesRemoved += result.changes.filter(c => c.includes('Dépendance') || c.includes('DevDépendance')).length;
         if (result.changes.length > 0) {
           stats.filesCleaned++;
           wasModified = true;
+          fileChanges = result.changes;
         }
       }
       // Clean vite.config
@@ -347,6 +374,7 @@ export function LiberationPackHub() {
         if (result.changes.length > 0) {
           stats.filesCleaned++;
           wasModified = true;
+          fileChanges = result.changes;
         }
       }
       // Clean index.html
@@ -356,6 +384,17 @@ export function LiberationPackHub() {
         if (result.changes.length > 0) {
           stats.filesCleaned++;
           wasModified = true;
+          fileChanges = result.changes;
+        }
+      }
+      // Clean tsconfig.json
+      else if (fileName === 'tsconfig.json' || fileName === 'tsconfig.app.json') {
+        const result = cleanTsConfig(content);
+        finalContent = result.cleaned;
+        if (result.changes.length > 0) {
+          stats.filesCleaned++;
+          wasModified = true;
+          fileChanges = result.changes;
         }
       }
       // DEEP CLEAN all source files (.ts, .tsx, .js, .jsx)
@@ -366,6 +405,7 @@ export function LiberationPackHub() {
         if (result.wasModified) {
           stats.filesCleaned++;
           wasModified = true;
+          fileChanges = result.changes;
         }
         
         // Track suspicious patterns
@@ -373,18 +413,15 @@ export function LiberationPackHub() {
           stats.suspiciousPatterns.push(...result.suspiciousPatterns);
         }
       }
-      // Check CSS/SCSS for CDN references
+      // Clean CSS/SCSS files
       else if (/\.(css|scss|sass)$/.test(path)) {
         const cdnCheck = checkProprietaryCDN(content);
         if (cdnCheck.found) {
-          // Remove CDN URLs
-          let cleanedCss = content;
-          for (const url of cdnCheck.urls) {
-            cleanedCss = cleanedCss.replace(url, '');
-          }
-          finalContent = cleanedCss;
+          const result = cleanStylesheet(content);
+          finalContent = result.cleaned;
           stats.filesCleaned++;
           wasModified = true;
+          fileChanges = result.changes;
         }
       }
       
@@ -396,10 +433,10 @@ export function LiberationPackHub() {
       cleaned[path] = finalContent;
     }
     
-    setProgress(85);
-    setProgressMessage("Génération des polyfills...");
+    setProgress(75);
+    setProgressMessage("Phase 2 complète: Génération des polyfills...");
     
-    // Step 4: Generate polyfills
+    // ========== Generate polyfills ==========
     for (const hookName of neededPolyfills) {
       const polyfill = HOOK_POLYFILLS[hookName];
       if (polyfill) {
@@ -411,12 +448,19 @@ export function LiberationPackHub() {
     // Generate polyfill index
     if (stats.polyfillsGenerated > 0) {
       const exports = neededPolyfills
-        .map(name => `export * from './${HOOK_POLYFILLS[name]?.filename.replace('.ts', '')}';`)
+        .map(name => {
+          const polyfill = HOOK_POLYFILLS[name];
+          return polyfill ? `export * from './${polyfill.filename.replace('.ts', '')}';` : '';
+        })
+        .filter(Boolean)
         .join('\n');
-      cleaned['src/lib/inopay-compat/index.ts'] = `// Inopay Compatibility Layer\n// Auto-generated polyfills for sovereign code\n${exports}\n`;
+      cleaned['src/lib/inopay-compat/index.ts'] = `// Inopay Compatibility Layer
+// Auto-generated polyfills for sovereign code
+${exports}
+`;
     }
     
-    // Step 5: Generate Supabase types placeholder
+    // Generate Supabase types placeholder
     cleaned['src/lib/supabase-types.ts'] = `// Supabase Types - Généré par Inopay Liberation
 // Remplacez ces types par ceux de votre propre projet Supabase
 // Utilisez: npx supabase gen types typescript --project-id="votre-project-id"
@@ -436,16 +480,40 @@ export interface Database {
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 `;
+
+    // ========== PHASE 4: Final verification pass ==========
+    setStep("verifying");
+    setProgress(85);
+    setProgressMessage("Phase 3/3: Vérification finale de souveraineté...");
     
-    setProgress(95);
-    setProgressMessage("Vérification de la souveraineté...");
+    // Run final verification
+    const verification = finalVerificationPass(cleaned);
     
-    // Step 6: Calculate sovereignty score
+    if (!verification.isClean) {
+      // Re-clean files with remaining issues
+      for (const issue of verification.remainingIssues) {
+        const [filePath] = issue.split(':');
+        if (cleaned[filePath]) {
+          const result = deepCleanSourceFile(cleaned[filePath], filePath);
+          cleaned[filePath] = result.cleaned;
+        }
+      }
+    }
+    
+    // Calculate final sovereignty score
     const sovereigntyCheck = calculateSovereigntyScore(files, cleaned);
     stats.sovereigntyScore = sovereigntyCheck.score;
     
-    if (sovereigntyCheck.details.length > 0) {
-      stats.suspiciousPatterns.push(...sovereigntyCheck.details);
+    // Categorize issues
+    for (const detail of sovereigntyCheck.details) {
+      if (detail.startsWith('CRITIQUE')) {
+        stats.criticalIssues++;
+      } else if (detail.startsWith('MAJEUR')) {
+        stats.majorIssues++;
+      } else if (detail.startsWith('MINEUR')) {
+        stats.minorIssues++;
+      }
+      stats.suspiciousPatterns.push(detail);
     }
     
     setProgress(100);
@@ -457,12 +525,26 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
     setIncludeDatabase(!!schema);
     
     const totalProcessed = stats.filesCleaned + stats.filesVerified;
-    toast.success(`Nettoyage complet: ${totalProcessed} fichiers traités, score ${stats.sovereigntyScore}%`);
+    
+    if (stats.sovereigntyScore >= 95) {
+      toast.success(`✅ Nettoyage parfait: ${totalProcessed} fichiers, score ${stats.sovereigntyScore}%`);
+    } else if (stats.sovereigntyScore >= 80) {
+      toast.warning(`⚠️ Nettoyage partiel: score ${stats.sovereigntyScore}% - vérification recommandée`);
+    } else {
+      toast.error(`❌ Score ${stats.sovereigntyScore}% - ${stats.criticalIssues} problèmes critiques`);
+    }
+    
     setStep("ready");
   };
 
   // Generate Liberation Pack
   const handleGeneratePack = async () => {
+    // Refuse generation if score is too low
+    if (cleaningStats.sovereigntyScore < 50) {
+      toast.error("Score de souveraineté trop bas. Nettoyage manuel requis.");
+      return;
+    }
+    
     setIsGeneratingPack(true);
     
     try {
@@ -482,7 +564,7 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
 
       if (data?.downloadUrl) {
         setDownloadUrl(data.downloadUrl);
-        toast.success(`Pack généré: ${data.summary?.frontendFiles || 0} fichiers frontend, ${data.summary?.backendRoutes || 0} routes backend`);
+        toast.success(`Pack généré: ${data.summary?.frontendFiles || 0} fichiers, score ${cleaningStats.sovereigntyScore}%`);
       }
     } catch (error) {
       console.error('Error generating pack:', error);
@@ -501,6 +583,19 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
   const frontendFilesCount = Object.keys(cleanedFiles).filter(p => !p.startsWith('supabase/')).length;
   const totalProcessedFiles = cleaningStats.filesCleaned + cleaningStats.filesVerified;
 
+  // Helper to get score color
+  const getScoreColor = (score: number) => {
+    if (score >= 95) return 'text-success';
+    if (score >= 80) return 'text-yellow-500';
+    return 'text-destructive';
+  };
+
+  const getScoreBorderColor = (score: number) => {
+    if (score >= 95) return 'border-success/50 bg-success/5';
+    if (score >= 80) return 'border-yellow-500/50 bg-yellow-500/5';
+    return 'border-destructive/50 bg-destructive/5';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -509,9 +604,10 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <FolderArchive className="h-6 w-6 text-primary" />
             Liberation Pack Generator
+            <Badge variant="outline" className="ml-2">V3.0</Badge>
           </h2>
           <p className="text-muted-foreground">
-            Générez un pack autonome 100% souverain prêt à déployer
+            Nettoyage exhaustif pour 100% de souveraineté
           </p>
         </div>
         {step !== "upload" && (
@@ -528,11 +624,13 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           { id: "upload", label: "Import", icon: Upload },
           { id: "analyzing", label: "Analyse", icon: Sparkles },
           { id: "cleaning", label: "Deep Clean", icon: Shield },
+          { id: "verifying", label: "Vérification", icon: ShieldCheck },
           { id: "ready", label: "Pack", icon: Package },
         ].map((s, i) => {
           const Icon = s.icon;
+          const stepOrder = ["upload", "analyzing", "cleaning", "verifying", "ready"];
           const isCurrent = step === s.id;
-          const isPast = ["upload", "analyzing", "cleaning", "ready"].indexOf(step) > i;
+          const isPast = stepOrder.indexOf(step) > i;
           
           return (
             <div key={s.id} className="flex items-center">
@@ -544,8 +642,8 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                 </div>
                 <span className="text-xs mt-1">{s.label}</span>
               </div>
-              {i < 3 && (
-                <div className={`w-16 md:w-24 h-0.5 mx-2 ${isPast ? "bg-success" : "bg-muted"}`} />
+              {i < 4 && (
+                <div className={`w-12 md:w-20 h-0.5 mx-2 ${isPast ? "bg-success" : "bg-muted"}`} />
               )}
             </div>
           );
@@ -629,13 +727,13 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             </Tabs>
 
             {/* Features Preview */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
                 <CardContent className="pt-6">
                   <FileCode className="h-8 w-8 text-blue-500 mb-3" />
                   <h4 className="font-semibold mb-1">Frontend 100% propre</h4>
                   <p className="text-sm text-muted-foreground">
-                    Deep clean de TOUS les fichiers + Dockerfile
+                    Nettoyage exhaustif + polyfills
                   </p>
                 </CardContent>
               </Card>
@@ -644,7 +742,7 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                   <Server className="h-8 w-8 text-green-500 mb-3" />
                   <h4 className="font-semibold mb-1">Backend Express</h4>
                   <p className="text-sm text-muted-foreground">
-                    Edge Functions converties en API Express.js
+                    Edge Functions → Express.js
                   </p>
                 </CardContent>
               </Card>
@@ -653,7 +751,16 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                   <Database className="h-8 w-8 text-purple-500 mb-3" />
                   <h4 className="font-semibold mb-1">Base de données</h4>
                   <p className="text-sm text-muted-foreground">
-                    Schéma SQL avec migrations et politiques RLS
+                    Schéma SQL + migrations
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/20">
+                <CardContent className="pt-6">
+                  <Zap className="h-8 w-8 text-orange-500 mb-3" />
+                  <h4 className="font-semibold mb-1">Vérification finale</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Score de souveraineté garanti
                   </p>
                 </CardContent>
               </Card>
@@ -661,8 +768,8 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           </motion.div>
         )}
 
-        {/* Step: Analyzing/Cleaning */}
-        {(step === "analyzing" || step === "cleaning") && (
+        {/* Step: Analyzing/Cleaning/Verifying */}
+        {(step === "analyzing" || step === "cleaning" || step === "verifying") && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -672,14 +779,35 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
               <CardContent className="py-16 text-center">
                 <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-6" />
                 <h3 className="text-xl font-semibold mb-2">
-                  {step === "analyzing" ? "Analyse en cours..." : "Nettoyage en profondeur..."}
+                  {step === "analyzing" ? "Analyse en cours..." : 
+                   step === "cleaning" ? "Nettoyage en profondeur..." :
+                   "Vérification de souveraineté..."}
                 </h3>
                 <p className="text-muted-foreground mb-6">{progressMessage || "Veuillez patienter"}</p>
                 <Progress value={progress} className="max-w-md mx-auto" />
+                
                 {step === "cleaning" && (
-                  <p className="text-xs text-muted-foreground mt-4">
-                    Suppression des imports propriétaires, télémétrie, et génération des polyfills
-                  </p>
+                  <div className="mt-6 max-w-md mx-auto text-left">
+                    <p className="text-xs text-muted-foreground mb-2">Opérations en cours:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>✓ Suppression imports propriétaires</li>
+                      <li>✓ Nettoyage télémétrie et tracking</li>
+                      <li>✓ Remplacement IDs Supabase hardcodés</li>
+                      <li>✓ Suppression clés API exposées</li>
+                      <li>✓ Génération polyfills compatibilité</li>
+                    </ul>
+                  </div>
+                )}
+                
+                {step === "verifying" && (
+                  <div className="mt-6 max-w-md mx-auto">
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertDescription>
+                        Vérification finale de souveraineté en cours...
+                      </AlertDescription>
+                    </Alert>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -695,14 +823,14 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             className="space-y-6"
           >
             {/* Sovereignty Score */}
-            <Card className={`border-2 ${cleaningStats.sovereigntyScore >= 95 ? 'border-success/50 bg-success/5' : cleaningStats.sovereigntyScore >= 80 ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-destructive/50 bg-destructive/5'}`}>
+            <Card className={`border-2 ${getScoreBorderColor(cleaningStats.sovereigntyScore)}`}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className={`h-5 w-5 ${cleaningStats.sovereigntyScore >= 95 ? 'text-success' : cleaningStats.sovereigntyScore >= 80 ? 'text-yellow-500' : 'text-destructive'}`} />
+                    <ShieldCheck className={`h-5 w-5 ${getScoreColor(cleaningStats.sovereigntyScore)}`} />
                     Score de Souveraineté
                   </CardTitle>
-                  <div className={`text-3xl font-bold ${cleaningStats.sovereigntyScore >= 95 ? 'text-success' : cleaningStats.sovereigntyScore >= 80 ? 'text-yellow-500' : 'text-destructive'}`}>
+                  <div className={`text-3xl font-bold ${getScoreColor(cleaningStats.sovereigntyScore)}`}>
                     {cleaningStats.sovereigntyScore}%
                   </div>
                 </div>
@@ -719,6 +847,29 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     ? "⚠️ Bon score. Quelques éléments mineurs pourraient être améliorés."
                     : "❌ Des éléments propriétaires subsistent. Vérification manuelle recommandée."}
                 </p>
+                
+                {/* Issue breakdown */}
+                {(cleaningStats.criticalIssues > 0 || cleaningStats.majorIssues > 0 || cleaningStats.minorIssues > 0) && (
+                  <div className="flex gap-4 mt-3">
+                    {cleaningStats.criticalIssues > 0 && (
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {cleaningStats.criticalIssues} critique{cleaningStats.criticalIssues > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {cleaningStats.majorIssues > 0 && (
+                      <Badge variant="outline" className="border-yellow-500 text-yellow-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {cleaningStats.majorIssues} majeur{cleaningStats.majorIssues > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {cleaningStats.minorIssues > 0 && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        {cleaningStats.minorIssues} mineur{cleaningStats.minorIssues > 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -734,7 +885,7 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                   <div className="text-center p-3 bg-background rounded-lg border">
                     <div className="text-2xl font-bold">{frontendFilesCount}</div>
                     <div className="text-xs text-muted-foreground">Total fichiers</div>
@@ -756,7 +907,11 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     <div className="text-xs text-muted-foreground">Supprimés</div>
                   </div>
                   <div className="text-center p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <div className="text-2xl font-bold text-blue-500">{edgeFunctions.length}</div>
+                    <div className="text-2xl font-bold text-blue-500">{cleaningStats.polyfillsGenerated}</div>
+                    <div className="text-xs text-muted-foreground">Polyfills</div>
+                  </div>
+                  <div className="text-center p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                    <div className="text-2xl font-bold text-purple-500">{edgeFunctions.length}</div>
                     <div className="text-xs text-muted-foreground">Edge Funcs</div>
                   </div>
                 </div>
@@ -768,11 +923,11 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     <AlertDescription>
                       <strong>{cleaningStats.suspiciousPatterns.length} avertissements détectés :</strong>
                       <ul className="list-disc list-inside mt-1 text-sm">
-                        {cleaningStats.suspiciousPatterns.slice(0, 3).map((p, i) => (
+                        {cleaningStats.suspiciousPatterns.slice(0, 5).map((p, i) => (
                           <li key={i}>{p}</li>
                         ))}
-                        {cleaningStats.suspiciousPatterns.length > 3 && (
-                          <li>... et {cleaningStats.suspiciousPatterns.length - 3} autres</li>
+                        {cleaningStats.suspiciousPatterns.length > 5 && (
+                          <li>... et {cleaningStats.suspiciousPatterns.length - 5} autres</li>
                         )}
                       </ul>
                     </AlertDescription>
@@ -850,7 +1005,7 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     <div>• .env.example pré-rempli</div>
                     <div>• Script quick-deploy.sh</div>
                     <div>• Guide interactif HTML</div>
-                    <div>• Polyfills de compatibilité</div>
+                    <div>• {cleaningStats.polyfillsGenerated} polyfills générés</div>
                   </div>
                 </div>
 
@@ -861,41 +1016,43 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     <div className="text-center">
                       <h4 className="font-semibold text-lg">Pack prêt !</h4>
                       <p className="text-sm text-muted-foreground">
-                        Votre Liberation Pack souverain est prêt à être téléchargé
+                        Score de souveraineté: {cleaningStats.sovereigntyScore}%
                       </p>
                     </div>
-                    <div className="flex gap-3">
-                      <Button onClick={handleDownload} size="lg" className="gap-2">
-                        <Download className="h-5 w-5" />
-                        Télécharger le pack
-                      </Button>
-                      <Button variant="outline" size="lg" asChild>
-                        <a href="https://docs.inopay.fr/liberation-pack" target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Guide
-                        </a>
-                      </Button>
-                    </div>
+                    <Button onClick={handleDownload} size="lg" className="gap-2">
+                      <Download className="h-5 w-5" />
+                      Télécharger le pack
+                    </Button>
                   </div>
                 ) : (
-                  <Button 
-                    onClick={handleGeneratePack} 
-                    disabled={isGeneratingPack}
-                    size="lg"
-                    className="w-full gap-2"
-                  >
-                    {isGeneratingPack ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Génération en cours...
-                      </>
-                    ) : (
-                      <>
-                        <FolderArchive className="h-5 w-5" />
-                        Générer le Liberation Pack
-                      </>
+                  <div className="flex flex-col items-center gap-4">
+                    {cleaningStats.sovereigntyScore < 50 && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Score trop bas ({cleaningStats.sovereigntyScore}%). Nettoyage manuel requis avant génération.
+                        </AlertDescription>
+                      </Alert>
                     )}
-                  </Button>
+                    <Button 
+                      onClick={handleGeneratePack} 
+                      disabled={isGeneratingPack || cleaningStats.sovereigntyScore < 50}
+                      size="lg"
+                      className="gap-2"
+                    >
+                      {isGeneratingPack ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Génération en cours...
+                        </>
+                      ) : (
+                        <>
+                          <Package className="h-5 w-5" />
+                          Générer le Liberation Pack
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -905,3 +1062,5 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
     </div>
   );
 }
+
+export default LiberationPackHub;

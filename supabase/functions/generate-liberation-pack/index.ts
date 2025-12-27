@@ -69,6 +69,66 @@ const NGINX_CONF = `server {
 `;
 
 // ============================================
+// SOVEREIGNTY VERIFICATION
+// ============================================
+
+interface SovereigntyCheck {
+  isClean: boolean;
+  score: number;
+  criticalIssues: string[];
+  warnings: string[];
+}
+
+function verifySovereignty(files: Record<string, string>): SovereigntyCheck {
+  const criticalIssues: string[] = [];
+  const warnings: string[] = [];
+  let score = 100;
+
+  const criticalPatterns = [
+    { pattern: /@\/integrations\/supabase/g, name: 'Import Supabase auto-généré', penalty: 20 },
+    { pattern: /lovable\.app|lovable\.dev|gptengineer\.app/gi, name: 'Domaine Lovable', penalty: 20 },
+    { pattern: /[a-z]{20}\.supabase\.co/g, name: 'ID projet Supabase hardcodé', penalty: 15 },
+    { pattern: /eyJ[A-Za-z0-9_-]{100,}/g, name: 'Token JWT hardcodé', penalty: 20 },
+    { pattern: /sk_live_[A-Za-z0-9]+/g, name: 'Clé Stripe live exposée', penalty: 25 },
+    { pattern: /componentTagger|lovable-tagger/g, name: 'Plugin Lovable', penalty: 15 },
+  ];
+
+  const warningPatterns = [
+    { pattern: /data-lov|data-gpt|data-bolt/g, name: 'Data attribute propriétaire', penalty: 5 },
+    { pattern: /\/\/.*lovable|\/\*.*lovable/gi, name: 'Commentaire propriétaire', penalty: 3 },
+    { pattern: /cdn\.lovable|assets\.lovable/gi, name: 'CDN propriétaire', penalty: 10 },
+  ];
+
+  for (const [path, content] of Object.entries(files)) {
+    // Skip non-source files
+    if (!path.match(/\.(ts|tsx|js|jsx|json|html|css)$/)) continue;
+
+    for (const { pattern, name, penalty } of criticalPatterns) {
+      if (pattern.test(content)) {
+        criticalIssues.push(`${path}: ${name}`);
+        score -= penalty;
+        pattern.lastIndex = 0; // Reset regex
+      }
+    }
+
+    for (const { pattern, name, penalty } of warningPatterns) {
+      if (pattern.test(content)) {
+        warnings.push(`${path}: ${name}`);
+        score -= penalty;
+        pattern.lastIndex = 0;
+      }
+    }
+  }
+
+  return {
+    isClean: criticalIssues.length === 0,
+    score: Math.max(0, Math.min(100, score)),
+    criticalIssues,
+    warnings,
+  };
+}
+
+// ============================================
 // EDGE FUNCTION TO EXPRESS CONVERTER
 // ============================================
 
@@ -288,7 +348,7 @@ export default app;
 // DEPLOY GUIDE HTML GENERATOR
 // ============================================
 
-function generateDeployGuide(projectName: string, envVars: string[], hasBackend: boolean, hasDatabase: boolean): string {
+function generateDeployGuide(projectName: string, envVars: string[], hasBackend: boolean, hasDatabase: boolean, sovereigntyScore: number): string {
   const envVarDescriptions: Record<string, { desc: string; required: boolean }> = {
     'PORT': { desc: 'Port du serveur (défaut: 3000)', required: false },
     'DATABASE_URL': { desc: 'URL PostgreSQL', required: true },
@@ -300,6 +360,9 @@ function generateDeployGuide(projectName: string, envVars: string[], hasBackend:
     'RESEND_API_KEY': { desc: 'Clé API Resend', required: false },
     'ANTHROPIC_API_KEY': { desc: 'Clé API Anthropic', required: false },
   };
+
+  const scoreColor = sovereigntyScore >= 95 ? '#22c55e' : sovereigntyScore >= 80 ? '#f59e0b' : '#ef4444';
+  const scoreEmoji = sovereigntyScore >= 95 ? '✅' : sovereigntyScore >= 80 ? '⚠️' : '❌';
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -314,6 +377,7 @@ function generateDeployGuide(projectName: string, envVars: string[], hasBackend:
     .container { max-width: 900px; margin: 0 auto; }
     header { text-align: center; margin-bottom: 3rem; padding: 2rem; background: linear-gradient(135deg, var(--primary), #4f46e5); border-radius: 1rem; }
     header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .sovereignty-badge { display: inline-block; padding: 0.5rem 1rem; background: ${scoreColor}20; border: 2px solid ${scoreColor}; border-radius: 2rem; font-weight: bold; color: ${scoreColor}; margin-top: 1rem; }
     section { background: var(--bg-card); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border); }
     section h2 { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
     .step-num { background: var(--primary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
@@ -340,6 +404,7 @@ function generateDeployGuide(projectName: string, envVars: string[], hasBackend:
     <header>
       <h1>🚀 ${projectName}</h1>
       <p>Guide de déploiement autonome</p>
+      <div class="sovereignty-badge">${scoreEmoji} Score de Souveraineté: ${sovereigntyScore}%</div>
     </header>
     
     <section>
@@ -575,6 +640,59 @@ echo -e "\\$NC"
 }
 
 // ============================================
+// SOVEREIGNTY REPORT GENERATOR
+// ============================================
+
+function generateSovereigntyReport(projectName: string, check: SovereigntyCheck, fileCount: number): string {
+  const date = new Date().toISOString();
+  
+  return `# Rapport de Souveraineté - ${projectName}
+
+**Date de génération:** ${date}
+**Score de souveraineté:** ${check.score}%
+**Fichiers analysés:** ${fileCount}
+
+## Statut
+${check.isClean ? '✅ **CODE 100% SOUVERAIN**' : '⚠️ **ATTENTION: Des éléments propriétaires subsistent**'}
+
+${check.criticalIssues.length > 0 ? `
+## Problèmes critiques (${check.criticalIssues.length})
+${check.criticalIssues.map(issue => `- ❌ ${issue}`).join('\n')}
+` : ''}
+
+${check.warnings.length > 0 ? `
+## Avertissements (${check.warnings.length})
+${check.warnings.map(warning => `- ⚠️ ${warning}`).join('\n')}
+` : ''}
+
+## Ce qui a été nettoyé
+- Imports propriétaires (@lovable, @gptengineer, @bolt, @v0, @cursor)
+- Références aux domaines de télémétrie
+- Identifiants de projet Supabase hardcodés
+- Tokens JWT et clés API exposées
+- Attributs data-* spécifiques aux plateformes
+- Commentaires contenant des références propriétaires
+- Scripts et dépendances NPM propriétaires
+
+## Polyfills générés
+- use-mobile.ts - Détection viewport mobile
+- use-toast.ts - Système de notifications
+- use-sidebar.ts - Gestion sidebar
+- use-auth.ts - Authentification Supabase
+- supabase-client.ts - Client Supabase configurable
+
+## Recommandations
+1. Configurez votre propre projet Supabase
+2. Régénérez les types avec: \`npx supabase gen types typescript --project-id="votre-id"\`
+3. Mettez à jour les variables d'environnement dans .env
+4. Testez localement avant de déployer en production
+
+---
+*Généré par InoPay Liberation Pack v3.0*
+`;
+}
+
+// ============================================
 // MAIN HANDLER
 // ============================================
 
@@ -613,7 +731,8 @@ serve(async (req) => {
       edgeFunctions,
       sqlSchema,
       includeBackend = true,
-      includeDatabase = true
+      includeDatabase = true,
+      sovereigntyScore = 0,
     } = await req.json();
 
     if (!cleanedFiles || Object.keys(cleanedFiles).length === 0) {
@@ -624,6 +743,18 @@ serve(async (req) => {
     }
 
     console.log(`[generate-liberation-pack] Generating pack for ${projectName} with ${Object.keys(cleanedFiles).length} files`);
+
+    // ==========================================
+    // SOVEREIGNTY VERIFICATION
+    // ==========================================
+    const sovereigntyCheck = verifySovereignty(cleanedFiles);
+    
+    console.log(`[generate-liberation-pack] Sovereignty check: score=${sovereigntyCheck.score}, clean=${sovereigntyCheck.isClean}`);
+    
+    // Warn but don't block if score is low
+    if (sovereigntyCheck.score < 50) {
+      console.warn(`[generate-liberation-pack] Low sovereignty score: ${sovereigntyCheck.score}%`);
+    }
 
     const zip = new JSZip();
     const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -762,20 +893,30 @@ ${apiEnvVars}
 `;
     zip.file('.env.example', envExample);
 
-    // Deploy guide HTML
+    // Deploy guide HTML with sovereignty score
     zip.file('DEPLOY_GUIDE.html', generateDeployGuide(
       projectName,
       envVarsArray,
       includeBackend && edgeFunctions?.length > 0,
-      includeDatabase
+      includeDatabase,
+      sovereigntyCheck.score
     ));
 
     // Quick deploy script
     const scriptsFolder = zip.folder('scripts')!;
     scriptsFolder.file('quick-deploy.sh', generateQuickDeployScript(projectName, includeDatabase));
 
+    // Sovereignty report
+    zip.file('SOVEREIGNTY_REPORT.md', generateSovereigntyReport(
+      projectName,
+      sovereigntyCheck,
+      Object.keys(cleanedFiles).length
+    ));
+
     // README
     const readme = `# ${projectName} - Liberation Pack
+
+## 🛡️ Score de Souveraineté: ${sovereigntyCheck.score}%
 
 ## 🚀 Déploiement rapide
 
@@ -787,14 +928,19 @@ ${apiEnvVars}
 
 Ouvrez \`DEPLOY_GUIDE.html\` dans votre navigateur pour un guide interactif étape par étape.
 
+## 📋 Rapport de souveraineté
+
+Consultez \`SOVEREIGNTY_REPORT.md\` pour les détails du nettoyage effectué.
+
 ## 📁 Structure
 
 \`\`\`
 ├── frontend/          # Application React
-├── ${includeBackend ? 'backend/           # API Express (converti depuis Edge Functions)\n├── ' : ''}${includeDatabase ? 'database/          # Schéma SQL et migrations\n├── ' : ''}scripts/           # Scripts d\'automatisation
+├── ${includeBackend ? 'backend/           # API Express (converti depuis Edge Functions)\n├── ' : ''}${includeDatabase ? 'database/          # Schéma SQL et migrations\n├── ' : ''}scripts/           # Scripts d'automatisation
 ├── docker-compose.yml # Stack complète
-├── .env.example       # Variables d\'environnement
-└── DEPLOY_GUIDE.html  # Guide interactif
+├── .env.example       # Variables d'environnement
+├── DEPLOY_GUIDE.html  # Guide interactif
+└── SOVEREIGNTY_REPORT.md # Rapport de nettoyage
 \`\`\`
 
 ## 🔧 Commandes utiles
@@ -857,7 +1003,11 @@ Généré par **InoPay** - Libérez votre code !
         backendRoutes: backendRoutes.length,
         envVars: envVarsArray.length,
         hasDatabase: includeDatabase,
-        hasBackend: includeBackend && edgeFunctions?.length > 0
+        hasBackend: includeBackend && edgeFunctions?.length > 0,
+        sovereigntyScore: sovereigntyCheck.score,
+        isClean: sovereigntyCheck.isClean,
+        criticalIssues: sovereigntyCheck.criticalIssues.length,
+        warnings: sovereigntyCheck.warnings.length,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
