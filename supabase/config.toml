@@ -212,3 +212,9 @@ verify_jwt = false
 
 [functions.check-deployment-status]
 verify_jwt = false
+
+[functions.validate-supabase-destination]
+verify_jwt = false
+
+[functions.import-data-to-supabase]
+verify_jwt = false

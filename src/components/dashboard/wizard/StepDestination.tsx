@@ -13,6 +13,7 @@ import { useWizard, HostingType } from "@/contexts/WizardContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { DatabaseMigrationAssistant } from "./DatabaseMigrationAssistant";
 
 export function StepDestination() {
   const { state, dispatch, nextStep, prevStep } = useWizard();
@@ -329,38 +330,7 @@ export function StepDestination() {
           </div>
           
           {state.destination.migrateSupabase && (
-            <div className="grid gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground">Source (Lovable Cloud)</Label>
-                  <Input
-                    placeholder="URL Supabase source"
-                    value={state.destination.sourceSupabaseUrl}
-                    onChange={(e) => dispatch({ type: "UPDATE_DESTINATION", payload: { sourceSupabaseUrl: e.target.value } })}
-                  />
-                  <Input
-                    type="password"
-                    placeholder="Service Role Key source"
-                    value={state.destination.sourceSupabaseKey}
-                    onChange={(e) => dispatch({ type: "UPDATE_DESTINATION", payload: { sourceSupabaseKey: e.target.value } })}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-muted-foreground">Destination (votre Supabase)</Label>
-                  <Input
-                    placeholder="URL Supabase destination"
-                    value={state.destination.destSupabaseUrl}
-                    onChange={(e) => dispatch({ type: "UPDATE_DESTINATION", payload: { destSupabaseUrl: e.target.value } })}
-                  />
-                  <Input
-                    type="password"
-                    placeholder="Service Role Key destination"
-                    value={state.destination.destSupabaseKey}
-                    onChange={(e) => dispatch({ type: "UPDATE_DESTINATION", payload: { destSupabaseKey: e.target.value } })}
-                  />
-                </div>
-              </div>
-            </div>
+            <DatabaseMigrationAssistant />
           )}
         </div>
 

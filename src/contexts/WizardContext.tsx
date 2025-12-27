@@ -41,6 +41,16 @@ export interface CleaningData {
   cleanedFiles: Record<string, string>;
 }
 
+export type MigrationStatus = 'idle' | 'testing' | 'schema-pending' | 'migrating-schema' | 'migrating-data' | 'completed' | 'error';
+
+export interface MigrationProgress {
+  current: number;
+  total: number;
+  currentTable: string;
+  tablesCompleted: string[];
+  errors: string[];
+}
+
 export interface DestinationData {
   hostingType: HostingType;
   // VPS fields
@@ -61,6 +71,9 @@ export interface DestinationData {
   destSupabaseUrl: string;
   destSupabaseKey: string;
   isSupabaseMigrated: boolean;
+  // Migration status
+  migrationStatus: MigrationStatus;
+  migrationProgress: MigrationProgress;
   // GitHub destination
   destinationToken: string;
   destinationUsername: string;
@@ -150,6 +163,14 @@ const initialState: WizardState = {
     destSupabaseUrl: "",
     destSupabaseKey: "",
     isSupabaseMigrated: false,
+    migrationStatus: "idle",
+    migrationProgress: {
+      current: 0,
+      total: 0,
+      currentTable: "",
+      tablesCompleted: [],
+      errors: []
+    },
     destinationToken: "",
     destinationUsername: "",
     destinationRepo: "",
