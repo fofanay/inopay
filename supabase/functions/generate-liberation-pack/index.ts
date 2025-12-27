@@ -520,6 +520,10 @@ ${hasDatabase ? '  postgres_data:' : '  frontend_cache:'}
 // ============================================
 
 function generateQuickDeployScript(projectName: string, hasDatabase: boolean): string {
+  const dbSetup = hasDatabase ? `  POSTGRES_PASSWORD=$(openssl rand -base64 16)
+  sed -i "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=\\$POSTGRES_PASSWORD/" .env
+  echo -e "\\$YELLOW🔐 PostgreSQL password generated\\$NC"` : '';
+
   return `#!/bin/bash
 set -e
 
@@ -528,52 +532,45 @@ GREEN='\\033[0;32m'
 YELLOW='\\033[1;33m'
 NC='\\033[0m'
 
-echo -e "\\${GREEN}🚀 InoPay Liberation Pack - ${projectName}\\${NC}"
+echo -e "\\$GREEN🚀 InoPay Liberation Pack - ${projectName}\\$NC"
 
-if [ "$EUID" -ne 0 ]; then
-  echo -e "\\${RED}❌ Exécutez en tant que root (sudo ./quick-deploy.sh)\\${NC}"
+if [ "\\$EUID" -ne 0 ]; then
+  echo -e "\\$RED❌ Exécutez en tant que root (sudo ./quick-deploy.sh)\\$NC"
   exit 1
 fi
 
-# Install Docker if needed
 if ! command -v docker &> /dev/null; then
-  echo -e "\\${YELLOW}📦 Installation de Docker...\\${NC}"
+  echo -e "\\$YELLOW📦 Installation de Docker...\\$NC"
   curl -fsSL https://get.docker.com | sh
   systemctl enable docker && systemctl start docker
 fi
 
-echo -e "\\${GREEN}✓ Docker prêt\\${NC}"
+echo -e "\\$GREEN✓ Docker prêt\\$NC"
 
-# Setup env
 if [ ! -f .env ]; then
   cp .env.example .env
   JWT_SECRET=$(openssl rand -base64 32)
-  sed -i "s/JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
-${hasDatabase ? `  POSTGRES_PASSWORD=$(openssl rand -base64 16)
-  sed -i "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$POSTGRES_PASSWORD/" .env
-  echo -e "\\${YELLOW}🔐 PostgreSQL: $POSTGRES_PASSWORD\\${NC}"` : ''}
-  echo -e "\\${GREEN}✓ .env configuré\\${NC}"
+  sed -i "s/JWT_SECRET=.*/JWT_SECRET=\\$JWT_SECRET/" .env
+${dbSetup}
+  echo -e "\\$GREEN✓ .env configuré\\$NC"
 fi
 
-# Firewall
 if command -v ufw &> /dev/null; then
   ufw allow 80/tcp
   ufw allow 443/tcp
 fi
 
-# Deploy
-echo -e "\\${YELLOW}🐳 Démarrage...\\${NC}"
+echo -e "\\$YELLOW🐳 Démarrage...\\$NC"
 docker compose up -d --build
 
 sleep 10
 docker compose ps
 
-echo -e "\\${GREEN}"
+echo -e "\\$GREEN"
 echo "╔════════════════════════════════════════╗"
 echo "║     🎉 Déploiement terminé !           ║"
-echo "║     🌐 http://$(hostname -I | awk '{print $1}')       ║"
 echo "╚════════════════════════════════════════╝"
-echo -e "\\${NC}"
+echo -e "\\$NC"
 `;
 }
 
@@ -744,12 +741,12 @@ ${includeBackend ? `  handle /api/* {
 # Domaine
 DOMAIN=
 
-${includeDatabase ? `# Base de données
+\${includeDatabase ? \`# Base de données
 POSTGRES_USER=app
 POSTGRES_PASSWORD=  # OBLIGATOIRE
 POSTGRES_DB=app
-DATABASE_URL=postgresql://app:\\${POSTGRES_PASSWORD}@postgres:5432/app
-` : ''}
+DATABASE_URL=postgresql://app:VOTRE_MOT_DE_PASSE@postgres:5432/app
+\` : ''}
 # Sécurité
 JWT_SECRET=  # OBLIGATOIRE (openssl rand -base64 32)
 
