@@ -51,6 +51,8 @@ import {
   detectNeededPolyfills,
   calculateSovereigntyScore,
   finalVerificationPass,
+  cleanEnvFile,
+  cleanMarkdownFile,
   HOOK_POLYFILLS,
   PROPRIETARY_PATHS,
 } from "@/lib/clientProprietaryPatterns";
@@ -637,6 +639,26 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
         if (cdnCheck.found) {
           const result = cleanStylesheet(content);
           finalContent = result.cleaned;
+          stats.filesCleaned++;
+          wasModified = true;
+          fileChanges = result.changes;
+        }
+      }
+      // Clean .env files
+      else if (fileName === '.env' || fileName === '.env.local' || fileName === '.env.example' || fileName === '.env.production') {
+        const result = cleanEnvFile(content);
+        finalContent = result.cleaned;
+        if (result.wasModified) {
+          stats.filesCleaned++;
+          wasModified = true;
+          fileChanges = result.changes;
+        }
+      }
+      // Clean README and markdown files
+      else if (/\.md$/i.test(path)) {
+        const result = cleanMarkdownFile(content);
+        finalContent = result.cleaned;
+        if (result.wasModified) {
           stats.filesCleaned++;
           wasModified = true;
           fileChanges = result.changes;

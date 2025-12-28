@@ -1922,6 +1922,63 @@ export function cleanTsConfig(content: string): { cleaned: string; changes: stri
 }
 
 /**
+ * Clean .env files - remove hardcoded Supabase IDs and URLs
+ */
+export function cleanEnvFile(content: string): { cleaned: string; changes: string[]; wasModified: boolean; suspiciousPatterns: string[] } {
+  let cleaned = content;
+  const changes: string[] = [];
+  const before = cleaned;
+  
+  // Replace hardcoded Supabase project IDs
+  cleaned = cleaned.replace(/izqveyvcebolrqpqlmho/gi, 'your-project-id');
+  cleaned = cleaned.replace(/[a-z]{20,30}\.supabase\.co/gi, 'your-project-id.supabase.co');
+  
+  // Replace Lovable URLs
+  cleaned = cleaned.replace(/https?:\/\/[^\s]*lovable\.(app|dev)[^\s]*/gi, 'https://your-domain.com');
+  cleaned = cleaned.replace(/https?:\/\/[^\s]*gptengineer\.(app|run)[^\s]*/gi, 'https://your-domain.com');
+  
+  // Replace JWT tokens (keeping structure but replacing value)
+  cleaned = cleaned.replace(/eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'your-jwt-token');
+  
+  if (cleaned !== before) {
+    changes.push('Variables .env nettoyées des IDs hardcodés');
+  }
+  
+  return { cleaned, changes, wasModified: changes.length > 0, suspiciousPatterns: [] };
+}
+
+/**
+ * Clean Markdown files - remove telemetry URLs and badges
+ */
+export function cleanMarkdownFile(content: string): { cleaned: string; changes: string[]; wasModified: boolean; suspiciousPatterns: string[] } {
+  let cleaned = content;
+  const changes: string[] = [];
+  const before = cleaned;
+  
+  // Replace Lovable/GPTEngineer URLs
+  cleaned = cleaned.replace(/https?:\/\/[^\s)\]]*lovable\.(app|dev)[^\s)\]]*/gi, 'https://your-app-url.com');
+  cleaned = cleaned.replace(/https?:\/\/[^\s)\]]*gptengineer\.(app|run)[^\s)\]]*/gi, 'https://your-app-url.com');
+  
+  // Remove "Made with Lovable" badges
+  cleaned = cleaned.replace(/\[!\[.*?lovable.*?\]\(.*?\)\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[!\[.*?gptengineer.*?\]\(.*?\)\]\(.*?\)/gi, '');
+  
+  // Remove "Built with" lines
+  cleaned = cleaned.replace(/^.*built with.*lovable.*$/gim, '');
+  cleaned = cleaned.replace(/^.*made with.*lovable.*$/gim, '');
+  cleaned = cleaned.replace(/^.*powered by.*lovable.*$/gim, '');
+  
+  // Clean up empty lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  if (cleaned !== before) {
+    changes.push('README nettoyé des références Lovable');
+  }
+  
+  return { cleaned, changes, wasModified: changes.length > 0, suspiciousPatterns: [] };
+}
+
+/**
  * Clean source file from proprietary patterns (basic client-side cleaning)
  * @deprecated Use deepCleanSourceFile for comprehensive cleaning
  */
@@ -2105,6 +2162,14 @@ export function calculateSovereigntyScore(
       if (/https?:\/\/.*lovable/i.test(line)) continue;
       if (/https?:\/\/.*gptengineer/i.test(line)) continue;
       
+      // Skip if it's a regex pattern definition (detection code, not proprietary comment)
+      if (/\/.*lovable.*\//i.test(line) && !/^\/\//.test(trimmed)) continue;
+      if (/\/.*gptengineer.*\//i.test(line) && !/^\/\//.test(trimmed)) continue;
+      
+      // Skip if it's a string in an array/object (detection patterns)
+      if (/['"][^'"]*lovable[^'"]*['"]\s*[,:\]]/i.test(line)) continue;
+      if (/['"][^'"]*gptengineer[^'"]*['"]\s*[,:\]]/i.test(line)) continue;
+      
       // Check for real line comment: starts with // or has // not preceded by :
       // Exclude URLs by checking that // is not preceded by http: or https:
       const commentMatch = trimmed.match(/(?<!https?:)\/\/\s*.*$/i);
@@ -2112,9 +2177,14 @@ export function calculateSovereigntyScore(
         return true;
       }
     }
-    // Check block comments
-    if (new RegExp(`\\/\\*[\\s\\S]*?${escapeRegex(keyword)}[\\s\\S]*?\\*\\/`, 'i').test(content)) {
-      return true;
+    // Check block comments (but not in regex patterns)
+    const blockCommentPattern = new RegExp(`\\/\\*[\\s\\S]*?${escapeRegex(keyword)}[\\s\\S]*?\\*\\/`, 'i');
+    if (blockCommentPattern.test(content)) {
+      // Verify it's not inside a regex literal
+      const match = content.match(blockCommentPattern);
+      if (match && !/new RegExp|\.replace\(|\.test\(|\.match\(/.test(content.slice(Math.max(0, content.indexOf(match[0]) - 50), content.indexOf(match[0])))) {
+        return true;
+      }
     }
     // Check HTML comments
     if (new RegExp(`<!--[\\s\\S]*?${escapeRegex(keyword)}[\\s\\S]*?-->`, 'i').test(content)) {
@@ -2128,10 +2198,29 @@ export function calculateSovereigntyScore(
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
   
+  // Helper: check if file is whitelisted (Inopay internal files)
+  const isWhitelistedPath = (filePath: string): boolean => {
+    const internalPaths = [
+      'clientProprietaryPatterns',
+      'proprietary-patterns',
+      'security-cleaner',
+      'BuildValidator',
+      'sovereigntyReport',
+      'SovereigntyAuditReport',
+      'zipAnalyzer',
+      'LiberationPackHub',
+      '__tests__/aiReplacements',
+    ];
+    return internalPaths.some(p => filePath.includes(p));
+  };
+  
   // Check for remaining proprietary patterns in cleaned files
   for (const [path, content] of Object.entries(cleanedFiles)) {
     // Skip lock files and node_modules
     if (path.includes('node_modules') || path.includes('package-lock') || path.includes('bun.lockb')) continue;
+    
+    // Skip Inopay internal files (they legitimately contain detection patterns)
+    if (isWhitelistedPath(path)) continue;
     
     // CRITICAL: -20 points each
     // Check for remaining @/integrations imports (NOT standard @supabase/supabase-js)
