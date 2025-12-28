@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info, Package } from "lucide-react";
+import { Key, Save, Loader2, Eye, EyeOff, CheckCircle2, CreditCard, ExternalLink, Calendar, Sparkles, Zap, Shield, Info, Package, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -22,6 +23,7 @@ interface UserSettings {
   id?: string;
   api_provider: ApiProvider;
   api_key: string;
+  replace_proprietary_ai: boolean;
 }
 
 const Settings = () => {
@@ -33,6 +35,7 @@ const Settings = () => {
   const [settings, setSettings] = useState<UserSettings>({
     api_provider: "openai",
     api_key: "",
+    replace_proprietary_ai: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,6 +104,7 @@ const Settings = () => {
         id: data.id,
         api_provider: data.api_provider as ApiProvider,
         api_key: "",
+        replace_proprietary_ai: data.replace_proprietary_ai ?? true,
       });
       setHasExistingKey(!!data.api_key);
     }
@@ -115,8 +119,9 @@ const Settings = () => {
     let error;
 
     if (settings.id) {
-      const updateData: { api_provider: string; api_key?: string } = {
+      const updateData: { api_provider: string; api_key?: string; replace_proprietary_ai: boolean } = {
         api_provider: settings.api_provider,
+        replace_proprietary_ai: settings.replace_proprietary_ai,
       };
       if (settings.api_key) {
         updateData.api_key = settings.api_key;
@@ -128,9 +133,10 @@ const Settings = () => {
         .eq("id", settings.id);
       error = result.error;
     } else {
-      const insertData: { user_id: string; api_provider: string; api_key?: string } = {
+      const insertData: { user_id: string; api_provider: string; api_key?: string; replace_proprietary_ai: boolean } = {
         user_id: user.id,
         api_provider: settings.api_provider,
+        replace_proprietary_ai: settings.replace_proprietary_ai,
       };
       if (settings.api_key) {
         insertData.api_key = settings.api_key;
@@ -409,6 +415,69 @@ const Settings = () => {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Replacement Toggle Card */}
+          <Card className="mt-6 border-purple-500/20 bg-purple-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-purple-400" />
+                {t("settings.aiReplacement", "Remplacement IA")}
+              </CardTitle>
+              <CardDescription>
+                {t("settings.aiReplacementDesc", "Lors du nettoyage de code, remplacer automatiquement les services IA propriétaires par des alternatives open-source.")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t("settings.replaceProprietaryAI", "Remplacer les IA propriétaires")}</span>
+                    <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/30">
+                      {settings.replace_proprietary_ai ? t("common.enabled", "Activé") : t("common.disabled", "Désactivé")}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("settings.replaceProprietaryAIDesc", "OpenAI → Ollama, Anthropic → Ollama + Llama, Pinecone → pgvector, Clerk → Supabase Auth")}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.replace_proprietary_ai}
+                  onCheckedChange={(checked) => 
+                    setSettings(prev => ({ ...prev, replace_proprietary_ai: checked }))
+                  }
+                />
+              </div>
+              
+              {settings.replace_proprietary_ai && (
+                <Alert className="bg-purple-500/10 border-purple-500/30">
+                  <Bot className="h-4 w-4 text-purple-400" />
+                  <AlertDescription className="text-purple-200">
+                    <strong>{t("settings.aiReplacementActive", "Remplacements actifs:")}</strong>{" "}
+                    OpenAI → Ollama, Anthropic → Llama 3.1, Firebase → PocketBase, Algolia → Meilisearch, Clerk → Supabase Auth
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <Button 
+                onClick={handleSave} 
+                disabled={saving}
+                variant="outline"
+                className="w-full"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("common.saving")}
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    {t("settings.saveAISettings", "Sauvegarder les préférences IA")}
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
 

@@ -1494,6 +1494,7 @@ export type Database = {
           id: string
           language: string | null
           preferred_deploy_platform: string | null
+          replace_proprietary_ai: boolean | null
           updated_at: string
           user_id: string
         }
@@ -1509,6 +1510,7 @@ export type Database = {
           id?: string
           language?: string | null
           preferred_deploy_platform?: string | null
+          replace_proprietary_ai?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -1524,6 +1526,7 @@ export type Database = {
           id?: string
           language?: string | null
           preferred_deploy_platform?: string | null
+          replace_proprietary_ai?: boolean | null
           updated_at?: string
           user_id?: string
         }
