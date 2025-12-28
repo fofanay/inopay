@@ -155,15 +155,25 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const [isGeneratingPack, setIsGeneratingPack] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
+  // Helper to extract full_name from GitHub URL
+  const extractRepoFullName = (url: string): string | null => {
+    const match = url.match(/github\.com\/([^\/]+\/[^\/\?#]+)/);
+    return match ? match[1].replace(/\.git$/, '') : null;
+  };
+
   // Load config from user_settings if not provided via props
   useEffect(() => {
     if (!initialConfig) {
       loadConfigFromSettings();
     } else {
       setConfig(initialConfig);
-      // If we have a source token, load available repos
+      // Pre-fill the GitHub URL if provided
+      if (initialConfig.sourceUrl) {
+        setGithubUrl(initialConfig.sourceUrl);
+      }
+      // If we have a source token, load available repos and pre-select
       if (initialConfig.sourceToken) {
-        loadAvailableRepos(initialConfig.sourceToken);
+        loadAvailableRepos(initialConfig.sourceToken, initialConfig.sourceUrl);
       }
     }
   }, [initialConfig]);
@@ -206,7 +216,7 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
     }
   };
 
-  const loadAvailableRepos = async (token: string) => {
+  const loadAvailableRepos = async (token: string, sourceUrl?: string) => {
     if (!token) return;
     
     setLoadingRepos(true);
@@ -221,6 +231,17 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       if (response.ok) {
         const repos = await response.json();
         setAvailableRepos(repos);
+        
+        // Pre-select repo if sourceUrl is provided
+        if (sourceUrl) {
+          const targetFullName = extractRepoFullName(sourceUrl);
+          if (targetFullName) {
+            const matchingRepo = repos.find((r: GitHubRepo) => r.full_name === targetFullName);
+            if (matchingRepo) {
+              setSelectedRepo(matchingRepo.full_name);
+            }
+          }
+        }
       } else {
         console.error('Failed to load repos:', response.status);
       }
@@ -355,7 +376,17 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       await processAndDeepClean(result.extractedFiles, result);
     } catch (error: any) {
       console.error("GitHub import error:", error);
-      toast.error(error.message || "Erreur lors de l'import GitHub");
+      
+      let errorMessage = "Erreur lors de l'import GitHub";
+      if (error.message?.includes("TIMEOUT") || error.message?.includes("timeout")) {
+        errorMessage = "Le téléchargement a pris trop de temps. Réessayez ou utilisez un export ZIP.";
+      } else if (error.message?.includes("vide") || error.message?.includes("empty") || error.message?.includes("repoEmpty")) {
+        errorMessage = "Ce dépôt est vide. Assurez-vous qu'il contient des fichiers avant de l'importer.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
       setStep("upload");
     } finally {
       setLoading(false);
@@ -420,7 +451,17 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       await processAndDeepClean(result.extractedFiles, result);
     } catch (error: any) {
       console.error("GitHub import error:", error);
-      toast.error(error.message || "Erreur lors de l'import GitHub");
+      
+      let errorMessage = "Erreur lors de l'import GitHub";
+      if (error.message?.includes("TIMEOUT") || error.message?.includes("timeout")) {
+        errorMessage = "Le téléchargement a pris trop de temps. Réessayez ou utilisez un export ZIP.";
+      } else if (error.message?.includes("vide") || error.message?.includes("empty") || error.message?.includes("repoEmpty")) {
+        errorMessage = "Ce dépôt est vide. Assurez-vous qu'il contient des fichiers avant de l'importer.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
       setStep("upload");
     } finally {
       setLoading(false);

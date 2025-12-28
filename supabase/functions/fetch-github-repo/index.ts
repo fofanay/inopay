@@ -448,6 +448,18 @@ serve(async (req) => {
     const repoSizeKB = repoInfo.size || 0;
     logStep("Repository size check", { sizeKB: repoSizeKB, maxKB: MAX_REPO_SIZE_KB, warnKB: WARN_REPO_SIZE_KB });
 
+    // Check if repository is empty (size = 0)
+    if (repoSizeKB === 0) {
+      logStep("Repository is empty", { repo: repoInfo.full_name });
+      return new Response(
+        JSON.stringify({ 
+          error: "Ce dépôt est vide. Assurez-vous qu'il contient des fichiers avant de l'importer.",
+          repoEmpty: true
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (repoSizeKB > MAX_REPO_SIZE_KB) {
       logStep("Repository too large", { sizeKB: repoSizeKB, maxKB: MAX_REPO_SIZE_KB });
       return new Response(
