@@ -21,17 +21,23 @@ import { generateSovereigntyReport, generateReportSummary, type SovereigntyAudit
 import { cleanDOMSignatures } from '@/lib/security-cleaner';
 import { useTranslation } from 'react-i18next';
 
-export function SovereigntyAuditReport() {
+interface SovereigntyAuditReportProps {
+  files?: Map<string, string>;
+}
+
+export function SovereigntyAuditReport({ files }: SovereigntyAuditReportProps = {}) {
   const { t } = useTranslation();
   const [report, setReport] = useState<SovereigntyAuditResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanMode, setScanMode] = useState<'runtime' | 'files'>('runtime');
 
-  const runAudit = () => {
+  const runAudit = (filesToScan?: Map<string, string>) => {
     setIsScanning(true);
+    setScanMode(filesToScan && filesToScan.size > 0 ? 'files' : 'runtime');
     
     // Simuler un scan progressif
     setTimeout(() => {
-      const newReport = generateSovereigntyReport();
+      const newReport = generateSovereigntyReport(filesToScan);
       
       // Nettoyer le DOM et compter les signatures
       const signaturesRemoved = cleanDOMSignatures();
@@ -43,8 +49,8 @@ export function SovereigntyAuditReport() {
   };
 
   useEffect(() => {
-    runAudit();
-  }, []);
+    runAudit(files);
+  }, [files]);
 
   const downloadReport = () => {
     if (!report) return;
@@ -124,9 +130,21 @@ export function SovereigntyAuditReport() {
                   {report?.certification.message || 'Analyse en cours...'}
                 </p>
                 {report && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Audit: {new Date(report.auditDate).toLocaleString()}
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Audit: {new Date(report.auditDate).toLocaleString()}
+                    </p>
+                    {scanMode === 'runtime' && (
+                      <Badge variant="outline" className="text-xs">
+                        Mode Runtime - Importez un projet pour un scan complet
+                      </Badge>
+                    )}
+                    {scanMode === 'files' && report.summary.totalFilesScanned > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {report.summary.totalFilesScanned} fichiers analysés
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -135,7 +153,7 @@ export function SovereigntyAuditReport() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={runAudit}
+                onClick={() => runAudit(files)}
                 disabled={isScanning}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />

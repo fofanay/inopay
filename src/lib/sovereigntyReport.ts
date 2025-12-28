@@ -99,37 +99,83 @@ export function checkFileForProprietaryCode(content: string): {
 
 /**
  * Génère le rapport de souveraineté complet
+ * @param files - Optionnel: Map de fichiers à scanner. Si non fourni, fait un audit runtime.
  */
-export function generateSovereigntyReport(): SovereigntyAuditResult {
+export function generateSovereigntyReport(files?: Map<string, string>): SovereigntyAuditResult {
   const isProd = import.meta.env.PROD;
   const infraMode = (import.meta.env.VITE_INFRA_MODE || 'cloud') as 'cloud' | 'self-hosted' | 'hybrid';
   
-  // Compter les dépendances propriétaires présentes
-  // Note: En runtime, on ne peut pas scanner package.json directement
-  // Ce sera fait lors du build/export
+  // Si des fichiers sont fournis, faire un vrai scan
+  let totalFilesScanned = 0;
+  let issuesFound = 0;
+  let criticalCount = 0;
+  let warningCount = 0;
   const proprietaryDepsFound: string[] = [];
   
-  // Vérifier si lovable-tagger est chargé (dev only)
-  if (!isProd && typeof window !== 'undefined') {
-    // En dev, le tagger peut être présent mais c'est OK
+  if (files && files.size > 0) {
+    files.forEach((content, filePath) => {
+      // Ne scanner que les fichiers source
+      if (!/\.(ts|tsx|js|jsx|json|html|css)$/.test(filePath)) return;
+      if (filePath.includes('node_modules')) return;
+      
+      totalFilesScanned++;
+      
+      // Check package.json for proprietary deps
+      if (filePath.endsWith('package.json')) {
+        try {
+          const pkg = JSON.parse(content);
+          const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+          for (const dep of KNOWN_PROPRIETARY_DEPS) {
+            if (allDeps[dep]) {
+              proprietaryDepsFound.push(dep);
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parse errors
+        }
+      }
+      
+      const result = checkFileForProprietaryCode(content);
+      if (!result.isClean) {
+        issuesFound += result.issues.length;
+        criticalCount += result.issues.filter(i => i.severity === 'critical').length;
+        warningCount += result.issues.filter(i => i.severity === 'warning').length;
+      }
+    });
+  } else {
+    // Audit runtime - vérifier ce qu'on peut détecter côté client
+    totalFilesScanned = 0; // Pas de fichiers à scanner en runtime
+    
+    // Vérifier le DOM pour des traces propriétaires
+    if (typeof document !== 'undefined') {
+      const domElements = document.querySelectorAll('[data-lovable-id], [data-bolt-id], [data-v0-id]');
+      if (domElements.length > 0) {
+        issuesFound += domElements.length;
+        warningCount += domElements.length;
+      }
+    }
   }
   
   // Calcul du score
   let score = 100;
   const blockers: string[] = [];
   
-  // -10 points si pas en mode production
-  if (!isProd) {
-    score -= 10;
-  }
+  // -10 points par problème critique
+  score -= criticalCount * 10;
+  
+  // -2 points par avertissement
+  score -= warningCount * 2;
   
   // -5 points par dépendance propriétaire trouvée
   score -= proprietaryDepsFound.length * 5;
   
-  // -20 si mode cloud sans abstraction
+  // -5 si mode cloud sans abstraction
   if (infraMode === 'cloud') {
     score -= 5; // Petit malus car dépend encore de l'infra cloud
   }
+  
+  // Ensure score stays in bounds
+  score = Math.max(0, Math.min(100, score));
   
   // Déterminer le statut
   let status: 'sovereign' | 'almost_sovereign' | 'requires_action';
@@ -137,25 +183,28 @@ export function generateSovereigntyReport(): SovereigntyAuditResult {
   
   if (score >= 95) {
     status = 'sovereign';
-    message = '✅ Code 100% Souverain - Aucune dépendance propriétaire active en production';
+    message = '✅ Code 100% Souverain - Aucune dépendance propriétaire détectée';
   } else if (score >= 80) {
     status = 'almost_sovereign';
-    message = '🔶 Presque souverain - Quelques ajustements recommandés';
+    message = `🔶 Score: ${score}/100 - Quelques ajustements recommandés`;
   } else {
     status = 'requires_action';
-    message = '⚠️ Actions requises pour atteindre la souveraineté complète';
+    message = `⚠️ Score: ${score}/100 - Actions requises pour la souveraineté`;
     blockers.push(...proprietaryDepsFound.map(d => `Supprimer la dépendance: ${d}`));
+    if (criticalCount > 0) {
+      blockers.push(`Corriger ${criticalCount} problème(s) critique(s)`);
+    }
   }
   
   return {
-    isFullySovereign: score >= 95,
+    isFullySovereign: score >= 95 && criticalCount === 0,
     auditDate: new Date().toISOString(),
     buildMode: isProd ? 'production' : 'development',
     summary: {
-      totalFilesScanned: 0, // Sera rempli lors d'un scan complet
-      issuesFound: proprietaryDepsFound.length,
-      issuesCritical: 0,
-      issuesWarning: 0,
+      totalFilesScanned,
+      issuesFound,
+      issuesCritical: criticalCount,
+      issuesWarning: warningCount,
       signaturesCleaned: 0,
       dependenciesAudited: KNOWN_PROPRIETARY_DEPS.length,
       proprietaryDepsFound,
@@ -187,15 +236,13 @@ export function generateSovereigntyReport(): SovereigntyAuditResult {
 
 /**
  * Audit complet d'un projet (utilisé lors de l'export)
+ * @deprecated Utiliser generateSovereigntyReport(files) directement
  */
 export function auditProjectFiles(files: Map<string, string>): {
   report: SovereigntyAuditResult;
   fileIssues: Map<string, { pattern: string; line: number; severity: 'critical' | 'warning' }[]>;
 } {
   const fileIssues = new Map<string, { pattern: string; line: number; severity: 'critical' | 'warning' }[]>();
-  let totalIssues = 0;
-  let criticalCount = 0;
-  let warningCount = 0;
   
   files.forEach((content, filePath) => {
     // Ne scanner que les fichiers source
@@ -205,36 +252,11 @@ export function auditProjectFiles(files: Map<string, string>): {
     const result = checkFileForProprietaryCode(content);
     if (!result.isClean) {
       fileIssues.set(filePath, result.issues);
-      totalIssues += result.issues.length;
-      criticalCount += result.issues.filter(i => i.severity === 'critical').length;
-      warningCount += result.issues.filter(i => i.severity === 'warning').length;
     }
   });
   
-  const report = generateSovereigntyReport();
-  report.summary.totalFilesScanned = files.size;
-  report.summary.issuesFound = totalIssues;
-  report.summary.issuesCritical = criticalCount;
-  report.summary.issuesWarning = warningCount;
-  
-  // Recalculer le score basé sur les vrais résultats
-  let score = 100;
-  score -= criticalCount * 10;
-  score -= warningCount * 2;
-  score = Math.max(0, score);
-  
-  report.certification.score = score;
-  if (score >= 95) {
-    report.certification.status = 'sovereign';
-    report.certification.message = '✅ Code 100% Souverain - Prêt pour le déploiement autonome';
-    report.isFullySovereign = true;
-  } else if (score >= 80) {
-    report.certification.status = 'almost_sovereign';
-    report.certification.message = `🔶 Score: ${score}/100 - ${criticalCount} problèmes critiques à corriger`;
-  } else {
-    report.certification.status = 'requires_action';
-    report.certification.message = `⚠️ Score: ${score}/100 - Nettoyage requis avant export`;
-  }
+  // Utiliser la nouvelle version unifiée
+  const report = generateSovereigntyReport(files);
   
   return { report, fileIssues };
 }
