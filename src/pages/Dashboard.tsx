@@ -23,9 +23,8 @@ import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import { SovereigntyAuditReport } from "@/components/dashboard/SovereigntyAuditReport";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { SelfLiberationTab } from "@/components/dashboard/SelfLiberationTab";
-import { DashboardShell, DashboardHeader, ModernSidebar, ActionHero, QuickStatsBar } from "@/components/dashboard/shared";
-import { DashboardHero } from "@/components/dashboard/DashboardHero";
-import { DashboardProjects } from "@/components/dashboard/DashboardProjects";
+import { UserDashboardOverview } from "@/components/dashboard/UserDashboardOverview";
+import { DashboardShell, DashboardHeader, ModernSidebar } from "@/components/dashboard/shared";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { useDeploymentNotifications } from "@/hooks/useDeploymentNotifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,13 +44,6 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
-  const [stats, setStats] = useState({
-    projects: 0,
-    score: 0,
-    deployments: 0,
-    savings: 0,
-  });
-  const [loadingStats, setLoadingStats] = useState(true);
 
   const swipeHandlers = useSwipeNavigation(
     DASHBOARD_TABS,
@@ -69,62 +61,6 @@ const Dashboard = () => {
       navigate("/admin-dashboard");
     }
   }, [user, authLoading, isAdmin, navigate]);
-
-  // Fetch user stats
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) return;
-      
-      try {
-        // Projects
-        const { data: projects } = await supabase
-          .from("projects_analysis")
-          .select("portability_score")
-          .eq("user_id", user.id);
-        
-        // Deployments
-        const { data: deployments } = await supabase
-          .from("deployment_history")
-          .select("id, cost_analysis")
-          .eq("user_id", user.id);
-
-        const { data: serverDeployments } = await supabase
-          .from("server_deployments")
-          .select("id, status")
-          .eq("user_id", user.id)
-          .eq("status", "deployed");
-
-        // Calculate stats
-        const scores = projects?.map(p => p.portability_score).filter(s => s !== null) || [];
-        const avgScore = scores.length > 0 
-          ? Math.round(scores.reduce((a, b) => a + (b || 0), 0) / scores.length)
-          : 0;
-
-        let totalSavings = 0;
-        deployments?.forEach(d => {
-          if (d.cost_analysis && typeof d.cost_analysis === 'object') {
-            const costData = d.cost_analysis as { monthlySavings?: number };
-            if (costData.monthlySavings) {
-              totalSavings += costData.monthlySavings;
-            }
-          }
-        });
-
-        setStats({
-          projects: projects?.length || 0,
-          score: avgScore,
-          deployments: (deployments?.length || 0) + (serverDeployments?.length || 0),
-          savings: totalSavings,
-        });
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    fetchStats();
-  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -311,28 +247,10 @@ const Dashboard = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === "overview" && (
-              <div className="space-y-6">
-                {/* Hero CTA */}
-                <ActionHero
-                  variant="compact"
-                  title="Libérez votre prochain projet"
-                  description="Analysez, nettoyez et déployez en quelques clics"
-                  ctaLabel="Nouvelle libération"
-                  ctaIcon={<Rocket className="h-4 w-4" />}
-                  onCtaClick={() => setActiveTab("liberation")}
-                />
-
-                {/* Quick Stats */}
-                {!loadingStats && (
-                  <QuickStatsBar stats={stats} variant="user" />
-                )}
-
-                {/* Dashboard Content */}
-                <DashboardHero onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
-                
-                {/* Recent Projects */}
-                <DashboardProjects onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
-              </div>
+              <UserDashboardOverview 
+                onNavigate={(tab) => setActiveTab(tab as DashboardTab)} 
+                onGitHubConnect={() => navigate("/settings")}
+              />
             )}
 
             {activeTab === "liberation" && (
