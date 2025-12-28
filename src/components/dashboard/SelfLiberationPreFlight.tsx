@@ -116,15 +116,13 @@ export function SelfLiberationPreFlight({ onAllPassed, onNavigate }: SelfLiberat
         } else {
           updateCheck('github-source', { 
             status: 'error', 
-            message: 'Token invalide ou expiré',
-            action: { label: 'Configurer', onClick: () => onNavigate?.('fleet') }
+            message: 'Token invalide ou expiré'
           });
         }
       } else {
         updateCheck('github-source', { 
           status: 'error', 
-          message: 'Non configuré',
-          action: { label: 'Configurer', onClick: () => onNavigate?.('fleet') }
+          message: 'Non configuré - Allez dans Paramètres'
         });
       }
 
@@ -176,14 +174,12 @@ export function SelfLiberationPreFlight({ onAllPassed, onNavigate }: SelfLiberat
         } else if (serverData.coolify_url) {
           updateCheck('coolify', { 
             status: 'error', 
-            message: 'Token Coolify non configuré',
-            action: { label: 'Configurer', onClick: () => onNavigate?.('fleet') }
+            message: 'Token Coolify non configuré'
           });
         } else {
           updateCheck('coolify', { 
             status: 'error', 
-            message: 'Coolify non configuré',
-            action: { label: 'Configurer', onClick: () => onNavigate?.('fleet') }
+            message: 'Coolify non configuré'
           });
         }
 
@@ -199,8 +195,7 @@ export function SelfLiberationPreFlight({ onAllPassed, onNavigate }: SelfLiberat
       } else {
         updateCheck('server', { 
           status: 'error', 
-          message: 'Aucun serveur configuré',
-          action: { label: 'Ajouter un serveur', onClick: () => onNavigate?.('fleet') }
+          message: 'Aucun serveur configuré - Allez dans Ma Flotte'
         });
         updateCheck('coolify', { status: 'error', message: 'Serveur requis' });
         updateCheck('supabase-sh', { status: 'error', message: 'Serveur requis' });
