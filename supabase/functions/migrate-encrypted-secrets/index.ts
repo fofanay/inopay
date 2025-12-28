@@ -129,11 +129,10 @@ serve(async (req) => {
 
     const masterKey = getMasterKey();
     
-    // Fetch all user_servers with service_role_key
+    // Fetch all user_servers with sensitive secrets
     const { data: servers, error: fetchError } = await supabase
       .from('user_servers')
-      .select('id, service_role_key, coolify_token, jwt_secret, db_password')
-      .not('service_role_key', 'is', null);
+      .select('id, service_role_key, anon_key, coolify_token, jwt_secret, db_password');
 
     if (fetchError) {
       throw new Error(`Failed to fetch servers: ${fetchError.message}`);
@@ -168,6 +167,16 @@ serve(async (req) => {
           fieldsEncrypted.push('coolify_token');
         } catch (e) {
           results.errors.push(`Server ${server.id}: Failed to encrypt coolify_token - ${e}`);
+        }
+      }
+
+      // Encrypt anon_key if not already encrypted
+      if (server.anon_key && !isEncrypted(server.anon_key)) {
+        try {
+          updates.anon_key = await encryptToken(server.anon_key, masterKey);
+          fieldsEncrypted.push('anon_key');
+        } catch (e) {
+          results.errors.push(`Server ${server.id}: Failed to encrypt anon_key - ${e}`);
         }
       }
 

@@ -128,7 +128,9 @@ serve(async (req) => {
 
       console.log('[encrypt-secrets] GitHub token encrypted and stored for user:', user.id);
     } 
-    else if (secret_type === 'coolify_token' && target_id) {
+    else if ((secret_type === 'coolify_token' || secret_type === 'service_role_key' || 
+              secret_type === 'anon_key' || secret_type === 'jwt_secret' || 
+              secret_type === 'db_password') && target_id) {
       // Verify server ownership
       const { data: server, error: serverError } = await supabase
         .from('user_servers')
@@ -144,21 +146,24 @@ serve(async (req) => {
         );
       }
 
+      // Build the update object dynamically based on secret type
+      const updateData: Record<string, string> = {
+        updated_at: new Date().toISOString(),
+      };
+      updateData[secret_type] = encryptedValue;
+
       const { error: updateError } = await supabase
         .from('user_servers')
-        .update({
-          coolify_token: encryptedValue,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', target_id);
 
       if (updateError) throw updateError;
 
-      console.log('[encrypt-secrets] Coolify token encrypted and stored for server:', target_id);
+      console.log(`[encrypt-secrets] ${secret_type} encrypted and stored for server:`, target_id);
     }
     else {
       return new Response(
-        JSON.stringify({ error: 'Invalid secret_type or missing target_id for coolify_token' }),
+        JSON.stringify({ error: 'Invalid secret_type or missing target_id for server secrets' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
