@@ -1286,6 +1286,136 @@ const useIsMobile = () => {
     }
   }
 
+  // ========== PASS 12: Replace proprietary AI services with open-source alternatives ==========
+  // OpenAI → Ollama
+  const openAIImportPattern = /import\s+OpenAI\s+from\s*['"]openai['"];?/g;
+  if (openAIImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(openAIImportPattern, 
+      `// INOPAY: OpenAI remplacé par Ollama (auto-hébergé)
+const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_URL || 'http://localhost:11434';
+
+async function createChatCompletion(messages: Array<{role: string; content: string}>, model = 'llama3.1') {
+  const response = await fetch(\`\${OLLAMA_BASE_URL}/api/chat\`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, stream: false })
+  });
+  return response.json();
+}`);
+    changes.push('OpenAI remplacé par Ollama (auto-hébergé)');
+  }
+  
+  // Replace new OpenAI({ ... }) instantiation
+  const newOpenAIPattern = /new\s+OpenAI\s*\(\s*\{[^}]*\}\s*\)/g;
+  if (newOpenAIPattern.test(cleaned)) {
+    cleaned = cleaned.replace(newOpenAIPattern, '/* INOPAY: Ollama client - voir createChatCompletion() */');
+    changes.push('Instanciation OpenAI supprimée');
+  }
+  
+  // Replace openai.chat.completions.create calls
+  const openAICallPattern = /openai\.chat\.completions\.create\s*\(/g;
+  if (openAICallPattern.test(cleaned)) {
+    cleaned = cleaned.replace(openAICallPattern, 'createChatCompletion(');
+    changes.push('Appels OpenAI remplacés par Ollama');
+  }
+  
+  // Anthropic → Ollama + Llama 3.1
+  const anthropicImportPattern = /import\s+Anthropic\s+from\s*['"]@anthropic-ai\/sdk['"];?/g;
+  if (anthropicImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(anthropicImportPattern,
+      `// INOPAY: Anthropic (Claude) remplacé par Ollama + Llama 3.1 (auto-hébergé)
+const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_URL || 'http://localhost:11434';
+
+async function createMessage(messages: Array<{role: string; content: string}>, model = 'llama3.1:70b') {
+  const response = await fetch(\`\${OLLAMA_BASE_URL}/api/chat\`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, stream: false })
+  });
+  const data = await response.json();
+  return { content: [{ text: data.message?.content || '' }] };
+}`);
+    changes.push('Anthropic (Claude) remplacé par Ollama + Llama 3.1');
+  }
+  
+  // Replace new Anthropic({ ... }) instantiation
+  const newAnthropicPattern = /new\s+Anthropic\s*\(\s*\{[^}]*\}\s*\)/g;
+  if (newAnthropicPattern.test(cleaned)) {
+    cleaned = cleaned.replace(newAnthropicPattern, '/* INOPAY: Ollama client - voir createMessage() */');
+    changes.push('Instanciation Anthropic supprimée');
+  }
+  
+  // Replace anthropic.messages.create calls
+  const anthropicCallPattern = /anthropic\.messages\.create\s*\(/g;
+  if (anthropicCallPattern.test(cleaned)) {
+    cleaned = cleaned.replace(anthropicCallPattern, 'createMessage(');
+    changes.push('Appels Anthropic remplacés par Ollama');
+  }
+  
+  // Pinecone → pgvector (TODO comment)
+  const pineconeImportPattern = /import\s*{\s*[^}]*\s*}\s*from\s*['"]@pinecone-database\/pinecone['"];?/g;
+  if (pineconeImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(pineconeImportPattern,
+      `// INOPAY: TODO - Remplacer Pinecone par PostgreSQL + pgvector
+// Installation: CREATE EXTENSION vector;
+// Usage: SELECT * FROM items ORDER BY embedding <=> $1 LIMIT 10;
+// Voir: https://github.com/pgvector/pgvector`);
+    changes.push('Pinecone → pgvector (TODO)');
+  }
+  
+  // Clerk → Supabase Auth
+  const clerkImportPattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]@clerk\/react['"];?/g;
+  if (clerkImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(clerkImportPattern,
+      `// INOPAY: Clerk remplacé par Supabase Auth (auto-hébergé)
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+// Migration Clerk → Supabase Auth:
+// useUser() → supabase.auth.getUser()
+// SignIn → supabase.auth.signInWithPassword({ email, password })
+// SignUp → supabase.auth.signUp({ email, password })
+// SignOut → supabase.auth.signOut()`);
+    changes.push('Clerk remplacé par Supabase Auth');
+  }
+  
+  // Auth0 → Supabase Auth
+  const auth0ImportPattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]@auth0\/auth0-react['"];?/g;
+  if (auth0ImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(auth0ImportPattern,
+      `// INOPAY: Auth0 remplacé par Supabase Auth (auto-hébergé)
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+// Migration Auth0 → Supabase Auth:
+// useAuth0() → supabase.auth
+// loginWithRedirect() → supabase.auth.signInWithOAuth()
+// logout() → supabase.auth.signOut()`);
+    changes.push('Auth0 remplacé par Supabase Auth');
+  }
+  
+  // Algolia → Meilisearch
+  const algoliaImportPattern = /import\s+algoliasearch\s+from\s*['"]algoliasearch['"];?/g;
+  if (algoliaImportPattern.test(cleaned)) {
+    cleaned = cleaned.replace(algoliaImportPattern,
+      `// INOPAY: Algolia remplacé par Meilisearch (auto-hébergé)
+import { MeiliSearch } from 'meilisearch';
+
+const searchClient = new MeiliSearch({
+  host: import.meta.env.VITE_MEILISEARCH_URL || 'http://localhost:7700',
+  apiKey: import.meta.env.VITE_MEILISEARCH_KEY || ''
+});`);
+    changes.push('Algolia remplacé par Meilisearch');
+  }
+
   // ========== FINAL: Clean up excessive whitespace and empty imports ==========
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   cleaned = cleaned.replace(/import\s*{\s*}\s*from\s*['"][^'"]*['"]\s*;?\n?/g, '');

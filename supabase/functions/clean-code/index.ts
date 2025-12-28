@@ -357,13 +357,20 @@ serve(async (req) => {
     // Priority: User BYOK > DeepSeek > OpenRouter DeepSeek > Anthropic (fallback)
     try {
       if (isUsingBYOK && userApiKey) {
-        // Use user's own key
+        // Use user's own key - support all providers
         if (userApiProvider === 'anthropic') {
           const result = await callAnthropic(userApiKey, code, fileName);
           cleanedCode = result.cleanedCode;
           tokensUsed = result.tokensUsed;
           providerUsed = 'anthropic_byok';
+        } else if (userApiProvider === 'deepseek') {
+          // DeepSeek BYOK - user's own DeepSeek key
+          const result = await callDeepSeek(userApiKey, code, fileName, false);
+          cleanedCode = result.cleanedCode;
+          tokensUsed = result.tokensUsed;
+          providerUsed = 'deepseek_byok';
         } else {
+          // OpenAI by default for other providers
           const result = await callOpenAI(userApiKey, code, fileName);
           cleanedCode = result.cleanedCode;
           tokensUsed = result.tokensUsed;
