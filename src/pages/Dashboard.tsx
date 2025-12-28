@@ -11,6 +11,7 @@ import {
   Home,
   Server,
   LayoutDashboard,
+  Zap,
   ShieldCheck,
   FolderArchive
 } from "lucide-react";
@@ -25,6 +26,7 @@ import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import { SovereigntyAuditReport } from "@/components/dashboard/SovereigntyAuditReport";
 import { LiberationPackHub } from "@/components/dashboard/LiberationPackHub";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
+import { SelfLiberationTab } from "@/components/dashboard/SelfLiberationTab";
 import { DashboardShell, DashboardHeader, ModernSidebar, ActionHero, QuickStatsBar } from "@/components/dashboard/shared";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { DashboardProjects } from "@/components/dashboard/DashboardProjects";
@@ -34,9 +36,9 @@ import { supabase } from "@/integrations/supabase/client";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 import FofyChat from "@/components/FofyChat";
 
-type DashboardTab = "overview" | "liberation" | "fleet" | "audit";
+type DashboardTab = "overview" | "liberation" | "auto-liberation" | "fleet" | "audit";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "audit"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "auto-liberation", "fleet", "audit"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -143,7 +145,8 @@ const Dashboard = () => {
 
   const menuItems = [
     { id: "overview", label: t("dashboard.overview"), icon: LayoutDashboard, section: "main" },
-    { id: "liberation", label: t("dashboard.liberation"), icon: FolderArchive, section: "main", badge: "🚀" },
+    { id: "liberation", label: t("dashboard.liberation"), icon: FolderArchive, section: "main" },
+    { id: "auto-liberation", label: "Auto-Libération", icon: Zap, section: "main", badge: "🚀" },
     { id: "fleet", label: "Ma Flotte", icon: Server, section: "main" },
     { id: "audit", label: "Audit Souveraineté", icon: ShieldCheck, section: "main" },
   ];
@@ -165,6 +168,12 @@ const Dashboard = () => {
           title: t("dashboard.liberation"), 
           description: "Générez un pack autonome prêt à déployer sur n'importe quel VPS",
           icon: <FolderArchive className="h-5 w-5 text-primary" />
+        };
+      case "auto-liberation":
+        return { 
+          title: "Auto-Libération", 
+          description: "Libérez automatiquement vers votre infrastructure souveraine",
+          icon: <Zap className="h-5 w-5 text-primary" />
         };
       case "fleet":
         return { 
@@ -339,6 +348,10 @@ const Dashboard = () => {
 
             {activeTab === "liberation" && (
               <LiberationPackHub />
+            )}
+
+            {activeTab === "auto-liberation" && (
+              <SelfLiberationTab onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
             )}
 
             {activeTab === "fleet" && (
