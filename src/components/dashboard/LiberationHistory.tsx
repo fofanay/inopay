@@ -18,8 +18,11 @@ import {
   ExternalLink,
   RefreshCw,
   Calendar,
-  FileCode
+  FileCode,
+  Github
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import JSZip from 'jszip';
 
 interface LiberationRecord {
   id: string;
@@ -39,6 +42,9 @@ export function LiberationHistory() {
   const [liberations, setLiberations] = useState<LiberationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [pushingToGitHubId, setPushingToGitHubId] = useState<string | null>(null);
+  const [gitHubProgress, setGitHubProgress] = useState(0);
+  const [gitHubMessage, setGitHubMessage] = useState('');
 
   useEffect(() => {
     loadLiberations();
@@ -103,6 +109,171 @@ export function LiberationHistory() {
       });
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handlePushToGitHub = async (liberation: LiberationRecord) => {
+    if (!liberation.archive_path) {
+      toast.error('Archive non disponible');
+      return;
+    }
+
+    setPushingToGitHubId(liberation.id);
+    setGitHubProgress(0);
+    setGitHubMessage('Chargement de la configuration...');
+
+    try {
+      // 1. Load GitHub config
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Non connecté');
+
+      const { data: settings, error: settingsError } = await supabase
+        .from('user_settings')
+        .select('github_destination_token, github_destination_username, default_repo_private')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (settingsError || !settings?.github_destination_token) {
+        toast.error('GitHub non configuré', {
+          description: 'Configurez votre destination GitHub dans les paramètres.'
+        });
+        return;
+      }
+
+      setGitHubProgress(10);
+      setGitHubMessage('Téléchargement de l\'archive...');
+
+      // 2. Download the archive
+      const { data: archiveData, error: downloadError } = await supabase.storage
+        .from('cleaned-archives')
+        .download(liberation.archive_path);
+
+      if (downloadError) throw downloadError;
+
+      setGitHubProgress(30);
+      setGitHubMessage('Extraction des fichiers...');
+
+      // 3. Extract and filter files
+      const zip = await JSZip.loadAsync(archiveData);
+      const files: Array<{ path: string; content: string }> = [];
+      
+      // Patterns to include (source files only)
+      const includePatterns = [
+        /^src\//,
+        /^public\//,
+        /^package\.json$/,
+        /^tsconfig\.json$/,
+        /^vite\.config\.ts$/,
+        /^tailwind\.config\.ts$/,
+        /^postcss\.config\./,
+        /^\.env\.example$/,
+        /^index\.html$/,
+        /^README\.md$/,
+        /^\.gitignore$/,
+        /^components\.json$/,
+        /^eslint\.config\./,
+        // Handle frontend/ prefix in pack structure
+        /^frontend\/src\//,
+        /^frontend\/public\//,
+        /^frontend\/package\.json$/,
+        /^frontend\/tsconfig\.json$/,
+        /^frontend\/vite\.config\.ts$/,
+        /^frontend\/tailwind\.config\.ts$/,
+        /^frontend\/postcss\.config\./,
+        /^frontend\/index\.html$/,
+        /^frontend\/components\.json$/,
+      ];
+
+      // Patterns to exclude
+      const excludePatterns = [
+        /node_modules\//,
+        /\.git\//,
+        /dist\//,
+        /build\//,
+        /_original\//,
+        /DEPLOY_GUIDE/,
+        /services\//,
+        /scripts\//,
+        /docs\//,
+        /database\//,
+        /backend\//,
+        /docker-compose/,
+        /Dockerfile/,
+        /\.zip$/,
+      ];
+
+      for (const [relativePath, file] of Object.entries(zip.files)) {
+        if (file.dir) continue;
+        
+        // Normalize path (remove leading folder if pack structure)
+        let normalizedPath = relativePath;
+        
+        // Remove pack root folder if present (e.g., "project-liberated/frontend/src/...")
+        const parts = relativePath.split('/');
+        if (parts.length > 1 && parts[0].includes('-liberated')) {
+          normalizedPath = parts.slice(1).join('/');
+        }
+        
+        // Check exclusions
+        if (excludePatterns.some(pattern => pattern.test(normalizedPath))) continue;
+        
+        // Check inclusions
+        if (!includePatterns.some(pattern => pattern.test(normalizedPath))) continue;
+        
+        // Remove frontend/ prefix for final path
+        let finalPath = normalizedPath;
+        if (normalizedPath.startsWith('frontend/')) {
+          finalPath = normalizedPath.replace(/^frontend\//, '');
+        }
+        
+        const content = await file.async('string');
+        files.push({ path: finalPath, content });
+      }
+
+      if (files.length === 0) {
+        throw new Error('Aucun fichier source trouvé dans l\'archive');
+      }
+
+      setGitHubProgress(50);
+      setGitHubMessage(`Envoi de ${files.length} fichiers vers GitHub...`);
+
+      // 4. Push to GitHub
+      const repoName = `${liberation.project_name.toLowerCase().replace(/\s+/g, '-')}-liberated`;
+      
+      const { data: result, error: pushError } = await supabase.functions.invoke('export-to-github', {
+        body: {
+          repoName,
+          description: `${liberation.project_name} - Libéré par Inopay`,
+          files,
+          isPrivate: settings.default_repo_private ?? true,
+          githubToken: settings.github_destination_token,
+          username: settings.github_destination_username
+        }
+      });
+
+      if (pushError) throw pushError;
+      if (result?.error) throw new Error(result.error);
+
+      setGitHubProgress(100);
+      setGitHubMessage('Terminé !');
+
+      toast.success('Poussé vers GitHub !', {
+        description: `${files.length} fichiers envoyés`,
+        action: {
+          label: 'Voir',
+          onClick: () => window.open(result.repoUrl, '_blank')
+        }
+      });
+
+    } catch (error: any) {
+      console.error('GitHub push error:', error);
+      toast.error('Erreur GitHub', {
+        description: error.message || 'Impossible de pousser vers GitHub'
+      });
+    } finally {
+      setPushingToGitHubId(null);
+      setGitHubProgress(0);
+      setGitHubMessage('');
     }
   };
 
@@ -257,21 +428,36 @@ export function LiberationHistory() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {liberation.archive_path && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleDownload(liberation)}
-                      disabled={downloadingId === liberation.id}
-                    >
-                      {downloadingId === liberation.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Télécharger
-                    </Button>
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleDownload(liberation)}
+                        disabled={downloadingId === liberation.id}
+                      >
+                        {downloadingId === liberation.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Télécharger
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePushToGitHub(liberation)}
+                        disabled={pushingToGitHubId === liberation.id}
+                      >
+                        {pushingToGitHubId === liberation.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Github className="h-4 w-4 mr-2" />
+                        )}
+                        GitHub
+                      </Button>
+                    </>
                   )}
                   {liberation.deployed_url && (
                     <Button
@@ -284,6 +470,17 @@ export function LiberationHistory() {
                     </Button>
                   )}
                 </div>
+                
+                {/* GitHub push progress */}
+                {pushingToGitHubId === liberation.id && (
+                  <div className="w-full mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{gitHubMessage}</span>
+                      <span className="font-medium">{gitHubProgress}%</span>
+                    </div>
+                    <Progress value={gitHubProgress} className="h-2" />
+                  </div>
+                )}
               </div>
 
               {/* Cleaned dependencies */}
