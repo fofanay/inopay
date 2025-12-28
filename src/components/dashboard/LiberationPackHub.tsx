@@ -23,8 +23,10 @@ import {
   ShieldCheck,
   AlertCircle,
   Zap,
-  List
+  List,
+  ClipboardCheck
 } from "lucide-react";
+import { SovereigntyAuditReport } from "./SovereigntyAuditReport";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1352,56 +1354,77 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            {/* Sovereignty Score */}
-            <Card className={`border-2 ${getScoreBorderColor(cleaningStats.sovereigntyScore)}`}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className={`h-5 w-5 ${getScoreColor(cleaningStats.sovereigntyScore)}`} />
-                    Score de Souveraineté
-                  </CardTitle>
-                  <div className={`text-3xl font-bold ${getScoreColor(cleaningStats.sovereigntyScore)}`}>
-                    {cleaningStats.sovereigntyScore}%
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Progress 
-                  value={cleaningStats.sovereigntyScore} 
-                  className="h-3 mb-3"
+            {/* Tabs for Pack Generation and Audit */}
+            <Tabs defaultValue="pack" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="pack" className="gap-2">
+                  <Package className="h-4 w-4" />
+                  Génération du Pack
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="gap-2">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Audit de Souveraineté
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="audit" className="mt-4 space-y-4">
+                {/* Pass cleaned files to audit */}
+                <SovereigntyAuditReport 
+                  files={new Map(Object.entries(cleanedFiles))} 
                 />
-                <p className="text-sm text-muted-foreground">
-                  {cleaningStats.sovereigntyScore >= 95 
-                    ? "✅ Excellent ! Votre code est 100% souverain et prêt à déployer."
-                    : cleaningStats.sovereigntyScore >= 80
-                    ? "⚠️ Bon score. Quelques éléments mineurs pourraient être améliorés."
-                    : "❌ Des éléments propriétaires subsistent. Vérification manuelle recommandée."}
-                </p>
-                
-                {/* Issue breakdown */}
-                {(cleaningStats.criticalIssues > 0 || cleaningStats.majorIssues > 0 || cleaningStats.minorIssues > 0) && (
-                  <div className="flex gap-4 mt-3">
-                    {cleaningStats.criticalIssues > 0 && (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {cleaningStats.criticalIssues} critique{cleaningStats.criticalIssues > 1 ? 's' : ''}
-                      </Badge>
+              </TabsContent>
+
+              <TabsContent value="pack" className="mt-4 space-y-6">
+                {/* Sovereignty Score */}
+                <Card className={`border-2 ${getScoreBorderColor(cleaningStats.sovereigntyScore)}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <ShieldCheck className={`h-5 w-5 ${getScoreColor(cleaningStats.sovereigntyScore)}`} />
+                        Score de Souveraineté
+                      </CardTitle>
+                      <div className={`text-3xl font-bold ${getScoreColor(cleaningStats.sovereigntyScore)}`}>
+                        {cleaningStats.sovereigntyScore}%
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Progress 
+                      value={cleaningStats.sovereigntyScore} 
+                      className="h-3 mb-3"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {cleaningStats.sovereigntyScore >= 95 
+                        ? "✅ Excellent ! Votre code est 100% souverain et prêt à déployer."
+                        : cleaningStats.sovereigntyScore >= 80
+                        ? "⚠️ Bon score. Quelques éléments mineurs pourraient être améliorés."
+                        : "❌ Des éléments propriétaires subsistent. Vérification manuelle recommandée."}
+                    </p>
+                    
+                    {/* Issue breakdown */}
+                    {(cleaningStats.criticalIssues > 0 || cleaningStats.majorIssues > 0 || cleaningStats.minorIssues > 0) && (
+                      <div className="flex gap-4 mt-3">
+                        {cleaningStats.criticalIssues > 0 && (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {cleaningStats.criticalIssues} critique{cleaningStats.criticalIssues > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {cleaningStats.majorIssues > 0 && (
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-500 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {cleaningStats.majorIssues} majeur{cleaningStats.majorIssues > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {cleaningStats.minorIssues > 0 && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            {cleaningStats.minorIssues} mineur{cleaningStats.minorIssues > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
                     )}
-                    {cleaningStats.majorIssues > 0 && (
-                      <Badge variant="outline" className="border-yellow-500 text-yellow-500 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {cleaningStats.majorIssues} majeur{cleaningStats.majorIssues > 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                    {cleaningStats.minorIssues > 0 && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        {cleaningStats.minorIssues} mineur{cleaningStats.minorIssues > 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
             {/* Summary */}
             <Card>
@@ -1653,6 +1676,8 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+            </Tabs>
           </motion.div>
         )}
       </AnimatePresence>
