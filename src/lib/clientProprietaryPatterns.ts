@@ -1288,9 +1288,8 @@ const useIsMobile = () => {
 
   // ========== PASS 12: Replace proprietary AI services with open-source alternatives ==========
   // OpenAI → Ollama
-  const openAIImportPattern = /import\s+OpenAI\s+from\s*['"]openai['"];?/g;
-  if (openAIImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(openAIImportPattern, 
+  if (/import\s+OpenAI\s+from\s*['"]openai['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s+OpenAI\s+from\s*['"]openai['"];?/g, 
       `// INOPAY: OpenAI remplacé par Ollama (auto-hébergé)
 const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_URL || 'http://localhost:11434';
 
@@ -1306,23 +1305,20 @@ async function createChatCompletion(messages: Array<{role: string; content: stri
   }
   
   // Replace new OpenAI({ ... }) instantiation
-  const newOpenAIPattern = /new\s+OpenAI\s*\(\s*\{[^}]*\}\s*\)/g;
-  if (newOpenAIPattern.test(cleaned)) {
-    cleaned = cleaned.replace(newOpenAIPattern, '/* INOPAY: Ollama client - voir createChatCompletion() */');
+  if (/new\s+OpenAI\s*\(\s*\{[^}]*\}\s*\)/.test(cleaned)) {
+    cleaned = cleaned.replace(/new\s+OpenAI\s*\(\s*\{[^}]*\}\s*\)/g, '/* INOPAY: Ollama client - voir createChatCompletion() */');
     changes.push('Instanciation OpenAI supprimée');
   }
   
   // Replace openai.chat.completions.create calls
-  const openAICallPattern = /openai\.chat\.completions\.create\s*\(/g;
-  if (openAICallPattern.test(cleaned)) {
-    cleaned = cleaned.replace(openAICallPattern, 'createChatCompletion(');
+  if (/openai\.chat\.completions\.create\s*\(/.test(cleaned)) {
+    cleaned = cleaned.replace(/openai\.chat\.completions\.create\s*\(/g, 'createChatCompletion(');
     changes.push('Appels OpenAI remplacés par Ollama');
   }
   
   // Anthropic → Ollama + Llama 3.1
-  const anthropicImportPattern = /import\s+Anthropic\s+from\s*['"]@anthropic-ai\/sdk['"];?/g;
-  if (anthropicImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(anthropicImportPattern,
+  if (/import\s+Anthropic\s+from\s*['"]@anthropic-ai\/sdk['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s+Anthropic\s+from\s*['"]@anthropic-ai\/sdk['"];?/g,
       `// INOPAY: Anthropic (Claude) remplacé par Ollama + Llama 3.1 (auto-hébergé)
 const OLLAMA_BASE_URL = import.meta.env.VITE_OLLAMA_URL || 'http://localhost:11434';
 
@@ -1339,23 +1335,20 @@ async function createMessage(messages: Array<{role: string; content: string}>, m
   }
   
   // Replace new Anthropic({ ... }) instantiation
-  const newAnthropicPattern = /new\s+Anthropic\s*\(\s*\{[^}]*\}\s*\)/g;
-  if (newAnthropicPattern.test(cleaned)) {
-    cleaned = cleaned.replace(newAnthropicPattern, '/* INOPAY: Ollama client - voir createMessage() */');
+  if (/new\s+Anthropic\s*\(\s*\{[^}]*\}\s*\)/.test(cleaned)) {
+    cleaned = cleaned.replace(/new\s+Anthropic\s*\(\s*\{[^}]*\}\s*\)/g, '/* INOPAY: Ollama client - voir createMessage() */');
     changes.push('Instanciation Anthropic supprimée');
   }
   
   // Replace anthropic.messages.create calls
-  const anthropicCallPattern = /anthropic\.messages\.create\s*\(/g;
-  if (anthropicCallPattern.test(cleaned)) {
-    cleaned = cleaned.replace(anthropicCallPattern, 'createMessage(');
+  if (/anthropic\.messages\.create\s*\(/.test(cleaned)) {
+    cleaned = cleaned.replace(/anthropic\.messages\.create\s*\(/g, 'createMessage(');
     changes.push('Appels Anthropic remplacés par Ollama');
   }
   
   // Pinecone → pgvector (TODO comment)
-  const pineconeImportPattern = /import\s*{\s*[^}]*\s*}\s*from\s*['"]@pinecone-database\/pinecone['"];?/g;
-  if (pineconeImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(pineconeImportPattern,
+  if (/import\s*{\s*[^}]*\s*}\s*from\s*['"]@pinecone-database\/pinecone['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s*{\s*[^}]*\s*}\s*from\s*['"]@pinecone-database\/pinecone['"];?/g,
       `// INOPAY: TODO - Remplacer Pinecone par PostgreSQL + pgvector
 // Installation: CREATE EXTENSION vector;
 // Usage: SELECT * FROM items ORDER BY embedding <=> $1 LIMIT 10;
@@ -1364,9 +1357,8 @@ async function createMessage(messages: Array<{role: string; content: string}>, m
   }
   
   // Clerk → Supabase Auth
-  const clerkImportPattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]@clerk\/react['"];?/g;
-  if (clerkImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(clerkImportPattern,
+  if (/import\s*{\s*([^}]*)\s*}\s*from\s*['"]@clerk\/react['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s*{\s*([^}]*)\s*}\s*from\s*['"]@clerk\/react['"];?/g,
       `// INOPAY: Clerk remplacé par Supabase Auth (auto-hébergé)
 import { createClient } from '@supabase/supabase-js';
 
@@ -1384,9 +1376,8 @@ const supabase = createClient(
   }
   
   // Auth0 → Supabase Auth
-  const auth0ImportPattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]@auth0\/auth0-react['"];?/g;
-  if (auth0ImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(auth0ImportPattern,
+  if (/import\s*{\s*([^}]*)\s*}\s*from\s*['"]@auth0\/auth0-react['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s*{\s*([^}]*)\s*}\s*from\s*['"]@auth0\/auth0-react['"];?/g,
       `// INOPAY: Auth0 remplacé par Supabase Auth (auto-hébergé)
 import { createClient } from '@supabase/supabase-js';
 
@@ -1403,9 +1394,8 @@ const supabase = createClient(
   }
   
   // Algolia → Meilisearch
-  const algoliaImportPattern = /import\s+algoliasearch\s+from\s*['"]algoliasearch['"];?/g;
-  if (algoliaImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(algoliaImportPattern,
+  if (/import\s+algoliasearch\s+from\s*['"]algoliasearch['"];?/.test(cleaned)) {
+    cleaned = cleaned.replace(/import\s+algoliasearch\s+from\s*['"]algoliasearch['"];?/g,
       `// INOPAY: Algolia remplacé par Meilisearch (auto-hébergé)
 import { MeiliSearch } from 'meilisearch';
 
@@ -1414,6 +1404,197 @@ const searchClient = new MeiliSearch({
   apiKey: import.meta.env.VITE_MEILISEARCH_KEY || ''
 });`);
     changes.push('Algolia remplacé par Meilisearch');
+  }
+
+  // ========== PASS 13: Replace cloud services with self-hosted alternatives ==========
+  
+  // Firebase → PocketBase
+  const firebaseAppPattern = /import\s*{\s*initializeApp\s*}\s*from\s*['"]firebase\/app['"];?/g;
+  if (firebaseAppPattern.test(cleaned)) {
+    cleaned = cleaned.replace(firebaseAppPattern,
+      `// INOPAY: Firebase remplacé par PocketBase (auto-hébergé)
+import PocketBase from 'pocketbase';
+
+const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL || 'http://localhost:8090');`);
+    changes.push('Firebase App remplacé par PocketBase');
+  }
+  
+  // Firebase Auth
+  const firebaseAuthPattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]firebase\/auth['"];?/g;
+  if (firebaseAuthPattern.test(cleaned)) {
+    cleaned = cleaned.replace(firebaseAuthPattern,
+      `// INOPAY: Firebase Auth remplacé par PocketBase Auth
+// Migration:
+// signInWithEmailAndPassword → pb.collection('users').authWithPassword(email, password)
+// createUserWithEmailAndPassword → pb.collection('users').create({ email, password })
+// signOut → pb.authStore.clear()`);
+    changes.push('Firebase Auth remplacé par PocketBase Auth');
+  }
+  
+  // Firebase Firestore
+  const firestorePattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]firebase\/firestore['"];?/g;
+  if (firestorePattern.test(cleaned)) {
+    cleaned = cleaned.replace(firestorePattern,
+      `// INOPAY: Firestore remplacé par PocketBase Collections
+// Migration:
+// collection(db, 'users') → pb.collection('users')
+// addDoc → pb.collection('x').create(data)
+// getDocs → pb.collection('x').getList()
+// doc + updateDoc → pb.collection('x').update(id, data)
+// doc + deleteDoc → pb.collection('x').delete(id)`);
+    changes.push('Firestore remplacé par PocketBase Collections');
+  }
+  
+  // Firebase Storage
+  const firebaseStoragePattern = /import\s*{\s*([^}]*)\s*}\s*from\s*['"]firebase\/storage['"];?/g;
+  if (firebaseStoragePattern.test(cleaned)) {
+    cleaned = cleaned.replace(firebaseStoragePattern,
+      `// INOPAY: Firebase Storage remplacé par MinIO
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+  endpoint: import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000',
+  region: 'us-east-1',
+  credentials: {
+    accessKeyId: import.meta.env.VITE_MINIO_ACCESS_KEY || 'minioadmin',
+    secretAccessKey: import.meta.env.VITE_MINIO_SECRET_KEY || 'minioadmin',
+  },
+  forcePathStyle: true,
+});`);
+    changes.push('Firebase Storage remplacé par MinIO');
+  }
+  
+  // AWS Lambda references → Docker containers
+  const lambdaPattern = /import\s*{\s*([^}]*LambdaClient[^}]*)\s*}\s*from\s*['"]@aws-sdk\/client-lambda['"];?/g;
+  if (lambdaPattern.test(cleaned)) {
+    cleaned = cleaned.replace(lambdaPattern,
+      `// INOPAY: AWS Lambda remplacé par Docker containers
+// Déployez vos fonctions comme containers Docker:
+// 1. Créer un Dockerfile pour chaque fonction
+// 2. Déployer sur votre VPS avec Docker Compose
+// 3. Exposer via un reverse proxy (Caddy/Nginx)
+// Voir: docker-compose.yml généré par Inopay`);
+    changes.push('AWS Lambda → Docker containers (TODO)');
+  }
+  
+  // AWS S3 → MinIO
+  const s3Pattern = /import\s*{\s*([^}]*S3Client[^}]*)\s*}\s*from\s*['"]@aws-sdk\/client-s3['"];?/g;
+  const s3Match = cleaned.match(s3Pattern);
+  if (s3Match && !cleaned.includes('VITE_MINIO_ENDPOINT')) {
+    // Add MinIO configuration comment
+    cleaned = cleaned.replace(s3Pattern,
+      `// INOPAY: S3 → MinIO (compatible S3)
+// Configurez le endpoint vers MinIO:
+import { $1 } from '@aws-sdk/client-s3';
+
+// Ajoutez ces options au client S3:
+// endpoint: import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000',
+// forcePathStyle: true,`);
+    changes.push('AWS S3 → MinIO (configuration)');
+  }
+  
+  // Pusher → Soketi
+  const pusherPattern = /new\s+Pusher\s*\(\s*['"][^'"]+['"]\s*,\s*\{([^}]*)\}\s*\)/g;
+  if (pusherPattern.test(cleaned)) {
+    cleaned = cleaned.replace(pusherPattern,
+      `new Pusher(import.meta.env.VITE_PUSHER_KEY || 'app-key', {
+  wsHost: import.meta.env.VITE_SOKETI_HOST || 'localhost',
+  wsPort: parseInt(import.meta.env.VITE_SOKETI_PORT || '6001'),
+  forceTLS: false,
+  disableStats: true,
+  enabledTransports: ['ws', 'wss'],
+  cluster: 'mt1' // INOPAY: Soketi - Pusher auto-hébergé
+})`);
+    changes.push('Pusher configuré pour Soketi');
+  }
+  
+  // SendGrid → Nodemailer
+  const sendgridPattern = /import\s+sgMail\s+from\s*['"]@sendgrid\/mail['"];?/g;
+  if (sendgridPattern.test(cleaned)) {
+    cleaned = cleaned.replace(sendgridPattern,
+      `// INOPAY: SendGrid remplacé par Nodemailer SMTP
+import nodemailer from 'nodemailer';
+
+const transporter = nodemailer.createTransport({
+  host: import.meta.env.SMTP_HOST || 'localhost',
+  port: parseInt(import.meta.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: import.meta.env.SMTP_USER,
+    pass: import.meta.env.SMTP_PASS,
+  },
+});
+
+// Usage: await transporter.sendMail({ from, to, subject, html })`);
+    changes.push('SendGrid remplacé par Nodemailer SMTP');
+  }
+  
+  // Resend → Nodemailer
+  const resendPattern = /import\s*{\s*Resend\s*}\s*from\s*['"]resend['"];?/g;
+  if (resendPattern.test(cleaned)) {
+    cleaned = cleaned.replace(resendPattern,
+      `// INOPAY: Resend remplacé par Nodemailer SMTP
+import nodemailer from 'nodemailer';
+
+const transporter = nodemailer.createTransport({
+  host: import.meta.env.SMTP_HOST || 'localhost',
+  port: parseInt(import.meta.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: import.meta.env.SMTP_USER,
+    pass: import.meta.env.SMTP_PASS,
+  },
+});`);
+    changes.push('Resend remplacé par Nodemailer SMTP');
+  }
+  
+  // Cloudinary → MinIO + Sharp
+  const cloudinaryPattern = /import\s*{\s*v2\s+as\s+cloudinary\s*}\s*from\s*['"]cloudinary['"];?/g;
+  if (cloudinaryPattern.test(cleaned)) {
+    cleaned = cleaned.replace(cloudinaryPattern,
+      `// INOPAY: Cloudinary remplacé par MinIO + Sharp
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
+
+const s3 = new S3Client({
+  endpoint: import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000',
+  region: 'us-east-1',
+  credentials: {
+    accessKeyId: import.meta.env.VITE_MINIO_ACCESS_KEY || '',
+    secretAccessKey: import.meta.env.VITE_MINIO_SECRET_KEY || '',
+  },
+  forcePathStyle: true,
+});
+
+// Pour les transformations d'images, utilisez Sharp côté serveur:
+// const optimized = await sharp(buffer).resize(800).webp().toBuffer();`);
+    changes.push('Cloudinary remplacé par MinIO + Sharp');
+  }
+  
+  // Stripe → (note: keep but add self-hosted alternative note)
+  const stripePattern = /import\s+Stripe\s+from\s*['"]stripe['"];?/g;
+  if (stripePattern.test(cleaned)) {
+    // Don't replace Stripe but add a comment about alternatives
+    cleaned = cleaned.replace(stripePattern,
+      `import Stripe from 'stripe';
+// INOPAY: Stripe conservé - Alternatives auto-hébergées possibles:
+// - BTCPay Server (Bitcoin/Lightning)
+// - Kill Bill (facturation open-source)
+// - LemonSqueezy (moins de frais)`);
+    changes.push('Note ajoutée: alternatives à Stripe');
+  }
+  
+  // Twilio → Plivo/VoIP self-hosted
+  const twilioPattern = /import\s+twilio\s+from\s*['"]twilio['"];?/g;
+  if (twilioPattern.test(cleaned)) {
+    cleaned = cleaned.replace(twilioPattern,
+      `// INOPAY: Twilio - considérez des alternatives
+// Alternatives auto-hébergées:
+// - FreeSWITCH pour VoIP
+// - Plivo (moins cher)
+// - SMS via passerelle SMTP-to-SMS
+import twilio from 'twilio'; // Conservé car pas d'alternative directe simple`);
+    changes.push('Note ajoutée: alternatives à Twilio');
   }
 
   // ========== FINAL: Clean up excessive whitespace and empty imports ==========
