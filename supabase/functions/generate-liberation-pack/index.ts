@@ -4288,8 +4288,373 @@ supabase/functions/{name}/index.ts → backend/src/routes/{name}.ts
 }
 
 // ============================================
-// MAIN HANDLER
+// COMPLETE LIBERATION GUIDE GENERATORS
 // ============================================
+
+function generateCompleteLiberationGuideHTML(
+  projectName: string,
+  hasBackend: boolean,
+  hasDatabase: boolean,
+  hasAuth: boolean,
+  envVars: string[],
+  backendRoutes: string[],
+  webhooks: Array<{ provider: string; endpoint: string }>,
+  schemaSQL: string
+): string {
+  const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 Guide Complet de Libération - ${projectName}</title>
+  <style>
+    :root { --bg: #0f172a; --card: #1e293b; --accent: #10b981; --text: #f8fafc; --muted: #94a3b8; --border: #475569; --warning: #f59e0b; --info: #3b82f6; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, var(--card), var(--bg)); border-bottom: 2px solid var(--accent); margin-bottom: 30px; }
+    .header h1 { font-size: 2.2rem; background: linear-gradient(90deg, var(--accent), var(--info)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .progress-bar { position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: var(--card); z-index: 1000; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--info)); width: 0%; transition: width 0.3s; }
+    .nav { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px; }
+    .nav-btn { padding: 10px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+    .nav-btn:hover, .nav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .nav-btn.done { background: transparent; border-color: var(--accent); color: var(--accent); }
+    .card { background: var(--card); border-radius: 12px; padding: 25px; margin-bottom: 20px; border: 1px solid var(--border); }
+    .card h2 { font-size: 1.4rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .card h3 { font-size: 1.1rem; margin: 20px 0 15px; color: var(--accent); }
+    .step { background: var(--bg); border-radius: 8px; padding: 20px; margin-bottom: 15px; border-left: 4px solid var(--border); }
+    .step.done { border-left-color: var(--accent); }
+    .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .step-num { width: 28px; height: 28px; background: var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem; }
+    .step.done .step-num { background: var(--accent); }
+    .code { background: #0d1117; border-radius: 6px; padding: 12px 15px; margin: 12px 0; position: relative; font-family: Monaco, Consolas, monospace; font-size: 0.9rem; overflow-x: auto; }
+    .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--card); border: none; color: var(--muted); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+    .copy-btn:hover { background: var(--accent); color: white; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+    .check-item input { width: 18px; height: 18px; accent-color: var(--accent); margin-top: 2px; }
+    .check-item.checked { border: 1px solid var(--accent); background: rgba(16, 185, 129, 0.1); }
+    .info-box { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--info); border-radius: 8px; padding: 15px; margin: 15px 0; }
+    .warning-box { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 15px; margin: 15px 0; }
+    .success-box { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); border-radius: 8px; padding: 15px; margin: 15px 0; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+    .tab { padding: 10px 18px; background: transparent; border: none; color: var(--muted); cursor: pointer; border-radius: 6px 6px 0 0; }
+    .tab.active { background: var(--bg); color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .table th, .table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    .table th { background: var(--bg); font-weight: 600; }
+    .table code { background: #0d1117; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+    .ascii { font-family: monospace; font-size: 0.8rem; background: #0d1117; padding: 15px; border-radius: 8px; white-space: pre; overflow-x: auto; color: #7ee787; }
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .actions { display: flex; justify-content: space-between; margin-top: 25px; }
+    @media (max-width: 768px) { .nav { flex-direction: column; } .actions { flex-direction: column; gap: 10px; } }
+  </style>
+</head>
+<body>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <header class="header">
+    <h1>🚀 Guide de Libération Complet</h1>
+    <p style="color: var(--muted); margin-top: 10px;">${projectName} - Coolify + GitHub + Supabase Self-Hosted</p>
+  </header>
+  <div class="container">
+    <nav class="nav">
+      <button class="nav-btn active" data-section="1" onclick="goTo(1)">1. Prérequis</button>
+      <button class="nav-btn" data-section="2" onclick="goTo(2)">2. Transfert</button>
+      <button class="nav-btn" data-section="3" onclick="goTo(3)">3. GitHub</button>
+      <button class="nav-btn" data-section="4" onclick="goTo(4)">4. Coolify</button>
+      <button class="nav-btn" data-section="5" onclick="goTo(5)">5. Supabase SH</button>
+      <button class="nav-btn" data-section="6" onclick="goTo(6)">6. Base de Données</button>
+      <button class="nav-btn" data-section="7" onclick="goTo(7)">7. Domaine</button>
+      <button class="nav-btn" data-section="8" onclick="goTo(8)">8. Vérification</button>
+    </nav>
+    
+    <section class="section active" id="s1">
+      <div class="card">
+        <h2>✓ Étape 1 : Vérification des Prérequis</h2>
+        <h3>🖥️ Serveur VPS</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><div><strong>VPS avec accès root</strong><br><small style="color: var(--muted)">Min: 2 vCPU, 4GB RAM, 40GB SSD</small></div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><div><strong>Coolify installé</strong><br><small style="color: var(--muted)">curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash</small></div></div>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><div><strong>Nom de domaine</strong> (recommandé)</div></div>
+        <h3>🔐 Test SSH</h3>
+        <div class="step"><div class="step-header"><span class="step-num">1</span><span>Testez connexion</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>ssh root@VOTRE_IP_VPS</div></div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Vérifiez Docker</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>docker --version && docker compose version</div></div>
+        <div class="actions"><span></span><button class="btn btn-primary" onclick="complete(1); goTo(2);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s2">
+      <div class="card">
+        <h2>📁 Étape 2 : Transfert des Fichiers</h2>
+        <div class="tabs">
+          <button class="tab active" onclick="showTab(this, 'github')">🐙 Via GitHub</button>
+          <button class="tab" onclick="showTab(this, 'scp')">💻 Via SCP</button>
+        </div>
+        <div class="tab-content active" id="tab-github">
+          <div class="step"><div class="step-header"><span class="step-num">1</span><span>Créez dépôt GitHub</span></div><p><a href="https://github.com/new" target="_blank" style="color: var(--accent)">github.com/new</a> → ${safeName} → Private → Create</p></div>
+          <div class="step"><div class="step-header"><span class="step-num">2</span><span>Push vers GitHub</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>cd ${safeName}
+git init && git add . && git commit -m "🚀 Liberation"
+git remote add origin https://github.com/USER/${safeName}.git
+git push -u origin main</div></div>
+        </div>
+        <div class="tab-content" id="tab-scp"><div class="step"><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>scp -r ${safeName} root@VOTRE_IP:/opt/apps/</div></div></div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(1)">← Retour</button><button class="btn btn-primary" onclick="complete(2); goTo(3);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s3">
+      <div class="card">
+        <h2>🐙 Étape 3 : Connexion GitHub à Coolify</h2>
+        <div class="step"><div class="step-header"><span class="step-num">1</span><span>Accédez à Coolify</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>https://VOTRE_IP:8000</div></div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Connectez GitHub</span></div><div class="ascii">COOLIFY → Settings → Git Sources → [+ Add GitHub App]</div></div>
+        <div class="info-box">💡 Alternative: Personal Access Token dans GitHub Settings → Tokens</div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(2)">← Retour</button><button class="btn btn-primary" onclick="complete(3); goTo(4);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s4">
+      <div class="card">
+        <h2>🚀 Étape 4 : Déploiement Coolify</h2>
+        <div class="step"><div class="step-header"><span class="step-num">1</span><span>Nouveau projet</span></div><p>Dashboard → + New Project → ${projectName}</p></div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Ajoutez l'app</span></div><p>+ New Resource → Docker Compose → GitHub → Sélectionnez repo</p></div>
+        <div class="step"><div class="step-header"><span class="step-num">3</span><span>Variables d'environnement</span></div>
+          <table class="table"><tr><th>Variable</th><th>Description</th></tr>
+${envVars.slice(0, 6).map(v => `            <tr><td><code>${v}</code></td><td>À configurer</td></tr>`).join('\n')}
+          </table>
+        </div>
+        <div class="step"><div class="step-header"><span class="step-num">4</span><span>Déployez</span></div><p>Cliquez Deploy et attendez 2-5 min</p></div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(3)">← Retour</button><button class="btn btn-primary" onclick="complete(4); goTo(5);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s5">
+      <div class="card">
+        <h2>🗄️ Étape 5 : Supabase Self-Hosted</h2>
+        <div class="step"><div class="step-header"><span class="step-num">1</span><span>Téléchargez Supabase</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>cd /opt && git clone --depth 1 https://github.com/supabase/supabase
+cd supabase/docker && cp .env.example .env</div></div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Générez secrets</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>openssl rand -base64 32  # JWT_SECRET</div></div>
+        <div class="step"><div class="step-header"><span class="step-num">3</span><span>Démarrez</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>nano .env  # Éditez
+docker compose up -d && docker compose ps</div></div>
+        <div class="step"><div class="step-header"><span class="step-num">4</span><span>Accédez à Studio</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>http://VOTRE_IP:3000</div></div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(4)">← Retour</button><button class="btn btn-primary" onclick="complete(5); goTo(6);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s6">
+      <div class="card">
+        <h2>💾 Étape 6 : Migration Base de Données</h2>
+        ${hasDatabase ? `<div class="step"><div class="step-header"><span class="step-num">1</span><span>Schéma SQL</span></div><p><code>database/migrations/001_schema.sql</code></p></div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Via Studio</span></div><p>SQL Editor → New Query → Collez 001_schema.sql → Run</p></div>
+        <div class="step"><div class="step-header"><span class="step-num">3</span><span>Ou via CLI</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>psql "postgresql://postgres:PASS@IP:5432/postgres" -f 001_schema.sql</div></div>` : '<div class="info-box">ℹ️ Pas de migration de base nécessaire.</div>'}
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(5)">← Retour</button><button class="btn btn-primary" onclick="complete(6); goTo(7);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s7">
+      <div class="card">
+        <h2>🌐 Étape 7 : Configuration Domaine</h2>
+        <div class="step"><div class="step-header"><span class="step-num">1</span><span>DNS chez registrar</span></div>
+          <table class="table"><tr><th>Type</th><th>Nom</th><th>Valeur</th></tr>
+            <tr><td>A</td><td>@</td><td>IP_VPS</td></tr>
+            <tr><td>A</td><td>www</td><td>IP_VPS</td></tr>
+            <tr><td>A</td><td>api</td><td>IP_VPS</td></tr>
+          </table>
+        </div>
+        <div class="step"><div class="step-header"><span class="step-num">2</span><span>Dans Coolify</span></div><p>Application → Settings → Domains → Ajoutez https://votre-domaine.com</p></div>
+        <div class="step"><div class="step-header"><span class="step-num">3</span><span>Vérifiez</span></div><div class="code"><button class="copy-btn" onclick="copy(this)">📋</button>nslookup votre-domaine.com</div></div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(6)">← Retour</button><button class="btn btn-primary" onclick="complete(7); goTo(8);">Continuer →</button></div>
+      </div>
+    </section>
+    
+    <section class="section" id="s8">
+      <div class="card">
+        <h2>🔍 Étape 8 : Vérification Finale</h2>
+        <h3>📋 Checklist</h3>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><span>Application s'affiche</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><span>Auth fonctionne</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><span>Données sauvegardées</span></div>
+        <div class="check-item" onclick="toggleCheck(this)"><input type="checkbox"><span>SSL actif (cadenas)</span></div>
+        ${webhooks.length > 0 ? `<h3>🔗 Webhooks</h3><table class="table"><tr><th>Service</th><th>URL</th></tr>${webhooks.map(w => `<tr><td>${w.provider}</td><td><code>https://DOMAINE${w.endpoint}</code></td></tr>`).join('')}</table>` : ''}
+        <div id="final" style="display: none;"><div class="success-box" style="text-align: center; padding: 30px;"><h2 style="color: var(--accent);">🎉 Félicitations !</h2><p style="font-size: 1.2rem;">${projectName} est maintenant 100% souverain !</p></div></div>
+        <div class="actions"><button class="btn btn-secondary" onclick="goTo(7)">← Retour</button><button class="btn btn-primary" onclick="complete(8); showFinal();">✅ Terminer</button></div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const state = { completed: new Set(), current: 1 };
+    const saved = localStorage.getItem('lib-${safeName}');
+    if (saved) { const s = JSON.parse(saved); s.completed.forEach(n => state.completed.add(n)); state.current = s.current; }
+    function save() { localStorage.setItem('lib-${safeName}', JSON.stringify({ completed: [...state.completed], current: state.current })); }
+    function goTo(n) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('s'+n).classList.add('active'); document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.querySelector('[data-section="'+n+'"]').classList.add('active'); state.current = n; save(); updateProgress(); }
+    function complete(n) { state.completed.add(n); document.querySelector('[data-section="'+n+'"]').classList.add('done'); save(); updateProgress(); }
+    function updateProgress() { document.getElementById('progress').style.width = ((state.completed.size / 8) * 100) + '%'; }
+    function toggleCheck(el) { const cb = el.querySelector('input'); cb.checked = !cb.checked; el.classList.toggle('checked', cb.checked); }
+    function showTab(btn, id) { btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); const parent = btn.closest('.card'); parent.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active')); parent.querySelector('#tab-'+id).classList.add('active'); }
+    function copy(btn) { const code = btn.parentElement.textContent.replace('📋', '').trim(); navigator.clipboard.writeText(code); btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1500); }
+    function showFinal() { document.getElementById('final').style.display = 'block'; document.getElementById('final').scrollIntoView({ behavior: 'smooth' }); }
+    state.completed.forEach(n => document.querySelector('[data-section="'+n+'"]').classList.add('done'));
+    goTo(state.current);
+  </script>
+</body>
+</html>`;
+}
+
+function generateSetupCoolifyScript(projectName: string, envVars: string[]): string {
+  const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return `#!/bin/bash
+# Setup Coolify - ${projectName}
+set -e
+
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║     🚀 Configuration Coolify - ${projectName}              ║"
+echo "╚════════════════════════════════════════════════════════╝"
+
+command -v curl &> /dev/null || { echo "❌ curl requis"; exit 1; }
+command -v docker &> /dev/null || { echo "❌ Docker requis"; exit 1; }
+echo "✅ Prérequis OK"
+
+read -p "URL Coolify (ex: https://coolify.domaine.com): " COOLIFY_URL
+read -p "Token API Coolify: " COOLIFY_TOKEN
+read -p "URL dépôt GitHub: " GITHUB_REPO
+
+echo "🚀 Création du projet..."
+curl -s -X POST "\${COOLIFY_URL}/api/v1/projects" \\
+    -H "Authorization: Bearer \${COOLIFY_TOKEN}" \\
+    -H "Content-Type: application/json" \\
+    -d '{"name": "${safeName}", "description": "Libéré par InoPay"}'
+
+echo "✅ Projet créé! Configurez les env vars dans Coolify."
+`;
+}
+
+function generateImportSupabaseSchemaScript(projectName: string): string {
+  return `#!/bin/bash
+# Import Schema Supabase - ${projectName}
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+SCHEMA_FILE="\${SCRIPT_DIR}/../database/migrations/001_schema.sql"
+
+echo "╔════════════════════════════════════════════════════════╗"
+echo "║     💾 Import Schéma Supabase - ${projectName}             ║"
+echo "╚════════════════════════════════════════════════════════╝"
+
+[ ! -f "$SCHEMA_FILE" ] && { echo "❌ Fichier non trouvé: $SCHEMA_FILE"; exit 1; }
+echo "✅ Fichier trouvé"
+
+read -p "Hôte PostgreSQL [localhost]: " DB_HOST; DB_HOST=\${DB_HOST:-localhost}
+read -p "Port [5432]: " DB_PORT; DB_PORT=\${DB_PORT:-5432}
+read -p "Base [postgres]: " DB_NAME; DB_NAME=\${DB_NAME:-postgres}
+read -p "Utilisateur [postgres]: " DB_USER; DB_USER=\${DB_USER:-postgres}
+read -s -p "Mot de passe: " DB_PASSWORD; echo ""
+
+echo "🔌 Test connexion..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1 || { echo "❌ Connexion échouée"; exit 1; }
+echo "✅ Connexion OK"
+
+read -p "Importer le schéma? (oui/non): " CONFIRM
+[ "$CONFIRM" != "oui" ] && { echo "Annulé"; exit 0; }
+
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$SCHEMA_FILE"
+echo "✅ Schéma importé!"
+
+echo "📋 Tables créées:"
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "\\dt public.*"
+`;
+}
+
+function generateCoolifyStepByStepGuide(projectName: string): string {
+  const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return `# 🚀 Guide Coolify Pas-à-Pas - ${projectName}
+
+## 📋 Table des matières
+1. [Prérequis](#prérequis)
+2. [Installation Coolify](#installation-coolify)
+3. [Configuration GitHub](#configuration-github)
+4. [Déploiement](#déploiement)
+5. [Troubleshooting](#troubleshooting)
+
+---
+
+## Prérequis
+
+### Serveur VPS
+- **Minimum**: 2 vCPU, 4GB RAM, 40GB SSD
+- **OS**: Ubuntu 22.04 LTS
+
+\`\`\`bash
+ssh root@VOTRE_IP
+free -h && df -h
+\`\`\`
+
+---
+
+## Installation Coolify
+
+\`\`\`bash
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+\`\`\`
+
+Accès: \`https://VOTRE_IP:8000\`
+
+---
+
+## Configuration GitHub
+
+\`\`\`bash
+cd ${safeName}
+git init && git add . && git commit -m "🚀 Liberation"
+git remote add origin https://github.com/USER/${safeName}.git
+git push -u origin main
+\`\`\`
+
+Dans Coolify: Settings → Git Sources → + Add GitHub App
+
+---
+
+## Déploiement
+
+1. **New Project** → Nom: \`${projectName}\`
+2. **+ New Resource** → Docker Compose → GitHub
+3. Configurez les variables d'environnement
+4. Cliquez **Deploy**
+
+---
+
+## Troubleshooting
+
+### Build qui échoue
+\`\`\`bash
+echo "node_modules/" >> .gitignore
+git rm -r --cached node_modules
+git commit -m "Fix" && git push
+\`\`\`
+
+### SSL ne fonctionne pas
+- Vérifiez DNS: \`nslookup domaine.com\`
+- Ports ouverts: \`ufw allow 80 && ufw allow 443\`
+
+### Container restart en boucle
+- Vérifiez les logs dans Coolify
+- Testez le Dockerfile localement
+
+---
+
+*Généré par InoPay Liberation Pack*
+`;
+}
+
+// ============================================
+// MAIN HANDLER
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -4786,6 +5151,30 @@ ${envVarsArray
       webhooksList,
       envVarsArray
     ));
+
+    // ==========================================
+    // 6. GUIDE COMPLET DE LIBÉRATION (Coolify + GitHub + Supabase SH)
+    // ==========================================
+    const docsFolder = zip.folder('docs')!;
+    
+    // Guide HTML interactif ultra-détaillé
+    zip.file('COMPLETE_LIBERATION_GUIDE.html', generateCompleteLiberationGuideHTML(
+      projectName,
+      includeBackend && edgeFunctions?.length > 0,
+      includeDatabase,
+      true, // hasAuth
+      envVarsArray,
+      backendRouteNames,
+      webhooksList.map((w: { name: string; type: string }) => ({ provider: w.type, endpoint: `/api/${w.name.replace(/-/g, '_')}` })),
+      extractedSchema.sql
+    ));
+
+    // Scripts d'automatisation
+    scriptsFolder.file('setup-coolify.sh', generateSetupCoolifyScript(projectName, envVarsArray));
+    scriptsFolder.file('import-supabase-schema.sh', generateImportSupabaseSchemaScript(projectName));
+
+    // Guide Markdown pour Coolify
+    docsFolder.file('COOLIFY_STEP_BY_STEP.md', generateCoolifyStepByStepGuide(projectName));
 
     // Sovereignty report
     zip.file('SOVEREIGNTY_REPORT.md', generateSovereigntyReport(
