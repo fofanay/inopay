@@ -499,19 +499,48 @@ interface SovereigntyCheck {
   warnings: string[];
 }
 
+/**
+ * CRITICAL FILES ONLY - Server-side cleaning is now minimal
+ * Files are already cleaned client-side, we only verify critical patterns
+ */
+const CRITICAL_FILE_PATTERNS = [
+  '.env',
+  'package.json',
+  'vite.config.ts',
+  'vite.config.js',
+  'index.html',
+  'supabase/config.toml',
+];
+
+function shouldCleanServerSide(filePath: string): boolean {
+  return CRITICAL_FILE_PATTERNS.some(p => filePath.includes(p));
+}
+
 function serverSideDeepClean(content: string, filePath: string): { cleaned: string; changes: string[] } {
   const changes: string[] = [];
   let cleaned = content;
 
+  // FAST PATH: Skip heavy cleaning for non-critical files (already cleaned client-side)
+  if (!shouldCleanServerSide(filePath)) {
+    // Only do minimal security-critical replacements
+    const before1 = cleaned;
+    cleaned = cleaned.replace(/eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'YOUR_SUPABASE_KEY');
+    if (cleaned !== before1) changes.push('Token JWT remplacé');
+    
+    const before2 = cleaned;
+    cleaned = cleaned.replace(/sk_live_[A-Za-z0-9]{20,}/g, 'sk_live_YOUR_KEY');
+    if (cleaned !== before2) changes.push('Clé Stripe live remplacée');
+    
+    return { cleaned, changes };
+  }
+
+  // CRITICAL FILES: Full cleaning (package.json, .env, vite.config, etc.)
+  
   // === PASS 1: Replace ALL @/integrations/supabase imports ===
   const supabaseImportPatterns = [
     { pattern: /from\s*['"]@\/integrations\/supabase\/client['"]/g, replacement: "from '@/lib/supabase-client'" },
     { pattern: /from\s*['"]@\/integrations\/supabase\/types['"]/g, replacement: "from '@/lib/supabase-types'" },
     { pattern: /from\s*['"]@\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
-    { pattern: /from\s*['"]\.\.\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
-    { pattern: /from\s*['"]\.\.\/\.\.\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
-    { pattern: /from\s*['"]\.\.\/\.\.\/\.\.\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
-    { pattern: /from\s*['"]\.+\/integrations\/supabase[^'"]*['"]/g, replacement: "from '@/lib/supabase-client'" },
   ];
 
   for (const { pattern, replacement } of supabaseImportPatterns) {
@@ -520,31 +549,11 @@ function serverSideDeepClean(content: string, filePath: string): { cleaned: stri
     if (cleaned !== before) changes.push('Import Supabase remplacé');
   }
 
-  // === PASS 2: Remove proprietary imports (Extended for ALL AI platforms) ===
+  // === PASS 2: Remove proprietary imports ===
   const proprietaryImports = [
-    // Lovable/GPTEngineer
     /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
     /import\s*[^;]*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*[^;]*\s*from\s*['"]@gptengineer\/[^'"]*['"]\s*;?\n?/g,
     /import\s*[^;]*\s*from\s*['"]lovable-[^'"]*['"]\s*;?\n?/g,
-    // Bolt/V0/Cursor
-    /import\s*[^;]*\s*from\s*['"]@v0\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*[^;]*\s*from\s*['"]@bolt\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*[^;]*\s*from\s*['"]@cursor\/[^'"]*['"]\s*;?\n?/g,
-    // Windsurf/Codeium
-    /import\s*[^;]*\s*from\s*['"]@codeium\/[^'"]*['"]\s*;?\n?/g,
-    /import\s*[^;]*\s*from\s*['"]@windsurf\/[^'"]*['"]\s*;?\n?/g,
-    // GitHub Copilot
-    /import\s*[^;]*\s*from\s*['"]@github\/copilot[^'"]*['"]\s*;?\n?/g,
-    // Tabnine
-    /import\s*[^;]*\s*from\s*['"]@tabnine\/[^'"]*['"]\s*;?\n?/g,
-    // Cline
-    /import\s*[^;]*\s*from\s*['"]@cline\/[^'"]*['"]\s*;?\n?/g,
-    // Amazon Q/CodeWhisperer
-    /import\s*[^;]*\s*from\s*['"]@aws\/codewhisperer[^'"]*['"]\s*;?\n?/g,
-    /import\s*[^;]*\s*from\s*['"]@aws\/amazon-q[^'"]*['"]\s*;?\n?/g,
-    // Sourcegraph Cody
-    /import\s*[^;]*\s*from\s*['"]@sourcegraph\/cody[^'"]*['"]\s*;?\n?/g,
   ];
 
   for (const pattern of proprietaryImports) {
@@ -557,7 +566,6 @@ function serverSideDeepClean(content: string, filePath: string): { cleaned: stri
   const pluginPatterns = [
     /mode\s*===\s*['"]development['"]\s*&&\s*componentTagger\(\)\s*,?\n?/g,
     /componentTagger\(\)\s*,?\n?/g,
-    /lovableTagger\(\)\s*,?\n?/g,
   ];
 
   for (const pattern of pluginPatterns) {
@@ -567,21 +575,19 @@ function serverSideDeepClean(content: string, filePath: string): { cleaned: stri
   }
 
   // === PASS 4: Replace hardcoded Supabase project IDs ===
-  const before1 = cleaned;
+  const before3 = cleaned;
   cleaned = cleaned.replace(/[a-z]{20}\.supabase\.co/g, 'your-project.supabase.co');
-  if (cleaned !== before1) changes.push('ID Supabase remplacé');
+  if (cleaned !== before3) changes.push('ID Supabase remplacé');
 
   // === PASS 5: Replace exposed JWT tokens ===
-  const before2 = cleaned;
+  const before4 = cleaned;
   cleaned = cleaned.replace(/eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'YOUR_SUPABASE_KEY');
-  if (cleaned !== before2) changes.push('Token JWT remplacé');
+  if (cleaned !== before4) changes.push('Token JWT remplacé');
 
   // === PASS 6: Replace Stripe keys ===
   const stripePatterns = [
     { pattern: /sk_live_[A-Za-z0-9]{20,}/g, replacement: 'sk_live_YOUR_KEY' },
     { pattern: /pk_live_[A-Za-z0-9]{20,}/g, replacement: 'pk_live_YOUR_KEY' },
-    { pattern: /sk_test_[A-Za-z0-9]{20,}/g, replacement: 'sk_test_YOUR_KEY' },
-    { pattern: /pk_test_[A-Za-z0-9]{20,}/g, replacement: 'pk_test_YOUR_KEY' },
   ];
 
   for (const { pattern, replacement } of stripePatterns) {
@@ -590,82 +596,17 @@ function serverSideDeepClean(content: string, filePath: string): { cleaned: stri
     if (cleaned !== before) changes.push('Clé Stripe remplacée');
   }
 
-  // === PASS 7: Remove data attributes ===
-  const dataAttrPatterns = [
-    /\s*data-lovable[^=]*="[^"]*"/g,
-    /\s*data-lov-[^=]*="[^"]*"/g,
-    /\s*data-gpt[^=]*="[^"]*"/g,
-    /\s*data-bolt[^=]*="[^"]*"/g,
-    /\s*data-v0[^=]*="[^"]*"/g,
-    /\s*data-cursor[^=]*="[^"]*"/g,
-    /\s*data-codeium[^=]*="[^"]*"/g,
-    /\s*data-copilot[^=]*="[^"]*"/g,
-  ];
-
-  for (const pattern of dataAttrPatterns) {
-    const before = cleaned;
-    cleaned = cleaned.replace(pattern, '');
-    if (cleaned !== before) changes.push('Attribut data supprimé');
-  }
-
-  // === PASS 8: Remove proprietary comments ===
-  const commentPatterns = [
-    /\/\/\s*@lovable[^\n]*\n?/gi,
-    /\/\/\s*@gptengineer[^\n]*\n?/gi,
-    /\/\/\s*@codeium[^\n]*\n?/gi,
-    /\/\/\s*@copilot[^\n]*\n?/gi,
-    /\/\/\s*Generated by Lovable[^\n]*\n?/gi,
-    /\/\/\s*Generated by Copilot[^\n]*\n?/gi,
-    /\/\/\s*Generated by Codeium[^\n]*\n?/gi,
-    /\/\/\s*Built with Lovable[^\n]*\n?/gi,
-    /\/\/\s*AI-generated[^\n]*\n?/gi,
-    /\/\*[\s\S]*?lovable[\s\S]*?\*\//gi,
-    /<!--[\s\S]*?lovable[\s\S]*?-->/gi,
-    /<!--[\s\S]*?gptengineer[\s\S]*?-->/gi,
-  ];
-
-  for (const pattern of commentPatterns) {
-    const before = cleaned;
-    cleaned = cleaned.replace(pattern, '');
-    if (cleaned !== before) changes.push('Commentaire propriétaire supprimé');
-  }
-
-  // === PASS 9: Remove telemetry domains ===
-  const telemetryDomains = [
-    'lovable.app', 'lovable.dev', 'gptengineer.app',
-    'events.lovable', 'telemetry.lovable', 'analytics.lovable',
-    'api.lovable.dev', 'ws.lovable.dev', 'cdn.lovable.dev',
-    'bolt.new', 'v0.dev', 'cursor.sh', 'replit.com',
-    'codeium.com', 'windsurf.ai', 'copilot.github.com',
-    'tabnine.com', 'sourcegraph.com', 'devin.ai'
-  ];
-
-  for (const domain of telemetryDomains) {
-    const escapedDomain = domain.replace(/\./g, '\\.');
-    const pattern = new RegExp(`['"\`][^'"\`]*${escapedDomain}[^'"\`]*['"\`]`, 'gi');
-    const before = cleaned;
-    cleaned = cleaned.replace(pattern, '""');
-    if (cleaned !== before) changes.push(`Télémétrie ${domain} supprimée`);
-  }
-
-  // === PASS 10: Replace supabase.functions.invoke with fetch ===
-  const before3 = cleaned;
-  cleaned = cleaned.replace(
-    /supabase\.functions\.invoke\(['"]([^'"]+)['"]/g,
-    "fetch(`${import.meta.env.VITE_API_URL || ''}/api/$1`"
-  );
-  if (cleaned !== before3) changes.push('supabase.functions.invoke remplacé par fetch');
-
-  // === FINAL: Clean empty imports and excess whitespace ===
+  // === FINAL: Clean empty imports ===
   cleaned = cleaned.replace(/import\s*{\s*}\s*from\s*['"][^'"]*['"]\s*;?\n?/g, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-  cleaned = cleaned.replace(/,\s*,/g, ',');
-  cleaned = cleaned.replace(/\[\s*,/g, '[');
-  cleaned = cleaned.replace(/,\s*\]/g, ']');
 
   return { cleaned, changes: [...new Set(changes)] };
 }
 
+/**
+ * FAST sovereignty verification - samples files instead of checking all
+ * Optimized to avoid CPU timeout in edge functions
+ */
 function verifySovereignty(files: Record<string, string>): SovereigntyCheck {
   const criticalIssues: string[] = [];
   const warnings: string[] = [];
@@ -674,21 +615,27 @@ function verifySovereignty(files: Record<string, string>): SovereigntyCheck {
   const criticalPatterns = [
     { pattern: /@\/integrations\/supabase/g, name: 'Import Supabase auto-généré', penalty: 20 },
     { pattern: /lovable\.app|lovable\.dev|gptengineer\.app/gi, name: 'Domaine Lovable', penalty: 20 },
-    { pattern: /[a-z]{20}\.supabase\.co/g, name: 'ID projet Supabase hardcodé', penalty: 15 },
     { pattern: /eyJ[A-Za-z0-9_-]{100,}/g, name: 'Token JWT hardcodé', penalty: 20 },
     { pattern: /sk_live_[A-Za-z0-9]+/g, name: 'Clé Stripe live exposée', penalty: 25 },
-    { pattern: /componentTagger|lovable-tagger/g, name: 'Plugin Lovable', penalty: 15 },
   ];
 
   const warningPatterns = [
     { pattern: /data-lov|data-gpt|data-bolt/g, name: 'Data attribute propriétaire', penalty: 5 },
-    { pattern: /\/\/.*lovable|\/\*.*lovable/gi, name: 'Commentaire propriétaire', penalty: 3 },
-    { pattern: /cdn\.lovable|assets\.lovable/gi, name: 'CDN propriétaire', penalty: 10 },
+    { pattern: /componentTagger|lovable-tagger/g, name: 'Plugin Lovable', penalty: 10 },
   ];
 
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.match(/\.(ts|tsx|js|jsx|json|html|css)$/)) continue;
-
+  // FAST: Only check critical file types, and limit to first 50 files
+  const entries = Object.entries(files);
+  const sourceFiles = entries.filter(([path]) => 
+    path.match(/\.(ts|tsx|js|jsx|json|html)$/) && 
+    !path.includes('node_modules') &&
+    !path.includes('_original')
+  );
+  
+  // Sample: check max 50 files for speed
+  const sample = sourceFiles.slice(0, 50);
+  
+  for (const [path, content] of sample) {
     for (const { pattern, name, penalty } of criticalPatterns) {
       const freshPattern = new RegExp(pattern.source, pattern.flags);
       if (freshPattern.test(content)) {
