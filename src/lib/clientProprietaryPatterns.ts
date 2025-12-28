@@ -405,6 +405,7 @@ export const TELEMETRY_DOMAINS: string[] = [
   // Lovable / GPT Engineer
   'lovable.app',
   'lovable.dev',
+  'lovableproject.com', // Added: preview domains
   'events.lovable',
   'telemetry.lovable',
   'gptengineer.app',
@@ -1273,6 +1274,7 @@ export function cleanPackageJson(content: string): { cleaned: string; changes: s
 
 /**
  * Clean vite.config.ts from proprietary plugins - EXHAUSTIVE
+ * Now also handles dynamic imports and loadComponentTagger patterns
  */
 export function cleanViteConfig(content: string): { cleaned: string; changes: string[] } {
   const changes: string[] = [];
@@ -1280,7 +1282,7 @@ export function cleanViteConfig(content: string): { cleaned: string; changes: st
   
   const before = cleaned;
   
-  // Remove all proprietary imports
+  // Remove all proprietary imports (static)
   const importPatterns = [
     /import\s*{\s*componentTagger\s*}\s*from\s*['"]lovable-tagger['"]\s*;?\n?/g,
     /import\s*.*\s*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g,
@@ -1293,6 +1295,40 @@ export function cleanViteConfig(content: string): { cleaned: string; changes: st
   for (const pattern of importPatterns) {
     cleaned = cleaned.replace(pattern, '');
   }
+  
+  // === NEW: Remove dynamic imports like import("lovable-tagger") or await import("lovable-tagger") ===
+  const dynamicImportPatterns = [
+    // await import("lovable-tagger")
+    /await\s+import\s*\(\s*['"]lovable-tagger['"]\s*\)/g,
+    // import("lovable-tagger")
+    /import\s*\(\s*['"]lovable-tagger['"]\s*\)/g,
+    // require("lovable-tagger")
+    /require\s*\(\s*['"]lovable-tagger['"]\s*\)/g,
+    // Any dynamic import of @lovable/*
+    /await\s+import\s*\(\s*['"]@lovable\/[^'"]*['"]\s*\)/g,
+    /import\s*\(\s*['"]@lovable\/[^'"]*['"]\s*\)/g,
+    /require\s*\(\s*['"]@lovable\/[^'"]*['"]\s*\)/g,
+  ];
+  
+  for (const pattern of dynamicImportPatterns) {
+    const beforeDyn = cleaned;
+    cleaned = cleaned.replace(pattern, 'null');
+    if (cleaned !== beforeDyn) {
+      changes.push('Import dynamique lovable-tagger supprimé');
+    }
+  }
+  
+  // === NEW: Remove entire loadComponentTagger function if present ===
+  // Pattern: const loadComponentTagger = async () => { ... };
+  const loadTaggerPattern = /const\s+loadComponentTagger\s*=\s*async\s*\(\s*\)\s*(?::\s*Promise<[^>]*>\s*)?\s*=>\s*\{[\s\S]*?\n\s*\};\n?/g;
+  cleaned = cleaned.replace(loadTaggerPattern, '');
+  
+  // Also remove: const tagger = await loadComponentTagger();
+  cleaned = cleaned.replace(/const\s+tagger\s*=\s*await\s+loadComponentTagger\s*\(\s*\)\s*;?\n?/g, '');
+  
+  // Remove tagger() calls in plugins array
+  cleaned = cleaned.replace(/tagger\s*\(\s*\)\s*,?\n?/g, '');
+  cleaned = cleaned.replace(/tagger\s*&&\s*tagger\s*\(\s*\)\s*,?\n?/g, '');
   
   // Remove plugin usages
   const pluginPatterns = [
@@ -1312,6 +1348,9 @@ export function cleanViteConfig(content: string): { cleaned: string; changes: st
   cleaned = cleaned.replace(/\[\s*,/g, '[');
   cleaned = cleaned.replace(/,\s*\]/g, ']');
   cleaned = cleaned.replace(/,\s*\)/g, ')');
+  
+  // Clean up multiple newlines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   
   if (cleaned !== before) {
     changes.push('vite.config.ts nettoyé des plugins propriétaires');
@@ -1589,6 +1628,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 /**
  * Calculate sovereignty score (0-100) - WEIGHTED SYSTEM
+ * FIXED: Now uses contextual detection to avoid false positives
  */
 export function calculateSovereigntyScore(
   originalFiles: Map<string, string>,
@@ -1597,21 +1637,72 @@ export function calculateSovereigntyScore(
   const details: string[] = [];
   let score = 100;
   
+  // Helper: check if a match is in a REAL import statement (not a URL or string)
+  const isRealImport = (content: string, keyword: string): boolean => {
+    // Pattern for real ES6 imports: import ... from "keyword" or import("keyword")
+    const importPatterns = [
+      new RegExp(`import\\s+[^;]*from\\s*['"].*${escapeRegex(keyword)}.*['"]`, 'i'),
+      new RegExp(`import\\s*\\(\\s*['"].*${escapeRegex(keyword)}.*['"]\\s*\\)`, 'i'),
+      new RegExp(`require\\s*\\(\\s*['"].*${escapeRegex(keyword)}.*['"]\\s*\\)`, 'i'),
+    ];
+    return importPatterns.some(p => p.test(content));
+  };
+  
+  // Helper: check if it's a real JS comment (not a URL like https://)
+  const isRealComment = (content: string, keyword: string): boolean => {
+    // Match // followed by keyword, but NOT after : (which would be in a URL)
+    // Also match /* ... keyword ... */ block comments
+    // Also match <!-- ... keyword ... --> HTML comments
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Skip if the line contains https:// or http:// before the keyword
+      if (/https?:\/\/.*lovable/i.test(line)) continue;
+      if (/https?:\/\/.*gptengineer/i.test(line)) continue;
+      
+      // Check for real line comment: starts with // or has // not preceded by :
+      // Exclude URLs by checking that // is not preceded by http: or https:
+      const commentMatch = trimmed.match(/(?<!https?:)\/\/\s*.*$/i);
+      if (commentMatch && commentMatch[0].toLowerCase().includes(keyword.toLowerCase())) {
+        return true;
+      }
+    }
+    // Check block comments
+    if (new RegExp(`\\/\\*[\\s\\S]*?${escapeRegex(keyword)}[\\s\\S]*?\\*\\/`, 'i').test(content)) {
+      return true;
+    }
+    // Check HTML comments
+    if (new RegExp(`<!--[\\s\\S]*?${escapeRegex(keyword)}[\\s\\S]*?-->`, 'i').test(content)) {
+      return true;
+    }
+    return false;
+  };
+  
+  // Helper: escape regex special chars
+  function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  
   // Check for remaining proprietary patterns in cleaned files
   for (const [path, content] of Object.entries(cleanedFiles)) {
+    // Skip lock files and node_modules
+    if (path.includes('node_modules') || path.includes('package-lock') || path.includes('bun.lockb')) continue;
+    
     // CRITICAL: -20 points each
     // Check for remaining @/integrations imports (NOT standard @supabase/supabase-js)
-    if (/@\/integrations\/supabase/.test(content)) {
+    if (isRealImport(content, '@/integrations/supabase')) {
       score -= 20;
       details.push(`CRITIQUE: Import @/integrations restant dans ${path}`);
     }
     
-    // Check for hardcoded Supabase project IDs
-    for (const pattern of SUPABASE_PROJECT_PATTERNS) {
-      if (new RegExp(pattern.source, pattern.flags).test(content)) {
-        score -= 20;
-        details.push(`CRITIQUE: ID Supabase hardcodé dans ${path}`);
-        break;
+    // Check for hardcoded Supabase project IDs (but not in this file itself if it's patterns file)
+    if (!path.includes('clientProprietaryPatterns') && !path.includes('proprietary-patterns')) {
+      for (const pattern of SUPABASE_PROJECT_PATTERNS) {
+        if (new RegExp(pattern.source, pattern.flags).test(content)) {
+          score -= 20;
+          details.push(`CRITIQUE: ID Supabase hardcodé dans ${path}`);
+          break;
+        }
       }
     }
     
@@ -1625,38 +1716,44 @@ export function calculateSovereigntyScore(
     }
     
     // MAJOR: -10 points each
-    // Check for remaining proprietary imports (excluding already-cleaned standard imports)
-    const cleanedStandardImports = [
-      '@supabase/supabase-js',
-      'sonner',
-      'react',
+    // Check for remaining proprietary imports using CONTEXTUAL detection
+    const proprietaryKeywords = [
+      'lovable-tagger',
+      '@lovable/',
+      '@gptengineer/',
+      '@bolt/',
+      '@v0/',
+      '@cursor/',
+      '@/hooks/use-toast',
+      '@/hooks/use-mobile',
     ];
     
-    for (const pattern of PROPRIETARY_IMPORTS) {
-      const patternStr = pattern.source;
-      // Skip if this is checking for patterns that we've already replaced with standards
-      const isAlreadyCleaned = cleanedStandardImports.some(std => 
-        content.includes(`from '${std}'`) || content.includes(`from "${std}"`)
-      );
-      
-      // Only penalize if the ORIGINAL proprietary pattern still exists
-      if (new RegExp(patternStr, pattern.flags).test(content)) {
-        // Don't penalize @/hooks patterns if we've replaced them with inline code
-        if (patternStr.includes('@/hooks/use-mobile') && content.includes('const useIsMobile')) continue;
-        if (patternStr.includes('@/hooks/use-toast') && content.includes("from 'sonner'")) continue;
-        if (patternStr.includes('@/integrations/supabase') && content.includes('@supabase/supabase-js')) continue;
+    for (const keyword of proprietaryKeywords) {
+      // Only penalize if it's a REAL import, not just text
+      if (isRealImport(content, keyword)) {
+        // Skip if we've already replaced with standard alternatives
+        if (keyword === '@/hooks/use-toast' && content.includes("from 'sonner'")) continue;
+        if (keyword === '@/hooks/use-mobile' && content.includes('const useIsMobile')) continue;
+        if (keyword === 'lovable-tagger') {
+          // Check it's not replaced with null
+          if (/import\s*\(\s*['"]lovable-tagger['"]\s*\)/.test(content) === false) continue;
+        }
         
         score -= 10;
-        details.push(`MAJEUR: Import propriétaire dans ${path}`);
+        details.push(`MAJEUR: Import propriétaire '${keyword}' dans ${path}`);
         break;
       }
     }
     
-    // Check for telemetry domains
+    // Check for telemetry domains IN ACTUAL URLs (not just any text)
     for (const domain of TELEMETRY_DOMAINS) {
-      if (content.includes(domain)) {
+      // Only flag if domain appears in a URL-like context
+      const urlPattern = new RegExp(`(https?:)?//[^\\s'"]*${escapeRegex(domain)}`, 'i');
+      if (urlPattern.test(content)) {
+        // Skip if this is the patterns file itself
+        if (path.includes('clientProprietaryPatterns') || path.includes('proprietary-patterns')) continue;
         score -= 10;
-        details.push(`MAJEUR: Télémétrie ${domain} dans ${path}`);
+        details.push(`MAJEUR: URL télémétrie ${domain} dans ${path}`);
         break;
       }
     }
@@ -1664,21 +1761,24 @@ export function calculateSovereigntyScore(
     // Check for proprietary CDN
     const cdnCheck = checkProprietaryCDN(content);
     if (cdnCheck.found) {
-      score -= 10;
-      details.push(`MAJEUR: CDN propriétaire dans ${path}`);
+      // Skip patterns file
+      if (!path.includes('clientProprietaryPatterns') && !path.includes('proprietary-patterns')) {
+        score -= 10;
+        details.push(`MAJEUR: CDN propriétaire dans ${path}`);
+      }
     }
     
     // MINOR: -5 points each
-    // Check for data attributes
-    if (/data-lov|data-gpt|data-bolt|data-v0/.test(content)) {
+    // Check for data attributes (these are always bad)
+    if (/data-lov-id|data-lov-component|data-gpt-|data-bolt-|data-v0-/.test(content)) {
       score -= 5;
-      details.push(`MINEUR: Data attribute dans ${path}`);
+      details.push(`MINEUR: Data attribute propriétaire dans ${path}`);
     }
     
-    // Check for proprietary comments
-    if (/lovable|gptengineer/i.test(content) && /\/\/|\/\*|<!--|#/.test(content)) {
-      // Only flag if it's in a comment context
-      if (/\/\/.*lovable|\/\*.*lovable|<!--.*lovable/i.test(content)) {
+    // Check for proprietary comments - using contextual detection
+    if (isRealComment(content, 'lovable') || isRealComment(content, 'gptengineer')) {
+      // Skip patterns file
+      if (!path.includes('clientProprietaryPatterns') && !path.includes('proprietary-patterns')) {
         score -= 5;
         details.push(`MINEUR: Commentaire propriétaire dans ${path}`);
       }
@@ -1704,6 +1804,7 @@ export function calculateSovereigntyScore(
 
 /**
  * Final verification pass - ensures 100% sovereignty
+ * FIXED: Now skips patterns files and uses contextual detection
  */
 export function finalVerificationPass(
   cleanedFiles: Record<string, string>
@@ -1715,15 +1816,35 @@ export function finalVerificationPass(
     // Skip non-source files
     if (!path.match(/\.(ts|tsx|js|jsx|json|html|css|scss)$/)) continue;
     
-    // Check for any remaining proprietary references
+    // Skip patterns files (they legitimately contain these patterns for detection)
+    if (path.includes('clientProprietaryPatterns') || path.includes('proprietary-patterns')) continue;
+    if (path.includes('security-cleaner')) continue;
+    
+    // Check for any remaining proprietary references with CONTEXTUAL detection
     const criticalPatterns = [
-      { pattern: /@\/integrations\/supabase/g, name: 'Import Supabase auto-généré' },
-      { pattern: /lovable\.app|lovable\.dev|gptengineer\.app/gi, name: 'Domaine Lovable' },
-      { pattern: /izqveyvcebolrqpqlmho/g, name: 'ID projet Supabase' },
-      { pattern: /eyJ[A-Za-z0-9_-]{100,}/g, name: 'Token JWT hardcodé' },
+      { 
+        pattern: /import\s+[^;]*from\s*['"]@\/integrations\/supabase/g, 
+        name: 'Import Supabase auto-généré' 
+      },
+      { 
+        // Only match domains in URL context, not just any text
+        pattern: /(?:https?:)?\/\/[^\s'"]*(?:lovable\.app|lovable\.dev|gptengineer\.app)/gi, 
+        name: 'URL Lovable' 
+      },
+      { 
+        pattern: /izqveyvcebolrqpqlmho/g, 
+        name: 'ID projet Supabase' 
+      },
+      { 
+        // JWT tokens (but not in patterns/test files)
+        pattern: /['"]eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+['"]/g, 
+        name: 'Token JWT hardcodé' 
+      },
     ];
     
     for (const { pattern, name } of criticalPatterns) {
+      // Reset regex lastIndex
+      pattern.lastIndex = 0;
       if (pattern.test(content)) {
         remainingIssues.push(`${path}: ${name}`);
         criticalCount++;
