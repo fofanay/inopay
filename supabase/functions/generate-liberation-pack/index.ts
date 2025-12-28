@@ -4672,9 +4672,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } }
     });
+    
+    // Client admin pour l'export des données
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
@@ -4835,13 +4840,16 @@ _original-edge-functions
     }
 
     // ==========================================
-    // 3. DATABASE - EXTRACTION AUTOMATIQUE
+    // 3. DATABASE - EXTRACTION AUTOMATIQUE + EXPORT DONNÉES
     // ==========================================
     let extractedSchema: { sql: string; source: string; tables: string[] } = { 
       sql: '', 
       source: 'aucun', 
       tables: [] 
     };
+    
+    let dataExportSQL = '';
+    let fullDatabaseExport = '';
     
     if (includeDatabase) {
       const dbFolder = zip.folder('database')!;
@@ -4861,19 +4869,203 @@ _original-edge-functions
       // Rapport de validation
       migrationsFolder.file('VALIDATION_REPORT.md', generateValidationReport(schemaValidation));
       
-      // Seed file
+      // ==========================================
+      // EXPORT DES DONNÉES COMPLÈTES
+      // ==========================================
+      console.log(`[generate-liberation-pack] Exporting database data...`);
+      
+      try {
+        // Liste des tables à exporter
+        const tablesToExport = [
+          'admin_activity_logs',
+          'admin_config',
+          'banned_users',
+          'cleaning_cache',
+          'cleaning_estimates',
+          'deployment_history',
+          'email_campaigns',
+          'email_contacts',
+          'email_list_contacts',
+          'email_lists',
+          'email_logs',
+          'email_sends',
+          'email_templates',
+          'health_check_logs',
+          'liberation_upsell_views',
+          'newsletter_subscribers',
+          'otp_verifications',
+          'pending_liberation_payments',
+          'profiles',
+          'projects_analysis',
+          'security_audit_logs',
+          'server_deployments',
+          'subscriptions',
+          'sync_configurations',
+          'sync_history',
+          'user_notifications',
+          'user_purchases',
+          'user_roles',
+          'user_servers',
+          'user_settings'
+        ];
+        
+        const exportStats: Record<string, number> = {};
+        let sqlInserts = '';
+        
+        for (const tableName of tablesToExport) {
+          try {
+            const { data, error } = await supabaseAdmin
+              .from(tableName)
+              .select('*');
+
+            if (error) {
+              console.error(`[generate-liberation-pack] Error fetching ${tableName}:`, error.message);
+              exportStats[tableName] = 0;
+            } else if (data && data.length > 0) {
+              exportStats[tableName] = data.length;
+              
+              sqlInserts += `\n-- ═══════════════════════════════════════════════════════════════\n`;
+              sqlInserts += `-- Table: ${tableName} (${data.length} rows)\n`;
+              sqlInserts += `-- ═══════════════════════════════════════════════════════════════\n\n`;
+              
+              for (const row of data) {
+                const columns = Object.keys(row).join(', ');
+                const values = Object.values(row).map(v => {
+                  if (v === null) return 'NULL';
+                  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+                  if (typeof v === 'number') return v.toString();
+                  if (Array.isArray(v)) {
+                    return `ARRAY[${v.map(i => `'${String(i).replace(/'/g, "''")}'`).join(',')}]`;
+                  }
+                  if (typeof v === 'object') {
+                    return `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb`;
+                  }
+                  return `'${String(v).replace(/'/g, "''")}'`;
+                }).join(', ');
+                
+                sqlInserts += `INSERT INTO public.${tableName} (${columns}) VALUES (${values}) ON CONFLICT DO NOTHING;\n`;
+              }
+            } else {
+              exportStats[tableName] = 0;
+            }
+          } catch (tableError) {
+            console.error(`[generate-liberation-pack] Exception for ${tableName}:`, tableError);
+            exportStats[tableName] = 0;
+          }
+        }
+        
+        const totalRows = Object.values(exportStats).reduce((a, b) => a + b, 0);
+        console.log(`[generate-liberation-pack] Data export completed. Total rows: ${totalRows}`);
+        
+        // Générer le fichier d'export des données
+        dataExportSQL = `-- ═══════════════════════════════════════════════════════════════
+-- INOPAY DATA EXPORT - ${projectName}
+-- ═══════════════════════════════════════════════════════════════
+-- Generated: ${new Date().toISOString()}
+-- Total tables: ${Object.keys(exportStats).filter(k => exportStats[k] > 0).length}
+-- Total rows: ${totalRows}
+-- ═══════════════════════════════════════════════════════════════
+
+-- STATISTIQUES:
+${Object.entries(exportStats)
+  .filter(([_, count]) => count > 0)
+  .map(([table, count]) => `-- ${table}: ${count} rows`)
+  .join('\n')}
+
+-- ═══════════════════════════════════════════════════════════════
+-- ATTENTION: Exécutez 001_schema.sql AVANT ce fichier
+-- ═══════════════════════════════════════════════════════════════
+
+BEGIN;
+${sqlInserts}
+COMMIT;
+
+-- ═══════════════════════════════════════════════════════════════
+-- FIN DE L'EXPORT DES DONNÉES
+-- ═══════════════════════════════════════════════════════════════
+`;
+
+        migrationsFolder.file('003_data_export.sql', dataExportSQL);
+        
+        // ==========================================
+        // FICHIER SQL COMPLET FUSIONNÉ
+        // ==========================================
+        fullDatabaseExport = `-- ═══════════════════════════════════════════════════════════════════════════════
+-- FULL DATABASE EXPORT - ${projectName}
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 
+-- Ce fichier contient TOUT ce qu'il faut pour reconstruire votre base de données:
+--   1. Types et enums
+--   2. Fonctions utilitaires
+--   3. Tables et contraintes
+--   4. Policies RLS
+--   5. Triggers
+--   6. Données existantes (INSERT statements)
+--
+-- Generated: ${new Date().toISOString()}
+-- Source: InoPay Liberation Pack
+-- 
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- PARTIE 1: SCHÉMA (Tables, Types, Fonctions, Policies)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+${extractedSchema.sql}
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- PARTIE 2: DONNÉES (${totalRows} lignes au total)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+${totalRows > 0 ? `BEGIN;
+${sqlInserts}
+COMMIT;` : `-- Aucune donnée à exporter`}
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- FIN DU FULL DATABASE EXPORT
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- INSTRUCTIONS D'IMPORT:
+-- 
+-- Option 1 - PostgreSQL direct:
+--   psql -h localhost -U postgres -d ${safeName} -f FULL_DATABASE_EXPORT.sql
+-- 
+-- Option 2 - Docker:
+--   docker compose exec postgres psql -U app -d app -f /migrations/FULL_DATABASE_EXPORT.sql
+-- 
+-- Option 3 - Supabase self-hosted:
+--   1. Allez dans SQL Editor de votre dashboard
+--   2. Collez le contenu de ce fichier
+--   3. Exécutez
+-- 
+-- ═══════════════════════════════════════════════════════════════════════════════
+`;
+
+        dbFolder.file('FULL_DATABASE_EXPORT.sql', fullDatabaseExport);
+        
+      } catch (exportError) {
+        console.error(`[generate-liberation-pack] Data export error:`, exportError);
+        // On continue même si l'export échoue - le schéma sera toujours inclus
+        dataExportSQL = `-- Erreur lors de l'export des données\n-- Cause: ${exportError}\n`;
+        migrationsFolder.file('003_data_export.sql', dataExportSQL);
+      }
+      
+      // Seed file (template pour données d'exemple)
       migrationsFolder.file('002_seed.sql', `-- ═══════════════════════════════════════════════════════════════
 -- DONNÉES INITIALES - ${projectName}
 -- ═══════════════════════════════════════════════════════════════
-
--- Ajoutez vos données initiales ici
+-- 
+-- Ce fichier est un template pour vos données initiales.
+-- Pour les données existantes exportées, voir: 003_data_export.sql
+--
+-- ═══════════════════════════════════════════════════════════════
 
 -- Exemples:
 -- INSERT INTO users (email, role) VALUES ('admin@example.com', 'admin');
 -- INSERT INTO settings (key, value) VALUES ('app_name', '${projectName}');
 `);
 
-      // README pour la base de données
+      // README pour la base de données (enrichi)
       const tablesListMd = extractedSchema.tables.length > 0 
         ? extractedSchema.tables.map(t => `- \`${t}\``).join('\n')
         : '- Aucune table détectée automatiquement';
@@ -4886,6 +5078,31 @@ _original-edge-functions
 
 ## Source du Schéma
 Ce schéma a été extrait automatiquement depuis: **${extractedSchema.source}**
+
+## Fichiers Inclus
+
+| Fichier | Description |
+|---------|-------------|
+| \`001_schema.sql\` | Structure des tables, types, fonctions, policies RLS |
+| \`002_seed.sql\` | Template pour données initiales (optionnel) |
+| \`003_data_export.sql\` | **Export complet de vos données actuelles** |
+| \`VALIDATION_REPORT.md\` | Rapport de validation du schéma |
+| \`../FULL_DATABASE_EXPORT.sql\` | **Fichier unique avec schéma + données** |
+
+## 🚀 Import Rapide (1 commande)
+
+Pour reconstruire votre base de données sur un VPS:
+
+\`\`\`bash
+# Option 1: Fichier unique complet
+psql -h localhost -U postgres -d ${safeName} -f FULL_DATABASE_EXPORT.sql
+
+# Option 2: Docker
+docker compose exec postgres psql -U app -d app -f /app/database/FULL_DATABASE_EXPORT.sql
+
+# Option 3: Script automatique
+./scripts/import-database.sh
+\`\`\`
 
 ## Validation
 ${schemaValidation.isValid 
@@ -4902,31 +5119,39 @@ ${schemaValidation.isValid
 ## Tables Détectées
 ${tablesListMd}
 ${warningsListMd}
-## Comment Appliquer
+## Comment Appliquer (Ordre Recommandé)
 
 ### Option 1: PostgreSQL Direct
 \`\`\`bash
+# Créer la base de données
+createdb -h localhost -U postgres ${safeName}
+
+# Importer le schéma
 psql -h localhost -U postgres -d ${safeName} -f 001_schema.sql
-psql -h localhost -U postgres -d ${safeName} -f 002_seed.sql
+
+# Importer les données
+psql -h localhost -U postgres -d ${safeName} -f 003_data_export.sql
 \`\`\`
 
 ### Option 2: Docker
 \`\`\`bash
 docker compose exec postgres psql -U app -d app -f /migrations/001_schema.sql
+docker compose exec postgres psql -U app -d app -f /migrations/003_data_export.sql
 \`\`\`
 
 ### Option 3: Supabase Self-Hosted
 1. Accédez à votre dashboard Supabase local
 2. Allez dans SQL Editor
-3. Copiez-collez le contenu de 001_schema.sql
+3. Copiez-collez le contenu de FULL_DATABASE_EXPORT.sql
 4. Exécutez
 
 ## Notes Importantes
 
 1. **Vérifiez les policies RLS** - Adaptez-les à votre système d'authentification
 2. **current_user_id()** - Cette fonction remplace auth.uid() de Supabase
-3. **Ordre d'exécution** - Respectez l'ordre des fichiers (001, 002, ...)
+3. **Ordre d'exécution** - Respectez l'ordre des fichiers (001, 002, 003...)
 4. **Rapport de validation** - Consultez VALIDATION_REPORT.md pour les détails
+5. **Données sensibles** - Vérifiez 003_data_export.sql avant import en production
 
 ## Personnalisation
 
@@ -5172,6 +5397,106 @@ ${envVarsArray
     // Scripts d'automatisation
     scriptsFolder.file('setup-coolify.sh', generateSetupCoolifyScript(projectName, envVarsArray));
     scriptsFolder.file('import-supabase-schema.sh', generateImportSupabaseSchemaScript(projectName));
+    
+    // Script d'import de base de données complet
+    scriptsFolder.file('import-database.sh', `#!/bin/bash
+# ═══════════════════════════════════════════════════════════════
+# IMPORT DATABASE - ${projectName}
+# ═══════════════════════════════════════════════════════════════
+# Ce script importe le schéma ET les données dans votre base PostgreSQL
+# ═══════════════════════════════════════════════════════════════
+
+set -e
+
+# Couleurs
+RED='\\033[0;31m'
+GREEN='\\033[0;32m'
+YELLOW='\\033[1;33m'
+BLUE='\\033[0;34m'
+NC='\\033[0m'
+
+echo -e "\${BLUE}═══════════════════════════════════════════════════════════════\${NC}"
+echo -e "\${BLUE}  IMPORT BASE DE DONNÉES - ${projectName}\${NC}"
+echo -e "\${BLUE}═══════════════════════════════════════════════════════════════\${NC}"
+echo ""
+
+# Configuration (à personnaliser)
+DB_HOST=\${DB_HOST:-localhost}
+DB_PORT=\${DB_PORT:-5432}
+DB_USER=\${DB_USER:-postgres}
+DB_NAME=\${DB_NAME:-${safeName}}
+DB_PASSWORD=\${DB_PASSWORD:-}
+
+# Chemin des fichiers
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+DB_DIR="\$SCRIPT_DIR/../database"
+
+# Vérification des fichiers
+echo -e "\${YELLOW}[1/5] Vérification des fichiers...\${NC}"
+if [ -f "\$DB_DIR/FULL_DATABASE_EXPORT.sql" ]; then
+    echo -e "\${GREEN}  ✓ FULL_DATABASE_EXPORT.sql trouvé\${NC}"
+    USE_FULL_EXPORT=true
+elif [ -f "\$DB_DIR/migrations/001_schema.sql" ]; then
+    echo -e "\${GREEN}  ✓ 001_schema.sql trouvé\${NC}"
+    USE_FULL_EXPORT=false
+else
+    echo -e "\${RED}  ✗ Aucun fichier SQL trouvé!\${NC}"
+    exit 1
+fi
+
+# Test de connexion
+echo -e "\${YELLOW}[2/5] Test de connexion à PostgreSQL...\${NC}"
+if [ -n "\$DB_PASSWORD" ]; then
+    export PGPASSWORD="\$DB_PASSWORD"
+fi
+
+if psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d postgres -c "SELECT 1" > /dev/null 2>&1; then
+    echo -e "\${GREEN}  ✓ Connexion réussie\${NC}"
+else
+    echo -e "\${RED}  ✗ Impossible de se connecter à PostgreSQL\${NC}"
+    echo -e "  Vérifiez: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD"
+    exit 1
+fi
+
+# Création de la base si nécessaire
+echo -e "\${YELLOW}[3/5] Vérification/création de la base...\${NC}"
+if psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -lqt | cut -d \\| -f 1 | grep -qw "\$DB_NAME"; then
+    echo -e "\${GREEN}  ✓ Base '\$DB_NAME' existe déjà\${NC}"
+else
+    echo -e "  Création de la base '\$DB_NAME'..."
+    createdb -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" "\$DB_NAME"
+    echo -e "\${GREEN}  ✓ Base créée\${NC}"
+fi
+
+# Import
+echo -e "\${YELLOW}[4/5] Import des données...\${NC}"
+if [ "\$USE_FULL_EXPORT" = true ]; then
+    echo -e "  Import de FULL_DATABASE_EXPORT.sql (schéma + données)..."
+    psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -f "\$DB_DIR/FULL_DATABASE_EXPORT.sql"
+else
+    echo -e "  Import de 001_schema.sql..."
+    psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -f "\$DB_DIR/migrations/001_schema.sql"
+    
+    if [ -f "\$DB_DIR/migrations/003_data_export.sql" ]; then
+        echo -e "  Import de 003_data_export.sql..."
+        psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -f "\$DB_DIR/migrations/003_data_export.sql"
+    fi
+fi
+echo -e "\${GREEN}  ✓ Import terminé\${NC}"
+
+# Statistiques
+echo -e "\${YELLOW}[5/5] Vérification...\${NC}"
+TABLE_COUNT=\$(psql -h "\$DB_HOST" -p "\$DB_PORT" -U "\$DB_USER" -d "\$DB_NAME" -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'")
+echo -e "\${GREEN}  ✓ \$TABLE_COUNT tables importées\${NC}"
+
+echo ""
+echo -e "\${GREEN}═══════════════════════════════════════════════════════════════\${NC}"
+echo -e "\${GREEN}  ✓ IMPORT TERMINÉ AVEC SUCCÈS!\${NC}"
+echo -e "\${GREEN}═══════════════════════════════════════════════════════════════\${NC}"
+echo ""
+echo -e "Votre base de données est prête: \${BLUE}\$DB_NAME\${NC}"
+echo ""
+`);
 
     // Guide Markdown pour Coolify
     docsFolder.file('COOLIFY_STEP_BY_STEP.md', generateCoolifyStepByStepGuide(projectName));
@@ -5343,10 +5668,6 @@ Thumbs.db
     const fileName = `${safeName}_liberation_pack_v4_${Date.now()}.zip`;
     const filePath = `${user.id}/${fileName}`;
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('cleaned-archives')
