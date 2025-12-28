@@ -606,6 +606,7 @@ export const SUSPICIOUS_PACKAGES: string[] = [
 export const PROPRIETARY_ASSET_CDNS: string[] = [
   'cdn.lovable.app',
   'cdn.lovable.dev',
+  'lovableproject.com', // Added: preview domains with assets
   'bolt-assets',
   'assets.bolt.new',
   'cdn.bolt.new',
@@ -625,6 +626,114 @@ export const PROPRIETARY_ASSET_CDNS: string[] = [
   'assets.sourcegraph.com',
   'cdn.continue.dev',
 ];
+
+// ============= EXTERNAL ASSET URL REPLACEMENTS =============
+// Map of external domains to local path replacements
+export const EXTERNAL_ASSET_REPLACEMENTS: Record<string, string> = {
+  // Lovable project preview domains - replace with local assets
+  'lovableproject.com': '/assets',
+  'lovable.app': '/assets',
+  'lovable.dev': '/assets',
+  'cdn.lovable.app': '/assets',
+  'cdn.lovable.dev': '/assets',
+  'storage.lovable.app': '/assets',
+  'storage.lovable.dev': '/assets',
+  'gptengineer.app': '/assets',
+  'cdn.gptengineer.app': '/assets',
+  'assets.gptengineer.app': '/assets',
+  // Bolt
+  'bolt.new': '/assets',
+  'cdn.bolt.new': '/assets',
+  'assets.bolt.new': '/assets',
+  // v0
+  'v0.dev': '/assets',
+  'cdn.v0.dev': '/assets',
+  'assets.v0.dev': '/assets',
+};
+
+/**
+ * Clean external asset URLs and replace with local paths
+ * Returns the cleaned content and list of assets that need to be downloaded
+ */
+export function cleanExternalAssetUrls(content: string, filePath: string): {
+  cleaned: string;
+  changes: string[];
+  assetsToDownload: { originalUrl: string; localPath: string }[];
+} {
+  const changes: string[] = [];
+  const assetsToDownload: { originalUrl: string; localPath: string }[] = [];
+  let cleaned = content;
+
+  // Pattern to match URLs in various contexts (src="", url(), href="", etc.)
+  for (const [domain, localBase] of Object.entries(EXTERNAL_ASSET_REPLACEMENTS)) {
+    const escapedDomain = domain.replace(/\./g, '\\.');
+    
+    // Match full URLs with protocol
+    const urlPatterns = [
+      // src="https://xxx.lovableproject.com/path/to/image.png"
+      new RegExp(`(["'\`])https?://[^"'\`]*${escapedDomain}/([^"'\`]+)(["'\`])`, 'gi'),
+      // url(https://xxx.lovableproject.com/path/to/image.png)
+      new RegExp(`url\\(\\s*["']?https?://[^)]*${escapedDomain}/([^)]+)["']?\\s*\\)`, 'gi'),
+    ];
+
+    for (const pattern of urlPatterns) {
+      const matches = cleaned.matchAll(pattern);
+      for (const match of matches) {
+        const originalUrl = match[0];
+        // Extract just the filename/path portion
+        const urlMatch = originalUrl.match(/\/([^\/?"'`\s]+(?:\.[a-zA-Z0-9]+))(?:[?"'\s\)]|$)/);
+        if (urlMatch) {
+          const filename = urlMatch[1];
+          const localPath = `${localBase}/${filename}`;
+          
+          // Only process image/asset files
+          if (/\.(png|jpg|jpeg|gif|svg|webp|ico|pdf|mp4|mp3|woff|woff2|ttf|eot)$/i.test(filename)) {
+            assetsToDownload.push({ 
+              originalUrl: originalUrl.replace(/^["'\`]|["'\`]$/g, '').replace(/^url\(["']?|["']?\)$/g, ''),
+              localPath 
+            });
+          }
+        }
+      }
+    }
+
+    // Replace URLs with local paths
+    // Pattern 1: src/href attributes
+    const attrPattern = new RegExp(
+      `(src|href|poster|srcset)\\s*=\\s*(["'\`])https?://[^"'\`]*${escapedDomain}/[^"'\`]*?([^/"'\`]+\\.[a-zA-Z0-9]+)(["'\`])`,
+      'gi'
+    );
+    const beforeAttr = cleaned;
+    cleaned = cleaned.replace(attrPattern, `$1=$2${localBase}/$3$4`);
+    if (cleaned !== beforeAttr) {
+      changes.push(`URL ${domain} remplacée par chemin local dans attribut`);
+    }
+
+    // Pattern 2: CSS url()
+    const cssPattern = new RegExp(
+      `url\\(\\s*["']?https?://[^)]*${escapedDomain}/[^)]*?([^/)]+\\.[a-zA-Z0-9]+)["']?\\s*\\)`,
+      'gi'
+    );
+    const beforeCss = cleaned;
+    cleaned = cleaned.replace(cssPattern, `url('${localBase}/$1')`);
+    if (cleaned !== beforeCss) {
+      changes.push(`URL ${domain} remplacée par chemin local dans CSS`);
+    }
+
+    // Pattern 3: Template strings or JS strings
+    const stringPattern = new RegExp(
+      `(["'\`])https?://[^"'\`]*${escapedDomain}/[^"'\`]*?([^/"'\`]+\\.[a-zA-Z0-9]+)(["'\`])`,
+      'gi'
+    );
+    const beforeString = cleaned;
+    cleaned = cleaned.replace(stringPattern, `$1${localBase}/$2$3`);
+    if (cleaned !== beforeString) {
+      changes.push(`URL ${domain} remplacée par chemin local dans string`);
+    }
+  }
+
+  return { cleaned, changes, assetsToDownload };
+}
 
 // ============= AUTO-POLYFILL DEFINITIONS =============
 
@@ -1167,6 +1276,16 @@ const useIsMobile = () => {
     }
   }
 
+  // ========== PASS 11: Clean external asset URLs (lovableproject.com, etc.) ==========
+  const assetCleanResult = cleanExternalAssetUrls(cleaned, filePath);
+  if (assetCleanResult.changes.length > 0) {
+    cleaned = assetCleanResult.cleaned;
+    changes.push(...assetCleanResult.changes);
+    if (assetCleanResult.assetsToDownload.length > 0) {
+      suspiciousPatterns.push(`${assetCleanResult.assetsToDownload.length} assets externes à télécharger localement`);
+    }
+  }
+
   // ========== FINAL: Clean up excessive whitespace and empty imports ==========
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   cleaned = cleaned.replace(/import\s*{\s*}\s*from\s*['"][^'"]*['"]\s*;?\n?/g, '');
@@ -1524,20 +1643,35 @@ export function cleanSourceFile(content: string): { cleaned: string; changes: st
 }
 
 /**
- * Check for proprietary CDN assets
+ * Check for proprietary CDN assets (detection only, use cleanExternalAssetUrls for replacement)
  */
 export function checkProprietaryCDN(content: string): { found: boolean; urls: string[] } {
   const urls: string[] = [];
   
+  // Check all CDN domains
   for (const cdn of PROPRIETARY_ASSET_CDNS) {
-    const regex = new RegExp(`https?://[^'"\\s]*${cdn.replace(/\./g, '\\.')}[^'"\\s]*`, 'gi');
+    const escapedCdn = cdn.replace(/\./g, '\\.');
+    const regex = new RegExp(`https?://[^'"\\s)]*${escapedCdn}[^'"\\s)]*`, 'gi');
     const matches = content.match(regex);
     if (matches) {
       urls.push(...matches);
     }
   }
   
-  return { found: urls.length > 0, urls };
+  // Also check domains from EXTERNAL_ASSET_REPLACEMENTS
+  for (const domain of Object.keys(EXTERNAL_ASSET_REPLACEMENTS)) {
+    const escapedDomain = domain.replace(/\./g, '\\.');
+    const regex = new RegExp(`https?://[^'"\\s)]*${escapedDomain}[^'"\\s)]*`, 'gi');
+    const matches = content.match(regex);
+    if (matches) {
+      urls.push(...matches);
+    }
+  }
+  
+  // Remove duplicates
+  const uniqueUrls = [...new Set(urls)];
+  
+  return { found: uniqueUrls.length > 0, urls: uniqueUrls };
 }
 
 /**
