@@ -4646,6 +4646,8 @@ serve(async (req) => {
       includeDatabase = true,
       includeAIServices = false,
       sovereigntyScore = 0,
+      clientSovereigntyScore = null,
+      clientEnvVars = [],
     } = await req.json();
 
     if (!cleanedFiles || Object.keys(cleanedFiles).length === 0) {
@@ -4683,9 +4685,18 @@ serve(async (req) => {
     // ==========================================
     // SOVEREIGNTY VERIFICATION
     // ==========================================
-    const sovereigntyCheck = verifySovereignty(doubleCleanedFiles);
+    // Use client score if provided (more accurate), otherwise recalculate
+    const serverSovereigntyCheck = verifySovereignty(doubleCleanedFiles);
+    const sovereigntyCheck = clientSovereigntyScore !== null && clientSovereigntyScore >= 0
+      ? { 
+          score: clientSovereigntyScore, 
+          isClean: clientSovereigntyScore >= 95, 
+          criticalIssues: serverSovereigntyCheck.criticalIssues, 
+          warnings: serverSovereigntyCheck.warnings 
+        }
+      : serverSovereigntyCheck;
     
-    console.log(`[generate-liberation-pack] Sovereignty check: score=${sovereigntyCheck.score}, clean=${sovereigntyCheck.isClean}`);
+    console.log(`[generate-liberation-pack] Sovereignty check: score=${sovereigntyCheck.score} (client=${clientSovereigntyScore}), clean=${sovereigntyCheck.isClean}`);
 
     const zip = new JSZip();
     const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -5209,6 +5220,14 @@ ${info.reconfigurationGuide}
     // ==========================================
     // 5. ROOT FILES
     // ==========================================
+    // Merge server-detected env vars with client-detected env vars
+    if (clientEnvVars && Array.isArray(clientEnvVars)) {
+      for (const envVar of clientEnvVars) {
+        if (typeof envVar === 'string' && envVar.length > 0) {
+          allEnvVars.add(envVar);
+        }
+      }
+    }
     const envVarsArray = Array.from(allEnvVars);
     
     // docker-compose.yml principal

@@ -288,6 +288,93 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
     setGitHubRepoUrl(null);
   };
 
+  // Filter files for GitHub export - only include source files
+  const filterFilesForGitHub = (files: Record<string, string>): Record<string, string> => {
+    const filtered: Record<string, string> = {};
+    
+    // Patterns to INCLUDE
+    const includePatterns = [
+      /^src\//,
+      /^public\//,
+      /^package\.json$/,
+      /^tsconfig\.json$/,
+      /^tsconfig\.\w+\.json$/,
+      /^vite\.config\.\w+$/,
+      /^tailwind\.config\.\w+$/,
+      /^postcss\.config\.\w+$/,
+      /^\.env\.example$/,
+      /^index\.html$/,
+      /^README\.md$/,
+      /^\.gitignore$/,
+      /^components\.json$/,
+      /^eslint\.config\.\w+$/,
+    ];
+    
+    // Patterns to EXCLUDE (pack-specific templates)
+    const excludePatterns = [
+      /^Dockerfile$/,
+      /^docker-compose.*\.yml$/,
+      /^Caddyfile$/,
+      /^nginx\.conf$/,
+      /^services\//,
+      /^scripts\//,
+      /^docs\//,
+      /^database\//,
+      /^backend\//,
+      /^frontend\//,
+      /_original/,
+      /DEPLOY_GUIDE/,
+      /SOVEREIGNTY_REPORT/,
+      /OPEN_SOURCE_SERVICES/,
+      /COOLIFY_STEP_BY_STEP/,
+    ];
+    
+    for (const [path, content] of Object.entries(files)) {
+      // Check if should be excluded
+      if (excludePatterns.some(pattern => pattern.test(path))) {
+        continue;
+      }
+      
+      // Check if should be included
+      if (includePatterns.some(pattern => pattern.test(path))) {
+        filtered[path] = content;
+      }
+    }
+    
+    return filtered;
+  };
+
+  // Detect environment variables from original files
+  const detectEnvVarsFromFiles = (files: Map<string, string>): string[] => {
+    const envVars = new Set<string>();
+    
+    const envVarPatterns = [
+      /import\.meta\.env\.(\w+)/g,
+      /process\.env\.(\w+)/g,
+      /Deno\.env\.get\(['"](\w+)['"]\)/g,
+      /\$\{(\w+)\}/g,
+      /\bVITE_\w+/g,
+      /\bNEXT_PUBLIC_\w+/g,
+    ];
+    
+    for (const [path, content] of files) {
+      if (path.match(/\.(ts|tsx|js|jsx|env|sh)$/)) {
+        for (const pattern of envVarPatterns) {
+          const freshPattern = new RegExp(pattern.source, pattern.flags);
+          let match;
+          while ((match = freshPattern.exec(content)) !== null) {
+            const varName = match[1] || match[0];
+            if (varName && !varName.startsWith('_') && varName.length > 2) {
+              envVars.add(varName);
+            }
+          }
+        }
+      }
+    }
+    
+    return Array.from(envVars);
+  };
+
   // Export cleaned files to GitHub
   const handleExportToGitHub = async () => {
     if (!config?.destinationToken || !config?.destinationUsername) {
@@ -322,8 +409,8 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
         }
       }, 800);
       
-      // Prepare files for export
-      const filesForExport: Record<string, string> = { ...cleanedFiles };
+      // Filter and prepare files for export - only source files
+      const filesForExport = filterFilesForGitHub(cleanedFiles);
       
       // Determine repo name
       const repoName = config.createNewRepo 
@@ -882,6 +969,9 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
     setIsGeneratingPack(true);
     
     try {
+      // Detect env vars from original files before cleaning
+      const detectedEnvVars = detectEnvVarsFromFiles(extractedFiles);
+      
       const { data, error } = await supabase.functions.invoke('generate-liberation-pack', {
         body: {
           projectName,
@@ -890,7 +980,9 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           sqlSchema: includeDatabase ? sqlSchema : null,
           includeBackend,
           includeDatabase,
-          sovereigntyScore: cleaningStats.sovereigntyScore
+          sovereigntyScore: cleaningStats.sovereigntyScore,
+          clientSovereigntyScore: cleaningStats.sovereigntyScore,
+          clientEnvVars: detectedEnvVars
         }
       });
 
