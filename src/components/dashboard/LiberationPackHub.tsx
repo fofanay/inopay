@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,7 +22,8 @@ import {
   Eye,
   ShieldCheck,
   AlertCircle,
-  Zap
+  Zap,
+  List
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -52,6 +54,27 @@ import {
   HOOK_POLYFILLS,
   PROPRIETARY_PATHS,
 } from "@/lib/clientProprietaryPatterns";
+
+// Configuration passée depuis le Wizard
+interface LiberationConfig {
+  sourceToken: string;
+  sourceUrl: string;
+  destinationToken: string;
+  destinationUsername: string;
+  isPrivateRepo: boolean;
+}
+
+interface GitHubRepo {
+  name: string;
+  full_name: string;
+  html_url: string;
+  private: boolean;
+  default_branch: string;
+}
+
+interface LiberationPackHubProps {
+  initialConfig?: LiberationConfig | null;
+}
 
 type FlowStep = "upload" | "analyzing" | "cleaning" | "verifying" | "ready";
 
@@ -85,8 +108,15 @@ interface CleaningStats {
  * 3. Générer un Liberation Pack complet (frontend + backend + DB + docker-compose)
  * 4. Télécharger le pack prêt à déployer sur n'importe quel VPS
  */
-export function LiberationPackHub() {
+export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const { user } = useAuth();
+  
+  // Configuration from wizard or loaded from user_settings
+  const [config, setConfig] = useState<LiberationConfig | null>(initialConfig || null);
+  const [availableRepos, setAvailableRepos] = useState<GitHubRepo[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<string>("");
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [exportingToGitHub, setExportingToGitHub] = useState(false);
   
   // Flow state
   const [step, setStep] = useState<FlowStep>("upload");
@@ -123,6 +153,80 @@ export function LiberationPackHub() {
   const [isGeneratingPack, setIsGeneratingPack] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
+  // Load config from user_settings if not provided via props
+  useEffect(() => {
+    if (!initialConfig) {
+      loadConfigFromSettings();
+    } else {
+      setConfig(initialConfig);
+      // If we have a source token, load available repos
+      if (initialConfig.sourceToken) {
+        loadAvailableRepos(initialConfig.sourceToken);
+      }
+    }
+  }, [initialConfig]);
+
+  const loadConfigFromSettings = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('github_source_token, github_destination_token, github_destination_username, default_repo_private')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading settings:', error);
+        return;
+      }
+
+      if (data) {
+        const loadedConfig: LiberationConfig = {
+          sourceToken: data.github_source_token || '',
+          sourceUrl: '',
+          destinationToken: data.github_destination_token || '',
+          destinationUsername: data.github_destination_username || '',
+          isPrivateRepo: data.default_repo_private ?? true,
+        };
+        setConfig(loadedConfig);
+        
+        // If we have a source token, load available repos
+        if (loadedConfig.sourceToken) {
+          loadAvailableRepos(loadedConfig.sourceToken);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
+    }
+  };
+
+  const loadAvailableRepos = async (token: string) => {
+    if (!token) return;
+    
+    setLoadingRepos(true);
+    try {
+      const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (response.ok) {
+        const repos = await response.json();
+        setAvailableRepos(repos);
+      } else {
+        console.error('Failed to load repos:', response.status);
+      }
+    } catch (error) {
+      console.error('Error loading repos:', error);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
   // Reset flow
   const reset = () => {
     setStep("upload");
@@ -131,6 +235,7 @@ export function LiberationPackHub() {
     setProgressMessage("");
     setProjectName("");
     setGithubUrl("");
+    setSelectedRepo("");
     setAnalysisResult(null);
     setExtractedFiles(new Map());
     setCleanedFiles({});
@@ -188,7 +293,72 @@ export function LiberationPackHub() {
     disabled: loading
   });
 
-  // Handle GitHub URL import
+  // Handle GitHub import from selected repo
+  const handleGitHubImportFromRepo = async () => {
+    if (!selectedRepo) {
+      toast.error("Veuillez sélectionner un dépôt");
+      return;
+    }
+    
+    const repo = availableRepos.find(r => r.full_name === selectedRepo);
+    if (!repo) {
+      toast.error("Dépôt non trouvé");
+      return;
+    }
+    
+    setProjectName(repo.name);
+    setLoading(true);
+    setStep("analyzing");
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      setProgress(10);
+      setProgressMessage("Téléchargement du dépôt...");
+      
+      // Use the source token from config for private repos
+      const response = await supabase.functions.invoke("fetch-github-repo", {
+        body: { 
+          url: repo.html_url,
+          token: config?.sourceToken // Pass the source token for private repo access
+        },
+        headers: session.session?.access_token 
+          ? { Authorization: `Bearer ${session.session.access_token}` }
+          : undefined
+      });
+      
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+      
+      const { files, repository } = response.data;
+      
+      if (!files || files.length === 0) {
+        throw new Error("Aucun fichier trouvé dans le dépôt");
+      }
+      
+      setProgress(30);
+      setProgressMessage("Analyse en cours...");
+      
+      const result = await analyzeFromGitHub(files, repository.name, (prog, msg) => {
+        setProgress(30 + prog * 0.4);
+        setProgressMessage(msg);
+      });
+      
+      setAnalysisResult(result);
+      setExtractedFiles(result.extractedFiles);
+      
+      // Auto-start deep cleaning
+      await processAndDeepClean(result.extractedFiles, result);
+    } catch (error: any) {
+      console.error("GitHub import error:", error);
+      toast.error(error.message || "Erreur lors de l'import GitHub");
+      setStep("upload");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle GitHub URL import (fallback for manual URL input)
   const handleGitHubImport = async () => {
     if (!githubUrl.trim()) {
       toast.error("Veuillez entrer une URL GitHub");
@@ -213,7 +383,10 @@ export function LiberationPackHub() {
       setProgressMessage("Téléchargement du dépôt...");
       
       const response = await supabase.functions.invoke("fetch-github-repo", {
-        body: { url: githubUrl },
+        body: { 
+          url: githubUrl,
+          token: config?.sourceToken // Pass the source token for private repo access
+        },
         headers: session.session?.access_token 
           ? { Authorization: `Bearer ${session.session.access_token}` }
           : undefined
@@ -704,26 +877,100 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
               <TabsContent value="github" className="mt-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Importer depuis GitHub</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      Importer depuis GitHub
+                      {config?.sourceToken && (
+                        <Badge variant="outline" className="text-success border-success">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Token configuré
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <CardDescription>
-                      Collez l'URL de votre dépôt (Lovable, Bolt, v0, Cursor, Replit)
+                      {config?.sourceToken 
+                        ? "Sélectionnez un de vos dépôts ou collez une URL"
+                        : "Collez l'URL de votre dépôt (Lovable, Bolt, v0, Cursor, Replit)"
+                      }
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://github.com/utilisateur/projet"
-                        value={githubUrl}
-                        onChange={(e) => setGithubUrl(e.target.value)}
-                        className="flex-1"
-                        disabled={loading}
-                      />
-                      <Button 
-                        onClick={handleGitHubImport}
-                        disabled={loading || !githubUrl.trim()}
-                      >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                      </Button>
+                    {/* Repo Selector - shown when source token is configured */}
+                    {config?.sourceToken && availableRepos.length > 0 && (
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                          <List className="h-4 w-4" />
+                          Vos dépôts GitHub
+                        </Label>
+                        <div className="flex gap-2">
+                          <Select 
+                            value={selectedRepo} 
+                            onValueChange={setSelectedRepo}
+                            disabled={loading}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Sélectionner un dépôt..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableRepos.map((repo) => (
+                                <SelectItem key={repo.full_name} value={repo.full_name}>
+                                  <div className="flex items-center gap-2">
+                                    {repo.private ? (
+                                      <Badge variant="outline" className="text-xs">Privé</Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-xs">Public</Badge>
+                                    )}
+                                    {repo.full_name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            onClick={handleGitHubImportFromRepo}
+                            disabled={loading || !selectedRepo}
+                          >
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        {loadingRepos && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Chargement des dépôts...
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Divider if both options shown */}
+                    {config?.sourceToken && availableRepos.length > 0 && (
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">ou</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Manual URL input - always available */}
+                    <div className="space-y-2">
+                      <Label>URL du dépôt</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="https://github.com/utilisateur/projet"
+                          value={githubUrl}
+                          onChange={(e) => setGithubUrl(e.target.value)}
+                          className="flex-1"
+                          disabled={loading}
+                        />
+                        <Button 
+                          onClick={handleGitHubImport}
+                          disabled={loading || !githubUrl.trim()}
+                        >
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

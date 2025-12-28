@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LiberationWizard } from './LiberationWizard';
 import { LiberationPackHub } from './LiberationPackHub';
 import { Rocket } from 'lucide-react';
+
+// Configuration passée du Wizard au PackHub
+interface WizardConfig {
+  sourceToken: string;
+  sourceUrl: string;
+  destinationToken: string;
+  destinationUsername: string;
+  isPrivateRepo: boolean;
+}
 
 interface SelfLiberationTabProps {
   onNavigate?: (tab: string) => void;
@@ -10,12 +19,15 @@ interface SelfLiberationTabProps {
 
 export function SelfLiberationTab({ onNavigate }: SelfLiberationTabProps) {
   const [wizardComplete, setWizardComplete] = useState(false);
+  const [wizardConfig, setWizardConfig] = useState<WizardConfig | null>(null);
 
-  const handleWizardComplete = () => {
+  const handleWizardComplete = (config: WizardConfig) => {
+    setWizardConfig(config);
     setWizardComplete(true);
   };
 
   const handleSkipWizard = () => {
+    // Si on skip, on passe quand même au PackHub qui chargera les settings existants
     setWizardComplete(true);
   };
 
@@ -45,7 +57,7 @@ export function SelfLiberationTab({ onNavigate }: SelfLiberationTabProps) {
           onSkip={handleSkipWizard}
         />
       ) : (
-        <LiberationPackHub />
+        <LiberationPackHub initialConfig={wizardConfig} />
       )}
     </div>
   );
