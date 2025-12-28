@@ -1214,6 +1214,484 @@ function extractSchemaFromProject(
 }
 
 // ============================================
+// SQL SCHEMA VALIDATOR
+// ============================================
+
+interface SQLValidationResult {
+  isValid: boolean;
+  errors: SQLValidationError[];
+  warnings: SQLValidationWarning[];
+  stats: {
+    tables: number;
+    columns: number;
+    foreignKeys: number;
+    indexes: number;
+    policies: number;
+    functions: number;
+    triggers: number;
+  };
+  dependencyGraph: Record<string, string[]>;
+}
+
+interface SQLValidationError {
+  type: 'syntax' | 'reference' | 'circular' | 'missing_column' | 'duplicate' | 'type_mismatch';
+  message: string;
+  line?: number;
+  context?: string;
+  severity: 'error' | 'critical';
+}
+
+interface SQLValidationWarning {
+  type: 'missing_rls' | 'missing_index' | 'nullable_fk' | 'no_default' | 'reserved_keyword';
+  message: string;
+  table?: string;
+  column?: string;
+}
+
+/**
+ * Validates SQL schema for syntax and dependency issues
+ */
+function validateSQLSchema(sql: string): SQLValidationResult {
+  const errors: SQLValidationError[] = [];
+  const warnings: SQLValidationWarning[] = [];
+  const stats = {
+    tables: 0,
+    columns: 0,
+    foreignKeys: 0,
+    indexes: 0,
+    policies: 0,
+    functions: 0,
+    triggers: 0
+  };
+  
+  // Track defined objects
+  const definedTables = new Set<string>();
+  const definedEnums = new Set<string>();
+  const definedFunctions = new Set<string>();
+  const tableColumns: Record<string, Set<string>> = {};
+  const dependencyGraph: Record<string, string[]> = {};
+  const tablesWithRLS = new Set<string>();
+  
+  const lines = sql.split('\n');
+  
+  // === PASS 1: Extract all definitions ===
+  
+  // Extract ENUMs
+  const enumPattern = /CREATE\s+TYPE\s+(?:public\.)?(\w+)\s+AS\s+ENUM/gi;
+  let match;
+  while ((match = enumPattern.exec(sql)) !== null) {
+    definedEnums.add(match[1].toLowerCase());
+  }
+  
+  // Extract tables and their columns
+  const tablePattern = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?(\w+)\s*\(([\s\S]*?)\);/gi;
+  while ((match = tablePattern.exec(sql)) !== null) {
+    const tableName = match[1].toLowerCase();
+    const tableBody = match[2];
+    
+    definedTables.add(tableName);
+    tableColumns[tableName] = new Set<string>();
+    dependencyGraph[tableName] = [];
+    stats.tables++;
+    
+    // Parse columns
+    const columnLines = tableBody.split(',');
+    for (const line of columnLines) {
+      const trimmed = line.trim();
+      
+      // Skip constraints
+      if (trimmed.match(/^\s*(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)/i)) continue;
+      
+      // Extract column name
+      const colMatch = trimmed.match(/^(\w+)\s+/);
+      if (colMatch) {
+        tableColumns[tableName].add(colMatch[1].toLowerCase());
+        stats.columns++;
+      }
+      
+      // Check for foreign key references
+      const fkMatch = trimmed.match(/REFERENCES\s+(?:public\.)?(\w+)/i);
+      if (fkMatch) {
+        const referencedTable = fkMatch[1].toLowerCase();
+        dependencyGraph[tableName].push(referencedTable);
+        stats.foreignKeys++;
+      }
+    }
+  }
+  
+  // Extract standalone FOREIGN KEY constraints
+  const fkPattern = /ALTER\s+TABLE\s+(?:public\.)?(\w+)\s+ADD\s+(?:CONSTRAINT\s+\w+\s+)?FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+(?:public\.)?(\w+)/gi;
+  while ((match = fkPattern.exec(sql)) !== null) {
+    const fromTable = match[1].toLowerCase();
+    const toTable = match[2].toLowerCase();
+    
+    if (!dependencyGraph[fromTable]) dependencyGraph[fromTable] = [];
+    dependencyGraph[fromTable].push(toTable);
+    stats.foreignKeys++;
+  }
+  
+  // Extract functions
+  const funcPattern = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)/gi;
+  while ((match = funcPattern.exec(sql)) !== null) {
+    definedFunctions.add(match[1].toLowerCase());
+    stats.functions++;
+  }
+  
+  // Extract triggers
+  const triggerPattern = /CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+(\w+)/gi;
+  while ((match = triggerPattern.exec(sql)) !== null) {
+    stats.triggers++;
+  }
+  
+  // Extract indexes
+  const indexPattern = /CREATE\s+(?:UNIQUE\s+)?INDEX/gi;
+  while ((match = indexPattern.exec(sql)) !== null) {
+    stats.indexes++;
+  }
+  
+  // Extract RLS-enabled tables
+  const rlsPattern = /ALTER\s+TABLE\s+(?:public\.)?(\w+)\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
+  while ((match = rlsPattern.exec(sql)) !== null) {
+    tablesWithRLS.add(match[1].toLowerCase());
+  }
+  
+  // Extract policies
+  const policyPattern = /CREATE\s+POLICY/gi;
+  while ((match = policyPattern.exec(sql)) !== null) {
+    stats.policies++;
+  }
+  
+  // === PASS 2: Validate references ===
+  
+  // Check foreign key references
+  for (const [table, deps] of Object.entries(dependencyGraph)) {
+    for (const dep of deps) {
+      if (!definedTables.has(dep) && dep !== 'auth.users' && !dep.startsWith('auth.')) {
+        errors.push({
+          type: 'reference',
+          message: `Table "${table}" référence "${dep}" qui n'est pas définie`,
+          severity: 'error',
+          context: `REFERENCES ${dep}`
+        });
+      }
+    }
+  }
+  
+  // Check for circular dependencies
+  function detectCycle(table: string, visited: Set<string>, path: string[]): string[] | null {
+    if (path.includes(table)) {
+      return [...path, table];
+    }
+    if (visited.has(table)) return null;
+    
+    visited.add(table);
+    path.push(table);
+    
+    for (const dep of (dependencyGraph[table] || [])) {
+      const cycle = detectCycle(dep, visited, [...path]);
+      if (cycle) return cycle;
+    }
+    
+    return null;
+  }
+  
+  const visitedForCycles = new Set<string>();
+  for (const table of definedTables) {
+    const cycle = detectCycle(table, new Set(), []);
+    if (cycle && !visitedForCycles.has(cycle.join('->'))) {
+      visitedForCycles.add(cycle.join('->'));
+      errors.push({
+        type: 'circular',
+        message: `Dépendance circulaire détectée: ${cycle.join(' → ')}`,
+        severity: 'critical'
+      });
+    }
+  }
+  
+  // Check trigger function references
+  const triggerFuncPattern = /EXECUTE\s+(?:PROCEDURE|FUNCTION)\s+(?:public\.)?(\w+)/gi;
+  while ((match = triggerFuncPattern.exec(sql)) !== null) {
+    const funcName = match[1].toLowerCase();
+    if (!definedFunctions.has(funcName)) {
+      errors.push({
+        type: 'reference',
+        message: `Trigger référence la fonction "${funcName}" qui n'est pas définie`,
+        severity: 'error',
+        context: `EXECUTE FUNCTION ${funcName}`
+      });
+    }
+  }
+  
+  // Check policy table/column references
+  const policyTablePattern = /CREATE\s+POLICY\s+"[^"]+"\s+ON\s+(?:public\.)?(\w+)/gi;
+  while ((match = policyTablePattern.exec(sql)) !== null) {
+    const tableName = match[1].toLowerCase();
+    if (!definedTables.has(tableName)) {
+      errors.push({
+        type: 'reference',
+        message: `Policy sur la table "${tableName}" qui n'existe pas`,
+        severity: 'error'
+      });
+    }
+  }
+  
+  // Check USING/WITH CHECK column references in policies
+  const policyColumnPattern = /(?:USING|WITH\s+CHECK)\s*\(([^)]+)\)/gi;
+  while ((match = policyColumnPattern.exec(sql)) !== null) {
+    const condition = match[1];
+    // Look for column references like "user_id = ..."
+    const colRefs = condition.match(/\b(\w+)\s*(?:=|<>|IS|IN|LIKE)/gi);
+    // We can't easily validate without knowing which table, skip detailed check
+  }
+  
+  // === PASS 3: Syntax validation ===
+  
+  // Check for unbalanced parentheses
+  let parenCount = 0;
+  let lineNum = 0;
+  for (const line of lines) {
+    lineNum++;
+    if (line.trim().startsWith('--')) continue; // Skip comments
+    
+    for (const char of line) {
+      if (char === '(') parenCount++;
+      if (char === ')') parenCount--;
+      
+      if (parenCount < 0) {
+        errors.push({
+          type: 'syntax',
+          message: `Parenthèse fermante sans ouvrante`,
+          line: lineNum,
+          severity: 'error'
+        });
+        parenCount = 0;
+      }
+    }
+  }
+  
+  if (parenCount !== 0) {
+    errors.push({
+      type: 'syntax',
+      message: `Parenthèses non équilibrées (${parenCount > 0 ? 'manque ' + parenCount + ' fermante(s)' : 'trop de fermantes'})`,
+      severity: 'error'
+    });
+  }
+  
+  // Check for common syntax errors
+  const syntaxPatterns = [
+    { pattern: /,\s*\)/g, message: 'Virgule avant parenthèse fermante' },
+    { pattern: /\(\s*,/g, message: 'Virgule après parenthèse ouvrante' },
+    { pattern: /;;/g, message: 'Double point-virgule' },
+    { pattern: /CREATE\s+TABLE[^(]+$/gm, message: 'CREATE TABLE sans parenthèses' },
+  ];
+  
+  for (const { pattern, message } of syntaxPatterns) {
+    if (pattern.test(sql)) {
+      errors.push({
+        type: 'syntax',
+        message,
+        severity: 'error'
+      });
+    }
+  }
+  
+  // Check for reserved keywords used as identifiers
+  const reservedKeywords = ['user', 'order', 'group', 'select', 'table', 'index', 'key', 'primary', 'foreign'];
+  for (const [table, columns] of Object.entries(tableColumns)) {
+    if (reservedKeywords.includes(table)) {
+      warnings.push({
+        type: 'reserved_keyword',
+        message: `Nom de table "${table}" est un mot réservé SQL - encadrez avec des guillemets`,
+        table
+      });
+    }
+    for (const col of columns) {
+      if (reservedKeywords.includes(col)) {
+        warnings.push({
+          type: 'reserved_keyword',
+          message: `Colonne "${col}" dans "${table}" est un mot réservé SQL`,
+          table,
+          column: col
+        });
+      }
+    }
+  }
+  
+  // === PASS 4: Generate warnings ===
+  
+  // Check tables without RLS
+  for (const table of definedTables) {
+    if (!tablesWithRLS.has(table)) {
+      warnings.push({
+        type: 'missing_rls',
+        message: `Table "${table}" n'a pas RLS activé - données potentiellement exposées`,
+        table
+      });
+    }
+  }
+  
+  // Check for tables without primary key
+  for (const [table, columns] of Object.entries(tableColumns)) {
+    if (!columns.has('id')) {
+      // Check if there's an explicit PRIMARY KEY in the table definition
+      const tableDefMatch = sql.match(new RegExp(`CREATE\\s+TABLE[^;]*${table}[^;]*PRIMARY\\s+KEY`, 'i'));
+      if (!tableDefMatch) {
+        warnings.push({
+          type: 'no_default',
+          message: `Table "${table}" pourrait ne pas avoir de clé primaire`,
+          table
+        });
+      }
+    }
+  }
+  
+  // Check for timestamp columns without defaults
+  const timestampPattern = /(\w+)\s+TIMESTAMP[^,\n]*(?!DEFAULT)/gi;
+  // This is a simplified check, would need more context
+  
+  return {
+    isValid: errors.filter(e => e.severity === 'critical').length === 0,
+    errors,
+    warnings,
+    stats,
+    dependencyGraph
+  };
+}
+
+/**
+ * Generate a human-readable validation report
+ */
+function generateValidationReport(validation: SQLValidationResult): string {
+  let report = `# 🔍 Rapport de Validation du Schéma SQL
+
+## Résumé
+
+| Métrique | Valeur |
+|----------|--------|
+| Statut | ${validation.isValid ? '✅ Valide' : '❌ Erreurs critiques'} |
+| Tables | ${validation.stats.tables} |
+| Colonnes | ${validation.stats.columns} |
+| Clés étrangères | ${validation.stats.foreignKeys} |
+| Index | ${validation.stats.indexes} |
+| Policies RLS | ${validation.stats.policies} |
+| Fonctions | ${validation.stats.functions} |
+| Triggers | ${validation.stats.triggers} |
+
+`;
+
+  if (validation.errors.length > 0) {
+    report += `## ❌ Erreurs (${validation.errors.length})
+
+`;
+    for (const error of validation.errors) {
+      const icon = error.severity === 'critical' ? '🔴' : '🟠';
+      report += `${icon} **${error.type.toUpperCase()}**: ${error.message}`;
+      if (error.line) report += ` (ligne ${error.line})`;
+      if (error.context) report += `\n   \`${error.context}\``;
+      report += '\n\n';
+    }
+  }
+
+  if (validation.warnings.length > 0) {
+    report += `## ⚠️ Avertissements (${validation.warnings.length})
+
+`;
+    for (const warning of validation.warnings) {
+      report += `- **${warning.type}**: ${warning.message}\n`;
+    }
+    report += '\n';
+  }
+
+  // Dependency graph visualization
+  const deps = Object.entries(validation.dependencyGraph).filter(([_, v]) => v.length > 0);
+  if (deps.length > 0) {
+    report += `## 🔗 Graphe des Dépendances
+
+\`\`\`
+`;
+    for (const [table, references] of deps) {
+      report += `${table} → ${references.join(', ')}\n`;
+    }
+    report += `\`\`\`
+
+### Ordre de création suggéré
+
+Pour éviter les erreurs de référence, créez les tables dans cet ordre:
+
+`;
+    // Topological sort
+    const order = topologicalSort(validation.dependencyGraph);
+    order.forEach((table, i) => {
+      report += `${i + 1}. \`${table}\`\n`;
+    });
+  }
+
+  report += `
+---
+
+## 💡 Recommandations
+
+`;
+
+  if (validation.warnings.some(w => w.type === 'missing_rls')) {
+    report += `### Sécurité RLS
+
+Activez Row Level Security sur toutes les tables contenant des données utilisateur:
+
+\`\`\`sql
+ALTER TABLE votre_table ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own data" ON votre_table
+  FOR SELECT USING (user_id = current_user_id());
+\`\`\`
+
+`;
+  }
+
+  if (validation.warnings.some(w => w.type === 'reserved_keyword')) {
+    report += `### Mots réservés SQL
+
+Encadrez les identifiants qui sont des mots réservés avec des guillemets:
+
+\`\`\`sql
+CREATE TABLE "user" (...);  -- au lieu de: CREATE TABLE user
+SELECT "order" FROM ...;    -- au lieu de: SELECT order
+\`\`\`
+
+`;
+  }
+
+  return report;
+}
+
+/**
+ * Topological sort for dependency ordering
+ */
+function topologicalSort(graph: Record<string, string[]>): string[] {
+  const visited = new Set<string>();
+  const result: string[] = [];
+  
+  function visit(node: string) {
+    if (visited.has(node)) return;
+    visited.add(node);
+    
+    for (const dep of (graph[node] || [])) {
+      if (!dep.startsWith('auth.')) { // Skip auth schema references
+        visit(dep);
+      }
+    }
+    
+    result.push(node);
+  }
+  
+  for (const node of Object.keys(graph)) {
+    visit(node);
+  }
+  
+  return result;
+}
+
+// ============================================
 // EDGE FUNCTION TO EXPRESS CONVERTER - COMPLET
 // ============================================
 
@@ -2882,7 +3360,14 @@ _original-edge-functions
       
       console.log(`[generate-liberation-pack] Schema extracted from: ${extractedSchema.source}, tables: ${extractedSchema.tables.length}`);
 
+      // Validation du schéma SQL
+      const schemaValidation = validateSQLSchema(extractedSchema.sql);
+      console.log(`[generate-liberation-pack] Schema validation: valid=${schemaValidation.isValid}, errors=${schemaValidation.errors.length}, warnings=${schemaValidation.warnings.length}`);
+
       migrationsFolder.file('001_schema.sql', extractedSchema.sql);
+      
+      // Rapport de validation
+      migrationsFolder.file('VALIDATION_REPORT.md', generateValidationReport(schemaValidation));
       
       // Seed file
       migrationsFolder.file('002_seed.sql', `-- ═══════════════════════════════════════════════════════════════
@@ -2897,16 +3382,34 @@ _original-edge-functions
 `);
 
       // README pour la base de données
+      const tablesListMd = extractedSchema.tables.length > 0 
+        ? extractedSchema.tables.map(t => `- \`${t}\``).join('\n')
+        : '- Aucune table détectée automatiquement';
+      
+      const warningsListMd = schemaValidation.warnings.length > 0 
+        ? `\n## ⚠️ Points d'attention\n${schemaValidation.warnings.slice(0, 5).map(w => `- ${w.message}`).join('\n')}${schemaValidation.warnings.length > 5 ? `\n... et ${schemaValidation.warnings.length - 5} autres avertissements` : ''}\n`
+        : '';
+
       migrationsFolder.file('README.md', `# 📦 Migrations de Base de Données
 
 ## Source du Schéma
 Ce schéma a été extrait automatiquement depuis: **${extractedSchema.source}**
 
-## Tables Détectées
-${extractedSchema.tables.length > 0 
-  ? extractedSchema.tables.map(t => `- \`${t}\``).join('\n')
-  : '- Aucune table détectée automatiquement'}
+## Validation
+${schemaValidation.isValid 
+  ? '✅ Le schéma a passé la validation avec succès'
+  : `⚠️ ${schemaValidation.errors.length} erreur(s) détectée(s) - voir VALIDATION_REPORT.md`}
 
+| Métrique | Valeur |
+|----------|--------|
+| Tables | ${schemaValidation.stats.tables} |
+| Colonnes | ${schemaValidation.stats.columns} |
+| Clés étrangères | ${schemaValidation.stats.foreignKeys} |
+| Policies RLS | ${schemaValidation.stats.policies} |
+
+## Tables Détectées
+${tablesListMd}
+${warningsListMd}
 ## Comment Appliquer
 
 ### Option 1: PostgreSQL Direct
@@ -2931,6 +3434,7 @@ docker compose exec postgres psql -U app -d app -f /migrations/001_schema.sql
 1. **Vérifiez les policies RLS** - Adaptez-les à votre système d'authentification
 2. **current_user_id()** - Cette fonction remplace auth.uid() de Supabase
 3. **Ordre d'exécution** - Respectez l'ordre des fichiers (001, 002, ...)
+4. **Rapport de validation** - Consultez VALIDATION_REPORT.md pour les détails
 
 ## Personnalisation
 
@@ -2955,6 +3459,9 @@ $$ LANGUAGE sql STABLE;
       allEnvVars.add('POSTGRES_PASSWORD');
       allEnvVars.add('POSTGRES_DB');
       allEnvVars.add('DATABASE_URL');
+      
+      // Store validation for summary
+      (extractedSchema as any).validation = schemaValidation;
     }
 
     // ==========================================
@@ -3292,9 +3799,15 @@ Thumbs.db
         schemaExtraction: {
           source: extractedSchema.source,
           tablesFound: extractedSchema.tables.length,
-          tables: extractedSchema.tables
+          tables: extractedSchema.tables,
+          validation: (extractedSchema as any).validation ? {
+            isValid: (extractedSchema as any).validation.isValid,
+            errors: (extractedSchema as any).validation.errors.length,
+            warnings: (extractedSchema as any).validation.warnings.length,
+            stats: (extractedSchema as any).validation.stats
+          } : null
         },
-        version: '4.1',
+        version: '4.2',
         features: [
           'Complete Edge Function conversion',
           'Open Source services templates (Ollama, Meilisearch, MinIO)',
@@ -3302,7 +3815,8 @@ Thumbs.db
           'Enhanced deployment guide with webhooks section',
           'Auto-generated secrets',
           'Docker Compose with healthchecks',
-          'Automatic SQL schema extraction from migrations/types'
+          'Automatic SQL schema extraction from migrations/types',
+          'SQL schema validator with dependency analysis'
         ]
       }
     }), {
