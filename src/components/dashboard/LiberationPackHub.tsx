@@ -564,6 +564,36 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
 
       if (data?.downloadUrl) {
         setDownloadUrl(data.downloadUrl);
+        
+        // Save to deployment_history with archive path
+        if (user) {
+          const { error: historyError } = await supabase
+            .from('deployment_history')
+            .insert({
+              user_id: user.id,
+              project_name: projectName,
+              provider: 'liberation-pack',
+              deployment_type: 'archive',
+              status: 'success',
+              portability_score_before: analysisResult?.score || 0,
+              portability_score_after: cleaningStats.sovereigntyScore,
+              files_uploaded: Object.keys(cleanedFiles).length,
+              archive_path: data.filePath,
+              archive_generated_at: new Date().toISOString(),
+              liberation_report_generated: true,
+              services_replaced: {
+                filesRemoved: cleaningStats.filesRemoved,
+                filesCleaned: cleaningStats.filesCleaned,
+                polyfillsGenerated: cleaningStats.polyfillsGenerated,
+                packagesRemoved: cleaningStats.packagesRemoved
+              }
+            });
+          
+          if (historyError) {
+            console.error('Error saving to history:', historyError);
+          }
+        }
+        
         toast.success(`Pack généré: ${data.summary?.frontendFiles || 0} fichiers, score ${cleaningStats.sovereigntyScore}%`);
       }
     } catch (error) {
