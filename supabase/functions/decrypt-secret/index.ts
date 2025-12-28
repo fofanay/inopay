@@ -148,26 +148,37 @@ serve(async (req) => {
         decryptedValue = settings.github_token;
       }
     }
-    else if (secret_type === 'coolify_token' && server_id) {
+    else if ((secret_type === 'coolify_token' || secret_type === 'service_role_key' || 
+              secret_type === 'anon_key' || secret_type === 'jwt_secret' || 
+              secret_type === 'db_password') && server_id) {
       const { data: server, error } = await supabase
         .from('user_servers')
-        .select('coolify_token, user_id')
+        .select('coolify_token, service_role_key, anon_key, jwt_secret, db_password, user_id')
         .eq('id', server_id)
         .single();
 
-      if (error || !server?.coolify_token) {
+      if (error || !server) {
         return new Response(
-          JSON.stringify({ error: 'Coolify token not found' }),
+          JSON.stringify({ error: 'Server not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const secretValue = server[secret_type as keyof typeof server] as string | null;
+      
+      if (!secretValue) {
+        return new Response(
+          JSON.stringify({ error: `${secret_type} not found` }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       // Check if encrypted, decrypt if so
-      if (isEncrypted(server.coolify_token)) {
-        decryptedValue = await decryptToken(server.coolify_token, masterKey);
+      if (isEncrypted(secretValue)) {
+        decryptedValue = await decryptToken(secretValue, masterKey);
       } else {
-        // Legacy unencrypted token
-        decryptedValue = server.coolify_token;
+        // Legacy unencrypted value
+        decryptedValue = secretValue;
       }
 
       // Log decryption for audit (without the actual value)
