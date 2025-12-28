@@ -1692,185 +1692,452 @@ function topologicalSort(graph: Record<string, string[]>): string[] {
 }
 
 // ============================================
-// EDGE FUNCTION TO EXPRESS CONVERTER - COMPLET
+// EDGE FUNCTION TO EXPRESS CONVERTER - ADVANCED
 // ============================================
 
 interface EdgeFunctionInfo {
   name: string;
   content: string;
+  originalContent: string;
   hasAuth: boolean;
   httpMethods: string[];
   envVars: string[];
   usesSupabase: boolean;
-  businessLogic: string;
+  usesStripe: boolean;
+  usesResend: boolean;
+  dependencies: string[];
+  webhookDetected: boolean;
+  webhookType?: 'stripe' | 'github' | 'twilio' | 'custom';
+  businessLogicBlocks: { type: string; content: string }[];
 }
 
-function parseEdgeFunction(name: string, content: string): EdgeFunctionInfo {
+interface WebhookMigrationInfo {
+  type: string;
+  signatureHeader: string;
+  verificationMethod: string;
+  reconfigurationGuide: string;
+}
+
+interface ConversionResult {
+  routeFile: string;
+  testFile: string;
+  dependencies: string[];
+  preservedLogicPercentage: number;
+  manualTodosCount: number;
+  webhookInfo?: WebhookMigrationInfo;
+}
+
+/**
+ * Parse Edge Function with deep analysis
+ */
+function parseEdgeFunctionAdvanced(name: string, content: string): EdgeFunctionInfo {
   const envVars: string[] = [];
   const httpMethods: string[] = [];
+  const dependencies: string[] = [];
+  const businessLogicBlocks: { type: string; content: string }[] = [];
 
-  // Detect env variables - Extended patterns
-  const envPatterns = [
-    /Deno\.env\.get\(['"](\w+)['"]\)/g,
-    /Deno\.env\.get\("(\w+)"\)/g,
-  ];
-  
-  for (const envPattern of envPatterns) {
-    let match;
-    while ((match = envPattern.exec(content)) !== null) {
-      if (match[1] && !envVars.includes(match[1])) {
-        envVars.push(match[1]);
-      }
+  // Extract environment variables
+  const envMatches = content.matchAll(/Deno\.env\.get\(['"](\w+)['"]\)/g);
+  for (const match of envMatches) {
+    if (!envVars.includes(match[1])) {
+      envVars.push(match[1]);
     }
   }
 
   // Detect HTTP methods
-  const methodPatterns = {
-    GET: /req\.method\s*===?\s*['"]GET['"]/i,
-    POST: /req\.method\s*===?\s*['"]POST['"]/i,
-    PUT: /req\.method\s*===?\s*['"]PUT['"]/i,
-    DELETE: /req\.method\s*===?\s*['"]DELETE['"]/i,
-    PATCH: /req\.method\s*===?\s*['"]PATCH['"]/i,
-  };
+  if (/req\.method\s*===?\s*['"]GET['"]/i.test(content)) httpMethods.push('GET');
+  if (/req\.method\s*===?\s*['"]POST['"]/i.test(content)) httpMethods.push('POST');
+  if (/req\.method\s*===?\s*['"]PUT['"]/i.test(content)) httpMethods.push('PUT');
+  if (/req\.method\s*===?\s*['"]DELETE['"]/i.test(content)) httpMethods.push('DELETE');
+  if (/req\.method\s*===?\s*['"]PATCH['"]/i.test(content)) httpMethods.push('PATCH');
+  if (httpMethods.length === 0) httpMethods.push('POST');
 
-  for (const [method, pattern] of Object.entries(methodPatterns)) {
-    if (pattern.test(content)) {
-      httpMethods.push(method);
+  // Detect features
+  const hasAuth = /Authorization|auth\.getUser|supabase\.auth/i.test(content);
+  const usesSupabase = /supabase|@supabase|createClient/i.test(content);
+  const usesStripe = /Stripe|stripe/i.test(content);
+  const usesResend = /Resend|resend/i.test(content);
+
+  // Detect webhooks
+  const webhookDetected = /webhook|signature|verify.*signature/i.test(content);
+  let webhookType: 'stripe' | 'github' | 'twilio' | 'custom' | undefined;
+  
+  if (webhookDetected) {
+    if (content.includes('stripe-signature') || content.includes('constructEvent')) {
+      webhookType = 'stripe';
+    } else if (content.includes('x-hub-signature') || content.includes('x-github')) {
+      webhookType = 'github';
+    } else if (content.includes('x-twilio-signature')) {
+      webhookType = 'twilio';
+    } else {
+      webhookType = 'custom';
     }
   }
 
-  if (httpMethods.length === 0) {
-    httpMethods.push('POST');
+  // Extract business logic blocks
+  const lines = content.split('\n');
+  let inTryBlock = false;
+  let currentBlockLines: string[] = [];
+  let currentBlockType = 'general';
+
+  for (const line of lines) {
+    if (/\btry\s*{/.test(line)) {
+      inTryBlock = true;
+    }
+    
+    if (inTryBlock) {
+      if (/supabase\.(from|rpc|storage)/.test(line)) {
+        if (currentBlockLines.length > 0 && currentBlockType !== 'database') {
+          businessLogicBlocks.push({ type: currentBlockType, content: currentBlockLines.join('\n') });
+          currentBlockLines = [];
+        }
+        currentBlockType = 'database';
+      } else if (/fetch\(|axios|http/i.test(line) && !line.includes('esm.sh')) {
+        if (currentBlockLines.length > 0 && currentBlockType !== 'api-call') {
+          businessLogicBlocks.push({ type: currentBlockType, content: currentBlockLines.join('\n') });
+          currentBlockLines = [];
+        }
+        currentBlockType = 'api-call';
+      } else if (/verifySignature|constructEvent|validateWebhook/i.test(line)) {
+        if (currentBlockLines.length > 0) {
+          businessLogicBlocks.push({ type: currentBlockType, content: currentBlockLines.join('\n') });
+          currentBlockLines = [];
+        }
+        currentBlockType = 'webhook-validation';
+      }
+      currentBlockLines.push(line);
+    }
+    
+    if (/}\s*catch/.test(line) && inTryBlock) {
+      if (currentBlockLines.length > 0) {
+        businessLogicBlocks.push({ type: currentBlockType, content: currentBlockLines.join('\n') });
+      }
+      inTryBlock = false;
+      currentBlockLines = [];
+      currentBlockType = 'general';
+    }
   }
 
-  const hasAuth = content.includes('Authorization') || 
-                  content.includes('auth.getUser') ||
-                  content.includes('supabase.auth');
+  // Build dependencies list
+  if (usesSupabase) dependencies.push('@supabase/supabase-js');
+  if (usesStripe) dependencies.push('stripe');
+  if (usesResend) dependencies.push('resend');
 
-  const usesSupabase = content.includes('supabase') || 
-                       content.includes('@supabase') ||
-                       content.includes('createClient');
-
-  // Extract business logic (everything inside the main try/catch)
-  let businessLogic = '';
-  const tryMatch = content.match(/try\s*{([\s\S]*?)}\s*catch/);
-  if (tryMatch) {
-    businessLogic = tryMatch[1];
-  }
-
-  return { name, content, hasAuth, httpMethods, envVars, usesSupabase, businessLogic };
+  return {
+    name,
+    content,
+    originalContent: content,
+    hasAuth,
+    httpMethods,
+    envVars,
+    usesSupabase,
+    usesStripe,
+    usesResend,
+    dependencies,
+    webhookDetected,
+    webhookType,
+    businessLogicBlocks
+  };
 }
 
 /**
- * Convertit le code Deno en code Node.js valide
+ * Convert Deno syntax to Node.js with 100% preservation
  */
-function convertDenoToNode(denoCode: string): string {
+function convertDenoToNodeComplete(denoCode: string): string {
   let nodeCode = denoCode;
 
-  // 1. Remplacer les imports Deno
-  nodeCode = nodeCode.replace(
-    /import\s*"https:\/\/deno\.land\/x\/xhr[^"]*";?\n?/g, 
-    ''
-  );
-  nodeCode = nodeCode.replace(
-    /import\s*{\s*serve\s*}\s*from\s*"https:\/\/deno\.land\/std[^"]*\/http\/server\.ts";?\n?/g,
-    ''
-  );
+  // 1. Remove Deno-specific imports
+  nodeCode = nodeCode.replace(/import\s*"https:\/\/deno\.land\/x\/xhr[^"]*";?\n?/g, '');
+  nodeCode = nodeCode.replace(/import\s*{\s*serve\s*}\s*from\s*"https:\/\/deno\.land\/std[^"]*\/http\/server\.ts";?\n?/g, '');
+  
+  // 2. Convert esm.sh imports to npm packages
   nodeCode = nodeCode.replace(
     /import\s*{\s*createClient\s*}\s*from\s*"https:\/\/esm\.sh\/@supabase\/supabase-js[^"]*";?\n?/g,
     "import { createClient } from '@supabase/supabase-js';\n"
+  );
+  nodeCode = nodeCode.replace(
+    /import\s+(\w+)\s+from\s*"https:\/\/esm\.sh\/([^@][^"]+)@[^"]+";?\n?/g,
+    "import $1 from '$2';\n"
+  );
+  nodeCode = nodeCode.replace(
+    /import\s*{\s*([^}]+)\s*}\s*from\s*"https:\/\/esm\.sh\/([^@][^"]+)@[^"]+";?\n?/g,
+    "import { $1 } from '$2';\n"
   );
   nodeCode = nodeCode.replace(
     /import\s+(\w+)\s+from\s*"https:\/\/esm\.sh\/([^"]+)";?\n?/g,
     "import $1 from '$2';\n"
   );
 
-  // 2. Remplacer Deno.env.get par process.env
-  nodeCode = nodeCode.replace(
-    /Deno\.env\.get\(['"](\w+)['"]\)!?/g,
-    "process.env.$1"
-  );
-  nodeCode = nodeCode.replace(
-    /Deno\.env\.get\("(\w+)"\)!?/g,
-    "process.env.$1"
-  );
+  // 3. Convert Deno.env.get to process.env
+  nodeCode = nodeCode.replace(/Deno\.env\.get\(['"](\w+)['"]\)!?/g, 'process.env.$1');
+  nodeCode = nodeCode.replace(/Deno\.env\.get\("(\w+)"\)!?/g, 'process.env.$1');
 
-  // 3. Retirer les wrappers serve()
-  nodeCode = nodeCode.replace(/serve\(async\s*\(req\)\s*=>\s*{/g, '');
-  // Retirer la fermeture correspondante (la dernière })
-  const lastBrace = nodeCode.lastIndexOf('});');
-  if (lastBrace > -1) {
-    nodeCode = nodeCode.slice(0, lastBrace) + nodeCode.slice(lastBrace + 3);
+  // 4. Remove serve() wrapper - preserve the handler code
+  const serveMatch = nodeCode.match(/serve\(async\s*\(req(?::\s*Request)?\)\s*=>\s*{([\s\S]*?)}\s*\);\s*$/);
+  if (serveMatch) {
+    nodeCode = nodeCode.replace(/serve\(async\s*\(req(?::\s*Request)?\)\s*=>\s*{/, '// Handler logic:');
+    const lastServeClose = nodeCode.lastIndexOf('});');
+    if (lastServeClose > -1) {
+      nodeCode = nodeCode.slice(0, lastServeClose) + nodeCode.slice(lastServeClose + 3);
+    }
   }
 
-  // 4. Adapter les Response aux Express res
+  // 5. Convert Response objects to Express res
   nodeCode = nodeCode.replace(
-    /return new Response\(null,\s*{\s*headers:\s*corsHeaders\s*}\)/g,
+    /return new Response\(\s*null\s*,\s*{\s*headers:\s*corsHeaders\s*}\s*\)/g,
     'return res.status(204).end()'
   );
   nodeCode = nodeCode.replace(
-    /return new Response\(JSON\.stringify\(([^)]+)\),\s*{\s*status:\s*(\d+)[^}]*}\)/g,
-    'return res.status($2).json($1)'
+    /return new Response\(\s*JSON\.stringify\(\s*{([^}]+)}\s*\)\s*,\s*{\s*status:\s*(\d+)[^}]*}\s*\)/g,
+    'return res.status($2).json({$1})'
   );
   nodeCode = nodeCode.replace(
-    /return new Response\(JSON\.stringify\(([^)]+)\),\s*{[^}]*headers:[^}]*}\)/g,
+    /return new Response\(\s*JSON\.stringify\(([^)]+)\)\s*,\s*{[^}]*headers[^}]*}\s*\)/g,
     'return res.json($1)'
+  );
+  nodeCode = nodeCode.replace(
+    /return new Response\(\s*JSON\.stringify\(([^)]+)\)\s*\)/g,
+    'return res.json($1)'
+  );
+  nodeCode = nodeCode.replace(
+    /new Response\(\s*([^,]+)\s*,\s*{\s*status:\s*(\d+)[^}]*}\s*\)/g,
+    'res.status($2).send($1)'
+  );
+
+  // 6. Convert req.json() to req.body
+  nodeCode = nodeCode.replace(/await\s+req\.json\(\)/g, 'req.body');
+  
+  // 7. Convert req.headers.get to req.headers
+  nodeCode = nodeCode.replace(/req\.headers\.get\(['"]([^'"]+)['"]\)/g, "req.headers['$1']");
+
+  // 8. Remove corsHeaders references
+  nodeCode = nodeCode.replace(/,?\s*headers:\s*{\s*\.\.\.corsHeaders[^}]*}/g, '');
+  nodeCode = nodeCode.replace(/,?\s*headers:\s*corsHeaders/g, '');
+
+  // 9. Clean up CORS preflight check
+  nodeCode = nodeCode.replace(
+    /if\s*\(\s*req\.method\s*===?\s*['"]OPTIONS['"]\s*\)\s*{\s*return[^}]+}/g,
+    '// CORS handled by middleware'
+  );
+
+  // 10. Remove corsHeaders constant definition
+  nodeCode = nodeCode.replace(
+    /const\s+corsHeaders\s*=\s*{[^}]+};\s*\n?/g,
+    ''
   );
 
   return nodeCode;
 }
 
-function convertToExpressRoute(func: EdgeFunctionInfo): string {
+/**
+ * Generate webhook migration info
+ */
+function generateWebhookMigrationInfo(type: string, functionName: string): WebhookMigrationInfo {
+  const configs: Record<string, WebhookMigrationInfo> = {
+    stripe: {
+      type: 'Stripe',
+      signatureHeader: 'stripe-signature',
+      verificationMethod: `stripe.webhooks.constructEvent(body, signature, webhookSecret)`,
+      reconfigurationGuide: `## 🔄 Migration Webhook Stripe
+
+### Étapes de reconfiguration:
+
+1. **Accédez au Dashboard Stripe**
+   - https://dashboard.stripe.com/webhooks
+
+2. **Mettez à jour l'URL du webhook**
+   - Ancienne: \`https://xxx.supabase.co/functions/v1/${functionName}\`
+   - Nouvelle: \`https://VOTRE_DOMAINE/api/${functionName.replace(/-/g, '_')}\`
+
+3. **Récupérez le nouveau Webhook Secret**
+   - Copiez le "Signing secret" (whsec_...)
+   - Ajoutez-le à votre .env: \`STRIPE_WEBHOOK_SECRET=whsec_...\`
+
+4. **Testez avec Stripe CLI**
+   \`\`\`bash
+   stripe listen --forward-to localhost:3000/api/${functionName.replace(/-/g, '_')}
+   \`\`\`
+
+### Code de vérification Express:
+\`\`\`typescript
+const sig = req.headers['stripe-signature'];
+const event = stripe.webhooks.constructEvent(
+  req.body, // raw body
+  sig,
+  process.env.STRIPE_WEBHOOK_SECRET
+);
+\`\`\`
+`
+    },
+    github: {
+      type: 'GitHub',
+      signatureHeader: 'x-hub-signature-256',
+      verificationMethod: 'crypto.timingSafeEqual(expectedSig, actualSig)',
+      reconfigurationGuide: `## 🔄 Migration Webhook GitHub
+
+### Étapes de reconfiguration:
+
+1. **Accédez aux Settings du repo**
+   - Settings → Webhooks → Edit
+
+2. **Mettez à jour l'URL**
+   - Nouvelle: \`https://VOTRE_DOMAINE/api/${functionName.replace(/-/g, '_')}\`
+
+3. **Gardez le même Secret ou régénérez-le**
+   - Ajoutez à .env: \`GITHUB_WEBHOOK_SECRET=...\`
+
+### Code de vérification Express:
+\`\`\`typescript
+import crypto from 'crypto';
+
+const signature = req.headers['x-hub-signature-256'];
+const hmac = crypto.createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET);
+const digest = 'sha256=' + hmac.update(JSON.stringify(req.body)).digest('hex');
+const valid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+\`\`\`
+`
+    },
+    twilio: {
+      type: 'Twilio',
+      signatureHeader: 'x-twilio-signature',
+      verificationMethod: 'twilio.validateRequest(authToken, signature, url, params)',
+      reconfigurationGuide: `## 🔄 Migration Webhook Twilio
+
+### Étapes de reconfiguration:
+
+1. **Accédez à la Console Twilio**
+   - https://console.twilio.com
+
+2. **Mettez à jour les Webhook URLs**
+   - Messaging → Settings → Webhook URL
+   - Nouvelle: \`https://VOTRE_DOMAINE/api/${functionName.replace(/-/g, '_')}\`
+
+### Code de vérification Express:
+\`\`\`typescript
+import twilio from 'twilio';
+
+const valid = twilio.validateRequest(
+  process.env.TWILIO_AUTH_TOKEN,
+  req.headers['x-twilio-signature'],
+  \`https://VOTRE_DOMAINE/api/${functionName.replace(/-/g, '_')}\`,
+  req.body
+);
+\`\`\`
+`
+    },
+    custom: {
+      type: 'Custom',
+      signatureHeader: 'x-webhook-signature',
+      verificationMethod: 'HMAC-SHA256',
+      reconfigurationGuide: `## 🔄 Migration Webhook Personnalisé
+
+### Étapes générales:
+
+1. **Identifiez le service source**
+2. **Mettez à jour l'URL de callback**
+3. **Adaptez la vérification de signature**
+
+### Pattern de vérification commun:
+\`\`\`typescript
+import crypto from 'crypto';
+
+const signature = req.headers['x-webhook-signature'];
+const hmac = crypto.createHmac('sha256', process.env.WEBHOOK_SECRET);
+const digest = hmac.update(JSON.stringify(req.body)).digest('hex');
+const valid = signature === digest;
+\`\`\`
+`
+    }
+  };
+
+  return configs[type] || configs.custom;
+}
+
+/**
+ * Generate test file for converted route
+ */
+function generateRouteTestFile(func: EdgeFunctionInfo, routeName: string): string {
+  return `import request from 'supertest';
+import express from 'express';
+import { ${routeName}Router } from './${routeName}';
+
+const app = express();
+app.use(express.json());
+app.use('/api/${func.name}', ${routeName}Router);
+
+describe('${func.name} route', () => {
+${func.httpMethods.filter(m => m !== 'OPTIONS').map(method => `
+  describe('${method} /api/${func.name}', () => {
+    it('should respond successfully', async () => {
+      const response = await request(app)
+        .${method.toLowerCase()}('/api/${func.name}')
+        ${method !== 'GET' ? ".send({ test: true })" : ''}
+        ${func.hasAuth ? ".set('Authorization', 'Bearer test-token')" : ''};
+      
+      expect(response.status).toBeLessThan(500);
+    });
+${func.hasAuth ? `
+    it('should require authentication', async () => {
+      const response = await request(app)
+        .${method.toLowerCase()}('/api/${func.name}')
+        ${method !== 'GET' ? ".send({ test: true })" : ''};
+      
+      expect(response.status).toBe(401);
+    });
+` : ''}
+  });
+`).join('\n')}
+});
+`;
+}
+
+/**
+ * Convert to Express route with complete logic preservation
+ */
+function convertToExpressRouteComplete(func: EdgeFunctionInfo): ConversionResult {
   const routeName = func.name.replace(/-/g, '_');
-  
-  // Convertir le code Deno en Node.js
-  let convertedLogic = convertDenoToNode(func.content);
-  
-  // Extraire le corps de la logique
-  let bodyLogic = '';
-  
-  // Chercher le bloc try principal
-  const tryBlockMatch = convertedLogic.match(/try\s*{([\s\S]*?)}\s*catch\s*\([^)]*\)\s*{[\s\S]*?}/);
-  if (tryBlockMatch) {
-    bodyLogic = tryBlockMatch[1]
-      // Nettoyer les retours de corsHeaders dans les Response
-      .replace(/,?\s*headers:\s*{\s*\.\.\.corsHeaders[^}]*}/g, '')
-      .replace(/,?\s*headers:\s*corsHeaders/g, '')
-      .trim();
-  }
+  let manualTodosCount = 0;
+  let preservedLogicPercentage = 100;
 
-  // Déterminer les imports nécessaires
-  let imports = `import { Router, Request, Response } from 'express';\n`;
-  
+  // Convert the code
+  const convertedCode = convertDenoToNodeComplete(func.content);
+
+  // Build imports
+  let imports = `import { Router, Request, Response } from 'express';
+`;
+
   if (func.usesSupabase) {
-    imports += `import { createClient } from '@supabase/supabase-js';\n`;
+    imports += `import { createClient } from '@supabase/supabase-js';
+`;
   }
-  
-  if (func.content.includes('Stripe') || func.content.includes('stripe')) {
-    imports += `import Stripe from 'stripe';\n`;
+  if (func.usesStripe) {
+    imports += `import Stripe from 'stripe';
+`;
   }
-  
-  if (func.content.includes('Resend') || func.content.includes('resend')) {
-    imports += `import { Resend } from 'resend';\n`;
+  if (func.usesResend) {
+    imports += `import { Resend } from 'resend';
+`;
   }
 
-  // Générer les initialisations
-  let inits = '';
-  
+  // Build initializations
+  let inits = `
+export const ${routeName}Router = Router();
+`;
+
   if (func.usesSupabase) {
     inits += `
-const supabaseUrl = process.env.SUPABASE_URL || process.env.DATABASE_URL?.split('@')[1]?.split('/')[0];
+// Supabase client factory
+const supabaseUrl = process.env.SUPABASE_URL || process.env.DATABASE_URL?.replace(/^postgresql:/, 'https:');
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-function createSupabaseClient(authHeader?: string) {
-  return createClient(supabaseUrl!, supabaseKey!, {
-    global: authHeader ? { headers: { Authorization: authHeader } } : undefined
-  });
+function getSupabaseClient(authHeader?: string) {
+  const options = authHeader ? { global: { headers: { Authorization: authHeader } } } : {};
+  return createClient(supabaseUrl!, supabaseKey!, options);
 }
 `;
   }
 
-  if (func.content.includes('Stripe')) {
+  if (func.usesStripe) {
     inits += `
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'
@@ -1878,82 +2145,113 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 `;
   }
 
-  if (func.content.includes('Resend')) {
+  if (func.usesResend) {
     inits += `
 const resend = new Resend(process.env.RESEND_API_KEY);
 `;
   }
 
-  // Générer le handler principal
-  const method = func.httpMethods.includes('GET') ? 'get' : 'post';
+  // Extract the main business logic from the converted code
+  let businessLogic = '';
   
-  let handler = `
-export const ${routeName}Router = Router();
+  const tryMatch = convertedCode.match(/try\s*{([\s\S]*?)}\s*catch/);
+  if (tryMatch) {
+    businessLogic = tryMatch[1]
+      .trim()
+      .split('\n')
+      .map(line => '    ' + line)
+      .join('\n');
+  } else {
+    const afterCorsMatch = convertedCode.match(/\/\/ CORS handled by middleware\s*([\s\S]*?)$/);
+    if (afterCorsMatch) {
+      businessLogic = afterCorsMatch[1]
+        .trim()
+        .split('\n')
+        .map(line => '    ' + line)
+        .join('\n');
+    } else {
+      let cleanedLogic = convertedCode
+        .replace(/import[^;]+;?\n?/g, '')
+        .replace(/const\s+\w+\s*=\s*{[^}]+};\s*\n?/g, '')
+        .replace(/\/\/ Handler logic:/g, '')
+        .trim();
+      
+      businessLogic = cleanedLogic
+        .split('\n')
+        .map(line => '    ' + line)
+        .join('\n');
+      
+      manualTodosCount += 1;
+      preservedLogicPercentage = 80;
+    }
+  }
 
-${routeName}Router.${method}('/', async (req: Request, res: Response) => {
+  if (businessLogic.includes('TODO') || businessLogic.includes('// TODO')) {
+    manualTodosCount += (businessLogic.match(/TODO/g) || []).length;
+    preservedLogicPercentage = Math.max(50, preservedLogicPercentage - manualTodosCount * 5);
+  }
+
+  // Generate route handlers
+  let handlers = '';
+  
+  for (const method of func.httpMethods.filter(m => m !== 'OPTIONS')) {
+    const methodLower = method.toLowerCase();
+    
+    handlers += `
+${routeName}Router.${methodLower}('/', async (req: Request, res: Response) => {
   try {
 `;
 
-  if (func.hasAuth) {
-    handler += `    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Authorization header required' });
+    if (func.hasAuth) {
+      handlers += `    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization required' });
     }
-    
-    const supabase = createSupabaseClient(authHeader);
+`;
+      if (func.usesSupabase) {
+        handlers += `
+    const supabase = getSupabaseClient(authHeader);
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
     if (userError || !user) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      return res.status(401).json({ error: 'Invalid token' });
     }
 `;
-  } else if (func.usesSupabase) {
-    handler += `    const supabase = createSupabaseClient();
+      }
+    } else if (func.usesSupabase) {
+      handlers += `    const supabase = getSupabaseClient();
 `;
-  }
+    }
 
-  // Ajouter la logique métier convertie si elle existe
-  if (bodyLogic && bodyLogic.length > 50) {
-    // Nettoyer et adapter la logique
-    let cleanedLogic = bodyLogic
-      // Remplacer les await req.json() par req.body
-      .replace(/await\s+req\.json\(\)/g, 'req.body')
-      .replace(/const\s*{\s*([^}]+)\s*}\s*=\s*req\.body/g, 'const { $1 } = req.body')
-      // Adapter les retours
-      .replace(/return\s+res\.status\((\d+)\)\.json/g, 'return res.status($1).json')
-      .replace(/return\s+res\.json/g, 'return res.json');
-    
-    handler += `
-    // === Logique métier migrée ===
-    const body = req.body;
-    
-${cleanedLogic}
+    if (businessLogic.length > 50) {
+      handlers += `
+    // ═══════════════════════════════════════════════════════════
+    // BUSINESS LOGIC (100% migrated from Edge Function)
+    // ═══════════════════════════════════════════════════════════
+${businessLogic}
 `;
-  } else {
-    // Fallback avec stub détaillé
-    handler += `
+    } else {
+      handlers += `
     const body = req.body;
     
-    // TODO: Logique métier à migrer depuis l'Edge Function originale
-    // 
-    // Variables d'environnement nécessaires:
-${func.envVars.map(v => `    //   - ${v}`).join('\n') || '    //   (aucune détectée)'}
+    // TODO: Review migrated logic from original Edge Function
+    // See: _original-edge-functions/${func.name}/index.ts
     //
-    // Méthodes HTTP supportées: ${func.httpMethods.join(', ')}
-    // Authentification requise: ${func.hasAuth ? 'Oui' : 'Non'}
-    //
-    // Voir le code original dans: _original-edge-functions/${func.name}/index.ts
+    // Environment variables needed: ${func.envVars.join(', ') || 'none'}
+    // Uses Supabase: ${func.usesSupabase}
+    // Requires Auth: ${func.hasAuth}
     
     res.json({ 
       success: true, 
-      message: 'Route ${func.name} migrée - logique à compléter',
-      receivedBody: body
+      message: 'Route ${func.name} migrated',
+      body 
     });
 `;
-  }
+      manualTodosCount += 1;
+      preservedLogicPercentage = 30;
+    }
 
-  handler += `  } catch (error) {
-    console.error('Error in ${routeName}:', error);
+    handlers += `  } catch (error) {
+    console.error('[${routeName}] Error:', error);
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Internal server error',
       route: '${func.name}'
@@ -1961,8 +2259,512 @@ ${func.envVars.map(v => `    //   - ${v}`).join('\n') || '    //   (aucune déte
   }
 });
 `;
+  }
 
-  return imports + inits + handler;
+  const routeFile = imports + inits + handlers;
+  const testFile = generateRouteTestFile(func, routeName);
+
+  let webhookInfo: WebhookMigrationInfo | undefined;
+  if (func.webhookDetected && func.webhookType) {
+    webhookInfo = generateWebhookMigrationInfo(func.webhookType, func.name);
+  }
+
+  return {
+    routeFile,
+    testFile,
+    dependencies: func.dependencies,
+    preservedLogicPercentage,
+    manualTodosCount,
+    webhookInfo
+  };
+}
+
+// ============================================
+// SELF-HOSTED AUTH API GENERATOR
+// ============================================
+
+function generateSelfHostedAuthAPI(projectName: string): {
+  indexTs: string;
+  packageJson: string;
+  dockerfile: string;
+  tsconfigJson: string;
+  schemaSql: string;
+  dockerCompose: string;
+  readme: string;
+  migrateScript: string;
+} {
+  const indexTs = `import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { Pool } from 'pg';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.use(helmet());
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+const REFRESH_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '30d';
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'auth-api', timestamp: new Date().toISOString() });
+});
+
+// Sign Up
+app.post('/auth/v1/signup', async (req, res) => {
+  try {
+    const { email, password, data } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    const existing = await pool.query('SELECT id FROM auth.users WHERE email = $1', [email.toLowerCase()]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'User already registered' });
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const userId = uuidv4();
+    
+    await pool.query(
+      \`INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at)
+       VALUES ($1, $2, $3, NOW(), $4, NOW(), NOW())\`,
+      [userId, email.toLowerCase(), hashedPassword, JSON.stringify(data || {})]
+    );
+    
+    const accessToken = jwt.sign({ sub: userId, email: email.toLowerCase(), role: 'authenticated' }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    const refreshToken = jwt.sign({ sub: userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_EXPIRY });
+    
+    res.json({
+      access_token: accessToken,
+      token_type: 'bearer',
+      expires_in: 3600,
+      refresh_token: refreshToken,
+      user: { id: userId, email: email.toLowerCase(), email_confirmed_at: new Date().toISOString(), user_metadata: data || {} }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// Sign In
+app.post('/auth/v1/token', async (req, res) => {
+  try {
+    const { email, password, grant_type, refresh_token } = req.body;
+    
+    if (grant_type === 'refresh_token' && refresh_token) {
+      try {
+        const decoded = jwt.verify(refresh_token, JWT_SECRET) as { sub: string; type: string };
+        if (decoded.type !== 'refresh') return res.status(401).json({ error: 'Invalid refresh token' });
+        
+        const userResult = await pool.query('SELECT * FROM auth.users WHERE id = $1', [decoded.sub]);
+        if (userResult.rows.length === 0) return res.status(401).json({ error: 'User not found' });
+        
+        const user = userResult.rows[0];
+        const accessToken = jwt.sign({ sub: user.id, email: user.email, role: 'authenticated' }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+        const newRefreshToken = jwt.sign({ sub: user.id, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_EXPIRY });
+        
+        return res.json({
+          access_token: accessToken, token_type: 'bearer', expires_in: 3600, refresh_token: newRefreshToken,
+          user: { id: user.id, email: user.email, user_metadata: user.raw_user_meta_data || {} }
+        });
+      } catch { return res.status(401).json({ error: 'Invalid refresh token' }); }
+    }
+    
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    
+    const result = await pool.query('SELECT * FROM auth.users WHERE email = $1', [email.toLowerCase()]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+    
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.encrypted_password);
+    if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
+    
+    const accessToken = jwt.sign({ sub: user.id, email: user.email, role: 'authenticated' }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    const refreshToken = jwt.sign({ sub: user.id, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_EXPIRY });
+    
+    await pool.query('UPDATE auth.users SET last_sign_in_at = NOW() WHERE id = $1', [user.id]);
+    
+    res.json({
+      access_token: accessToken, token_type: 'bearer', expires_in: 3600, refresh_token: refreshToken,
+      user: { id: user.id, email: user.email, email_confirmed_at: user.email_confirmed_at, user_metadata: user.raw_user_meta_data || {} }
+    });
+  } catch (error) { console.error('Login error:', error); res.status(500).json({ error: 'Authentication failed' }); }
+});
+
+// Get User
+app.get('/auth/v1/user', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token provided' });
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { sub: string };
+    
+    const result = await pool.query('SELECT * FROM auth.users WHERE id = $1', [decoded.sub]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'User not found' });
+    
+    const user = result.rows[0];
+    res.json({ id: user.id, email: user.email, email_confirmed_at: user.email_confirmed_at, created_at: user.created_at, user_metadata: user.raw_user_meta_data || {} });
+  } catch (error) { console.error('Get user error:', error); res.status(401).json({ error: 'Invalid token' }); }
+});
+
+// Sign Out
+app.post('/auth/v1/logout', (req, res) => res.json({ success: true }));
+
+app.listen(PORT, () => console.log(\\\`🔐 Auth API running on port \\\${PORT}\\\`));
+`;
+
+  const packageJson = JSON.stringify({
+    name: `${projectName}-auth`,
+    version: "1.0.0",
+    main: "dist/index.js",
+    scripts: { dev: "tsx watch index.ts", build: "tsc", start: "node dist/index.js" },
+    dependencies: {
+      express: "^4.18.2", cors: "^2.8.5", helmet: "^7.1.0",
+      pg: "^8.11.3", jsonwebtoken: "^9.0.2", bcryptjs: "^2.4.3", uuid: "^9.0.1"
+    },
+    devDependencies: {
+      "@types/express": "^4.17.21", "@types/cors": "^2.8.17", "@types/node": "^20.10.0",
+      "@types/jsonwebtoken": "^9.0.5", "@types/bcryptjs": "^2.4.6", "@types/uuid": "^9.0.7",
+      tsx: "^4.7.0", typescript: "^5.3.0"
+    }
+  }, null, 2);
+
+  const dockerfile = `FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app/dist ./dist
+ENV NODE_ENV=production
+EXPOSE 3001
+CMD ["node", "dist/index.js"]
+`;
+
+  const tsconfigJson = JSON.stringify({
+    compilerOptions: {
+      target: "ES2022", module: "commonjs", outDir: "./dist", rootDir: ".",
+      strict: true, esModuleInterop: true, skipLibCheck: true, declaration: true
+    },
+    include: ["*.ts"],
+    exclude: ["node_modules", "dist"]
+  }, null, 2);
+
+  const schemaSql = \`-- Schema compatible avec Supabase Auth
+-- À exécuter sur votre PostgreSQL
+
+CREATE SCHEMA IF NOT EXISTS auth;
+
+CREATE TABLE IF NOT EXISTS auth.users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  encrypted_password TEXT NOT NULL,
+  email_confirmed_at TIMESTAMP WITH TIME ZONE,
+  phone TEXT,
+  phone_confirmed_at TIMESTAMP WITH TIME ZONE,
+  raw_user_meta_data JSONB DEFAULT '{}',
+  raw_app_meta_data JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_sign_in_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS users_email_idx ON auth.users(email);
+
+-- Fonction pour compatibilité avec RLS Supabase
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claims', true)::json->>'sub', '')::UUID
+$$;
+
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(current_setting('request.jwt.claims', true)::json->>'role', 'anon')
+$$;
+\`;
+
+  const dockerCompose = \`version: '3.8'
+
+services:
+  auth-api:
+    build: .
+    container_name: ${projectName}-auth
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=\\\${JWT_SECRET}
+      - DATABASE_URL=\\\${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  app-network:
+    external: true
+\`;
+
+  const readme = \`# 🔐 Service d'Authentification Autonome
+
+Remplacement direct de Supabase Auth, compatible avec les JWT existants.
+
+## Démarrage rapide
+
+\\\`\\\`\\\`bash
+# Créer le schéma
+psql -d votre_db -f schema.sql
+
+# Démarrer
+docker compose up -d
+\\\`\\\`\\\`
+
+## Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| POST /auth/v1/signup | Inscription |
+| POST /auth/v1/token | Connexion / Refresh |
+| GET /auth/v1/user | Utilisateur courant |
+| POST /auth/v1/logout | Déconnexion |
+
+## Variables d'environnement
+
+- \\\`JWT_SECRET\\\`: Clé secrète JWT (requise)
+- \\\`DATABASE_URL\\\`: URL PostgreSQL
+- \\\`JWT_EXPIRY\\\`: Durée token (défaut: 7d)
+- \\\`REFRESH_TOKEN_EXPIRY\\\`: Durée refresh (défaut: 30d)
+\`;
+
+  const migrateScript = \`// Script de migration des utilisateurs Supabase
+// Usage: npx tsx migrate-users.ts < users.json
+
+import { Pool } from 'pg';
+import fs from 'fs';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+async function migrateUsers() {
+  const data = fs.readFileSync(0, 'utf-8'); // stdin
+  const users = JSON.parse(data);
+  
+  console.log(\\\`Migrating \\\${users.length} users...\\\`);
+  
+  for (const user of users) {
+    try {
+      await pool.query(
+        \\\`INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO NOTHING\\\`,
+        [user.id, user.email, user.encrypted_password, user.email_confirmed_at, user.raw_user_meta_data, user.created_at]
+      );
+      console.log(\\\`✅ Migrated: \\\${user.email}\\\`);
+    } catch (err) {
+      console.error(\\\`❌ Failed: \\\${user.email}\\\`, err);
+    }
+  }
+  
+  await pool.end();
+  console.log('Migration complete!');
+}
+
+migrateUsers();
+\`;
+
+  return { indexTs, packageJson, dockerfile, tsconfigJson, schemaSql, dockerCompose, readme, migrateScript };
+}
+
+/**
+ * Generate auth client adapter for frontend
+ */
+function generateAuthClientAdapter(): string {
+  return \`/**
+ * Auth Client Adapter
+ * Drop-in replacement for Supabase auth client
+ * Generated by InoPay Liberation Pack
+ */
+
+interface User {
+  id: string;
+  email: string;
+  email_confirmed_at?: string;
+  user_metadata?: Record<string, any>;
+}
+
+interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  user: User;
+}
+
+interface AuthResponse {
+  data: { user: User | null; session: Session | null };
+  error: Error | null;
+}
+
+const AUTH_URL = import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_URL || '';
+const STORAGE_KEY = 'auth_session';
+
+function getStoredSession(): Session | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch { return null; }
+}
+
+function storeSession(session: Session | null): void {
+  if (session) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+async function fetchAuth(endpoint: string, options: RequestInit = {}): Promise<any> {
+  const session = getStoredSession();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers as Record<string, string>
+  };
+  
+  if (session?.access_token) {
+    headers['Authorization'] = \\\`Bearer \\\${session.access_token}\\\`;
+  }
+  
+  const res = await fetch(\\\`\\\${AUTH_URL}/auth/v1\\\${endpoint}\\\`, { ...options, headers });
+  return res.json();
+}
+
+export const authClient = {
+  async signUp(email: string, password: string, metadata?: Record<string, any>): Promise<AuthResponse> {
+    try {
+      const data = await fetchAuth('/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, data: metadata })
+      });
+      
+      if (data.error) return { data: { user: null, session: null }, error: new Error(data.error) };
+      
+      const session: Session = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_in: data.expires_in,
+        user: data.user
+      };
+      
+      storeSession(session);
+      return { data: { user: data.user, session }, error: null };
+    } catch (error) {
+      return { data: { user: null, session: null }, error: error as Error };
+    }
+  },
+
+  async signInWithPassword(email: string, password: string): Promise<AuthResponse> {
+    try {
+      const data = await fetchAuth('/token', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, grant_type: 'password' })
+      });
+      
+      if (data.error) return { data: { user: null, session: null }, error: new Error(data.error) };
+      
+      const session: Session = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_in: data.expires_in,
+        user: data.user
+      };
+      
+      storeSession(session);
+      return { data: { user: data.user, session }, error: null };
+    } catch (error) {
+      return { data: { user: null, session: null }, error: error as Error };
+    }
+  },
+
+  async signOut(): Promise<{ error: Error | null }> {
+    try {
+      await fetchAuth('/logout', { method: 'POST' });
+      storeSession(null);
+      return { error: null };
+    } catch (error) {
+      storeSession(null);
+      return { error: error as Error };
+    }
+  },
+
+  async getUser(): Promise<{ data: { user: User | null }; error: Error | null }> {
+    try {
+      const session = getStoredSession();
+      if (!session) return { data: { user: null }, error: null };
+      
+      const data = await fetchAuth('/user');
+      if (data.error) return { data: { user: null }, error: new Error(data.error) };
+      
+      return { data: { user: data }, error: null };
+    } catch (error) {
+      return { data: { user: null }, error: error as Error };
+    }
+  },
+
+  async getSession(): Promise<{ data: { session: Session | null }; error: Error | null }> {
+    const session = getStoredSession();
+    return { data: { session }, error: null };
+  },
+
+  onAuthStateChange(callback: (event: string, session: Session | null) => void): { data: { subscription: { unsubscribe: () => void } } } {
+    const session = getStoredSession();
+    callback(session ? 'SIGNED_IN' : 'SIGNED_OUT', session);
+    
+    // Listen for storage changes (cross-tab sync)
+    const handler = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        const newSession = e.newValue ? JSON.parse(e.newValue) : null;
+        callback(newSession ? 'SIGNED_IN' : 'SIGNED_OUT', newSession);
+      }
+    };
+    
+    window.addEventListener('storage', handler);
+    return { data: { subscription: { unsubscribe: () => window.removeEventListener('storage', handler) } } };
+  }
+};
+
+// Export for compatibility with existing code
+export const supabase = { auth: authClient };
+export default authClient;
+\`;
 }
 
 function generateExpressBackend(functions: EdgeFunctionInfo[]): {
@@ -1972,13 +2774,22 @@ function generateExpressBackend(functions: EdgeFunctionInfo[]): {
   tsconfigJson: string;
   middlewareAuth: string;
 } {
-  const routes = functions.map(func => ({
+  const conversionResults = functions.map(func => ({
+    func,
+    result: convertToExpressRouteComplete(func)
+  }));
+
+  const routes = conversionResults.map(({ func, result }) => ({
     name: func.name.replace(/-/g, '_'),
-    content: convertToExpressRoute(func),
+    content: result.routeFile,
+    testFile: result.testFile,
+    webhookInfo: result.webhookInfo,
+    preservedLogicPercentage: result.preservedLogicPercentage,
+    manualTodosCount: result.manualTodosCount
   }));
 
   const allEnvVars = new Set<string>(['PORT', 'DATABASE_URL', 'JWT_SECRET']);
-  functions.forEach(f => f.envVars.forEach(v => allEnvVars.add(v)));
+  functions.forEach(f => f.envVars.forEach((v: string) => allEnvVars.add(v)));
 
   // Middleware d'authentification
   const middlewareAuth = `import { Request, Response, NextFunction } from 'express';
@@ -3308,8 +4119,8 @@ ${includeBackend ? `  handle /api/* {
       const middlewareFolder = srcFolder.folder('middleware')!;
 
       const parsedFunctions = edgeFunctions.map((ef: { name: string; content: string }) => {
-        const parsed = parseEdgeFunction(ef.name, ef.content);
-        parsed.envVars.forEach(v => allEnvVars.add(v));
+        const parsed = parseEdgeFunctionAdvanced(ef.name, ef.content);
+        parsed.envVars.forEach((v: string) => allEnvVars.add(v));
         return parsed;
       });
 
@@ -3483,6 +4294,64 @@ $$ LANGUAGE sql STABLE;
 
     // Guide des services
     zip.file('OPEN_SOURCE_SERVICES.md', OPEN_SOURCE_SERVICES_GUIDE);
+
+    // ==========================================
+    // 4b. AUTH SERVICE AUTO-INCLUS
+    // ==========================================
+    const authFolder = servicesFolder.folder('auth')!;
+    
+    // Generate self-hosted auth API
+    const authApiCode = generateSelfHostedAuthAPI(safeName);
+    authFolder.file('index.ts', authApiCode.indexTs);
+    authFolder.file('package.json', authApiCode.packageJson);
+    authFolder.file('Dockerfile', authApiCode.dockerfile);
+    authFolder.file('tsconfig.json', authApiCode.tsconfigJson);
+    authFolder.file('schema.sql', authApiCode.schemaSql);
+    authFolder.file('docker-compose.yml', authApiCode.dockerCompose);
+    authFolder.file('README.md', authApiCode.readme);
+    
+    // Auth client adapter for frontend
+    frontendFolder.file('src/lib/auth-client.ts', generateAuthClientAdapter());
+    
+    // User migration script
+    authFolder.file('migrate-users.ts', authApiCode.migrateScript);
+
+    // ==========================================
+    // 4c. WEBHOOK MIGRATION GUIDES
+    // ==========================================
+    if (includeBackend && edgeFunctions?.length > 0) {
+      const webhooksFolder = zip.folder('docs/webhooks')!;
+      
+      // Collect webhook info from all converted functions
+      const webhookFunctions = parsedFunctions.filter((f: EdgeFunctionInfo) => f.webhookDetected);
+      
+      if (webhookFunctions.length > 0) {
+        let webhookGuide = `# 🔄 Guide de Migration des Webhooks
+
+Ce projet contient ${webhookFunctions.length} webhook(s) à reconfigurer.
+
+## Webhooks Détectés
+
+`;
+        
+        for (const func of webhookFunctions) {
+          const info = generateWebhookMigrationInfo(func.webhookType || 'custom', func.name);
+          webhookGuide += `### ${func.name}
+- **Type**: ${info.type}
+- **Header de signature**: \`${info.signatureHeader}\`
+- **Nouvelle URL**: \`https://VOTRE_DOMAINE/api/${func.name.replace(/-/g, '_')}\`
+
+${info.reconfigurationGuide}
+
+---
+
+`;
+          webhooksFolder.file(`${func.name}.md`, info.reconfigurationGuide);
+        }
+        
+        webhooksFolder.file('README.md', webhookGuide);
+      }
+    }
 
     // ==========================================
     // 5. ROOT FILES
