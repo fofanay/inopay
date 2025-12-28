@@ -6,6 +6,83 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Crypto utilities for decrypting secrets
+const ALGORITHM = 'AES-GCM';
+const IV_LENGTH = 12;
+
+async function deriveKey(masterSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(masterSecret),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt as BufferSource,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: ALGORITHM, length: 256 },
+    false,
+    ['decrypt']
+  );
+}
+
+async function decryptToken(encryptedBase64: string, masterSecret: string): Promise<string> {
+  const combined = new Uint8Array(
+    atob(encryptedBase64).split('').map(c => c.charCodeAt(0))
+  );
+
+  const salt = combined.slice(0, 16);
+  const iv = combined.slice(16, 16 + IV_LENGTH);
+  const ciphertext = combined.slice(16 + IV_LENGTH);
+
+  const key = await deriveKey(masterSecret, salt);
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: ALGORITHM, iv: iv },
+    key,
+    ciphertext
+  );
+
+  return new TextDecoder().decode(decrypted);
+}
+
+function isEncrypted(value: string): boolean {
+  if (!value || value.length < 50) return false;
+  try {
+    const decoded = atob(value);
+    return decoded.length >= 44;
+  } catch {
+    return false;
+  }
+}
+
+function getMasterKey(): string {
+  const dedicatedKey = Deno.env.get('ENCRYPTION_MASTER_KEY');
+  if (dedicatedKey) return dedicatedKey;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) throw new Error('No encryption key available');
+  return serviceRoleKey.substring(0, 64);
+}
+
+async function getDecryptedToken(token: string): Promise<string> {
+  if (!token) return token;
+  if (!isEncrypted(token)) return token;
+  try {
+    return await decryptToken(token, getMasterKey());
+  } catch (e) {
+    console.warn('[deploy-coolify] Token decryption failed, using as-is:', e);
+    return token;
+  }
+}
+
 // Parse Coolify JSON logs array into readable text
 function parseJsonLogs(logsInput: string): string {
   try {
@@ -664,8 +741,10 @@ serve(async (req) => {
     }
 
     // Call Coolify API to create application
+    // Decrypt coolify_token if it's encrypted
+    const decryptedCoolifyToken = await getDecryptedToken(server.coolify_token);
     const coolifyHeaders = {
-      'Authorization': `Bearer ${server.coolify_token}`,
+      'Authorization': `Bearer ${decryptedCoolifyToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };
