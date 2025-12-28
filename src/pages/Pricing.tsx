@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, Rocket, Server, Activity, Gift, ArrowRight, Zap, Shield, Clock, Package, Crown } from "lucide-react";
+import { Check, Sparkles, FolderArchive, Gift, ArrowRight, Zap, Shield, Clock, Package, FileText, Download } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,17 +12,9 @@ import { useTranslation } from "react-i18next";
 import PricingFAQ from "@/components/pricing/PricingFAQ";
 import FofyChat from "@/components/FofyChat";
 
-// Stripe Price IDs - Nouveaux produits one-time
+// Stripe Price ID pour Liberation Pack
 const STRIPE_PRICES = {
-  liberation: "price_1SidiQBYLQpzPb0ylzyXYhjj", // Libération Unique 99$
-  packPro: "price_1SidifBYLQpzPb0y2rStqOJb", // Pack Pro 149$
-};
-
-// Add-ons existants (gardés)
-const STRIPE_ADDONS = {
-  redeploy: "price_1Sd1YtBYLQpzPb0yQJhHvF0e", // Re-déploiement 39$
-  monitoring: "price_1Sd1b2BYLQpzPb0y3xqFmOYS", // Monitoring mensuel 15$/mois
-  server: "price_1Sd1cpBYLQpzPb0yMnPVnfSz", // Serveur VPS 59$
+  liberationPack: "price_1SidiQBYLQpzPb0ylzyXYhjj", // Liberation Pack 79$
 };
 
 const Pricing = () => {
@@ -65,87 +57,58 @@ const Pricing = () => {
   const mainOffers = [
     {
       id: "free",
-      name: "Analyse Gratuite",
+      name: t("pricingPage.free.name"),
       price: "0$",
       period: "",
-      description: "Découvrez votre Vibe-Score™ et identifiez les dépendances propriétaires",
+      description: t("pricingPage.free.description"),
       icon: Sparkles,
       popular: false,
       features: [
-        "Score de portabilité complet",
-        "Audit des dépendances",
-        "Prévisualisation du nettoyage",
+        "Score de souveraineté complet",
+        "Audit des dépendances propriétaires",
+        "Prévisualisation du nettoyage IA",
         "Recommandations personnalisées",
       ],
-      cta: user ? "Analyser mon projet" : "Commencer gratuitement",
+      cta: user ? t("pricingPage.free.cta") : t("pricingPage.free.ctaLoggedIn"),
       action: () => navigate(user ? "/dashboard" : "/auth"),
     },
     {
-      id: "liberation",
-      name: "Libération Unique",
-      price: "99$",
+      id: "liberationPack",
+      name: "Liberation Pack",
+      price: "79$",
       period: "one-time",
-      description: "Nettoyage IA complet + Déploiement sur votre serveur",
-      icon: Rocket,
+      description: "ZIP autonome prêt à déployer sur n'importe quel VPS",
+      icon: FolderArchive,
       popular: true,
       features: [
-        "Nettoyage IA de tout le code",
-        "Suppression des dépendances propriétaires",
-        "Export vers GitHub personnel",
-        "Déploiement VPS assisté",
-        "SSL + PostgreSQL inclus",
-        "Support prioritaire 48h",
+        "Nettoyage IA exhaustif (10 passes)",
+        "Score de souveraineté garanti > 95%",
+        "ZIP autonome téléchargeable",
+        "docker-compose.yml inclus",
+        "Guide de déploiement HTML",
+        "Polyfills générés automatiquement",
       ],
-      cta: "Libérer mon projet",
-      action: () => handleCheckout(STRIPE_PRICES.liberation, "liberation"),
+      cta: "Générer mon Liberation Pack",
+      action: () => handleCheckout(STRIPE_PRICES.liberationPack, "liberationPack"),
     },
     {
-      id: "packPro",
-      name: "Pack Pro",
-      price: "149$",
-      originalPrice: "217$",
-      period: "one-time",
-      description: "Libération + VPS dédié + Monitoring 24/7 pendant 1 an",
-      icon: Crown,
+      id: "enterprise",
+      name: "Sur Mesure",
+      price: "Sur devis",
+      period: "",
+      description: "Pour les gros projets (+50 fichiers) ou besoins spécifiques",
+      icon: FileText,
       popular: false,
-      badge: "Économisez 68$",
       features: [
-        "Tout de la Libération Unique",
-        "VPS dédié configuré pour vous",
-        "Monitoring 24/7 pendant 1 an",
-        "Alertes instantanées",
-        "Sauvegardes automatiques",
-        "Support prioritaire illimité",
+        "Supplément calculé automatiquement",
+        "Support dédié pendant migration",
+        "Configuration backend incluse",
+        "Migration base de données",
+        "Consultation architecture",
+        "SLA personnalisé",
       ],
-      cta: "Choisir le Pack Pro",
-      action: () => handleCheckout(STRIPE_PRICES.packPro, "packPro"),
-    },
-  ];
-
-  const addons = [
-    {
-      id: "redeploy",
-      name: "Re-déploiement",
-      price: "39$",
-      description: "Mise à jour de votre application déployée",
-      icon: Zap,
-      action: () => handleCheckout(STRIPE_ADDONS.redeploy, "redeploy"),
-    },
-    {
-      id: "monitoring",
-      name: "Monitoring 24/7",
-      price: "15$/mois",
-      description: "Surveillance et alertes en temps réel",
-      icon: Activity,
-      action: () => handleCheckout(STRIPE_ADDONS.monitoring, "monitoring", "subscription"),
-    },
-    {
-      id: "server",
-      name: "Serveur VPS",
-      price: "59$",
-      description: "Configuration VPS supplémentaire",
-      icon: Server,
-      action: () => handleCheckout(STRIPE_ADDONS.server, "server"),
+      cta: "Nous contacter",
+      action: () => window.open("mailto:support@inopay.io?subject=Liberation Pack Enterprise", "_blank"),
     },
   ];
 
@@ -187,11 +150,6 @@ const Pricing = () => {
                     POPULAIRE
                   </div>
                 )}
-                {offer.badge && (
-                  <div className="absolute top-0 left-0 bg-success text-success-foreground px-3 py-1 text-xs font-semibold rounded-br-lg">
-                    {offer.badge}
-                  </div>
-                )}
                 <CardHeader className="pb-4 pt-8">
                   <div className="flex items-center gap-3 mb-4">
                     <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
@@ -205,9 +163,6 @@ const Pricing = () => {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold text-foreground">{offer.price}</span>
-                    {offer.originalPrice && (
-                      <span className="text-lg text-muted-foreground line-through">{offer.originalPrice}</span>
-                    )}
                     {offer.period && (
                       <span className="text-sm text-muted-foreground">
                         {offer.period === "one-time" ? "paiement unique" : `/${offer.period}`}
@@ -267,7 +222,7 @@ const Pricing = () => {
             {[
               { step: "1", title: "Analysez", desc: "Upload votre ZIP ou connectez GitHub", icon: Sparkles },
               { step: "2", title: "Nettoyez", desc: "L'IA supprime les dépendances propriétaires", icon: Zap },
-              { step: "3", title: "Déployez", desc: "Votre code tourne sur votre VPS", icon: Rocket },
+              { step: "3", title: "Téléchargez", desc: "ZIP autonome prêt à déployer", icon: Download },
             ].map((item, index) => (
               <div key={index} className="text-center">
                 <div className="relative inline-flex items-center justify-center mb-4">
@@ -286,32 +241,28 @@ const Pricing = () => {
         </div>
       </section>
 
-      {/* Add-ons Section */}
+      {/* What's Included Section */}
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <Badge className="mb-4 bg-muted text-muted-foreground">Options</Badge>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">Besoin de plus ?</h2>
-            <p className="text-muted-foreground">Services additionnels à la carte</p>
+            <Badge className="mb-4 bg-muted text-muted-foreground">Liberation Pack</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">Ce que vous obtenez</h2>
+            <p className="text-muted-foreground">Un pack autonome prêt à déployer n'importe où</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {addons.map((addon) => (
-              <Card key={addon.id} className="border-border hover:border-primary/50 transition-colors">
+          <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            {[
+              { icon: FolderArchive, title: "ZIP complet", desc: "Frontend + Backend + Config" },
+              { icon: FileText, title: "docker-compose.yml", desc: "Déploiement en une commande" },
+              { icon: Shield, title: "Code nettoyé", desc: "Aucune dépendance propriétaire" },
+              { icon: Download, title: "Guide HTML", desc: "Instructions pas à pas" },
+            ].map((item, index) => (
+              <Card key={index} className="border-border hover:border-primary/50 transition-colors">
                 <CardContent className="p-6 text-center">
                   <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <addon.icon className="h-6 w-6 text-primary" />
+                    <item.icon className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="font-semibold mb-1">{addon.name}</h3>
-                  <p className="text-2xl font-bold text-primary mb-2">{addon.price}</p>
-                  <p className="text-sm text-muted-foreground mb-4">{addon.description}</p>
-                  <Button
-                    variant="outline"
-                    onClick={addon.action}
-                    disabled={loadingPlan === addon.id}
-                    className="w-full"
-                  >
-                    {loadingPlan === addon.id ? "Chargement..." : "Ajouter"}
-                  </Button>
+                  <h3 className="font-semibold mb-1">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.desc}</p>
                 </CardContent>
               </Card>
             ))}

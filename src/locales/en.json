@@ -757,28 +757,32 @@
     },
     "faq": {
       "badge": "Frequently asked questions",
-      "title": "Your Liberation Questions",
-      "subtitle": "Everything you need to know about our service",
+      "title": "Your Liberation Pack Questions",
+      "subtitle": "Everything you need to know about our liberation tool",
       "items": {
+        "whatIsLiberationPack": {
+          "question": "What is the Liberation Pack?",
+          "answer": "The Liberation Pack is a self-contained ZIP containing your code fully cleaned of proprietary dependencies, a ready-to-use docker-compose.yml, and a detailed deployment guide. You can deploy it on any VPS (Hetzner, OVH, AWS, etc.)."
+        },
         "howItWorks": {
-          "question": "How does Liberation work?",
-          "answer": "You upload your project (ZIP or GitHub), our AI analyzes and removes proprietary dependencies, then we deploy the cleaned code to your VPS. The whole process takes about 10 minutes."
+          "question": "How does AI cleaning work?",
+          "answer": "Our AI performs 10 cleaning passes to remove all proprietary dependencies (lovable-tagger, @lovable-dev imports, etc.), generate necessary polyfills, and ensure your code is 100% autonomous with a sovereignty score > 95%."
         },
-        "oneTime": {
-          "question": "Why a one-time payment instead of a subscription?",
-          "answer": "We believe your code belongs to you. Once liberated, it's yours forever. No monthly fees, no lock-in. Pay once, own your code."
+        "whatIncluded": {
+          "question": "What's included in the downloadable ZIP?",
+          "answer": "The pack includes: your cleaned frontend code, a generated Express backend (optional), docker-compose.yml for 1-command deployment, step-by-step HTML deployment guide, and a detailed sovereignty report."
         },
-        "packPro": {
-          "question": "What's included in the Pro Pack?",
-          "answer": "The Pro Pack includes full Liberation ($99) + a dedicated configured VPS ($59) + 24/7 Monitoring for 1 year ($180). That's $217 of services for only $149, a $68 savings."
+        "deployment": {
+          "question": "How do I deploy my pack?",
+          "answer": "You deploy on your own server. The included guide explains everything in detail: copy files to your VPS, run 'docker-compose up -d', and your app is live. No dependency on Inopay after purchase."
         },
-        "security": {
-          "question": "Is my data secure?",
-          "answer": "Absolutely. We use a Zero-Knowledge architecture: your credentials are never stored. Cleaning happens in memory and everything is erased after deployment."
+        "largeProjects": {
+          "question": "What about large projects (+50 files)?",
+          "answer": "A supplement is automatically calculated based on the number of files. The AI shows you the exact cost before payment. You can also contact us for a custom quote."
         },
         "support": {
           "question": "What support is included?",
-          "answer": "Single Liberation includes priority support for 48h for the initial deployment. The Pro Pack includes unlimited priority support for the entire monitoring period (1 year)."
+          "answer": "Free analysis is unlimited. For the paid Liberation Pack, we offer email support for any technical questions related to deploying your pack."
         }
       }
     },
@@ -2080,56 +2084,54 @@
     },
     "free": {
       "name": "Free Analysis",
-      "description": "Discover your Vibe-Score™ and identify proprietary dependencies",
-      "features": ["Complete portability score", "Dependency audit", "Cleaning preview", "Personalized recommendations"],
+      "description": "Discover your sovereignty score and identify proprietary dependencies",
+      "features": ["Complete sovereignty score", "Proprietary dependency audit", "AI cleaning preview", "Personalized recommendations"],
       "cta": "Analyze my project",
       "ctaLoggedIn": "Start for free"
     },
-    "liberation": {
-      "name": "Single Liberation",
-      "price": "$99",
+    "liberationPack": {
+      "name": "Liberation Pack",
+      "price": "$79",
       "period": "one-time",
-      "description": "AI cleanup + Deployment on your server",
-      "features": ["Full AI code cleanup", "Remove proprietary dependencies", "Export to personal GitHub", "Assisted VPS deployment", "SSL + PostgreSQL included", "48h priority support"],
-      "cta": "Liberate my project"
+      "description": "Self-contained ZIP ready to deploy on any VPS",
+      "features": ["Exhaustive AI cleaning (10 passes)", "Sovereignty score guaranteed > 95%", "Downloadable self-contained ZIP", "docker-compose.yml included", "HTML deployment guide", "Auto-generated polyfills"],
+      "cta": "Generate my Liberation Pack"
     },
-    "packPro": {
-      "name": "Pro Pack",
-      "price": "$149",
-      "originalPrice": "$217",
-      "period": "one-time",
-      "badge": "Save $68",
-      "description": "Liberation + Dedicated VPS + 24/7 Monitoring for 1 year",
-      "features": ["Everything in Single Liberation", "Dedicated VPS configured for you", "24/7 monitoring for 1 year", "Instant alerts", "Automatic backups", "Unlimited priority support"],
-      "cta": "Choose Pro Pack"
+    "enterprise": {
+      "name": "Custom",
+      "price": "On quote",
+      "description": "For large projects (+50 files) or specific needs",
+      "features": ["Auto-calculated supplement", "Dedicated migration support", "Backend configuration included", "Database migration", "Architecture consultation", "Custom SLA"],
+      "cta": "Contact us"
     },
     "process": {
       "title": "How it works?",
-      "subtitle": "From analysis to production in 10 minutes",
+      "subtitle": "From analysis to downloadable pack in 5 minutes",
       "steps": [
         { "step": "1", "title": "Analyze", "desc": "Upload your ZIP or connect GitHub" },
         { "step": "2", "title": "Clean", "desc": "AI removes proprietary dependencies" },
-        { "step": "3", "title": "Deploy", "desc": "Your code runs on your VPS" }
+        { "step": "3", "title": "Download", "desc": "Self-contained ZIP ready to deploy" }
       ]
     },
-    "addons": {
-      "badge": "Options",
-      "title": "Need more?",
-      "subtitle": "Additional services à la carte",
-      "items": {
-        "redeploy": { "name": "Re-deployment", "price": "$39", "desc": "Update your deployed application" },
-        "monitoring": { "name": "24/7 Monitoring", "price": "$15/month", "desc": "Real-time monitoring and alerts" },
-        "server": { "name": "VPS Server", "price": "$59", "desc": "Additional VPS configuration" }
-      }
+    "whatsIncluded": {
+      "badge": "Liberation Pack",
+      "title": "What you get",
+      "subtitle": "A self-contained pack ready to deploy anywhere",
+      "items": [
+        { "title": "Complete ZIP", "desc": "Frontend + Backend + Config" },
+        { "title": "docker-compose.yml", "desc": "One-command deployment" },
+        { "title": "Cleaned code", "desc": "No proprietary dependencies" },
+        { "title": "HTML Guide", "desc": "Step-by-step instructions" }
+      ]
     },
     "trust": {
       "zeroKnowledge": "Zero-Knowledge",
-      "deployment": "Deployment in 10 min",
+      "deployment": "Pack in 5 min",
       "ownership": "100% your code"
     },
     "finalCta": {
       "title": "Ready to liberate your creation?",
-      "subtitle": "Analyze your project for free and discover your Vibe-Score™",
+      "subtitle": "Analyze your project for free and discover your sovereignty score",
       "button": "Start for free",
       "buttonLoggedIn": "Go to Dashboard"
     },
