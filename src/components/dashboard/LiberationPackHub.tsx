@@ -53,6 +53,7 @@ import {
   finalVerificationPass,
   cleanEnvFile,
   cleanMarkdownFile,
+  cleanShellScript,
   HOOK_POLYFILLS,
   PROPRIETARY_PATHS,
 } from "@/lib/clientProprietaryPatterns";
@@ -657,6 +658,16 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       // Clean README and markdown files
       else if (/\.md$/i.test(path)) {
         const result = cleanMarkdownFile(content);
+        finalContent = result.cleaned;
+        if (result.wasModified) {
+          stats.filesCleaned++;
+          wasModified = true;
+          fileChanges = result.changes;
+        }
+      }
+      // Clean shell scripts
+      else if (/\.(sh|bash)$/i.test(path)) {
+        const result = cleanShellScript(content);
         finalContent = result.cleaned;
         if (result.wasModified) {
           stats.filesCleaned++;
