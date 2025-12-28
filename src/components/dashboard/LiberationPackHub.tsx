@@ -1554,55 +1554,72 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                       Télécharger le pack
                     </Button>
                     
-                    {/* Export to GitHub section */}
-                    {config?.destinationToken && (
-                      <div className="flex flex-col items-center gap-3 pt-4 border-t w-full">
-                        {gitHubRepoUrl ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-2 text-success">
-                              <CheckCircle2 className="h-5 w-5" />
-                              <span className="font-medium">Poussé vers GitHub !</span>
-                            </div>
-                            <Button variant="outline" asChild>
-                              <a href={gitHubRepoUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
-                                <Github className="h-4 w-4" />
-                                Voir le dépôt
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </Button>
+                    {/* Export to GitHub section - Always visible */}
+                    <div className="flex flex-col items-center gap-3 pt-4 border-t w-full">
+                      {!config?.destinationToken ? (
+                        <div className="flex flex-col items-center gap-2 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Configurez votre destination GitHub pour pousser le code
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              toast.info('Configurer GitHub', {
+                                description: 'Allez dans Paramètres → Destinations GitHub pour configurer votre token.'
+                              });
+                            }}
+                            className="gap-2"
+                          >
+                            <Github className="h-4 w-4" />
+                            Configurer GitHub
+                          </Button>
+                        </div>
+                      ) : gitHubRepoUrl ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="flex items-center gap-2 text-success">
+                            <CheckCircle2 className="h-5 w-5" />
+                            <span className="font-medium">Poussé vers GitHub !</span>
                           </div>
-                        ) : exportingToGitHub ? (
-                          <div className="w-full space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">{gitHubPushMessage}</span>
-                              <span className="font-medium">{gitHubPushProgress}%</span>
-                            </div>
-                            <Progress value={gitHubPushProgress} className="h-2" />
-                            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Push vers GitHub en cours...
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <Button 
-                              onClick={handleExportToGitHub}
-                              disabled={exportingToGitHub}
-                              variant="outline"
-                              className="gap-2"
-                            >
+                          <Button variant="outline" asChild>
+                            <a href={gitHubRepoUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
                               <Github className="h-4 w-4" />
-                              Pousser vers GitHub
-                            </Button>
-                            <p className="text-xs text-muted-foreground text-center">
-                              Destination: {config.destinationUsername}/{config.createNewRepo 
-                                ? `${projectName.toLowerCase().replace(/\s+/g, '-')}-liberated` 
-                                : config.existingRepoName}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    )}
+                              Voir le dépôt
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        </div>
+                      ) : exportingToGitHub ? (
+                        <div className="w-full space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{gitHubPushMessage}</span>
+                            <span className="font-medium">{gitHubPushProgress}%</span>
+                          </div>
+                          <Progress value={gitHubPushProgress} className="h-2" />
+                          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Push vers GitHub en cours...
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Button 
+                            onClick={handleExportToGitHub}
+                            disabled={exportingToGitHub}
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            <Github className="h-4 w-4" />
+                            Pousser vers GitHub
+                          </Button>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Destination: {config.destinationUsername}/{config.createNewRepo 
+                              ? `${projectName.toLowerCase().replace(/\s+/g, '-')}-liberated` 
+                              : config.existingRepoName}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4">
