@@ -62,6 +62,8 @@ interface LiberationConfig {
   destinationToken: string;
   destinationUsername: string;
   isPrivateRepo: boolean;
+  createNewRepo: boolean;
+  existingRepoName?: string;
 }
 
 interface GitHubRepo {
@@ -189,6 +191,8 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
           destinationToken: data.github_destination_token || '',
           destinationUsername: data.github_destination_username || '',
           isPrivateRepo: data.default_repo_private ?? true,
+          createNewRepo: true,
+          existingRepoName: undefined,
         };
         setConfig(loadedConfig);
         

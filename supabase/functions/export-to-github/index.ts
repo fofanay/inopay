@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { repoName, description, files, isPrivate = true, github_token } = await req.json();
+    const { repoName, description, files, isPrivate = true, github_token, existingRepoName, destinationUsername: reqDestUsername } = await req.json();
 
     // Fetch user's destination token from user_settings
     const { data: userSettings } = await supabase
@@ -48,9 +48,14 @@ serve(async (req) => {
     const serverGithubToken = Deno.env.get('GITHUB_PERSONAL_ACCESS_TOKEN');
     const githubToken = destinationToken || serverGithubToken;
     const usingUserToken = !!destinationToken;
-    const destinationUsername = userSettings?.github_destination_username;
+    const destinationUsername = reqDestUsername || userSettings?.github_destination_username;
+    
+    // Determine if we're pushing to an existing repo
+    const useExistingRepo = !!existingRepoName;
+    const targetRepoName = useExistingRepo ? existingRepoName : repoName;
 
     console.log(`[EXPORT-TO-GITHUB] Using ${usingUserToken ? `user destination token${destinationUsername ? ` (@${destinationUsername})` : ''}` : "server fallback token"} for user ${user.email}`);
+    console.log(`[EXPORT-TO-GITHUB] Mode: ${useExistingRepo ? 'Push to existing repo' : 'Create new repo'} - Target: ${destinationUsername}/${targetRepoName}`);
 
     if (!githubToken) {
       return new Response(JSON.stringify({ 
@@ -62,7 +67,7 @@ serve(async (req) => {
       });
     }
 
-    if (!repoName || !files || Object.keys(files).length === 0) {
+    if (!targetRepoName || !files || Object.keys(files).length === 0) {
       return new Response(JSON.stringify({ error: 'Nom du repo et fichiers requis' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -308,54 +313,86 @@ engine-strict=false
     
     console.log('[EXPORT] Added vercel.json and netlify.toml for easier deployment');
 
-    console.log(`Creating GitHub repo: ${repoName}`);
+    let repoFullName: string;
+    let repoHtmlUrl: string;
 
-    // Step 1: Create the repository
-    const createRepoResponse = await fetch('https://api.github.com/user/repos', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'InoPay-Cleaner'
-      },
-      body: JSON.stringify({
-        name: repoName,
-        description: description || 'Projet exporté depuis InoPay Cleaner - 100% autonome',
-        private: isPrivate,
-        auto_init: true // Creates initial commit with README
-      })
-    });
-
-    if (!createRepoResponse.ok) {
-      const errorData = await createRepoResponse.json();
-      console.error('GitHub create repo error:', errorData);
+    if (useExistingRepo) {
+      // Mode: Push to existing repository
+      console.log(`[EXPORT-TO-GITHUB] Pushing to existing repo: ${destinationUsername}/${targetRepoName}`);
       
-      if (createRepoResponse.status === 422 && errorData.errors?.[0]?.message?.includes('already exists')) {
+      repoFullName = `${destinationUsername}/${targetRepoName}`;
+      
+      // Verify the repo exists
+      const checkRepoResponse = await fetch(`https://api.github.com/repos/${repoFullName}`, {
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'InoPay-Cleaner'
+        }
+      });
+      
+      if (!checkRepoResponse.ok) {
         return new Response(JSON.stringify({ 
-          error: `Le dépôt "${repoName}" existe déjà. Veuillez choisir un autre nom.` 
+          error: `Le dépôt "${repoFullName}" n'existe pas ou n'est pas accessible.` 
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      return new Response(JSON.stringify({ 
-        error: `Erreur GitHub: ${errorData.message || 'Impossible de créer le dépôt'}` 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      const repoInfo = await checkRepoResponse.json();
+      repoHtmlUrl = repoInfo.html_url;
+      console.log(`[EXPORT-TO-GITHUB] Existing repo verified: ${repoHtmlUrl}`);
+    } else {
+      // Mode: Create new repository
+      console.log(`[EXPORT-TO-GITHUB] Creating new repo: ${targetRepoName}`);
+
+      const createRepoResponse = await fetch('https://api.github.com/user/repos', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'InoPay-Cleaner'
+        },
+        body: JSON.stringify({
+          name: targetRepoName,
+          description: description || 'Projet exporté depuis InoPay Cleaner - 100% autonome',
+          private: isPrivate,
+          auto_init: true // Creates initial commit with README
+        })
       });
+
+      if (!createRepoResponse.ok) {
+        const errorData = await createRepoResponse.json();
+        console.error('GitHub create repo error:', errorData);
+        
+        if (createRepoResponse.status === 422 && errorData.errors?.[0]?.message?.includes('already exists')) {
+          return new Response(JSON.stringify({ 
+            error: `Le dépôt "${targetRepoName}" existe déjà. Veuillez choisir un autre nom.` 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        return new Response(JSON.stringify({ 
+          error: `Erreur GitHub: ${errorData.message || 'Impossible de créer le dépôt'}` 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const repoData = await createRepoResponse.json();
+      repoFullName = repoData.full_name;
+      repoHtmlUrl = repoData.html_url;
+      
+      console.log(`[EXPORT-TO-GITHUB] Repo created: ${repoFullName}`);
+
+      // Wait a moment for the repo to be fully initialized
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
-
-    const repoData = await createRepoResponse.json();
-    const owner = repoData.owner.login;
-    const repoFullName = repoData.full_name;
-    
-    console.log(`Repo created: ${repoFullName}`);
-
-    // Wait a moment for the repo to be fully initialized
-    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Step 2: Get the default branch SHA
     const refResponse = await fetch(
@@ -370,18 +407,36 @@ engine-strict=false
     );
 
     if (!refResponse.ok) {
-      console.error('Failed to get ref');
-      return new Response(JSON.stringify({ 
-        error: 'Impossible de récupérer la référence du dépôt',
-        repoUrl: repoData.html_url
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.error('Failed to get ref, trying master branch');
+      // Try master branch as fallback
+      const masterRefResponse = await fetch(
+        `https://api.github.com/repos/${repoFullName}/git/ref/heads/master`,
+        {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'InoPay-Cleaner'
+          }
+        }
+      );
+      
+      if (!masterRefResponse.ok) {
+        return new Response(JSON.stringify({ 
+          error: 'Impossible de récupérer la référence du dépôt (main/master)',
+          repoUrl: repoHtmlUrl
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
-    const refData = await refResponse.json();
+    const refData = await (refResponse.ok ? refResponse : await fetch(
+      `https://api.github.com/repos/${repoFullName}/git/ref/heads/master`,
+      { headers: { 'Authorization': `Bearer ${githubToken}`, 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'InoPay-Cleaner' } }
+    )).json();
     const baseSha = refData.object.sha;
+    const branchName = refData.ref.includes('master') ? 'master' : 'main';
 
     // Step 3: Create blobs for each file (including .env.example)
     const fileBlobs: { path: string; sha: string; mode: string; type: string }[] = [];
@@ -439,7 +494,7 @@ engine-strict=false
       console.error('Failed to create tree');
       return new Response(JSON.stringify({ 
         error: 'Erreur lors de la création de l\'arborescence',
-        repoUrl: repoData.html_url
+        repoUrl: repoHtmlUrl
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -471,7 +526,7 @@ engine-strict=false
       console.error('Failed to create commit');
       return new Response(JSON.stringify({ 
         error: 'Erreur lors de la création du commit',
-        repoUrl: repoData.html_url
+        repoUrl: repoHtmlUrl
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -480,9 +535,9 @@ engine-strict=false
 
     const commitData = await commitResponse.json();
 
-    // Step 6: Update the reference
+    // Step 6: Update the reference (use the correct branch name)
     const updateRefResponse = await fetch(
-      `https://api.github.com/repos/${repoFullName}/git/refs/heads/main`,
+      `https://api.github.com/repos/${repoFullName}/git/refs/heads/${branchName}`,
       {
         method: 'PATCH',
         headers: {
@@ -506,9 +561,10 @@ engine-strict=false
 
     return new Response(JSON.stringify({ 
       success: true,
-      repoUrl: repoData.html_url,
+      repoUrl: repoHtmlUrl,
       repoFullName,
-      filesCount: fileBlobs.length
+      filesCount: fileBlobs.length,
+      mode: useExistingRepo ? 'existing' : 'new'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
