@@ -157,6 +157,7 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const [includeDatabase, setIncludeDatabase] = useState(true);
   const [isGeneratingPack, setIsGeneratingPack] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [gitHubRepoUrl, setGitHubRepoUrl] = useState<string | null>(null);
 
   // Helper to extract full_name from GitHub URL
   const extractRepoFullName = (url: string): string | null => {
@@ -282,6 +283,57 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       minorIssues: 0,
     });
     setDownloadUrl(null);
+    setGitHubRepoUrl(null);
+  };
+
+  // Export cleaned files to GitHub
+  const handleExportToGitHub = async () => {
+    if (!config?.destinationToken || !config?.destinationUsername) {
+      toast.error("Configuration GitHub de destination manquante");
+      return;
+    }
+    
+    setExportingToGitHub(true);
+    
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      // Prepare files for export
+      const filesForExport: Record<string, string> = { ...cleanedFiles };
+      
+      // Determine repo name
+      const repoName = config.createNewRepo 
+        ? `${projectName.toLowerCase().replace(/\s+/g, '-')}-liberated`
+        : config.existingRepoName;
+      
+      const { data, error } = await supabase.functions.invoke('export-to-github', {
+        body: {
+          files: filesForExport,
+          repoName,
+          existingRepoName: config.createNewRepo ? undefined : config.existingRepoName,
+          isPrivate: config.isPrivateRepo,
+          description: `Code libéré par Inopay - Score: ${cleaningStats.sovereigntyScore}%`,
+          github_token: config.destinationToken,
+          destinationUsername: config.destinationUsername
+        },
+        headers: session.session?.access_token 
+          ? { Authorization: `Bearer ${session.session.access_token}` }
+          : undefined
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      if (data?.repoUrl) {
+        setGitHubRepoUrl(data.repoUrl);
+        toast.success(`✅ Code poussé vers GitHub avec succès !`);
+      }
+    } catch (error) {
+      console.error('Error exporting to GitHub:', error);
+      toast.error(error instanceof Error ? error.message : "Erreur d'export GitHub");
+    } finally {
+      setExportingToGitHub(false);
+    }
   };
 
   // Handle ZIP file drop
@@ -1378,6 +1430,53 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                       <Download className="h-5 w-5" />
                       Télécharger le pack
                     </Button>
+                    
+                    {/* Export to GitHub section */}
+                    {config?.destinationToken && (
+                      <div className="flex flex-col items-center gap-3 pt-4 border-t w-full">
+                        {gitHubRepoUrl ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-2 text-success">
+                              <CheckCircle2 className="h-5 w-5" />
+                              <span className="font-medium">Poussé vers GitHub !</span>
+                            </div>
+                            <Button variant="outline" asChild>
+                              <a href={gitHubRepoUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
+                                <Github className="h-4 w-4" />
+                                Voir le dépôt
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button 
+                              onClick={handleExportToGitHub}
+                              disabled={exportingToGitHub}
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              {exportingToGitHub ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Push vers GitHub...
+                                </>
+                              ) : (
+                                <>
+                                  <Github className="h-4 w-4" />
+                                  Pousser vers GitHub
+                                </>
+                              )}
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                              Destination: {config.destinationUsername}/{config.createNewRepo 
+                                ? `${projectName.toLowerCase().replace(/\s+/g, '-')}-liberated` 
+                                : config.existingRepoName}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4">
