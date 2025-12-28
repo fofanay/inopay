@@ -248,6 +248,8 @@ export type Database = {
       }
       deployment_history: {
         Row: {
+          archive_generated_at: string | null
+          archive_path: string | null
           cleaned_dependencies: string[] | null
           coolify_url: string | null
           cost_analysis: Json | null
@@ -269,6 +271,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archive_generated_at?: string | null
+          archive_path?: string | null
           cleaned_dependencies?: string[] | null
           coolify_url?: string | null
           cost_analysis?: Json | null
@@ -290,6 +294,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archive_generated_at?: string | null
+          archive_path?: string | null
           cleaned_dependencies?: string[] | null
           coolify_url?: string | null
           cost_analysis?: Json | null

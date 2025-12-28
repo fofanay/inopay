@@ -10,7 +10,8 @@ import {
   Home,
   Server,
   LayoutDashboard,
-  ShieldCheck
+  ShieldCheck,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { RoleIndicator } from "@/components/ui/role-indicator";
 
-import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
+import { LiberationHistory } from "@/components/dashboard/LiberationHistory";
 import { SovereigntyAuditReport } from "@/components/dashboard/SovereigntyAuditReport";
 import { MobileSidebar } from "@/components/dashboard/MobileSidebar";
 import { SelfLiberationTab } from "@/components/dashboard/SelfLiberationTab";
@@ -31,9 +32,9 @@ import { supabase } from "@/integrations/supabase/client";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 import FofyChat from "@/components/FofyChat";
 
-type DashboardTab = "overview" | "liberation" | "fleet" | "audit";
+type DashboardTab = "overview" | "liberation" | "history" | "audit";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "audit"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "history", "audit"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const Dashboard = () => {
   const menuItems = [
     { id: "overview", label: t("dashboard.overview"), icon: LayoutDashboard, section: "main" },
     { id: "liberation", label: "Libération", icon: Rocket, section: "main", badge: "🚀" },
-    { id: "fleet", label: "Ma Flotte", icon: Server, section: "main" },
+    { id: "history", label: "Historique", icon: History, section: "main" },
     { id: "audit", label: "Audit Souveraineté", icon: ShieldCheck, section: "main" },
   ];
 
@@ -100,11 +101,11 @@ const Dashboard = () => {
           description: "Libérez votre projet vers votre infrastructure souveraine",
           icon: <Rocket className="h-5 w-5 text-primary" />
         };
-      case "fleet":
+      case "history":
         return { 
-          title: "Ma Flotte",
-          description: "Serveurs, déploiements et synchronisations",
-          icon: <Server className="h-5 w-5 text-primary" />
+          title: "Historique",
+          description: "Vos libérations passées et téléchargements",
+          icon: <History className="h-5 w-5 text-primary" />
         };
       case "audit":
         return { 
@@ -257,8 +258,8 @@ const Dashboard = () => {
               <SelfLiberationTab onNavigate={(tab) => setActiveTab(tab as DashboardTab)} />
             )}
 
-            {activeTab === "fleet" && (
-              <MyPersonalFleet />
+            {activeTab === "history" && (
+              <LiberationHistory />
             )}
 
             {activeTab === "audit" && (
