@@ -122,6 +122,8 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const [selectedRepo, setSelectedRepo] = useState<string>("");
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [exportingToGitHub, setExportingToGitHub] = useState(false);
+  const [gitHubPushProgress, setGitHubPushProgress] = useState(0);
+  const [gitHubPushMessage, setGitHubPushMessage] = useState("");
   
   // Flow state
   const [step, setStep] = useState<FlowStep>("upload");
@@ -294,9 +296,31 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
     }
     
     setExportingToGitHub(true);
+    setGitHubPushProgress(0);
+    setGitHubPushMessage("Préparation des fichiers...");
     
     try {
       const { data: session } = await supabase.auth.getSession();
+      
+      // Simulate progress steps since we can't get real-time progress from edge function
+      const progressSteps = [
+        { progress: 10, message: "Préparation des fichiers..." },
+        { progress: 25, message: "Connexion à GitHub..." },
+        { progress: 40, message: "Création du dépôt..." },
+        { progress: 60, message: "Envoi des fichiers..." },
+        { progress: 80, message: "Création du commit..." },
+        { progress: 95, message: "Finalisation..." },
+      ];
+      
+      // Start progress animation
+      let currentStep = 0;
+      const progressInterval = setInterval(() => {
+        if (currentStep < progressSteps.length) {
+          setGitHubPushProgress(progressSteps[currentStep].progress);
+          setGitHubPushMessage(progressSteps[currentStep].message);
+          currentStep++;
+        }
+      }, 800);
       
       // Prepare files for export
       const filesForExport: Record<string, string> = { ...cleanedFiles };
@@ -321,15 +345,22 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
           : undefined
       });
       
+      // Clear interval and set complete
+      clearInterval(progressInterval);
+      
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
       if (data?.repoUrl) {
+        setGitHubPushProgress(100);
+        setGitHubPushMessage("Terminé !");
         setGitHubRepoUrl(data.repoUrl);
         toast.success(`✅ Code poussé vers GitHub avec succès !`);
       }
     } catch (error) {
       console.error('Error exporting to GitHub:', error);
+      setGitHubPushProgress(0);
+      setGitHubPushMessage("");
       toast.error(error instanceof Error ? error.message : "Erreur d'export GitHub");
     } finally {
       setExportingToGitHub(false);
@@ -1448,6 +1479,18 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                               </a>
                             </Button>
                           </div>
+                        ) : exportingToGitHub ? (
+                          <div className="w-full space-y-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{gitHubPushMessage}</span>
+                              <span className="font-medium">{gitHubPushProgress}%</span>
+                            </div>
+                            <Progress value={gitHubPushProgress} className="h-2" />
+                            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Push vers GitHub en cours...
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <Button 
@@ -1456,17 +1499,8 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                               variant="outline"
                               className="gap-2"
                             >
-                              {exportingToGitHub ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  Push vers GitHub...
-                                </>
-                              ) : (
-                                <>
-                                  <Github className="h-4 w-4" />
-                                  Pousser vers GitHub
-                                </>
-                              )}
+                              <Github className="h-4 w-4" />
+                              Pousser vers GitHub
                             </Button>
                             <p className="text-xs text-muted-foreground text-center">
                               Destination: {config.destinationUsername}/{config.createNewRepo 
