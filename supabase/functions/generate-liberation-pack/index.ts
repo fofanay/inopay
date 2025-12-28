@@ -2976,6 +2976,324 @@ export default app;
 }
 
 // ============================================
+// POST-DEPLOYMENT CHECKLIST GENERATOR
+// ============================================
+
+interface ServiceCheck {
+  name: string;
+  type: 'http' | 'database' | 'api' | 'webhook' | 'storage' | 'auth';
+  endpoint: string;
+  method?: 'GET' | 'POST' | 'HEAD';
+  expectedStatus?: number;
+  timeout?: number;
+  description: string;
+  critical: boolean;
+}
+
+function generatePostDeploymentChecklist(
+  projectName: string,
+  hasBackend: boolean,
+  hasDatabase: boolean,
+  hasAuth: boolean,
+  backendRoutes: string[] = [],
+  webhooks: { name: string; type: string }[] = [],
+  envVars: string[] = []
+): string {
+  // Build service checks
+  const checks: ServiceCheck[] = [
+    {
+      name: 'Frontend',
+      type: 'http',
+      endpoint: '/',
+      method: 'GET',
+      expectedStatus: 200,
+      description: 'Vérification que le frontend est accessible',
+      critical: true
+    },
+    {
+      name: 'Health Check',
+      type: 'api',
+      endpoint: '/health',
+      method: 'GET',
+      expectedStatus: 200,
+      description: 'Endpoint de santé du serveur',
+      critical: true
+    }
+  ];
+
+  if (hasBackend) {
+    backendRoutes.slice(0, 10).forEach(route => {
+      checks.push({
+        name: 'API: ' + route,
+        type: 'api',
+        endpoint: '/api/' + route,
+        method: 'GET',
+        description: 'Endpoint ' + route,
+        critical: false
+      });
+    });
+  }
+
+  if (hasAuth) {
+    checks.push({
+      name: 'Auth Service',
+      type: 'auth',
+      endpoint: '/auth/v1/health',
+      method: 'GET',
+      description: "Service d'authentification",
+      critical: true
+    });
+  }
+
+  if (hasDatabase) {
+    checks.push({
+      name: 'Database',
+      type: 'database',
+      endpoint: '/api/health?check=db',
+      method: 'GET',
+      description: 'Connexion à la base de données',
+      critical: true
+    });
+  }
+
+  const checksJson = JSON.stringify(checks);
+  const envVarsJson = JSON.stringify(envVars);
+  const webhooksJson = JSON.stringify(webhooks.map(w => ({ ...w, url: '/api/' + w.name.replace(/-/g, '_') })));
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checklist Post-Déploiement - ${projectName}</title>
+  <style>
+    :root { --primary: #6366f1; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --info: #3b82f6; --bg: #0f172a; --bg-card: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+    header { text-align: center; padding: 2.5rem; background: linear-gradient(135deg, var(--primary), #4f46e5); border-radius: 1.5rem; margin-bottom: 2rem; }
+    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .config-section { background: var(--bg-card); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border); }
+    .config-section h3 { color: #818cf8; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .input-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .input-group label { flex: 1; min-width: 200px; }
+    .input-group label span { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    input[type="text"], input[type="url"] { width: 100%; padding: 0.75rem 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text); font-size: 1rem; }
+    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.5rem; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #818cf8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .actions { display: flex; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap; }
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card); border-radius: 1rem; padding: 1.25rem; text-align: center; border: 1px solid var(--border); }
+    .stat-card .value { font-size: 1.75rem; font-weight: 700; }
+    .stat-card .label { color: var(--text-muted); font-size: 0.875rem; }
+    .stat-card.success .value { color: var(--success); }
+    .stat-card.danger .value { color: var(--danger); }
+    .checks-grid { display: grid; gap: 1rem; }
+    .check-card { background: var(--bg-card); border-radius: 1rem; padding: 1.25rem; border: 1px solid var(--border); transition: all 0.3s; }
+    .check-card.running { border-color: var(--info); animation: pulse 1.5s infinite; }
+    .check-card.success { border-color: var(--success); }
+    .check-card.failed { border-color: var(--danger); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .check-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+    .check-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; background: rgba(148, 163, 184, 0.2); }
+    .check-card.success .check-icon { background: rgba(34, 197, 94, 0.2); }
+    .check-card.failed .check-icon { background: rgba(239, 68, 68, 0.2); }
+    .check-card.running .check-icon { background: rgba(59, 130, 246, 0.2); }
+    .check-info { flex: 1; }
+    .check-info h4 { margin-bottom: 0.25rem; }
+    .check-info p { color: var(--text-muted); font-size: 0.875rem; }
+    .check-badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .badge-optional { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+    .check-details { background: var(--bg); border-radius: 0.5rem; padding: 1rem; font-family: monospace; font-size: 0.8rem; margin-top: 0.75rem; }
+    .check-details .endpoint { color: var(--info); }
+    .check-details .error { color: var(--danger); }
+    .check-details .timing { color: var(--text-muted); }
+    .section-title { display: flex; align-items: center; gap: 0.75rem; margin: 2rem 0 1rem; font-size: 1.25rem; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 1rem 0; display: none; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); transition: width 0.3s; }
+    .log-panel { background: #0d1117; border-radius: 1rem; padding: 1.5rem; margin-top: 2rem; border: 1px solid var(--border); max-height: 300px; overflow-y: auto; }
+    .log-panel h3 { margin-bottom: 1rem; }
+    .log-entry { font-family: monospace; font-size: 0.8rem; padding: 0.375rem 0; border-bottom: 1px solid var(--border); }
+    .log-entry .time { color: var(--text-muted); }
+    .log-entry.success { color: var(--success); }
+    .log-entry.error { color: var(--danger); }
+    .summary-card { background: var(--bg-card); border-radius: 1.5rem; padding: 2rem; margin-top: 2rem; border: 1px solid var(--border); text-align: center; display: none; }
+    .summary-card .score { font-size: 3.5rem; font-weight: 700; margin: 1rem 0; }
+    .summary-card .score.good { color: var(--success); }
+    .summary-card .score.medium { color: var(--warning); }
+    .summary-card .score.bad { color: var(--danger); }
+    .retry-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(99, 102, 241, 0.2); border: 1px solid var(--primary); border-radius: 0.5rem; color: var(--primary); font-size: 0.875rem; cursor: pointer; margin-top: 0.5rem; }
+    footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem; }
+    @media (max-width: 768px) { .container { padding: 1rem; } .input-group, .actions { flex-direction: column; } .btn { width: 100%; justify-content: center; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>✅ Checklist Post-Déploiement</h1>
+      <p>${projectName} - Vérification automatique des services</p>
+    </header>
+    
+    <section class="config-section">
+      <h3>⚙️ Configuration</h3>
+      <div class="input-group">
+        <label><span>URL de base</span><input type="url" id="baseUrl" placeholder="https://votre-domaine.com"></label>
+        <label><span>JWT Token (optionnel)</span><input type="text" id="authToken" placeholder="eyJhbGciOiJIUzI1NiIs..."></label>
+      </div>
+    </section>
+    
+    <div class="actions">
+      <button class="btn btn-primary" id="runAllBtn" onclick="runAllChecks()">🚀 Lancer les vérifications</button>
+      <button class="btn btn-outline" onclick="resetChecks()">🔄 Réinitialiser</button>
+      <button class="btn btn-outline" onclick="exportReport()">📄 Exporter</button>
+    </div>
+    
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="stats-bar">
+      <div class="stat-card" id="statTotal"><div class="value">-</div><div class="label">Total</div></div>
+      <div class="stat-card" id="statPassed"><div class="value">-</div><div class="label">Réussis</div></div>
+      <div class="stat-card" id="statFailed"><div class="value">-</div><div class="label">Échoués</div></div>
+      <div class="stat-card" id="statTime"><div class="value">-</div><div class="label">Durée</div></div>
+    </div>
+    
+    <h2 class="section-title"><span>🔍</span> Vérifications</h2>
+    <div class="checks-grid" id="checksGrid"></div>
+    
+    <div class="log-panel"><h3>📋 Journal</h3><div id="logContainer"></div></div>
+    <div class="summary-card" id="summaryCard"><h2>Résumé</h2><div class="score" id="summaryScore">-</div><p id="summaryText"></p></div>
+  </div>
+  <footer><p>InoPay Liberation Pack</p></footer>
+  
+  <script>
+    const checks = ${checksJson};
+    const envVars = ${envVarsJson};
+    const webhooks = ${webhooksJson};
+    let results = [], startTime = null;
+    
+    function initUI() {
+      document.getElementById('checksGrid').innerHTML = checks.map((c, i) => 
+        '<div class="check-card pending" id="check-' + i + '">' +
+        '<div class="check-header"><div class="check-icon">⏳</div>' +
+        '<div class="check-info"><h4>' + c.name + '</h4><p>' + c.description + '</p></div>' +
+        '<span class="check-badge ' + (c.critical ? 'badge-critical' : 'badge-optional') + '">' + (c.critical ? 'Critique' : 'Optionnel') + '</span></div>' +
+        '<div class="check-details"><div class="endpoint">' + (c.method || 'GET') + ' ' + c.endpoint + '</div><div class="status">En attente...</div></div></div>'
+      ).join('');
+      updateStats();
+    }
+    
+    function log(msg, type) {
+      const c = document.getElementById('logContainer');
+      const t = new Date().toLocaleTimeString();
+      c.insertAdjacentHTML('afterbegin', '<div class="log-entry ' + type + '"><span class="time">[' + t + ']</span> ' + msg + '</div>');
+    }
+    
+    function updateStats() {
+      const total = checks.length, passed = results.filter(r => r.success).length, failed = results.filter(r => !r.success && r.done).length;
+      const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) + 's' : '-';
+      document.getElementById('statTotal').querySelector('.value').textContent = total;
+      document.getElementById('statPassed').querySelector('.value').textContent = passed;
+      document.getElementById('statFailed').querySelector('.value').textContent = failed;
+      document.getElementById('statTime').querySelector('.value').textContent = elapsed;
+      document.getElementById('statPassed').className = 'stat-card ' + (passed > 0 ? 'success' : '');
+      document.getElementById('statFailed').className = 'stat-card ' + (failed > 0 ? 'danger' : '');
+    }
+    
+    async function runCheck(i) {
+      const c = checks[i], card = document.getElementById('check-' + i);
+      const base = document.getElementById('baseUrl').value.replace(/\\/$/, '');
+      const token = document.getElementById('authToken').value;
+      if (!base) { log('❌ URL de base requise', 'error'); return { success: false, done: true }; }
+      
+      card.className = 'check-card running';
+      card.querySelector('.check-icon').textContent = '🔄';
+      card.querySelector('.status').textContent = 'Vérification...';
+      
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), c.timeout || 10000);
+        const headers = { 'Content-Type': 'application/json' };
+        if (token && c.type === 'api') headers['Authorization'] = 'Bearer ' + token;
+        
+        const t0 = performance.now();
+        const res = await fetch(base + c.endpoint, { method: c.method || 'GET', headers, signal: ctrl.signal });
+        clearTimeout(tid);
+        const ms = (performance.now() - t0).toFixed(0);
+        const ok = res.status === (c.expectedStatus || 200) || (res.status >= 200 && res.status < 300);
+        
+        card.className = 'check-card ' + (ok ? 'success' : 'failed');
+        card.querySelector('.check-icon').textContent = ok ? '✅' : '❌';
+        card.querySelector('.status').innerHTML = 'Status: <strong>' + res.status + '</strong><div class="timing">' + ms + 'ms</div>';
+        log((ok ? '✅' : '❌') + ' ' + c.name + ' - ' + res.status + ' (' + ms + 'ms)', ok ? 'success' : 'error');
+        return { success: ok, status: res.status, time: ms, done: true };
+      } catch (e) {
+        const msg = e.name === 'AbortError' ? 'Timeout' : e.message;
+        card.className = 'check-card failed';
+        card.querySelector('.check-icon').textContent = '❌';
+        card.querySelector('.status').innerHTML = '<div class="error">' + msg + '</div><button class="retry-btn" onclick="retryCheck(' + i + ')">🔄 Réessayer</button>';
+        log('❌ ' + c.name + ' - ' + msg, 'error');
+        return { success: false, error: msg, done: true };
+      }
+    }
+    
+    async function runAllChecks() {
+      const base = document.getElementById('baseUrl').value;
+      if (!base) { log('⚠️ Entrez l\\'URL de base', 'warning'); document.getElementById('baseUrl').focus(); return; }
+      document.getElementById('runAllBtn').disabled = true;
+      document.getElementById('progressBar').style.display = 'block';
+      document.getElementById('summaryCard').style.display = 'none';
+      results = []; startTime = Date.now();
+      log('🚀 Démarrage...', 'info');
+      
+      for (let i = 0; i < checks.length; i++) {
+        results[i] = await runCheck(i);
+        document.getElementById('progressFill').style.width = ((i + 1) / checks.length * 100) + '%';
+        updateStats();
+        await new Promise(r => setTimeout(r, 150));
+      }
+      showSummary();
+      document.getElementById('runAllBtn').disabled = false;
+      log('✅ Terminé', 'success');
+    }
+    
+    async function retryCheck(i) { results[i] = await runCheck(i); updateStats(); showSummary(); }
+    
+    function showSummary() {
+      const passed = results.filter(r => r.success).length;
+      const score = Math.round((passed / checks.length) * 100);
+      const cls = score >= 90 ? 'good' : score >= 60 ? 'medium' : 'bad';
+      const msg = score === 100 ? '🎉 Tous les services sont opérationnels!' : score >= 80 ? '✅ La plupart des services fonctionnent.' : '❌ Vérifiez la configuration.';
+      document.getElementById('summaryScore').textContent = score + '%';
+      document.getElementById('summaryScore').className = 'score ' + cls;
+      document.getElementById('summaryText').textContent = msg;
+      document.getElementById('summaryCard').style.display = 'block';
+    }
+    
+    function resetChecks() { results = []; startTime = null; document.getElementById('progressBar').style.display = 'none'; document.getElementById('summaryCard').style.display = 'none'; document.getElementById('logContainer').innerHTML = ''; initUI(); log('🔄 Réinitialisé', 'info'); }
+    
+    function exportReport() {
+      const r = { project: '${projectName}', url: document.getElementById('baseUrl').value, time: new Date().toISOString(), checks: checks.map((c, i) => ({ ...c, result: results[i] || {} })), score: Math.round((results.filter(r => r.success).length / checks.length) * 100) };
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' }));
+      a.download = '${projectName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-deploy-report.json';
+      a.click();
+      log('📄 Rapport exporté', 'success');
+    }
+    
+    initUI();
+    log('👋 Configurez l\\'URL puis lancez les vérifications', 'info');
+  </script>
+</body>
+</html>`;
+}
+
+// ============================================
 // DEPLOY GUIDE HTML GENERATOR - ENRICHI
 // ============================================
 
@@ -4455,6 +4773,19 @@ ${envVarsArray
     // Quick deploy script
     const scriptsFolder = zip.folder('scripts')!;
     scriptsFolder.file('quick-deploy.sh', generateQuickDeployScript(projectName, includeDatabase, hasAIUsage));
+
+    // Post-deployment checklist
+    const backendRouteNames = edgeFunctions?.map((f: EdgeFunctionInfo) => f.name.replace(/-/g, '_')) || [];
+    const webhooksList = edgeFunctions?.filter((f: EdgeFunctionInfo) => f.webhookDetected).map((f: EdgeFunctionInfo) => ({ name: f.name, type: f.webhookType || 'custom' })) || [];
+    zip.file('POST_DEPLOY_CHECKLIST.html', generatePostDeploymentChecklist(
+      projectName,
+      includeBackend && edgeFunctions?.length > 0,
+      includeDatabase,
+      true, // hasAuth
+      backendRouteNames,
+      webhooksList,
+      envVarsArray
+    ));
 
     // Sovereignty report
     zip.file('SOVEREIGNTY_REPORT.md', generateSovereigntyReport(
