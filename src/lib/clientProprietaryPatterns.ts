@@ -1959,6 +1959,10 @@ export function cleanMarkdownFile(content: string): { cleaned: string; changes: 
   cleaned = cleaned.replace(/https?:\/\/[^\s)\]]*lovable\.(app|dev)[^\s)\]]*/gi, 'https://your-app-url.com');
   cleaned = cleaned.replace(/https?:\/\/[^\s)\]]*gptengineer\.(app|run)[^\s)\]]*/gi, 'https://your-app-url.com');
   
+  // Replace hardcoded Supabase project IDs
+  cleaned = cleaned.replace(/izqveyvcebolrqpqlmho/gi, 'your-project-id');
+  cleaned = cleaned.replace(/[a-z]{20,30}\.supabase\.co/gi, 'your-project-id.supabase.co');
+  
   // Remove "Made with Lovable" badges
   cleaned = cleaned.replace(/\[!\[.*?lovable.*?\]\(.*?\)\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/\[!\[.*?gptengineer.*?\]\(.*?\)\]\(.*?\)/gi, '');
@@ -1968,11 +1972,42 @@ export function cleanMarkdownFile(content: string): { cleaned: string; changes: 
   cleaned = cleaned.replace(/^.*made with.*lovable.*$/gim, '');
   cleaned = cleaned.replace(/^.*powered by.*lovable.*$/gim, '');
   
+  // Remove data-lov attributes mentioned in markdown
+  cleaned = cleaned.replace(/data-lov[a-z-]*="[^"]*"/gi, '');
+  
+  // Replace JWT tokens
+  cleaned = cleaned.replace(/eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'your-jwt-token');
+  
   // Clean up empty lines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   
   if (cleaned !== before) {
-    changes.push('README nettoyé des références Lovable');
+    changes.push('README nettoyé des références propriétaires');
+  }
+  
+  return { cleaned, changes, wasModified: changes.length > 0, suspiciousPatterns: [] };
+}
+
+/**
+ * Clean shell script files - remove hardcoded IDs and URLs
+ */
+export function cleanShellScript(content: string): { cleaned: string; changes: string[]; wasModified: boolean; suspiciousPatterns: string[] } {
+  let cleaned = content;
+  const changes: string[] = [];
+  const before = cleaned;
+  
+  // Replace hardcoded Supabase project IDs
+  cleaned = cleaned.replace(/izqveyvcebolrqpqlmho/gi, '${SUPABASE_PROJECT_ID}');
+  cleaned = cleaned.replace(/[a-z]{20,30}\.supabase\.co/gi, '${SUPABASE_PROJECT_ID}.supabase.co');
+  
+  // Replace Lovable URLs
+  cleaned = cleaned.replace(/https?:\/\/[^\s"']*lovable\.(app|dev)[^\s"']*/gi, '${APP_URL}');
+  
+  // Replace JWT tokens
+  cleaned = cleaned.replace(/eyJ[A-Za-z0-9_-]{100,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '${JWT_TOKEN}');
+  
+  if (cleaned !== before) {
+    changes.push('Script shell nettoyé des IDs hardcodés');
   }
   
   return { cleaned, changes, wasModified: changes.length > 0, suspiciousPatterns: [] };
@@ -2210,6 +2245,19 @@ export function calculateSovereigntyScore(
       'zipAnalyzer',
       'LiberationPackHub',
       '__tests__/aiReplacements',
+      // Inopay project files that legitimately contain Supabase IDs or references
+      'SovereignConnections',
+      'sovereign-adapter',
+      'STABILITY_REPORT',
+      'deploy-inopay',
+      'scripts/README',
+      'MIGRATION_GUIDE',
+      'docker-compose',
+      'Dockerfile',
+      'nginx.conf',
+      '.env.example',
+      'INSTALL.md',
+      'self-host',
     ];
     return internalPaths.some(p => filePath.includes(p));
   };
