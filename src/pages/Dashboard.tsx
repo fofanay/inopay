@@ -10,7 +10,6 @@ import {
   LogOut,
   Home,
   Server,
-  Flame,
   LayoutDashboard,
   ShieldCheck,
   FolderArchive
@@ -21,7 +20,7 @@ import { SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { RoleIndicator } from "@/components/ui/role-indicator";
-import { SovereignLiberationWizard } from "@/components/dashboard/SovereignLiberationWizard";
+
 import { MyPersonalFleet } from "@/components/dashboard/MyPersonalFleet";
 import { SovereigntyAuditReport } from "@/components/dashboard/SovereigntyAuditReport";
 import { LiberationPackHub } from "@/components/dashboard/LiberationPackHub";
@@ -35,9 +34,9 @@ import { supabase } from "@/integrations/supabase/client";
 import inopayLogo from "@/assets/inopay-logo-admin.png";
 import FofyChat from "@/components/FofyChat";
 
-type DashboardTab = "overview" | "liberation" | "pack" | "fleet" | "audit";
+type DashboardTab = "overview" | "liberation" | "fleet" | "audit";
 
-const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "pack", "fleet", "audit"];
+const DASHBOARD_TABS: DashboardTab[] = ["overview", "liberation", "fleet", "audit"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -144,8 +143,7 @@ const Dashboard = () => {
 
   const menuItems = [
     { id: "overview", label: t("dashboard.overview"), icon: LayoutDashboard, section: "main" },
-    { id: "liberation", label: t("dashboard.liberation"), icon: Flame, section: "main", badge: "🚀" },
-    { id: "pack", label: "Liberation Pack", icon: FolderArchive, section: "main", badge: "Nouveau" },
+    { id: "liberation", label: t("dashboard.liberation"), icon: FolderArchive, section: "main", badge: "🚀" },
     { id: "fleet", label: "Ma Flotte", icon: Server, section: "main" },
     { id: "audit", label: "Audit Souveraineté", icon: ShieldCheck, section: "main" },
   ];
@@ -165,18 +163,12 @@ const Dashboard = () => {
       case "liberation":
         return { 
           title: t("dashboard.liberation"), 
-          description: "Libérez votre code des plateformes propriétaires",
-          icon: <Flame className="h-5 w-5 text-primary" />
-        };
-      case "pack":
-        return { 
-          title: "Liberation Pack", 
           description: "Générez un pack autonome prêt à déployer sur n'importe quel VPS",
           icon: <FolderArchive className="h-5 w-5 text-primary" />
         };
       case "fleet":
         return { 
-          title: "Ma Flotte", 
+          title: "Ma Flotte",
           description: "Serveurs, déploiements et synchronisations",
           icon: <Server className="h-5 w-5 text-primary" />
         };
@@ -346,10 +338,6 @@ const Dashboard = () => {
             )}
 
             {activeTab === "liberation" && (
-              <SovereignLiberationWizard />
-            )}
-
-            {activeTab === "pack" && (
               <LiberationPackHub />
             )}
 
