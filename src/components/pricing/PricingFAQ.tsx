@@ -12,10 +12,11 @@ const PricingFAQ = () => {
   const { t } = useTranslation();
 
   const faqItems = [
+    { key: "whatIsLiberationPack" },
     { key: "howItWorks" },
-    { key: "oneTime" },
-    { key: "packPro" },
-    { key: "security" },
+    { key: "whatIncluded" },
+    { key: "deployment" },
+    { key: "largeProjects" },
     { key: "support" },
   ];
 

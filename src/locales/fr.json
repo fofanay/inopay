@@ -757,28 +757,32 @@
     },
     "faq": {
       "badge": "Questions fréquentes",
-      "title": "Vos questions sur la Libération",
-      "subtitle": "Tout ce que vous devez savoir sur notre service",
+      "title": "Vos questions sur Liberation Pack",
+      "subtitle": "Tout ce que vous devez savoir sur notre outil de libération",
       "items": {
+        "whatIsLiberationPack": {
+          "question": "Qu'est-ce que le Liberation Pack ?",
+          "answer": "Le Liberation Pack est un ZIP autonome contenant votre code entièrement nettoyé des dépendances propriétaires, un docker-compose.yml prêt à l'emploi, et un guide de déploiement détaillé. Vous pouvez le déployer sur n'importe quel VPS (Hetzner, OVH, AWS, etc.)."
+        },
         "howItWorks": {
-          "question": "Comment fonctionne la Libération ?",
-          "answer": "Vous uploadez votre projet (ZIP ou GitHub), notre IA analyse et supprime les dépendances propriétaires, puis nous déployons le code nettoyé sur votre VPS. Tout le processus prend environ 10 minutes."
+          "question": "Comment fonctionne le nettoyage IA ?",
+          "answer": "Notre IA effectue 10 passes de nettoyage pour supprimer toutes les dépendances propriétaires (lovable-tagger, imports @lovable-dev, etc.), générer les polyfills nécessaires, et s'assurer que votre code est 100% autonome avec un score de souveraineté > 95%."
         },
-        "oneTime": {
-          "question": "Pourquoi un paiement unique au lieu d'un abonnement ?",
-          "answer": "Nous croyons que votre code vous appartient. Une fois libéré, il est à vous pour toujours. Pas de frais mensuels, pas de lock-in. Payez une fois, possédez votre code."
+        "whatIncluded": {
+          "question": "Que contient le ZIP téléchargeable ?",
+          "answer": "Le pack inclut : votre code frontend nettoyé, un backend Express généré (optionnel), docker-compose.yml pour déploiement en 1 commande, guide de déploiement HTML étape par étape, et un rapport de souveraineté détaillé."
         },
-        "packPro": {
-          "question": "Que contient le Pack Pro ?",
-          "answer": "Le Pack Pro inclut la Libération complète (99$) + un VPS dédié configuré (59$) + le Monitoring 24/7 pendant 1 an (180$). Soit 217$ de services pour seulement 149$, une économie de 68$."
+        "deployment": {
+          "question": "Comment déployer mon pack ?",
+          "answer": "C'est vous qui déployez sur votre propre serveur. Le guide inclus explique tout en détail : copiez les fichiers sur votre VPS, lancez 'docker-compose up -d', et votre app est en ligne. Aucune dépendance à Inopay après achat."
         },
-        "security": {
-          "question": "Mes données sont-elles sécurisées ?",
-          "answer": "Absolument. Nous utilisons une architecture Zero-Knowledge : vos credentials ne sont jamais stockés. Le nettoyage se fait en mémoire et tout est effacé après le déploiement."
+        "largeProjects": {
+          "question": "Et pour les gros projets (+50 fichiers) ?",
+          "answer": "Un supplément est calculé automatiquement en fonction du nombre de fichiers. L'IA vous montre le coût exact avant paiement. Vous pouvez aussi nous contacter pour un devis sur mesure."
         },
         "support": {
           "question": "Quel support est inclus ?",
-          "answer": "La Libération Unique inclut un support prioritaire pendant 48h pour le déploiement initial. Le Pack Pro inclut un support prioritaire illimité pendant toute la durée du monitoring (1 an)."
+          "answer": "L'analyse gratuite est illimitée. Pour le Liberation Pack payant, nous offrons un support par email pour toute question technique liée au déploiement de votre pack."
         }
       }
     },
@@ -1975,56 +1979,54 @@
     },
     "free": {
       "name": "Analyse Gratuite",
-      "description": "Découvrez votre Vibe-Score™ et identifiez les dépendances propriétaires",
-      "features": ["Score de portabilité complet", "Audit des dépendances", "Prévisualisation du nettoyage", "Recommandations personnalisées"],
+      "description": "Découvrez votre score de souveraineté et identifiez les dépendances propriétaires",
+      "features": ["Score de souveraineté complet", "Audit des dépendances propriétaires", "Prévisualisation du nettoyage IA", "Recommandations personnalisées"],
       "cta": "Analyser mon projet",
       "ctaLoggedIn": "Commencer gratuitement"
     },
-    "liberation": {
-      "name": "Libération Unique",
-      "price": "99$",
+    "liberationPack": {
+      "name": "Liberation Pack",
+      "price": "79$",
       "period": "one-time",
-      "description": "Nettoyage IA + Déploiement sur votre serveur",
-      "features": ["Nettoyage IA de tout le code", "Suppression des dépendances propriétaires", "Export vers GitHub personnel", "Déploiement VPS assisté", "SSL + PostgreSQL inclus", "Support prioritaire 48h"],
-      "cta": "Libérer mon projet"
+      "description": "ZIP autonome prêt à déployer sur n'importe quel VPS",
+      "features": ["Nettoyage IA exhaustif (10 passes)", "Score de souveraineté garanti > 95%", "ZIP autonome téléchargeable", "docker-compose.yml inclus", "Guide de déploiement HTML", "Polyfills générés automatiquement"],
+      "cta": "Générer mon Liberation Pack"
     },
-    "packPro": {
-      "name": "Pack Pro",
-      "price": "149$",
-      "originalPrice": "217$",
-      "period": "one-time",
-      "badge": "Économisez 68$",
-      "description": "Libération + VPS dédié + Monitoring 24/7 pendant 1 an",
-      "features": ["Tout de la Libération Unique", "VPS dédié configuré pour vous", "Monitoring 24/7 pendant 1 an", "Alertes instantanées", "Sauvegardes automatiques", "Support prioritaire illimité"],
-      "cta": "Choisir le Pack Pro"
+    "enterprise": {
+      "name": "Sur Mesure",
+      "price": "Sur devis",
+      "description": "Pour les gros projets (+50 fichiers) ou besoins spécifiques",
+      "features": ["Supplément calculé automatiquement", "Support dédié pendant migration", "Configuration backend incluse", "Migration base de données", "Consultation architecture", "SLA personnalisé"],
+      "cta": "Nous contacter"
     },
     "process": {
       "title": "Comment ça marche ?",
-      "subtitle": "De l'analyse à la production en 10 minutes",
+      "subtitle": "De l'analyse au pack téléchargeable en 5 minutes",
       "steps": [
         { "step": "1", "title": "Analysez", "desc": "Upload votre ZIP ou connectez GitHub" },
         { "step": "2", "title": "Nettoyez", "desc": "L'IA supprime les dépendances propriétaires" },
-        { "step": "3", "title": "Déployez", "desc": "Votre code tourne sur votre VPS" }
+        { "step": "3", "title": "Téléchargez", "desc": "ZIP autonome prêt à déployer" }
       ]
     },
-    "addons": {
-      "badge": "Options",
-      "title": "Besoin de plus ?",
-      "subtitle": "Services additionnels à la carte",
-      "items": {
-        "redeploy": { "name": "Re-déploiement", "price": "39$", "desc": "Mise à jour de votre application déployée" },
-        "monitoring": { "name": "Monitoring 24/7", "price": "15$/mois", "desc": "Surveillance et alertes en temps réel" },
-        "server": { "name": "Serveur VPS", "price": "59$", "desc": "Configuration VPS supplémentaire" }
-      }
+    "whatsIncluded": {
+      "badge": "Liberation Pack",
+      "title": "Ce que vous obtenez",
+      "subtitle": "Un pack autonome prêt à déployer n'importe où",
+      "items": [
+        { "title": "ZIP complet", "desc": "Frontend + Backend + Config" },
+        { "title": "docker-compose.yml", "desc": "Déploiement en une commande" },
+        { "title": "Code nettoyé", "desc": "Aucune dépendance propriétaire" },
+        { "title": "Guide HTML", "desc": "Instructions pas à pas" }
+      ]
     },
     "trust": {
       "zeroKnowledge": "Zero-Knowledge",
-      "deployment": "Déploiement en 10 min",
+      "deployment": "Pack en 5 min",
       "ownership": "Code 100% à vous"
     },
     "finalCta": {
       "title": "Prêt à libérer votre création ?",
-      "subtitle": "Analysez gratuitement votre projet et découvrez votre Vibe-Score™",
+      "subtitle": "Analysez gratuitement votre projet et découvrez votre score de souveraineté",
       "button": "Commencer gratuitement",
       "buttonLoggedIn": "Aller au Dashboard"
     },
