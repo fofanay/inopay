@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -23,10 +24,19 @@ import {
   Info,
   Rocket,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  FolderGit,
+  Plus
 } from 'lucide-react';
 
 type WizardStep = 'source' | 'destination' | 'review';
+
+interface GitHubRepo {
+  name: string;
+  full_name: string;
+  html_url: string;
+  private: boolean;
+}
 
 interface WizardConfig {
   // Source
@@ -36,6 +46,9 @@ interface WizardConfig {
   destinationToken: string;
   destinationUsername: string;
   isPrivateRepo: boolean;
+  // Repo destination mode
+  createNewRepo: boolean;
+  existingRepoName?: string;
 }
 
 interface LiberationWizardProps {
@@ -59,7 +72,13 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
     destinationToken: '',
     destinationUsername: '',
     isPrivateRepo: true,
+    createNewRepo: true,
+    existingRepoName: undefined,
   });
+  
+  // Destination repos
+  const [destRepos, setDestRepos] = useState<GitHubRepo[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
   
   // Validation states
   const [sourceValid, setSourceValid] = useState<boolean | null>(null);
@@ -97,6 +116,8 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
           destinationToken: settings.github_destination_token || '',
           destinationUsername: settings.github_destination_username || '',
           isPrivateRepo: settings.default_repo_private ?? true,
+          createNewRepo: true,
+          existingRepoName: undefined,
         });
         
         // Validate existing tokens
@@ -144,6 +165,34 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
     }
   };
 
+  // Load repos from destination account for existing repo selection
+  const loadDestRepos = async (token: string) => {
+    if (!token) return;
+    
+    setLoadingRepos(true);
+    try {
+      const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (response.ok) {
+        const repos = await response.json();
+        setDestRepos(repos);
+      } else {
+        console.error('Failed to load destination repos');
+        setDestRepos([]);
+      }
+    } catch (error) {
+      console.error('Error loading destination repos:', error);
+      setDestRepos([]);
+    } finally {
+      setLoadingRepos(false);
+    }
+  };
+
   const handleValidateSource = async () => {
     if (!config.sourceToken.trim()) {
       toast.error('Token requis');
@@ -173,6 +222,8 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
     
     if (isValid) {
       toast.success('Token destination validé');
+      // Load destination repos for existing repo selection
+      loadDestRepos(config.destinationToken.trim());
     } else {
       toast.error('Token invalide');
     }
@@ -443,27 +494,124 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
                     value={config.destinationUsername}
                     onChange={(e) => setConfig({ ...config, destinationUsername: e.target.value })}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Le repo sera créé sous github.com/{config.destinationUsername || 'username'}/[nom-projet]
+                </div>
+
+                {/* Repo mode selector */}
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <Label className="text-sm font-medium">Mode de destination</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config, createNewRepo: true, existingRepoName: undefined })}
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        config.createNewRepo 
+                          ? 'bg-primary/10 border-primary text-primary' 
+                          : 'bg-background border-muted hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Plus className="h-4 w-4" />
+                        <span className="font-medium text-sm">Nouveau repo</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Créer un nouveau dépôt
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfig({ ...config, createNewRepo: false });
+                        if (destValid && destRepos.length === 0) {
+                          loadDestRepos(config.destinationToken);
+                        }
+                      }}
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        !config.createNewRepo 
+                          ? 'bg-primary/10 border-primary text-primary' 
+                          : 'bg-background border-muted hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <FolderGit className="h-4 w-4" />
+                        <span className="font-medium text-sm">Repo existant</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Pousser vers un repo existant
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* Existing repo selector */}
+                  {!config.createNewRepo && (
+                    <div className="space-y-2 mt-3">
+                      <Label>Sélectionner le repo destination</Label>
+                      {loadingRepos ? (
+                        <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Chargement des repos...
+                        </div>
+                      ) : (
+                        <Select
+                          value={config.existingRepoName || ''}
+                          onValueChange={(value) => setConfig({ ...config, existingRepoName: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un repo existant" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {destRepos.map((repo) => (
+                              <SelectItem key={repo.full_name} value={repo.name}>
+                                <div className="flex items-center gap-2">
+                                  <FolderGit className="h-4 w-4" />
+                                  {repo.name}
+                                  {repo.private && (
+                                    <Lock className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {!loadingRepos && destRepos.length === 0 && destValid && (
+                        <p className="text-xs text-muted-foreground">
+                          Aucun repo trouvé. Vérifiez les permissions du token.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Info display */}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {config.createNewRepo ? (
+                      <>Le code sera poussé vers <span className="font-mono">github.com/{config.destinationUsername || 'username'}/[nom-projet]</span></>
+                    ) : config.existingRepoName ? (
+                      <>Le code sera poussé vers <span className="font-mono">github.com/{config.destinationUsername || 'username'}/{config.existingRepoName}</span></>
+                    ) : (
+                      <>Sélectionnez un repo existant</>
+                    )}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    {config.isPrivateRepo ? (
-                      <Lock className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Unlock className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="text-sm font-medium">
-                      {config.isPrivateRepo ? 'Repo privé' : 'Repo public'}
-                    </span>
+                {/* Private repo switch - only for new repos */}
+                {config.createNewRepo && (
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {config.isPrivateRepo ? (
+                        <Lock className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Unlock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="text-sm font-medium">
+                        {config.isPrivateRepo ? 'Repo privé' : 'Repo public'}
+                      </span>
+                    </div>
+                    <Switch
+                      checked={config.isPrivateRepo}
+                      onCheckedChange={(checked) => setConfig({ ...config, isPrivateRepo: checked })}
+                    />
                   </div>
-                  <Switch
-                    checked={config.isPrivateRepo}
-                    onCheckedChange={(checked) => setConfig({ ...config, isPrivateRepo: checked })}
-                  />
-                </div>
+                )}
               </div>
 
               <div className="flex justify-between">
@@ -473,7 +621,7 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
                 </Button>
                 <Button 
                   onClick={handleNext} 
-                  disabled={!destValid || !config.destinationUsername.trim()}
+                  disabled={!destValid || !config.destinationUsername.trim() || (!config.createNewRepo && !config.existingRepoName)}
                 >
                   Suivant
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -512,7 +660,7 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
                 </div>
 
                 <div className="p-4 border rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Github className="h-4 w-4" />
                     <span className="font-medium">Destination</span>
                     <Badge variant="outline" className="bg-primary/10 text-primary">
@@ -520,15 +668,27 @@ export function LiberationWizard({ onComplete, onSkip }: LiberationWizardProps) 
                       {config.destinationUsername}
                     </Badge>
                     <Badge variant="outline">
-                      {config.isPrivateRepo ? (
-                        <><Lock className="h-3 w-3 mr-1" />Privé</>
+                      {config.createNewRepo ? (
+                        <><Plus className="h-3 w-3 mr-1" />Nouveau repo</>
                       ) : (
-                        <><Unlock className="h-3 w-3 mr-1" />Public</>
+                        <><FolderGit className="h-3 w-3 mr-1" />Repo existant</>
                       )}
                     </Badge>
+                    {config.createNewRepo && (
+                      <Badge variant="outline">
+                        {config.isPrivateRepo ? (
+                          <><Lock className="h-3 w-3 mr-1" />Privé</>
+                        ) : (
+                          <><Unlock className="h-3 w-3 mr-1" />Public</>
+                        )}
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Le code nettoyé sera poussé vers github.com/{config.destinationUsername}
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {config.createNewRepo 
+                      ? `github.com/${config.destinationUsername}/[nom-projet]`
+                      : `github.com/${config.destinationUsername}/${config.existingRepoName}`
+                    }
                   </p>
                 </div>
               </div>

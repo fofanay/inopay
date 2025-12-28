@@ -11,6 +11,8 @@ interface WizardConfig {
   destinationToken: string;
   destinationUsername: string;
   isPrivateRepo: boolean;
+  createNewRepo: boolean;
+  existingRepoName?: string;
 }
 
 interface SelfLiberationTabProps {
