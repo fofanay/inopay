@@ -715,6 +715,505 @@ function verifySovereignty(files: Record<string, string>): SovereigntyCheck {
 }
 
 // ============================================
+// SQL SCHEMA EXTRACTION FROM MIGRATIONS/TYPES
+// ============================================
+
+interface ExtractedTable {
+  name: string;
+  columns: { name: string; type: string; nullable: boolean; default?: string }[];
+  primaryKey?: string;
+  foreignKeys: { column: string; references: string; onDelete?: string }[];
+  indexes: string[];
+  rlsPolicies: string[];
+}
+
+interface ExtractedSchema {
+  tables: ExtractedTable[];
+  enums: { name: string; values: string[] }[];
+  functions: { name: string; sql: string }[];
+  triggers: { name: string; table: string; sql: string }[];
+  rawMigrations: string[];
+}
+
+/**
+ * Parse TypeScript types.ts to extract table schema
+ */
+function parseTypesFile(typesContent: string): ExtractedTable[] {
+  const tables: ExtractedTable[] = [];
+  
+  // Match table definitions in Tables: { ... }
+  const tablesMatch = typesContent.match(/Tables:\s*{([\s\S]*?)}\s*Views:/);
+  if (!tablesMatch) return tables;
+  
+  const tablesBlock = tablesMatch[1];
+  
+  // Find each table block
+  const tablePattern = /(\w+):\s*{\s*Row:\s*{([^}]+)}/g;
+  let match;
+  
+  while ((match = tablePattern.exec(tablesBlock)) !== null) {
+    const tableName = match[1];
+    const rowContent = match[2];
+    
+    const columns: ExtractedTable['columns'] = [];
+    
+    // Parse columns
+    const columnPattern = /(\w+):\s*([^|]+)(\|\s*null)?/g;
+    let colMatch;
+    
+    while ((colMatch = columnPattern.exec(rowContent)) !== null) {
+      const colName = colMatch[1].trim();
+      let colType = colMatch[2].trim();
+      const nullable = !!colMatch[3];
+      
+      // Map TypeScript types to PostgreSQL
+      const typeMap: Record<string, string> = {
+        'string': 'TEXT',
+        'number': 'INTEGER',
+        'boolean': 'BOOLEAN',
+        'Json': 'JSONB',
+        'unknown': 'INET',
+      };
+      
+      // Handle uuid type
+      if (colType === 'string' && (colName === 'id' || colName.endsWith('_id') || colName === 'user_id')) {
+        colType = 'UUID';
+      } else if (colType.includes('timestamp') || colName.includes('_at') || colName === 'created_at' || colName === 'updated_at') {
+        colType = 'TIMESTAMP WITH TIME ZONE';
+      } else if (typeMap[colType]) {
+        colType = typeMap[colType];
+      } else if (colType.startsWith('Database')) {
+        // Enum type
+        const enumMatch = colType.match(/Enums\["(\w+)"\]/);
+        if (enumMatch) {
+          colType = enumMatch[1].toUpperCase();
+        }
+      }
+      
+      columns.push({
+        name: colName,
+        type: colType,
+        nullable,
+        default: colName === 'id' ? 'gen_random_uuid()' : 
+                 colName === 'created_at' ? 'now()' :
+                 colName === 'updated_at' ? 'now()' : undefined
+      });
+    }
+    
+    if (columns.length > 0) {
+      tables.push({
+        name: tableName,
+        columns,
+        primaryKey: 'id',
+        foreignKeys: [],
+        indexes: [],
+        rlsPolicies: []
+      });
+    }
+  }
+  
+  return tables;
+}
+
+/**
+ * Parse SQL migration files to extract full schema
+ */
+function parseMigrationFiles(migrations: { name: string; content: string }[]): ExtractedSchema {
+  const schema: ExtractedSchema = {
+    tables: [],
+    enums: [],
+    functions: [],
+    triggers: [],
+    rawMigrations: []
+  };
+  
+  // Sort migrations by name (usually timestamp-based)
+  const sortedMigrations = [...migrations].sort((a, b) => a.name.localeCompare(b.name));
+  
+  for (const migration of sortedMigrations) {
+    schema.rawMigrations.push(`-- Migration: ${migration.name}\n${migration.content}`);
+    
+    // Extract ENUMs
+    const enumPattern = /CREATE\s+TYPE\s+(?:public\.)?(\w+)\s+AS\s+ENUM\s*\(([^)]+)\)/gi;
+    let match;
+    while ((match = enumPattern.exec(migration.content)) !== null) {
+      const enumName = match[1];
+      const values = match[2].split(',').map(v => v.trim().replace(/'/g, ''));
+      schema.enums.push({ name: enumName, values });
+    }
+    
+    // Extract CREATE TABLE
+    const tablePattern = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?(\w+)\s*\(([\s\S]*?)\);/gi;
+    while ((match = tablePattern.exec(migration.content)) !== null) {
+      const tableName = match[1];
+      const tableBody = match[2];
+      
+      const columns: ExtractedTable['columns'] = [];
+      const foreignKeys: ExtractedTable['foreignKeys'] = [];
+      let primaryKey: string | undefined;
+      
+      // Parse columns
+      const lines = tableBody.split(',').map(l => l.trim());
+      for (const line of lines) {
+        // Skip constraints
+        if (line.match(/^\s*(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)/i)) {
+          // Extract primary key
+          const pkMatch = line.match(/PRIMARY\s+KEY\s*\((\w+)\)/i);
+          if (pkMatch) primaryKey = pkMatch[1];
+          
+          // Extract foreign key
+          const fkMatch = line.match(/FOREIGN\s+KEY\s*\((\w+)\)\s*REFERENCES\s+(?:public\.)?(\w+)/i);
+          if (fkMatch) {
+            foreignKeys.push({ column: fkMatch[1], references: fkMatch[2] });
+          }
+          continue;
+        }
+        
+        // Parse column definition
+        const colMatch = line.match(/^(\w+)\s+(\w+(?:\s+\w+)*(?:\([^)]+\))?)\s*(.*)?$/i);
+        if (colMatch) {
+          const colName = colMatch[1];
+          const colType = colMatch[2].toUpperCase();
+          const constraints = colMatch[3] || '';
+          
+          const nullable = !constraints.includes('NOT NULL');
+          const defaultMatch = constraints.match(/DEFAULT\s+([^\s,]+)/i);
+          const isPK = constraints.includes('PRIMARY KEY');
+          
+          if (isPK) primaryKey = colName;
+          
+          columns.push({
+            name: colName,
+            type: colType,
+            nullable,
+            default: defaultMatch ? defaultMatch[1] : undefined
+          });
+        }
+      }
+      
+      if (columns.length > 0) {
+        // Check if table already exists, merge if so
+        const existingIndex = schema.tables.findIndex(t => t.name === tableName);
+        if (existingIndex >= 0) {
+          // Merge columns (ALTER TABLE ADD COLUMN scenarios)
+          for (const col of columns) {
+            if (!schema.tables[existingIndex].columns.find(c => c.name === col.name)) {
+              schema.tables[existingIndex].columns.push(col);
+            }
+          }
+        } else {
+          schema.tables.push({
+            name: tableName,
+            columns,
+            primaryKey,
+            foreignKeys,
+            indexes: [],
+            rlsPolicies: []
+          });
+        }
+      }
+    }
+    
+    // Extract ALTER TABLE ADD COLUMN
+    const alterPattern = /ALTER\s+TABLE\s+(?:public\.)?(\w+)\s+ADD\s+(?:COLUMN\s+)?(\w+)\s+(\w+(?:\s+\w+)*)/gi;
+    while ((match = alterPattern.exec(migration.content)) !== null) {
+      const tableName = match[1];
+      const colName = match[2];
+      const colType = match[3];
+      
+      const tableIndex = schema.tables.findIndex(t => t.name === tableName);
+      if (tableIndex >= 0) {
+        if (!schema.tables[tableIndex].columns.find(c => c.name === colName)) {
+          schema.tables[tableIndex].columns.push({
+            name: colName,
+            type: colType.toUpperCase(),
+            nullable: true
+          });
+        }
+      }
+    }
+    
+    // Extract RLS policies
+    const policyPattern = /CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+(?:public\.)?(\w+)\s+([\s\S]*?)(?:;|$)/gi;
+    while ((match = policyPattern.exec(migration.content)) !== null) {
+      const policyName = match[1];
+      const tableName = match[2];
+      const policyBody = match[3];
+      
+      const tableIndex = schema.tables.findIndex(t => t.name === tableName);
+      if (tableIndex >= 0) {
+        schema.tables[tableIndex].rlsPolicies.push(`CREATE POLICY "${policyName}" ON ${tableName} ${policyBody}`);
+      }
+    }
+    
+    // Extract functions
+    const funcPattern = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)([\s\S]*?)(?=CREATE|ALTER|$)/gi;
+    while ((match = funcPattern.exec(migration.content)) !== null) {
+      const funcName = match[1];
+      const fullMatch = match[0];
+      
+      if (!schema.functions.find(f => f.name === funcName)) {
+        schema.functions.push({ name: funcName, sql: fullMatch.trim() });
+      }
+    }
+    
+    // Extract triggers
+    const triggerPattern = /CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+(\w+)\s+([\s\S]*?)ON\s+(?:public\.)?(\w+)/gi;
+    while ((match = triggerPattern.exec(migration.content)) !== null) {
+      const triggerName = match[1];
+      const triggerBody = match[2];
+      const tableName = match[3];
+      
+      schema.triggers.push({ 
+        name: triggerName, 
+        table: tableName, 
+        sql: match[0].trim() 
+      });
+    }
+  }
+  
+  return schema;
+}
+
+/**
+ * Generate complete SQL schema from extracted data
+ */
+function generateSQLSchema(schema: ExtractedSchema, fromTypes?: ExtractedTable[]): string {
+  let sql = `-- ═══════════════════════════════════════════════════════════════
+-- SCHÉMA SQL GÉNÉRÉ AUTOMATIQUEMENT
+-- Généré par InoPay Liberation Pack
+-- ═══════════════════════════════════════════════════════════════
+
+-- IMPORTANT: Ce schéma est extrait automatiquement depuis:
+-- 1. Les fichiers de migration Supabase existants
+-- 2. Les types TypeScript (src/integrations/supabase/types.ts)
+-- 
+-- Vérifiez et adaptez avant d'exécuter sur votre base de données.
+
+`;
+
+  // If we have raw migrations, use them directly
+  if (schema.rawMigrations.length > 0) {
+    sql += `-- ═══════════════════════════════════════════════════════════════
+-- MIGRATIONS ORIGINALES NETTOYÉES
+-- ═══════════════════════════════════════════════════════════════
+
+`;
+    
+    for (const migration of schema.rawMigrations) {
+      // Clean Supabase-specific references
+      let cleanedMigration = migration
+        // Remove auth.uid() if no auth system
+        .replace(/auth\.uid\(\)/g, 'current_user_id()')
+        // Add function stub for current_user_id if needed
+        .replace(/supabase_realtime/g, '-- supabase_realtime (disabled)')
+        // Comment out Supabase-specific storage operations
+        .replace(/(INSERT INTO storage\.buckets)/g, '-- $1')
+        .replace(/(CREATE POLICY.*ON storage\.objects)/g, '-- $1');
+      
+      sql += cleanedMigration + '\n\n';
+    }
+    
+    // Add helper function for auth
+    sql += `
+-- ═══════════════════════════════════════════════════════════════
+-- FONCTIONS D'AIDE (à adapter selon votre système d'auth)
+-- ═══════════════════════════════════════════════════════════════
+
+-- Fonction pour obtenir l'ID utilisateur courant
+-- Adaptez selon votre système d'authentification
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('app.current_user_id', true), '')::UUID
+$$;
+
+-- Alternative avec JWT (si vous utilisez PostgREST)
+-- CREATE OR REPLACE FUNCTION current_user_id()
+-- RETURNS UUID
+-- LANGUAGE sql
+-- STABLE
+-- AS $$
+--   SELECT NULLIF(current_setting('request.jwt.claims', true)::json->>'sub', '')::UUID
+-- $$;
+
+`;
+  } else if (fromTypes && fromTypes.length > 0) {
+    // Generate from types.ts if no migrations available
+    sql += `-- ═══════════════════════════════════════════════════════════════
+-- SCHÉMA GÉNÉRÉ DEPUIS TYPES.TS
+-- (Aucune migration Supabase trouvée)
+-- ═══════════════════════════════════════════════════════════════
+
+`;
+    
+    // Generate enums
+    for (const enumDef of schema.enums) {
+      sql += `CREATE TYPE ${enumDef.name} AS ENUM (${enumDef.values.map(v => `'${v}'`).join(', ')});\n\n`;
+    }
+    
+    // Generate tables
+    for (const table of fromTypes) {
+      sql += `-- Table: ${table.name}\n`;
+      sql += `CREATE TABLE IF NOT EXISTS public.${table.name} (\n`;
+      
+      const colDefs = table.columns.map(col => {
+        let def = `  ${col.name} ${col.type}`;
+        if (!col.nullable) def += ' NOT NULL';
+        if (col.default) def += ` DEFAULT ${col.default}`;
+        return def;
+      });
+      
+      if (table.primaryKey) {
+        colDefs.push(`  PRIMARY KEY (${table.primaryKey})`);
+      }
+      
+      sql += colDefs.join(',\n');
+      sql += '\n);\n\n';
+      
+      // Enable RLS
+      sql += `ALTER TABLE public.${table.name} ENABLE ROW LEVEL SECURITY;\n\n`;
+      
+      // Generate basic RLS policies
+      sql += `-- RLS Policies pour ${table.name}\n`;
+      sql += `CREATE POLICY "${table.name}_select_own" ON public.${table.name}
+  FOR SELECT USING (user_id = current_user_id());\n`;
+      sql += `CREATE POLICY "${table.name}_insert_own" ON public.${table.name}
+  FOR INSERT WITH CHECK (user_id = current_user_id());\n`;
+      sql += `CREATE POLICY "${table.name}_update_own" ON public.${table.name}
+  FOR UPDATE USING (user_id = current_user_id());\n`;
+      sql += `CREATE POLICY "${table.name}_delete_own" ON public.${table.name}
+  FOR DELETE USING (user_id = current_user_id());\n\n`;
+    }
+    
+    // Add helper function
+    sql += `
+-- Fonction pour obtenir l'ID utilisateur courant
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('app.current_user_id', true), '')::UUID
+$$;
+
+-- Fonction de mise à jour automatique de updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+`;
+    
+    // Add triggers for updated_at
+    for (const table of fromTypes) {
+      if (table.columns.find(c => c.name === 'updated_at')) {
+        sql += `
+CREATE TRIGGER update_${table.name}_updated_at
+  BEFORE UPDATE ON public.${table.name}
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+`;
+      }
+    }
+  }
+  
+  return sql;
+}
+
+/**
+ * Extract schema from project files
+ */
+function extractSchemaFromProject(
+  files: Record<string, string>,
+  providedSchema?: string
+): { sql: string; source: string; tables: string[] } {
+  // 1. Check for existing migrations in supabase/migrations/
+  const migrationFiles: { name: string; content: string }[] = [];
+  
+  for (const [path, content] of Object.entries(files)) {
+    if (path.startsWith('supabase/migrations/') && path.endsWith('.sql')) {
+      migrationFiles.push({ 
+        name: path.replace('supabase/migrations/', ''), 
+        content: content as string 
+      });
+    }
+  }
+  
+  // 2. Check for types.ts
+  let typesContent = '';
+  for (const [path, content] of Object.entries(files)) {
+    if (path.includes('supabase/types.ts') || path.includes('integrations/supabase/types.ts')) {
+      typesContent = content as string;
+      break;
+    }
+  }
+  
+  // 3. Generate schema based on available sources
+  if (migrationFiles.length > 0) {
+    const schema = parseMigrationFiles(migrationFiles);
+    const tablesFromTypes = typesContent ? parseTypesFile(typesContent) : [];
+    
+    return {
+      sql: generateSQLSchema(schema, tablesFromTypes),
+      source: `migrations (${migrationFiles.length} fichiers)`,
+      tables: schema.tables.map(t => t.name)
+    };
+  } else if (typesContent) {
+    const tables = parseTypesFile(typesContent);
+    const schema: ExtractedSchema = {
+      tables,
+      enums: [],
+      functions: [],
+      triggers: [],
+      rawMigrations: []
+    };
+    
+    // Try to extract enums from types
+    const enumMatch = typesContent.match(/Enums:\s*{([^}]+)}/);
+    if (enumMatch) {
+      const enumPattern = /(\w+):\s*\[([^\]]+)\]/g;
+      let match;
+      while ((match = enumPattern.exec(enumMatch[1])) !== null) {
+        const values = match[2].split(',').map(v => v.trim().replace(/"/g, ''));
+        schema.enums.push({ name: match[1], values });
+      }
+    }
+    
+    return {
+      sql: generateSQLSchema(schema, tables),
+      source: 'types.ts',
+      tables: tables.map(t => t.name)
+    };
+  } else if (providedSchema) {
+    return {
+      sql: providedSchema,
+      source: 'schéma fourni',
+      tables: []
+    };
+  }
+  
+  return {
+    sql: `-- Aucun schéma détecté
+-- Ajoutez vos tables ici ou importez depuis votre base de données existante
+
+-- Exemple:
+-- CREATE TABLE users (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   email TEXT UNIQUE NOT NULL,
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- );
+`,
+    source: 'aucun',
+    tables: []
+  };
+}
+
+// ============================================
 // EDGE FUNCTION TO EXPRESS CONVERTER - COMPLET
 // ============================================
 
@@ -2366,21 +2865,90 @@ _original-edge-functions
     }
 
     // ==========================================
-    // 3. DATABASE
+    // 3. DATABASE - EXTRACTION AUTOMATIQUE
     // ==========================================
+    let extractedSchema: { sql: string; source: string; tables: string[] } = { 
+      sql: '', 
+      source: 'aucun', 
+      tables: [] 
+    };
+    
     if (includeDatabase) {
       const dbFolder = zip.folder('database')!;
       const migrationsFolder = dbFolder.folder('migrations')!;
 
-      if (sqlSchema) {
-        migrationsFolder.file('001_schema.sql', sqlSchema);
-      }
+      // Extraction automatique du schéma
+      extractedSchema = extractSchemaFromProject(doubleCleanedFiles, sqlSchema);
+      
+      console.log(`[generate-liberation-pack] Schema extracted from: ${extractedSchema.source}, tables: ${extractedSchema.tables.length}`);
 
-      migrationsFolder.file('002_seed.sql', `-- Seed data for ${projectName}
--- Add your initial data here
+      migrationsFolder.file('001_schema.sql', extractedSchema.sql);
+      
+      // Seed file
+      migrationsFolder.file('002_seed.sql', `-- ═══════════════════════════════════════════════════════════════
+-- DONNÉES INITIALES - ${projectName}
+-- ═══════════════════════════════════════════════════════════════
 
--- Example:
+-- Ajoutez vos données initiales ici
+
+-- Exemples:
 -- INSERT INTO users (email, role) VALUES ('admin@example.com', 'admin');
+-- INSERT INTO settings (key, value) VALUES ('app_name', '${projectName}');
+`);
+
+      // README pour la base de données
+      migrationsFolder.file('README.md', `# 📦 Migrations de Base de Données
+
+## Source du Schéma
+Ce schéma a été extrait automatiquement depuis: **${extractedSchema.source}**
+
+## Tables Détectées
+${extractedSchema.tables.length > 0 
+  ? extractedSchema.tables.map(t => `- \`${t}\``).join('\n')
+  : '- Aucune table détectée automatiquement'}
+
+## Comment Appliquer
+
+### Option 1: PostgreSQL Direct
+\`\`\`bash
+psql -h localhost -U postgres -d ${safeName} -f 001_schema.sql
+psql -h localhost -U postgres -d ${safeName} -f 002_seed.sql
+\`\`\`
+
+### Option 2: Docker
+\`\`\`bash
+docker compose exec postgres psql -U app -d app -f /migrations/001_schema.sql
+\`\`\`
+
+### Option 3: Supabase Self-Hosted
+1. Accédez à votre dashboard Supabase local
+2. Allez dans SQL Editor
+3. Copiez-collez le contenu de 001_schema.sql
+4. Exécutez
+
+## Notes Importantes
+
+1. **Vérifiez les policies RLS** - Adaptez-les à votre système d'authentification
+2. **current_user_id()** - Cette fonction remplace auth.uid() de Supabase
+3. **Ordre d'exécution** - Respectez l'ordre des fichiers (001, 002, ...)
+
+## Personnalisation
+
+Si vous utilisez un système d'auth différent, modifiez la fonction \`current_user_id()\`:
+
+\`\`\`sql
+-- Pour JWT avec PostgREST
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS UUID AS $$
+  SELECT NULLIF(current_setting('request.jwt.claims', true)::json->>'sub', '')::UUID;
+$$ LANGUAGE sql STABLE;
+
+-- Pour une variable de session
+CREATE OR REPLACE FUNCTION current_user_id()
+RETURNS UUID AS $$
+  SELECT current_setting('app.current_user_id')::UUID;
+$$ LANGUAGE sql STABLE;
+\`\`\`
 `);
 
       allEnvVars.add('POSTGRES_USER');
@@ -2721,14 +3289,20 @@ Thumbs.db
         criticalIssues: sovereigntyCheck.criticalIssues.length,
         warnings: sovereigntyCheck.warnings.length,
         serverSideChanges: totalServerChanges,
-        version: '4.0',
+        schemaExtraction: {
+          source: extractedSchema.source,
+          tablesFound: extractedSchema.tables.length,
+          tables: extractedSchema.tables
+        },
+        version: '4.1',
         features: [
           'Complete Edge Function conversion',
           'Open Source services templates (Ollama, Meilisearch, MinIO)',
           'Configurable AI client',
           'Enhanced deployment guide with webhooks section',
           'Auto-generated secrets',
-          'Docker Compose with healthchecks'
+          'Docker Compose with healthchecks',
+          'Automatic SQL schema extraction from migrations/types'
         ]
       }
     }), {
