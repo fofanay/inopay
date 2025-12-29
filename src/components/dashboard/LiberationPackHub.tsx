@@ -24,9 +24,13 @@ import {
   AlertCircle,
   Zap,
   List,
-  ClipboardCheck
+  ClipboardCheck,
+  Image,
+  Code,
+  GitCompare
 } from "lucide-react";
 import { SovereigntyAuditReport } from "./SovereigntyAuditReport";
+import { FileDiffPreview, AssetDownloader, TypeScriptValidator } from "./liberation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,6 +166,10 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const [isGeneratingPack, setIsGeneratingPack] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [gitHubRepoUrl, setGitHubRepoUrl] = useState<string | null>(null);
+  
+  // Validation state
+  const [isCodeValid, setIsCodeValid] = useState(true);
+  const [downloadedAssets, setDownloadedAssets] = useState<Map<string, { content: string; isBase64: boolean }>>(new Map());
 
   // Helper to extract full_name from GitHub URL
   const extractRepoFullName = (url: string): string | null => {
@@ -1354,18 +1362,71 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            {/* Tabs for Pack Generation and Audit */}
-            <Tabs defaultValue="pack" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="pack" className="gap-2">
-                  <Package className="h-4 w-4" />
-                  Génération du Pack
+            {/* Tabs for Pack Generation, Preview, Assets, Validation and Audit */}
+            <Tabs defaultValue="preview" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="preview" className="gap-1 text-xs">
+                  <GitCompare className="h-3 w-3" />
+                  <span className="hidden sm:inline">Prévisualisation</span>
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="gap-2">
-                  <ClipboardCheck className="h-4 w-4" />
-                  Audit de Souveraineté
+                <TabsTrigger value="assets" className="gap-1 text-xs">
+                  <Image className="h-3 w-3" />
+                  <span className="hidden sm:inline">Assets</span>
+                </TabsTrigger>
+                <TabsTrigger value="validate" className="gap-1 text-xs">
+                  <Code className="h-3 w-3" />
+                  <span className="hidden sm:inline">Validation</span>
+                </TabsTrigger>
+                <TabsTrigger value="pack" className="gap-1 text-xs">
+                  <Package className="h-3 w-3" />
+                  <span className="hidden sm:inline">Pack</span>
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="gap-1 text-xs">
+                  <ClipboardCheck className="h-3 w-3" />
+                  <span className="hidden sm:inline">Audit</span>
                 </TabsTrigger>
               </TabsList>
+
+              {/* Preview Tab - File Diff */}
+              <TabsContent value="preview" className="mt-4 space-y-4">
+                <FileDiffPreview
+                  originalFiles={extractedFiles}
+                  cleanedFiles={cleanedFiles}
+                  onUpdateFile={(path, content) => {
+                    setCleanedFiles(prev => ({ ...prev, [path]: content }));
+                  }}
+                  onRevertFile={(path) => {
+                    const original = extractedFiles.get(path);
+                    if (original) {
+                      setCleanedFiles(prev => ({ ...prev, [path]: original }));
+                    }
+                  }}
+                />
+              </TabsContent>
+
+              {/* Assets Tab - Download external assets */}
+              <TabsContent value="assets" className="mt-4 space-y-4">
+                <AssetDownloader
+                  files={cleanedFiles}
+                  onAssetsReady={(assets) => {
+                    setDownloadedAssets(assets);
+                    toast.success(`${assets.size} assets traités`);
+                  }}
+                />
+              </TabsContent>
+
+              {/* Validation Tab - TypeScript check */}
+              <TabsContent value="validate" className="mt-4 space-y-4">
+                <TypeScriptValidator
+                  files={cleanedFiles}
+                  onValidationComplete={(isValid, errors) => {
+                    setIsCodeValid(isValid);
+                    if (!isValid) {
+                      toast.warning(`${errors.filter(e => e.severity === 'error').length} erreurs détectées`);
+                    }
+                  }}
+                />
+              </TabsContent>
 
               <TabsContent value="audit" className="mt-4 space-y-4">
                 {/* Pass cleaned files to audit */}
