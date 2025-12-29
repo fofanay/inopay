@@ -1036,95 +1036,100 @@ export function deepCleanSourceFile(content: string, filePath: string): {
     }
   }
 
-  // ========== PASS 2: Replace @/integrations/supabase with STANDARD @supabase/supabase-js ==========
-  // CRITICAL FIX: Replace auto-generated imports with standard Supabase SDK
+  // ========== PASS 2: Replace @/integrations/supabase with CENTRALIZED POLYFILLS ==========
+  // CRITICAL FIX V2: Use centralized polyfill paths instead of inline code injection
+  // This prevents duplicate declarations and syntax errors
   
-  // Full import line replacements for supabase client
-  const supabaseClientImportPattern = /import\s*{\s*supabase\s*}\s*from\s*['"]@\/integrations\/supabase\/client['"]\s*;?/g;
-  if (supabaseClientImportPattern.test(cleaned)) {
-    cleaned = cleaned.replace(supabaseClientImportPattern, 
-      `import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);`);
-    changes.push('Import supabase client remplacé par @supabase/supabase-js standard');
+  // Replace supabase client imports with polyfill path
+  const supabaseClientPatterns = [
+    /import\s*{\s*supabase\s*}\s*from\s*['"]@\/integrations\/supabase\/client['"]\s*;?/g,
+    /import\s+{\s*supabase\s*}\s+from\s+['"]@\/integrations\/supabase\/client['"]\s*;?/g,
+  ];
+  
+  for (const pattern of supabaseClientPatterns) {
+    const beforeClient = cleaned;
+    cleaned = cleaned.replace(pattern, "import { supabase } from '@/lib/supabase';");
+    if (cleaned !== beforeClient) {
+      changes.push('Import supabase redirigé vers @/lib/supabase');
+    }
   }
   
-  // Replace type imports
+  // Replace type imports with polyfill path - PRESERVE EXACT TYPE NAMES
   const supabaseTypesPattern = /import\s+type\s*{\s*([^}]+)\s*}\s*from\s*['"]@\/integrations\/supabase\/types['"]\s*;?/g;
   const before1 = cleaned;
-  cleaned = cleaned.replace(supabaseTypesPattern, '// Types Supabase - remplacer par vos types locaux\ntype $1 = any;');
+  cleaned = cleaned.replace(supabaseTypesPattern, "import type { $1 } from '@/types/database';");
   if (cleaned !== before1) {
-    changes.push('Types Supabase remplacés par types locaux');
+    changes.push('Types Supabase redirigés vers @/types/database');
   }
   
-  // Replace regular type imports (non-type keyword)
-  const supabaseTypesPattern2 = /import\s*{\s*([^}]*(?:Database|Tables|TablesInsert|TablesUpdate)[^}]*)\s*}\s*from\s*['"]@\/integrations\/supabase\/types['"]\s*;?/g;
+  // Replace regular type imports (Database, Tables, etc.)
+  const supabaseTypesPattern2 = /import\s*{\s*([^}]*(?:Database|Tables|TablesInsert|TablesUpdate|Json)[^}]*)\s*}\s*from\s*['"]@\/integrations\/supabase\/types['"]\s*;?/g;
   const before2 = cleaned;
-  cleaned = cleaned.replace(supabaseTypesPattern2, '// Types Supabase - remplacer par vos types locaux');
+  cleaned = cleaned.replace(supabaseTypesPattern2, "import type { $1 } from '@/types/database';");
   if (cleaned !== before2) {
-    changes.push('Types Supabase nettoyés');
+    changes.push('Types Database redirigés vers @/types/database');
   }
   
-  // Catch any remaining @/integrations patterns
-  const remainingIntegrations = /from\s*['"]@\/integrations\/supabase[^'"]*['"]/g;
-  const before3 = cleaned;
-  cleaned = cleaned.replace(remainingIntegrations, "from '@supabase/supabase-js'");
-  if (cleaned !== before3) {
-    changes.push('Imports @/integrations restants corrigés');
+  // Catch any remaining @/integrations/supabase patterns
+  const remainingIntegrationsClient = /from\s*['"]@\/integrations\/supabase\/client['"]/g;
+  const before3a = cleaned;
+  cleaned = cleaned.replace(remainingIntegrationsClient, "from '@/lib/supabase'");
+  if (cleaned !== before3a) {
+    changes.push('Imports client @/integrations restants corrigés');
   }
   
-  // Also handle relative paths to integrations
-  const relativeIntegrations = /from\s*['"]\.+\/integrations\/supabase[^'"]*['"]/g;
-  const before4 = cleaned;
-  cleaned = cleaned.replace(relativeIntegrations, "from '@supabase/supabase-js'");
-  if (cleaned !== before4) {
-    changes.push('Imports relatifs integrations corrigés');
+  const remainingIntegrationsTypes = /from\s*['"]@\/integrations\/supabase\/types['"]/g;
+  const before3b = cleaned;
+  cleaned = cleaned.replace(remainingIntegrationsTypes, "from '@/types/database'");
+  if (cleaned !== before3b) {
+    changes.push('Imports types @/integrations restants corrigés');
+  }
+  
+  // Handle relative paths to integrations
+  const relativeIntegrationsClient = /from\s*['"]\.+\/integrations\/supabase\/client['"]/g;
+  const before4a = cleaned;
+  cleaned = cleaned.replace(relativeIntegrationsClient, "from '@/lib/supabase'");
+  if (cleaned !== before4a) {
+    changes.push('Imports relatifs client corrigés');
+  }
+  
+  const relativeIntegrationsTypes = /from\s*['"]\.+\/integrations\/supabase\/types['"]/g;
+  const before4b = cleaned;
+  cleaned = cleaned.replace(relativeIntegrationsTypes, "from '@/types/database'");
+  if (cleaned !== before4b) {
+    changes.push('Imports relatifs types corrigés');
   }
   
   // ========== PASS 2b: Replace @/hooks/use-toast with sonner ==========
-  const useToastImportPattern = /import\s*{\s*(?:useToast|toast|useToast,\s*toast|toast,\s*useToast)\s*}\s*from\s*['"]@\/hooks\/use-toast['"]\s*;?/g;
-  const before5 = cleaned;
-  cleaned = cleaned.replace(useToastImportPattern, "import { toast } from 'sonner';");
-  if (cleaned !== before5) {
-    changes.push('useToast remplacé par sonner');
-  }
+  const useToastPatterns = [
+    /import\s*{\s*(?:useToast|toast|useToast,\s*toast|toast,\s*useToast)\s*}\s*from\s*['"]@\/hooks\/use-toast['"]\s*;?/g,
+    /import\s*{\s*(?:useToast|toast|useToast,\s*toast|toast,\s*useToast)\s*}\s*from\s*['"]@\/components\/ui\/use-toast['"]\s*;?/g,
+  ];
   
-  // Also handle @/components/ui/use-toast
-  const useToastUIPattern = /import\s*{\s*(?:useToast|toast|useToast,\s*toast|toast,\s*useToast)\s*}\s*from\s*['"]@\/components\/ui\/use-toast['"]\s*;?/g;
-  const before6 = cleaned;
-  cleaned = cleaned.replace(useToastUIPattern, "import { toast } from 'sonner';");
-  if (cleaned !== before6) {
-    changes.push('useToast UI remplacé par sonner');
+  for (const pattern of useToastPatterns) {
+    const before5 = cleaned;
+    cleaned = cleaned.replace(pattern, "import { toast } from 'sonner';");
+    if (cleaned !== before5) {
+      changes.push('useToast remplacé par sonner');
+    }
   }
   
   // Remove const { toast } = useToast() pattern since we import toast directly
-  const useToastDestructure = /const\s*{\s*toast\s*}\s*=\s*useToast\s*\(\s*\)\s*;?/g;
+  const useToastDestructure = /const\s*{\s*toast\s*}\s*=\s*useToast\s*\(\s*\)\s*;?\n?/g;
   const before7 = cleaned;
-  cleaned = cleaned.replace(useToastDestructure, '// toast importé directement de sonner');
+  cleaned = cleaned.replace(useToastDestructure, '');
   if (cleaned !== before7) {
     changes.push('Destructuration useToast supprimée');
   }
   
-  // ========== PASS 2c: Replace @/hooks/use-mobile with standard hook ==========
+  // ========== PASS 2c: Replace @/hooks/use-mobile with polyfill path ==========
+  // Instead of injecting inline code, redirect to centralized polyfill
   const useMobileImportPattern = /import\s*{\s*useIsMobile\s*}\s*from\s*['"]@\/hooks\/use-mobile['"]\s*;?/g;
   const before8 = cleaned;
-  cleaned = cleaned.replace(useMobileImportPattern, 
-    `import { useState, useEffect } from 'react';
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  return isMobile;
-};`);
+  cleaned = cleaned.replace(useMobileImportPattern, "import { useIsMobile } from '@/hooks/use-mobile';");
   if (cleaned !== before8) {
-    changes.push('useIsMobile remplacé par hook standard');
+    // No change needed - keep original path, polyfill will be generated
+    changes.push('useIsMobile conservé (polyfill sera généré)');
   }
 
   // ========== PASS 3: Remove ALL proprietary content patterns ==========
@@ -2439,4 +2444,281 @@ export function finalVerificationPass(
     remainingIssues,
     criticalCount,
   };
+}
+
+// ============================================
+// CENTRALIZED POLYFILLS V2 - Clean file-based approach
+// These are generated as separate files, not injected inline
+// ============================================
+
+/**
+ * Centralized polyfill file contents for Liberation Packs
+ * Each polyfill is a complete, standalone file
+ */
+export const CENTRALIZED_POLYFILLS: Record<string, { path: string; content: string }> = {
+  // Supabase client polyfill
+  'supabase': {
+    path: 'src/lib/supabase.ts',
+    content: `/**
+ * Supabase Client - Centralized Configuration
+ * Generated by InoPay Liberation Pack
+ * 
+ * Configure your Supabase connection via environment variables:
+ * - VITE_SUPABASE_URL: Your Supabase project URL
+ * - VITE_SUPABASE_ANON_KEY: Your Supabase anon/public key
+ */
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.');
+}
+
+export const supabase = createClient<Database>(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  }
+);
+
+export default supabase;
+`
+  },
+
+  // Database types polyfill
+  'database': {
+    path: 'src/types/database.ts',
+    content: `/**
+ * Database Types - Supabase Schema Types
+ * Generated by InoPay Liberation Pack
+ * 
+ * To generate your own types from your Supabase project:
+ * npx supabase gen types typescript --project-id="your-project-id" > src/types/database.ts
+ */
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+/**
+ * Generic Database interface
+ * Replace this with your actual Supabase-generated types
+ */
+export interface Database {
+  public: {
+    Tables: {
+      [key: string]: {
+        Row: Record<string, unknown>;
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: unknown[];
+      };
+    };
+    Views: {
+      [key: string]: {
+        Row: Record<string, unknown>;
+      };
+    };
+    Functions: {
+      [key: string]: {
+        Args: Record<string, unknown>;
+        Returns: unknown;
+      };
+    };
+    Enums: {
+      [key: string]: string;
+    };
+    CompositeTypes: {
+      [key: string]: unknown;
+    };
+  };
+}
+
+/**
+ * Helper types for table operations
+ */
+export type Tables<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Row'];
+
+export type TablesInsert<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Insert'];
+
+export type TablesUpdate<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Update'];
+
+/**
+ * Enum helper type
+ */
+export type Enums<T extends keyof Database['public']['Enums']> = 
+  Database['public']['Enums'][T];
+`
+  },
+
+  // useIsMobile hook polyfill
+  'use-mobile': {
+    path: 'src/hooks/use-mobile.ts',
+    content: `/**
+ * useIsMobile Hook - Responsive breakpoint detection
+ * Generated by InoPay Liberation Pack
+ */
+import { useState, useEffect } from 'react';
+
+const MOBILE_BREAKPOINT = 768;
+
+export function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < MOBILE_BREAKPOINT;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mql = window.matchMedia(\`(max-width: \${MOBILE_BREAKPOINT - 1}px)\`);
+    
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobile(e.matches);
+    };
+
+    // Set initial value
+    onChange(mql);
+
+    // Listen for changes
+    if (mql.addEventListener) {
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    } else {
+      // Fallback for older browsers
+      mql.addListener(onChange);
+      return () => mql.removeListener(onChange);
+    }
+  }, []);
+
+  return isMobile;
+}
+
+export default useIsMobile;
+`
+  },
+
+  // useToast hook polyfill (wrapper for sonner)
+  'use-toast': {
+    path: 'src/hooks/use-toast.ts',
+    content: `/**
+ * useToast Hook - Toast notification wrapper for sonner
+ * Generated by InoPay Liberation Pack
+ * 
+ * This provides compatibility with useToast pattern while using sonner
+ */
+import { toast as sonnerToast } from 'sonner';
+
+export interface ToastProps {
+  title?: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+  duration?: number;
+}
+
+export function toast(props: ToastProps | string) {
+  if (typeof props === 'string') {
+    sonnerToast(props);
+    return;
+  }
+
+  const { title, description, variant, duration } = props;
+  const message = title || description || '';
+  const options = { description: title ? description : undefined, duration };
+
+  if (variant === 'destructive') {
+    sonnerToast.error(message, options);
+  } else {
+    sonnerToast(message, options);
+  }
+}
+
+export function useToast() {
+  return { toast };
+}
+
+// Re-export sonner toast for direct usage
+export { toast as sonnerToast } from 'sonner';
+`
+  }
+};
+
+/**
+ * Get list of required polyfills based on file contents
+ * Returns the polyfill keys that need to be generated
+ */
+export function getRequiredPolyfills(files: Record<string, string> | Map<string, string>): string[] {
+  const needed: Set<string> = new Set();
+  
+  const entries = files instanceof Map ? Array.from(files.entries()) : Object.entries(files);
+  
+  for (const [path, content] of entries) {
+    // Skip non-source files
+    if (!path.match(/\.(ts|tsx|js|jsx)$/)) continue;
+    
+    // Check for Supabase usage
+    if (/from\s+['"]@\/lib\/supabase['"]/.test(content) ||
+        /from\s+['"]@\/integrations\/supabase\/client['"]/.test(content) ||
+        /supabase\.from\s*\(/.test(content) ||
+        /supabase\.auth\./.test(content)) {
+      needed.add('supabase');
+      needed.add('database'); // Always include types with client
+    }
+    
+    // Check for type imports
+    if (/from\s+['"]@\/types\/database['"]/.test(content) ||
+        /from\s+['"]@\/integrations\/supabase\/types['"]/.test(content) ||
+        /\bDatabase\b/.test(content) ||
+        /\bTables</.test(content) ||
+        /\bTablesInsert</.test(content) ||
+        /\bTablesUpdate</.test(content)) {
+      needed.add('database');
+    }
+    
+    // Check for useIsMobile
+    if (/useIsMobile/.test(content) ||
+        /from\s+['"]@\/hooks\/use-mobile['"]/.test(content)) {
+      needed.add('use-mobile');
+    }
+    
+    // Check for useToast (if not already converted to sonner)
+    if (/from\s+['"]@\/hooks\/use-toast['"]/.test(content) ||
+        /from\s+['"]@\/components\/ui\/use-toast['"]/.test(content) ||
+        /useToast\s*\(\s*\)/.test(content)) {
+      needed.add('use-toast');
+    }
+  }
+  
+  return Array.from(needed);
+}
+
+/**
+ * Generate all required polyfill files for a Liberation Pack
+ */
+export function generatePolyfillFiles(requiredPolyfills: string[]): Record<string, string> {
+  const files: Record<string, string> = {};
+  
+  for (const key of requiredPolyfills) {
+    const polyfill = CENTRALIZED_POLYFILLS[key];
+    if (polyfill) {
+      files[polyfill.path] = polyfill.content;
+    }
+  }
+  
+  return files;
 }
