@@ -4648,6 +4648,7 @@ serve(async (req) => {
       sovereigntyScore = 0,
       clientSovereigntyScore = null,
       clientEnvVars = [],
+      assetFiles = {}, // Downloaded assets from client
     } = await req.json();
 
     if (!cleanedFiles || Object.keys(cleanedFiles).length === 0) {
@@ -4718,6 +4719,42 @@ serve(async (req) => {
     for (const [path, content] of Object.entries(doubleCleanedFiles)) {
       if (!path.startsWith('supabase/')) {
         frontendFolder.file(path, content as string);
+      }
+    }
+    
+    // ==========================================
+    // 1b. DOWNLOADED ASSETS (from client)
+    // ==========================================
+    const assetCount = Object.keys(assetFiles).length;
+    if (assetCount > 0) {
+      console.log(`[generate-liberation-pack] Adding ${assetCount} downloaded assets...`);
+      
+      for (const [assetPath, assetContent] of Object.entries(assetFiles)) {
+        const content = assetContent as string;
+        
+        // Check if it's base64 encoded
+        if (content.startsWith('data:')) {
+          // Extract the base64 data
+          const base64Match = content.match(/^data:([^;]+);base64,(.+)$/);
+          if (base64Match) {
+            const mimeType = base64Match[1];
+            const base64Data = base64Match[2];
+            
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Add as binary file to the ZIP
+            frontendFolder.file(assetPath, bytes);
+            console.log(`[generate-liberation-pack] Added asset: ${assetPath} (${bytes.length} bytes)`);
+          }
+        } else {
+          // Plain text content (e.g., comment for failed downloads)
+          frontendFolder.file(assetPath, content);
+        }
       }
     }
     
@@ -5681,7 +5718,7 @@ Thumbs.db
             stats: (extractedSchema as any).validation.stats
           } : null
         },
-        version: '4.2',
+        version: '4.3',
         features: [
           'Complete Edge Function conversion',
           'Open Source services templates (Ollama, Meilisearch, MinIO)',
@@ -5690,8 +5727,10 @@ Thumbs.db
           'Auto-generated secrets',
           'Docker Compose with healthchecks',
           'Automatic SQL schema extraction from migrations/types',
-          'SQL schema validator with dependency analysis'
-        ]
+          'SQL schema validator with dependency analysis',
+          'Downloaded assets integration'
+        ],
+        assetsIncluded: assetCount
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -976,23 +976,60 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
       return;
     }
     
+    // Warn if validation failed but allow generation
+    if (!isCodeValid) {
+      toast.warning("Attention: des erreurs TypeScript ont été détectées. Le build pourrait échouer.");
+    }
+    
     setIsGeneratingPack(true);
     
     try {
       // Detect env vars from original files before cleaning
       const detectedEnvVars = detectEnvVarsFromFiles(extractedFiles);
       
+      // Process downloaded assets - replace URLs in cleaned files and prepare asset files
+      const processedFiles = { ...cleanedFiles };
+      const assetFiles: Record<string, string> = {};
+      
+      if (downloadedAssets.size > 0) {
+        for (const [originalUrl, assetData] of downloadedAssets) {
+          if (assetData.isBase64 && assetData.content.startsWith('data:')) {
+            // Generate local path for the asset
+            const urlParts = originalUrl.split('/');
+            const fileName = urlParts.pop()?.split('?')[0] || 'asset.png';
+            const localPath = `public/assets/images/${fileName}`;
+            
+            // Add base64 content as asset file (will be decoded by the edge function)
+            assetFiles[localPath] = assetData.content;
+            
+            // Replace all occurrences of the original URL in the cleaned files
+            for (const [filePath, content] of Object.entries(processedFiles)) {
+              if (content.includes(originalUrl)) {
+                // Replace with relative path from src
+                const relativePath = `/assets/images/${fileName}`;
+                processedFiles[filePath] = content.split(originalUrl).join(relativePath);
+              }
+            }
+          }
+        }
+        
+        if (Object.keys(assetFiles).length > 0) {
+          toast.info(`${Object.keys(assetFiles).length} assets intégrés au pack`);
+        }
+      }
+      
       const { data, error } = await supabase.functions.invoke('generate-liberation-pack', {
         body: {
           projectName,
-          cleanedFiles,
+          cleanedFiles: processedFiles,
           edgeFunctions: includeBackend ? edgeFunctions : [],
           sqlSchema: includeDatabase ? sqlSchema : null,
           includeBackend,
           includeDatabase,
           sovereigntyScore: cleaningStats.sovereigntyScore,
           clientSovereigntyScore: cleaningStats.sovereigntyScore,
-          clientEnvVars: detectedEnvVars
+          clientEnvVars: detectedEnvVars,
+          assetFiles // Include downloaded assets
         }
       });
 
