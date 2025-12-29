@@ -12,21 +12,235 @@ const corsHeaders = {
 // TEMPLATES DOCKER
 // ============================================
 
+// ============================================
+// COOLIFY-COMPATIBLE DOCKERFILE AVEC BUILD ARGS
+// ============================================
 const FRONTEND_DOCKERFILE = `# Stage 1: Build
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Accept build args for Vite env vars (Coolify compatible)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_SUPABASE_PROJECT_ID
+ARG VITE_APP_URL
+
+# Set as env vars for build
+ENV VITE_SUPABASE_URL=\${VITE_SUPABASE_URL}
+ENV VITE_SUPABASE_ANON_KEY=\${VITE_SUPABASE_ANON_KEY}
+ENV VITE_SUPABASE_PROJECT_ID=\${VITE_SUPABASE_PROJECT_ID}
+ENV VITE_APP_URL=\${VITE_APP_URL}
+
+# Install dependencies (with fallback if no lockfile)
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps || npm install
+
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# Stage 2: Production avec Caddy
+# Stage 2: Production avec Caddy (meilleur support HTTPS automatique)
 FROM caddy:2-alpine
 COPY --from=builder /app/dist /usr/share/caddy
 COPY Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80 443
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
 `;
+
+// ============================================
+// SERVER-SIDE POLYFILLS (CENTRALIZED)
+// Pour éviter les erreurs TypeScript dans le pack
+// ============================================
+
+const POLYFILL_SUPABASE = `// Client Supabase configurable - Généré par InoPay Liberation Pack
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in environment');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+export default supabase;
+`;
+
+const POLYFILL_DATABASE = `// Types Database génériques - Généré par InoPay Liberation Pack
+// Remplacez par vos types spécifiques si nécessaire
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export interface Database {
+  public: {
+    Tables: Record<string, {
+      Row: Record<string, unknown>;
+      Insert: Record<string, unknown>;
+      Update: Record<string, unknown>;
+    }>;
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, string[]>;
+    CompositeTypes: Record<string, never>;
+  };
+}
+
+export type Tables<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Row'];
+
+export type TablesInsert<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Insert'];
+
+export type TablesUpdate<T extends keyof Database['public']['Tables']> = 
+  Database['public']['Tables'][T]['Update'];
+`;
+
+const POLYFILL_USE_MOBILE = `// Hook useIsMobile - Généré par InoPay Liberation Pack
+import { useState, useEffect } from 'react';
+
+const MOBILE_BREAKPOINT = 768;
+
+export function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return isMobile;
+}
+`;
+
+const POLYFILL_USE_TOAST = `// Hook useToast - Wrapper Sonner - Généré par InoPay Liberation Pack
+import { toast as sonnerToast } from 'sonner';
+
+export interface ToastProps {
+  title?: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+}
+
+export function toast(props: ToastProps) {
+  const { title, description, variant } = props;
+  
+  if (variant === 'destructive') {
+    sonnerToast.error(title || description, {
+      description: title ? description : undefined,
+    });
+  } else {
+    sonnerToast(title || description, {
+      description: title ? description : undefined,
+    });
+  }
+}
+
+export function useToast() {
+  return { toast };
+}
+`;
+
+interface PolyfillConfig {
+  path: string;
+  content: string;
+  detectPatterns: string[];
+}
+
+const SERVER_POLYFILLS: Record<string, PolyfillConfig> = {
+  supabase: {
+    path: 'src/lib/supabase.ts',
+    detectPatterns: [
+      "@/lib/supabase",
+      "@/integrations/supabase/client",
+      "supabase.from(",
+      "supabase.auth.",
+    ],
+    content: POLYFILL_SUPABASE
+  },
+  database: {
+    path: 'src/types/database.ts',
+    detectPatterns: [
+      "@/types/database",
+      "@/integrations/supabase/types",
+      "Database[",
+      "Tables<",
+    ],
+    content: POLYFILL_DATABASE
+  },
+  useMobile: {
+    path: 'src/hooks/use-mobile.tsx',
+    detectPatterns: [
+      "@/hooks/use-mobile",
+      "useIsMobile(",
+    ],
+    content: POLYFILL_USE_MOBILE
+  },
+  useToast: {
+    path: 'src/hooks/use-toast.ts',
+    detectPatterns: [
+      "@/hooks/use-toast",
+      "useToast()",
+    ],
+    content: POLYFILL_USE_TOAST
+  }
+};
+
+/**
+ * Détecte les polyfills nécessaires en analysant les fichiers du projet
+ */
+function detectRequiredPolyfills(files: Record<string, string>): Record<string, string> {
+  const required: Record<string, string> = {};
+  const allContent = Object.values(files).join('\n');
+  
+  for (const [name, polyfill] of Object.entries(SERVER_POLYFILLS)) {
+    const needsPolyfill = polyfill.detectPatterns.some(pattern => allContent.includes(pattern));
+    
+    if (needsPolyfill) {
+      required[polyfill.path] = polyfill.content;
+      console.log(`[generate-liberation-pack] Polyfill needed: ${name} -> ${polyfill.path}`);
+    }
+  }
+  
+  // Si on a besoin de supabase, on a besoin de database types aussi
+  if (required['src/lib/supabase.ts'] && !required['src/types/database.ts']) {
+    required['src/types/database.ts'] = SERVER_POLYFILLS.database.content;
+    console.log('[generate-liberation-pack] Adding database types (dependency of supabase)');
+  }
+  
+  return required;
+}
+
+/**
+ * Ajoute les polyfills détectés au dossier frontend du ZIP
+ */
+function addPolyfillsToFrontend(
+  frontendFolder: JSZip, 
+  files: Record<string, string>
+): { added: string[]; count: number } {
+  const polyfills = detectRequiredPolyfills(files);
+  const added: string[] = [];
+  
+  for (const [path, content] of Object.entries(polyfills)) {
+    // Vérifier que le fichier n'existe pas déjà
+    if (!files[path]) {
+      frontendFolder.file(path, content);
+      added.push(path);
+    }
+  }
+  
+  return { added, count: added.length };
+}
 
 const BACKEND_DOCKERFILE = `FROM node:20-alpine AS builder
 WORKDIR /app
@@ -4766,6 +4980,14 @@ serve(async (req) => {
     frontendFolder.file('Dockerfile', FRONTEND_DOCKERFILE);
     frontendFolder.file('nginx.conf', NGINX_CONF);
     
+    // ==========================================
+    // 1c. POLYFILLS AUTOMATIQUES (pour éviter erreurs TS)
+    // ==========================================
+    const polyfillResult = addPolyfillsToFrontend(frontendFolder, doubleCleanedFiles);
+    if (polyfillResult.count > 0) {
+      console.log(`[generate-liberation-pack] Added ${polyfillResult.count} polyfills: ${polyfillResult.added.join(', ')}`);
+    }
+    
     const caddyfile = `:80 {
   root * /usr/share/caddy
   try_files {path} /index.html
@@ -5296,6 +5518,20 @@ NODE_ENV=production
 # ─────────────────────────────────────────────────────────────
 JWT_SECRET=
 
+# ─────────────────────────────────────────────────────────────
+# ⚡ FRONTEND - VARIABLES VITE (OBLIGATOIRES POUR COOLIFY)
+# ─────────────────────────────────────────────────────────────
+# Ces variables sont injectées au BUILD TIME via Docker build args
+# Dans Coolify: Settings → Build → Build Arguments
+#
+# Pour un Supabase self-hosted, utilisez votre URL locale
+# Pour un Supabase cloud, utilisez vos credentials existants
+
+VITE_SUPABASE_URL=https://votre-projet.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...votre_cle_anon
+VITE_SUPABASE_PROJECT_ID=votre-project-id
+VITE_APP_URL=https://votre-domaine.com
+
 ${includeDatabase ? `# ─────────────────────────────────────────────────────────────
 # BASE DE DONNÉES
 # ─────────────────────────────────────────────────────────────
@@ -5328,7 +5564,7 @@ OLLAMA_MODEL=llama2
 # SERVICES EXTERNES (optionnels)
 # ─────────────────────────────────────────────────────────────
 ${envVarsArray
-  .filter(v => !['PORT', 'NODE_ENV', 'DOMAIN', 'DATABASE_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'JWT_SECRET', 'AI_PROVIDER', 'OLLAMA_URL', 'OLLAMA_MODEL', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(v))
+  .filter(v => !['PORT', 'NODE_ENV', 'DOMAIN', 'DATABASE_URL', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'JWT_SECRET', 'AI_PROVIDER', 'OLLAMA_URL', 'OLLAMA_MODEL', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_PROJECT_ID', 'VITE_APP_URL'].includes(v))
   .map(v => `${v}=`)
   .join('\n')}
 
@@ -5346,10 +5582,27 @@ ${envVarsArray
 # MINIO_ACCESS_KEY=minioadmin
 # MINIO_SECRET_KEY=
 
-# Supabase self-hosted (si migration)
+# Backend Supabase (si utilisation de l'API)
 # SUPABASE_URL=
 # SUPABASE_ANON_KEY=
 # SUPABASE_SERVICE_ROLE_KEY=
+
+# ─────────────────────────────────────────────────────────────
+# 🚀 INSTRUCTIONS COOLIFY
+# ─────────────────────────────────────────────────────────────
+# 1. Dans Coolify → New Resource → Docker Compose (depuis GitHub)
+# 2. Allez dans Settings → Build → Build Arguments
+# 3. Ajoutez les variables VITE_* comme BUILD ARGS:
+#    - VITE_SUPABASE_URL
+#    - VITE_SUPABASE_ANON_KEY
+#    - VITE_SUPABASE_PROJECT_ID
+#    - VITE_APP_URL
+# 4. Dans Environment Variables, ajoutez les autres variables
+# 5. Cliquez Deploy
+#
+# Les variables VITE_* doivent être en BUILD ARGS car Vite
+# les intègre au moment du build, pas au runtime!
+# ─────────────────────────────────────────────────────────────
 `;
     zip.file('.env.example', envExample);
 
@@ -5718,7 +5971,7 @@ Thumbs.db
             stats: (extractedSchema as any).validation.stats
           } : null
         },
-        version: '4.3',
+        version: '4.4',
         features: [
           'Complete Edge Function conversion',
           'Open Source services templates (Ollama, Meilisearch, MinIO)',
@@ -5728,9 +5981,12 @@ Thumbs.db
           'Docker Compose with healthchecks',
           'Automatic SQL schema extraction from migrations/types',
           'SQL schema validator with dependency analysis',
-          'Downloaded assets integration'
+          'Downloaded assets integration',
+          'Coolify-compatible Dockerfile with build args',
+          'Centralized polyfills for TypeScript compatibility'
         ],
-        assetsIncluded: assetCount
+        assetsIncluded: assetCount,
+        polyfillsAdded: polyfillResult.added
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
