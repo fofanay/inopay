@@ -45,6 +45,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { analyzeZipFile, analyzeFromGitHub, RealAnalysisResult } from "@/lib/zipAnalyzer";
+import { validatePack, type PackValidationResult } from "@/lib/packValidator";
 import {
   shouldRemoveFile,
   cleanPackageJson,
@@ -62,6 +63,8 @@ import {
   cleanShellScript,
   HOOK_POLYFILLS,
   PROPRIETARY_PATHS,
+  getRequiredPolyfills,
+  generatePolyfillFiles,
 } from "@/lib/clientProprietaryPatterns";
 
 // Configuration passée depuis le Wizard
@@ -169,6 +172,7 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   
   // Validation state
   const [isCodeValid, setIsCodeValid] = useState(true);
+  const [validationResult, setValidationResult] = useState<PackValidationResult | null>(null);
   const [downloadedAssets, setDownloadedAssets] = useState<Map<string, { content: string; isBase64: boolean }>>(new Map());
 
   // Helper to extract full_name from GitHub URL
@@ -912,10 +916,31 @@ export interface Database {
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 `;
 
-    // ========== PHASE 4: Final verification pass ==========
+    // ========== PHASE 4: Generate centralized polyfills ==========
+    setProgressMessage("Phase 3/3: Génération des polyfills centralisés...");
+    
+    // Get required polyfills based on cleaned file contents
+    const requiredPolyfills = getRequiredPolyfills(cleaned);
+    const polyfillFiles = generatePolyfillFiles(requiredPolyfills);
+    
+    // Add polyfills to cleaned files
+    for (const [path, content] of Object.entries(polyfillFiles)) {
+      cleaned[path] = content;
+      stats.polyfillsGenerated++;
+    }
+    
+    // ========== PHASE 5: Validate pack ==========
+    setProgress(90);
+    setProgressMessage("Validation TypeScript...");
+    
+    const validation = validatePack(cleaned);
+    setValidationResult(validation);
+    setIsCodeValid(validation.isValid);
+    
+    // ========== PHASE 6: Final verification pass ==========
     setStep("verifying");
-    setProgress(85);
-    setProgressMessage("Phase 3/3: Vérification finale de souveraineté...");
+    setProgress(95);
+    setProgressMessage("Vérification finale de souveraineté...");
     
     // Run final verification
     const verification = finalVerificationPass(cleaned);
@@ -957,10 +982,10 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
     
     const totalProcessed = stats.filesCleaned + stats.filesVerified;
     
-    if (stats.sovereigntyScore >= 95) {
-      toast.success(`✅ Nettoyage parfait: ${totalProcessed} fichiers, score ${stats.sovereigntyScore}%`);
+    if (stats.sovereigntyScore >= 95 && validation.isValid) {
+      toast.success(`✅ Pack prêt: ${totalProcessed} fichiers, score ${stats.sovereigntyScore}%`);
     } else if (stats.sovereigntyScore >= 80) {
-      toast.warning(`⚠️ Nettoyage partiel: score ${stats.sovereigntyScore}% - vérification recommandée`);
+      toast.warning(`⚠️ Score ${stats.sovereigntyScore}% - ${validation.criticalErrors.length} erreurs TS`);
     } else {
       toast.error(`❌ Score ${stats.sovereigntyScore}% - ${stats.criticalIssues} problèmes critiques`);
     }
