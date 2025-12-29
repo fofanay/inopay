@@ -3022,7 +3022,14 @@ export default authClient;
 }
 
 function generateExpressBackend(functions: EdgeFunctionInfo[]): {
-  routes: { name: string; content: string }[];
+  routes: { 
+    name: string; 
+    content: string; 
+    testFile?: string;
+    webhookInfo?: WebhookMigrationInfo;
+    preservedLogicPercentage: number;
+    manualTodosCount: number;
+  }[];
   indexTs: string;
   packageJson: string;
   tsconfigJson: string;
@@ -5008,6 +5015,32 @@ serve(async (req) => {
     
     console.log(`[generate-liberation-pack] Sovereignty check: score=${sovereigntyCheck.score} (client=${clientSovereigntyScore}), clean=${sovereigntyCheck.isClean}`);
 
+    // ==========================================
+    // AUTO-DETECT EDGE FUNCTIONS FROM FILES
+    // ==========================================
+    let detectedEdgeFunctions = edgeFunctions || [];
+    
+    if (!detectedEdgeFunctions || detectedEdgeFunctions.length === 0) {
+      console.log(`[generate-liberation-pack] No edge functions provided, auto-detecting from files...`);
+      
+      // Detect Edge Functions from supabase/functions/**/index.ts
+      for (const [path, content] of Object.entries(doubleCleanedFiles)) {
+        const match = path.match(/^supabase\/functions\/([^/]+)\/index\.ts$/);
+        if (match && match[1] !== '_shared') {
+          const funcName = match[1];
+          const funcContent = content as string;
+          
+          // Parse the edge function to extract metadata
+          const parsed = parseEdgeFunctionAdvanced(funcName, funcContent);
+          detectedEdgeFunctions.push(parsed);
+          
+          console.log(`[generate-liberation-pack] Auto-detected Edge Function: ${funcName} (auth=${parsed.hasAuth}, supabase=${parsed.usesSupabase}, stripe=${parsed.usesStripe})`);
+        }
+      }
+      
+      console.log(`[generate-liberation-pack] Total Edge Functions detected: ${detectedEdgeFunctions.length}`);
+    }
+
     const zip = new JSZip();
     const safeName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
@@ -5123,13 +5156,23 @@ ${includeBackend ? `  handle /api/* {
     let backendRoutes: string[] = [];
     const allEnvVars = new Set<string>(['PORT', 'NODE_ENV', 'JWT_SECRET']);
 
-    if (includeBackend && edgeFunctions && edgeFunctions.length > 0) {
+    if (includeBackend && detectedEdgeFunctions && detectedEdgeFunctions.length > 0) {
+      console.log(`[generate-liberation-pack] Converting ${detectedEdgeFunctions.length} Edge Functions to Express backend...`);
+      
       const backendFolder = zip.folder('backend')!;
       const srcFolder = backendFolder.folder('src')!;
       const routesFolder = srcFolder.folder('routes')!;
       const middlewareFolder = srcFolder.folder('middleware')!;
+      const testsFolder = srcFolder.folder('__tests__')!;
 
-      const parsedFunctions = edgeFunctions.map((ef: { name: string; content: string }) => {
+      // Parse functions (they may already be parsed from auto-detection)
+      const parsedFunctions = detectedEdgeFunctions.map((ef: EdgeFunctionInfo) => {
+        // If already parsed (from auto-detection), use it directly
+        if (ef.usesSupabase !== undefined) {
+          ef.envVars.forEach((v: string) => allEnvVars.add(v));
+          return ef;
+        }
+        // Otherwise parse it
         const parsed = parseEdgeFunctionAdvanced(ef.name, ef.content);
         parsed.envVars.forEach((v: string) => allEnvVars.add(v));
         return parsed;
@@ -5138,8 +5181,16 @@ ${includeBackend ? `  handle /api/* {
       const backend = generateExpressBackend(parsedFunctions);
       backendRoutes = backend.routes.map(r => r.name);
 
+      // Generate route files with complete business logic
       for (const route of backend.routes) {
         routesFolder.file(`${route.name}.ts`, route.content);
+        
+        // Add test file for each route
+        if (route.testFile) {
+          testsFolder.file(`${route.name}.test.ts`, route.testFile);
+        }
+        
+        console.log(`[generate-liberation-pack] Generated route: ${route.name} (preserved: ${route.preservedLogicPercentage}%, todos: ${route.manualTodosCount})`);
       }
 
       middlewareFolder.file('auth.ts', backend.middlewareAuth);
@@ -5150,9 +5201,63 @@ ${includeBackend ? `  handle /api/* {
 
       // Garder les originaux pour référence
       const originalFolder = backendFolder.folder('_original-edge-functions')!;
-      for (const ef of edgeFunctions) {
+      for (const ef of detectedEdgeFunctions) {
         originalFolder.file(`${ef.name}/index.ts`, ef.content);
       }
+
+      // README pour le backend
+      const backendReadme = `# 🔌 Backend API (Converti depuis Edge Functions)
+
+## 📊 Statistiques de conversion
+
+| Métrique | Valeur |
+|----------|--------|
+| Edge Functions converties | ${detectedEdgeFunctions.length} |
+| Routes générées | ${backendRoutes.length} |
+| Taux de préservation moyen | ${Math.round(backend.routes.reduce((acc, r) => acc + r.preservedLogicPercentage, 0) / backend.routes.length)}% |
+
+## 🚀 Démarrage rapide
+
+\`\`\`bash
+cd backend
+npm install
+npm run dev
+\`\`\`
+
+## 📂 Routes API
+
+${backendRoutes.map(r => `- \`/api/${r.replace(/_/g, '-')}\``).join('\n')}
+
+## 🔧 Structure
+
+\`\`\`
+backend/
+├── src/
+│   ├── index.ts           # Point d'entrée Express
+│   ├── routes/            # Routes converties
+│   ├── middleware/        # Auth et autres middlewares
+│   └── __tests__/         # Tests unitaires
+├── _original-edge-functions/  # Code Deno original (référence)
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+\`\`\`
+
+## ⚠️ Points à vérifier
+
+1. **Environnement**: Copiez \`.env.example\` vers \`.env\` et remplissez les valeurs
+2. **Base de données**: Vérifiez que \`DATABASE_URL\` pointe vers votre PostgreSQL
+3. **Secrets**: Assurez-vous que tous les secrets sont configurés
+
+## 📝 TODOs manuels
+
+Certaines conversions peuvent nécessiter des ajustements manuels. 
+Recherchez \`// TODO\` dans les fichiers de routes.
+
+---
+*Généré automatiquement par InoPay Liberation Pack*
+`;
+      backendFolder.file('README.md', backendReadme);
 
       // .dockerignore
       backendFolder.file('.dockerignore', `node_modules
@@ -5162,6 +5267,34 @@ dist
 .git
 _original-edge-functions
 `);
+
+      // .env.example pour le backend
+      const backendEnvExample = `# Backend API Environment Variables
+# Generated from Edge Functions conversion
+
+PORT=3000
+NODE_ENV=production
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# Authentication
+JWT_SECRET=${crypto.randomUUID().replace(/-/g, '')}
+
+# Supabase (si nécessaire)
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Services externes détectés
+${Array.from(allEnvVars)
+  .filter(v => !['PORT', 'NODE_ENV', 'DATABASE_URL', 'JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'].includes(v))
+  .map(v => `${v}=`)
+  .join('\n')}
+`;
+      backendFolder.file('.env.example', backendEnvExample);
+      
+      console.log(`[generate-liberation-pack] Backend conversion complete: ${backendRoutes.length} routes generated`);
     }
 
     // ==========================================
@@ -5550,11 +5683,11 @@ $$ LANGUAGE sql STABLE;
     // ==========================================
     // 4c. WEBHOOK MIGRATION GUIDES
     // ==========================================
-    if (includeBackend && edgeFunctions?.length > 0) {
+    if (includeBackend && detectedEdgeFunctions?.length > 0) {
       const webhooksFolder = zip.folder('docs/webhooks')!;
       
       // Collect webhook info from all converted functions
-      const webhookFunctions = edgeFunctions.filter((f: EdgeFunctionInfo) => f.webhookDetected);
+      const webhookFunctions = detectedEdgeFunctions.filter((f: EdgeFunctionInfo) => f.webhookDetected);
       
       if (webhookFunctions.length > 0) {
         let webhookGuide = `# 🔄 Guide de Migration des Webhooks
@@ -5601,7 +5734,7 @@ ${info.reconfigurationGuide}
     zip.file('docker-compose.yml', generateDockerCompose(
       projectName, 
       envVarsArray, 
-      includeBackend && edgeFunctions?.length > 0,
+      includeBackend && detectedEdgeFunctions?.length > 0,
       includeDatabase,
       hasAIUsage
     ));
@@ -5718,7 +5851,7 @@ ${envVarsArray
     zip.file('DEPLOY_GUIDE.html', generateDeployGuide(
       projectName,
       envVarsArray,
-      includeBackend && edgeFunctions?.length > 0,
+      includeBackend && detectedEdgeFunctions?.length > 0,
       includeDatabase,
       sovereigntyCheck.score,
       hasAIUsage
@@ -5729,11 +5862,11 @@ ${envVarsArray
     scriptsFolder.file('quick-deploy.sh', generateQuickDeployScript(projectName, includeDatabase, hasAIUsage));
 
     // Post-deployment checklist
-    const backendRouteNames = edgeFunctions?.map((f: EdgeFunctionInfo) => f.name.replace(/-/g, '_')) || [];
-    const webhooksList = edgeFunctions?.filter((f: EdgeFunctionInfo) => f.webhookDetected).map((f: EdgeFunctionInfo) => ({ name: f.name, type: f.webhookType || 'custom' })) || [];
+    const backendRouteNames = detectedEdgeFunctions?.map((f: EdgeFunctionInfo) => f.name.replace(/-/g, '_')) || [];
+    const webhooksList = detectedEdgeFunctions?.filter((f: EdgeFunctionInfo) => f.webhookDetected).map((f: EdgeFunctionInfo) => ({ name: f.name, type: f.webhookType || 'custom' })) || [];
     zip.file('POST_DEPLOY_CHECKLIST.html', generatePostDeploymentChecklist(
       projectName,
-      includeBackend && edgeFunctions?.length > 0,
+      includeBackend && detectedEdgeFunctions?.length > 0,
       includeDatabase,
       true, // hasAuth
       backendRouteNames,
@@ -5749,7 +5882,7 @@ ${envVarsArray
     // Guide HTML interactif ultra-détaillé
     zip.file('COMPLETE_LIBERATION_GUIDE.html', generateCompleteLiberationGuideHTML(
       projectName,
-      includeBackend && edgeFunctions?.length > 0,
+      includeBackend && detectedEdgeFunctions?.length > 0,
       includeDatabase,
       true, // hasAuth
       envVarsArray,
@@ -6061,7 +6194,7 @@ Thumbs.db
         backendRoutes: backendRoutes.length,
         envVars: envVarsArray.length,
         hasDatabase: includeDatabase,
-        hasBackend: includeBackend && edgeFunctions?.length > 0,
+        hasBackend: includeBackend && detectedEdgeFunctions?.length > 0,
         hasAIServices: hasAIUsage,
         sovereigntyScore: sovereigntyCheck.score,
         isClean: sovereigntyCheck.isClean,
