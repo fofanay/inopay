@@ -196,6 +196,101 @@ const SERVER_POLYFILLS: Record<string, PolyfillConfig> = {
   }
 };
 
+// ============================================
+// DÉPENDANCES REQUISES POUR LE PACK
+// ============================================
+
+interface RequiredDependency {
+  name: string;
+  version: string;
+  detectPatterns: string[];
+  description: string;
+}
+
+const REQUIRED_DEPENDENCIES: RequiredDependency[] = [
+  {
+    name: '@supabase/supabase-js',
+    version: '^2.39.0',
+    detectPatterns: ['supabase.from(', 'supabase.auth.', "@/lib/supabase", "createClient("],
+    description: 'Supabase client for database and auth'
+  },
+  {
+    name: 'sonner',
+    version: '^1.4.0',
+    detectPatterns: ['sonner', 'toast(', 'useToast()', "@/hooks/use-toast"],
+    description: 'Toast notifications'
+  },
+  {
+    name: 'react',
+    version: '^18.2.0',
+    detectPatterns: ['from "react"', "from 'react'", 'React.', 'useState', 'useEffect'],
+    description: 'React library'
+  },
+  {
+    name: 'react-dom',
+    version: '^18.2.0',
+    detectPatterns: ['from "react-dom"', "from 'react-dom'", 'ReactDOM'],
+    description: 'React DOM'
+  },
+  {
+    name: 'react-router-dom',
+    version: '^6.20.0',
+    detectPatterns: ['useNavigate', 'useParams', 'BrowserRouter', '<Route', '<Link'],
+    description: 'React Router'
+  }
+];
+
+/**
+ * Valide et corrige le package.json pour s'assurer que toutes les dépendances
+ * nécessaires sont présentes (notamment @supabase/supabase-js et sonner)
+ */
+function validateAndFixPackageJson(
+  files: Record<string, string>,
+  allContent: string
+): { fixed: boolean; added: string[]; errors: string[] } {
+  const result = { fixed: false, added: [] as string[], errors: [] as string[] };
+  
+  // Trouver le package.json
+  const packageJsonPath = Object.keys(files).find(p => p === 'package.json' || p.endsWith('/package.json'));
+  
+  if (!packageJsonPath) {
+    result.errors.push('No package.json found in project');
+    return result;
+  }
+  
+  try {
+    const packageJsonContent = files[packageJsonPath];
+    const packageJson = JSON.parse(packageJsonContent);
+    
+    // S'assurer que dependencies existe
+    if (!packageJson.dependencies) {
+      packageJson.dependencies = {};
+    }
+    
+    // Vérifier chaque dépendance requise
+    for (const dep of REQUIRED_DEPENDENCIES) {
+      const isUsed = dep.detectPatterns.some(pattern => allContent.includes(pattern));
+      
+      if (isUsed && !packageJson.dependencies[dep.name]) {
+        packageJson.dependencies[dep.name] = dep.version;
+        result.added.push(dep.name);
+        result.fixed = true;
+        console.log(`[package.json] Added missing dependency: ${dep.name}@${dep.version}`);
+      }
+    }
+    
+    // Mettre à jour le fichier si modifié
+    if (result.fixed) {
+      files[packageJsonPath] = JSON.stringify(packageJson, null, 2);
+    }
+    
+  } catch (error) {
+    result.errors.push(`Failed to parse package.json: ${error}`);
+  }
+  
+  return result;
+}
+
 /**
  * Détecte les polyfills nécessaires en analysant les fichiers du projet
  */
@@ -4929,6 +5024,19 @@ serve(async (req) => {
     // 1. FRONTEND
     // ==========================================
     const frontendFolder = zip.folder('frontend')!;
+    
+    // ==========================================
+    // 1a. VALIDATION ET CORRECTION DU PACKAGE.JSON
+    // ==========================================
+    const allContentForValidation = Object.values(doubleCleanedFiles).join('\n');
+    const packageJsonFix = validateAndFixPackageJson(doubleCleanedFiles, allContentForValidation);
+    
+    if (packageJsonFix.fixed) {
+      console.log(`[generate-liberation-pack] Fixed package.json - added: ${packageJsonFix.added.join(', ')}`);
+    }
+    if (packageJsonFix.errors.length > 0) {
+      console.warn(`[generate-liberation-pack] Package.json errors: ${packageJsonFix.errors.join(', ')}`);
+    }
     
     for (const [path, content] of Object.entries(doubleCleanedFiles)) {
       if (!path.startsWith('supabase/')) {
