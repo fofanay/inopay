@@ -1,38 +1,12 @@
-import { useState } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LiberationWizard } from './LiberationWizard';
 import { LiberationPackHub } from './LiberationPackHub';
 import { Rocket } from 'lucide-react';
-
-// Configuration passée du Wizard au PackHub
-interface WizardConfig {
-  sourceToken: string;
-  sourceUrl: string;
-  destinationToken: string;
-  destinationUsername: string;
-  isPrivateRepo: boolean;
-  createNewRepo: boolean;
-  existingRepoName?: string;
-}
 
 interface SelfLiberationTabProps {
   onNavigate?: (tab: string) => void;
 }
 
 export function SelfLiberationTab({ onNavigate }: SelfLiberationTabProps) {
-  const [wizardComplete, setWizardComplete] = useState(false);
-  const [wizardConfig, setWizardConfig] = useState<WizardConfig | null>(null);
-
-  const handleWizardComplete = (config: WizardConfig) => {
-    setWizardConfig(config);
-    setWizardComplete(true);
-  };
-
-  const handleSkipWizard = () => {
-    // Si on skip, on passe quand même au PackHub qui chargera les settings existants
-    setWizardComplete(true);
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -52,15 +26,8 @@ export function SelfLiberationTab({ onNavigate }: SelfLiberationTabProps) {
         </CardHeader>
       </Card>
 
-      {/* Wizard or Pack Hub */}
-      {!wizardComplete ? (
-        <LiberationWizard 
-          onComplete={handleWizardComplete} 
-          onSkip={handleSkipWizard}
-        />
-      ) : (
-        <LiberationPackHub initialConfig={wizardConfig} />
-      )}
+      {/* Un seul composant unifié - plus de wizard séparé */}
+      <LiberationPackHub />
     </div>
   );
 }

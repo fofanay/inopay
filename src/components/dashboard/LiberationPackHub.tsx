@@ -8,6 +8,7 @@ import {
   Loader2,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
   Package,
   RefreshCw,
   Sparkles,
@@ -20,6 +21,7 @@ import {
   ExternalLink,
   AlertTriangle,
   Eye,
+  EyeOff,
   ShieldCheck,
   AlertCircle,
   Zap,
@@ -29,6 +31,7 @@ import {
   Code,
   GitCompare,
   Lock,
+  Unlock,
   FileSignature,
   TestTube,
   FileText,
@@ -37,7 +40,11 @@ import {
   Hash,
   Award,
   Layers,
-  Cloud
+  Cloud,
+  Settings,
+  Plus,
+  FolderGit,
+  Info
 } from "lucide-react";
 import { SovereigntyAuditReport } from "./SovereigntyAuditReport";
 import { FileDiffPreview, AssetDownloader, TypeScriptValidator } from "./liberation";
@@ -77,7 +84,7 @@ import {
   generatePolyfillFiles,
 } from "@/lib/clientProprietaryPatterns";
 
-// Configuration passée depuis le Wizard
+// Configuration complète de libération
 interface LiberationConfig {
   sourceToken: string;
   sourceUrl: string;
@@ -100,7 +107,8 @@ interface LiberationPackHubProps {
   initialConfig?: LiberationConfig | null;
 }
 
-type FlowStep = "upload" | "analyzing" | "cleaning" | "verifying" | "ready";
+// 6 étapes du flux unifié
+type FlowStep = "setup" | "upload" | "analyzing" | "cleaning" | "verifying" | "ready";
 
 interface CleanedFile {
   path: string;
@@ -138,14 +146,26 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   // Configuration from wizard or loaded from user_settings
   const [config, setConfig] = useState<LiberationConfig | null>(initialConfig || null);
   const [availableRepos, setAvailableRepos] = useState<GitHubRepo[]>([]);
+  const [destRepos, setDestRepos] = useState<GitHubRepo[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
   const [loadingRepos, setLoadingRepos] = useState(false);
+  const [loadingDestRepos, setLoadingDestRepos] = useState(false);
   const [exportingToGitHub, setExportingToGitHub] = useState(false);
   const [gitHubPushProgress, setGitHubPushProgress] = useState(0);
   const [gitHubPushMessage, setGitHubPushMessage] = useState("");
   
-  // Flow state
-  const [step, setStep] = useState<FlowStep>("upload");
+  // Setup step states
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isValidatingToken, setIsValidatingToken] = useState(false);
+  const [showSourceToken, setShowSourceToken] = useState(false);
+  const [showDestToken, setShowDestToken] = useState(false);
+  const [sourceValid, setSourceValid] = useState<boolean | null>(null);
+  const [destValid, setDestValid] = useState<boolean | null>(null);
+  const [sourceUsername, setSourceUsername] = useState<string>("");
+  const [hasExistingConfig, setHasExistingConfig] = useState(false);
+  
+  // Flow state - now starts at "setup"
+  const [step, setStep] = useState<FlowStep>("setup");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
@@ -197,30 +217,46 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
       loadConfigFromSettings();
     } else {
       setConfig(initialConfig);
+      setIsLoadingConfig(false);
       // Pre-fill the GitHub URL if provided
       if (initialConfig.sourceUrl) {
         setGithubUrl(initialConfig.sourceUrl);
       }
-      // If we have a source token, load available repos and pre-select
+      // If we have tokens, validate them
       if (initialConfig.sourceToken) {
+        validateGitHubToken(initialConfig.sourceToken, 'source');
         loadAvailableRepos(initialConfig.sourceToken, initialConfig.sourceUrl);
+      }
+      if (initialConfig.destinationToken) {
+        validateGitHubToken(initialConfig.destinationToken, 'destination');
+      }
+      // Check if config is complete to skip setup
+      const hasComplete = !!(initialConfig.sourceToken && initialConfig.destinationToken && initialConfig.destinationUsername);
+      setHasExistingConfig(hasComplete);
+      if (hasComplete) {
+        setStep("upload");
       }
     }
   }, [initialConfig]);
 
   const loadConfigFromSettings = async () => {
+    setIsLoadingConfig(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setIsLoadingConfig(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('user_settings')
         .select('github_source_token, github_destination_token, github_destination_username, default_repo_private')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading settings:', error);
+        setIsLoadingConfig(false);
         return;
       }
 
@@ -236,14 +272,175 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
         };
         setConfig(loadedConfig);
         
-        // If we have a source token, load available repos
-        if (loadedConfig.sourceToken) {
-          loadAvailableRepos(loadedConfig.sourceToken);
+        // Check if we have a complete config
+        const hasComplete = !!(data.github_source_token && data.github_destination_token && data.github_destination_username);
+        setHasExistingConfig(hasComplete);
+        
+        // Validate existing tokens
+        if (data.github_source_token) {
+          validateGitHubToken(data.github_source_token, 'source');
+          loadAvailableRepos(data.github_source_token);
         }
+        if (data.github_destination_token) {
+          validateGitHubToken(data.github_destination_token, 'destination');
+          loadDestRepos(data.github_destination_token);
+        }
+        
+        // Skip setup if config is complete
+        if (hasComplete) {
+          setStep("upload");
+        }
+      } else {
+        // No config yet - initialize empty
+        setConfig({
+          sourceToken: '',
+          sourceUrl: '',
+          destinationToken: '',
+          destinationUsername: '',
+          isPrivateRepo: true,
+          createNewRepo: true,
+          existingRepoName: undefined,
+        });
       }
     } catch (error) {
       console.error('Error loading config:', error);
+    } finally {
+      setIsLoadingConfig(false);
     }
+  };
+
+  // Validate GitHub token
+  const validateGitHubToken = async (token: string, type: 'source' | 'destination') => {
+    try {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        if (type === 'source') {
+          setSourceValid(true);
+          setSourceUsername(userData.login);
+        } else {
+          setDestValid(true);
+        }
+        return true;
+      } else {
+        if (type === 'source') setSourceValid(false);
+        else setDestValid(false);
+        return false;
+      }
+    } catch {
+      if (type === 'source') setSourceValid(false);
+      else setDestValid(false);
+      return false;
+    }
+  };
+
+  // Load destination repos
+  const loadDestRepos = async (token: string) => {
+    if (!token) return;
+    
+    setLoadingDestRepos(true);
+    try {
+      const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (response.ok) {
+        const repos = await response.json();
+        setDestRepos(repos);
+      } else {
+        console.error('Failed to load destination repos');
+        setDestRepos([]);
+      }
+    } catch (error) {
+      console.error('Error loading destination repos:', error);
+      setDestRepos([]);
+    } finally {
+      setLoadingDestRepos(false);
+    }
+  };
+
+  // Save config to user_settings
+  const saveConfig = async () => {
+    if (!config) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: session.user.id,
+          github_source_token: config.sourceToken.trim(),
+          github_destination_token: config.destinationToken.trim(),
+          github_destination_username: config.destinationUsername.trim(),
+          default_repo_private: config.isPrivateRepo,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    } catch (error) {
+      console.error('Error saving config:', error);
+    }
+  };
+
+  // Handle token validation in setup step
+  const handleValidateSource = async () => {
+    if (!config?.sourceToken.trim()) {
+      toast.error('Token requis');
+      return;
+    }
+    
+    setIsValidatingToken(true);
+    const isValid = await validateGitHubToken(config.sourceToken.trim(), 'source');
+    setIsValidatingToken(false);
+    
+    if (isValid) {
+      toast.success('Token source validé');
+      loadAvailableRepos(config.sourceToken.trim());
+    } else {
+      toast.error('Token invalide');
+    }
+  };
+
+  const handleValidateDestination = async () => {
+    if (!config?.destinationToken.trim()) {
+      toast.error('Token requis');
+      return;
+    }
+    
+    setIsValidatingToken(true);
+    const isValid = await validateGitHubToken(config.destinationToken.trim(), 'destination');
+    setIsValidatingToken(false);
+    
+    if (isValid) {
+      toast.success('Token destination validé');
+      loadDestRepos(config.destinationToken.trim());
+    } else {
+      toast.error('Token invalide');
+    }
+  };
+
+  // Complete setup and go to upload
+  const handleCompleteSetup = async () => {
+    if (!sourceValid || !destValid || !config?.destinationUsername.trim()) {
+      toast.error('Configuration incomplète');
+      return;
+    }
+    await saveConfig();
+    setStep("upload");
+    toast.success('Configuration sauvegardée');
+  };
+
+  // Skip setup if already configured
+  const handleSkipSetup = () => {
+    setStep("upload");
   };
 
   const loadAvailableRepos = async (token: string, sourceUrl?: string) => {
@@ -1134,6 +1331,17 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
     return 'border-destructive/50 bg-destructive/5';
   };
 
+  // Loading state for config
+  if (isLoadingConfig) {
+    return (
+      <Card>
+        <CardContent className="pt-6 flex items-center justify-center min-h-[300px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1148,7 +1356,7 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             Nettoyage exhaustif pour 100% de souveraineté
           </p>
         </div>
-        {step !== "upload" && (
+        {step !== "setup" && step !== "upload" && (
           <Button variant="outline" onClick={reset}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Nouveau projet
@@ -1156,9 +1364,10 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
         )}
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between px-4">
+      {/* Progress Steps - 6 étapes unifiées */}
+      <div className="flex items-center justify-between px-2 overflow-x-auto">
         {[
+          { id: "setup", label: "Config", icon: Settings },
           { id: "upload", label: "Import", icon: Upload },
           { id: "analyzing", label: "Analyse", icon: Sparkles },
           { id: "cleaning", label: "Deep Clean", icon: Shield },
@@ -1166,22 +1375,23 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           { id: "ready", label: "Pack", icon: Package },
         ].map((s, i) => {
           const Icon = s.icon;
-          const stepOrder = ["upload", "analyzing", "cleaning", "verifying", "ready"];
+          const stepOrder: FlowStep[] = ["setup", "upload", "analyzing", "cleaning", "verifying", "ready"];
+          const currentIndex = stepOrder.indexOf(step);
           const isCurrent = step === s.id;
-          const isPast = stepOrder.indexOf(step) > i;
+          const isPast = currentIndex > i;
           
           return (
             <div key={s.id} className="flex items-center">
               <div className={`flex flex-col items-center ${isCurrent ? "text-primary" : isPast ? "text-success" : "text-muted-foreground"}`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 ${
                   isCurrent ? "border-primary bg-primary/10" : isPast ? "border-success bg-success/10" : "border-muted"
                 }`}>
-                  {isPast ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                  {isPast ? <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" /> : <Icon className="h-4 w-4 md:h-5 md:w-5" />}
                 </div>
-                <span className="text-xs mt-1">{s.label}</span>
+                <span className="text-[10px] md:text-xs mt-1">{s.label}</span>
               </div>
-              {i < 4 && (
-                <div className={`w-12 md:w-20 h-0.5 mx-2 ${isPast ? "bg-success" : "bg-muted"}`} />
+              {i < 5 && (
+                <div className={`w-6 md:w-12 lg:w-16 h-0.5 mx-1 md:mx-2 ${isPast ? "bg-success" : "bg-muted"}`} />
               )}
             </div>
           );
@@ -1189,6 +1399,282 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
       </div>
 
       <AnimatePresence mode="wait">
+        {/* Step: Setup - Configuration GitHub */}
+        {step === "setup" && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-6"
+          >
+            <Card className="border-primary/20">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Settings className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle>Configuration GitHub</CardTitle>
+                      <CardDescription>
+                        Configurez vos accès GitHub source et destination avant de commencer
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {hasExistingConfig && (
+                    <Button variant="ghost" size="sm" onClick={handleSkipSetup}>
+                      Passer →
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Source GitHub */}
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Github className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">GitHub Source</h3>
+                    {sourceValid && (
+                      <Badge className="bg-primary/10 text-primary border-primary/30">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        {sourceUsername}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Token pour accéder aux repositories source (Lovable, Bolt, etc).
+                      <a 
+                        href="https://github.com/settings/tokens/new?scopes=repo" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="ml-2 text-primary hover:underline inline-flex items-center"
+                      >
+                        Créer un token <ExternalLink className="h-3 w-3 ml-1" />
+                      </a>
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2">
+                    <Label>Token GitHub source (scope "repo")</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showSourceToken ? 'text' : 'password'}
+                          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                          value={config?.sourceToken || ''}
+                          onChange={(e) => {
+                            setConfig(prev => prev ? { ...prev, sourceToken: e.target.value } : null);
+                            setSourceValid(null);
+                          }}
+                          className={sourceValid === false ? 'border-destructive' : sourceValid === true ? 'border-primary' : ''}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                          onClick={() => setShowSourceToken(!showSourceToken)}
+                        >
+                          {showSourceToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleValidateSource}
+                        disabled={isValidatingToken || !config?.sourceToken?.trim()}
+                      >
+                        {isValidatingToken ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Valider'}
+                      </Button>
+                    </div>
+                    {sourceValid === false && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-4 w-4" />
+                        Token invalide ou expiré
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Destination GitHub */}
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Github className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">GitHub Destination</h3>
+                    {destValid && (
+                      <Badge className="bg-primary/10 text-primary border-primary/30">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Validé
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Token et compte pour pousser le code nettoyé. 
+                      Peut être différent du compte source.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2">
+                    <Label>Token GitHub destination (scope "repo")</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type={showDestToken ? 'text' : 'password'}
+                          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                          value={config?.destinationToken || ''}
+                          onChange={(e) => {
+                            setConfig(prev => prev ? { ...prev, destinationToken: e.target.value } : null);
+                            setDestValid(null);
+                          }}
+                          className={destValid === false ? 'border-destructive' : destValid === true ? 'border-primary' : ''}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                          onClick={() => setShowDestToken(!showDestToken)}
+                        >
+                          {showDestToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleValidateDestination}
+                        disabled={isValidatingToken || !config?.destinationToken?.trim()}
+                      >
+                        {isValidatingToken ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Valider'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Username/Organisation destination</Label>
+                    <Input
+                      placeholder="mon-compte-souverain"
+                      value={config?.destinationUsername || ''}
+                      onChange={(e) => setConfig(prev => prev ? { ...prev, destinationUsername: e.target.value } : null)}
+                    />
+                  </div>
+
+                  {/* Repo mode selector */}
+                  <div className="space-y-3 p-4 border rounded-lg bg-background">
+                    <Label className="text-sm font-medium">Mode de destination</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setConfig(prev => prev ? { ...prev, createNewRepo: true, existingRepoName: undefined } : null)}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          config?.createNewRepo 
+                            ? 'bg-primary/10 border-primary text-primary' 
+                            : 'bg-background border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Plus className="h-4 w-4" />
+                          <span className="font-medium text-sm">Nouveau repo</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Créer un nouveau dépôt</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfig(prev => prev ? { ...prev, createNewRepo: false } : null);
+                          if (destValid && destRepos.length === 0 && config?.destinationToken) {
+                            loadDestRepos(config.destinationToken);
+                          }
+                        }}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          !config?.createNewRepo 
+                            ? 'bg-primary/10 border-primary text-primary' 
+                            : 'bg-background border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <FolderGit className="h-4 w-4" />
+                          <span className="font-medium text-sm">Repo existant</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Pousser vers un repo existant</p>
+                      </button>
+                    </div>
+
+                    {/* Existing repo selector */}
+                    {!config?.createNewRepo && (
+                      <div className="space-y-2 mt-3">
+                        <Label>Sélectionner le repo destination</Label>
+                        {loadingDestRepos ? (
+                          <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Chargement des repos...
+                          </div>
+                        ) : (
+                          <Select
+                            value={config?.existingRepoName || ''}
+                            onValueChange={(value) => setConfig(prev => prev ? { ...prev, existingRepoName: value } : null)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choisir un repo existant" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {destRepos.map((repo) => (
+                                <SelectItem key={repo.full_name} value={repo.name}>
+                                  <div className="flex items-center gap-2">
+                                    <FolderGit className="h-4 w-4" />
+                                    {repo.name}
+                                    {repo.private && <Lock className="h-3 w-3 text-muted-foreground" />}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Private repo switch - only for new repos */}
+                  {config?.createNewRepo && (
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {config?.isPrivateRepo ? (
+                          <Lock className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Unlock className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {config?.isPrivateRepo ? 'Repo privé' : 'Repo public'}
+                        </span>
+                      </div>
+                      <Switch
+                        checked={config?.isPrivateRepo || false}
+                        onCheckedChange={(checked) => setConfig(prev => prev ? { ...prev, isPrivateRepo: checked } : null)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Complete setup button */}
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    onClick={handleCompleteSetup}
+                    disabled={!sourceValid || !destValid || !config?.destinationUsername?.trim() || (!config?.createNewRepo && !config?.existingRepoName)}
+                    className="gap-2"
+                  >
+                    <Rocket className="h-4 w-4" />
+                    Commencer la libération
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Step: Upload */}
         {step === "upload" && (
           <motion.div
