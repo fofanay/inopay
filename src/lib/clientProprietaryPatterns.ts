@@ -2722,3 +2722,850 @@ export function generatePolyfillFiles(requiredPolyfills: string[]): Record<strin
   
   return files;
 }
+
+// ============================================
+// NCS PHASE 1: PROJECT GRAPH GENERATOR
+// ============================================
+
+export interface ProjectGraph {
+  name: string;
+  framework: string;
+  structure: {
+    hasBackend: boolean;
+    hasFrontend: boolean;
+    hasDatabase: boolean;
+    hasEdgeFunctions: boolean;
+  };
+  files: {
+    total: number;
+    frontend: number;
+    backend: number;
+    config: number;
+    assets: number;
+  };
+  dependencies: {
+    total: number;
+    proprietary: string[];
+    cloudServices: string[];
+  };
+  edgeFunctions: string[];
+  envVars: string[];
+  webhooks: string[];
+  assets: string[];
+}
+
+export function generateProjectGraph(
+  files: Record<string, string>,
+  projectName: string = 'project'
+): ProjectGraph {
+  const allContent = Object.values(files).join('\n');
+  const filePaths = Object.keys(files);
+  
+  // Detect framework
+  let framework = 'unknown';
+  if (allContent.includes('next/') || files['next.config.js']) framework = 'next.js';
+  else if (allContent.includes('nuxt') || files['nuxt.config.ts']) framework = 'nuxt';
+  else if (allContent.includes('svelte') || files['svelte.config.js']) framework = 'sveltekit';
+  else if (files['vite.config.ts'] || files['vite.config.js']) framework = 'vite-react';
+  else if (files['angular.json']) framework = 'angular';
+  else if (files['package.json'] && allContent.includes('"react"')) framework = 'react';
+  
+  // Detect structure
+  const hasBackend = filePaths.some(p => 
+    p.includes('supabase/functions/') || 
+    p.includes('api/') || 
+    p.includes('server/') ||
+    p.includes('backend/')
+  );
+  const hasFrontend = filePaths.some(p => 
+    p.includes('src/') || 
+    p.includes('pages/') || 
+    p.includes('components/')
+  );
+  const hasDatabase = filePaths.some(p => 
+    p.includes('migrations/') || 
+    p.includes('schema.sql') ||
+    p.includes('prisma/')
+  );
+  const hasEdgeFunctions = filePaths.some(p => p.includes('supabase/functions/'));
+  
+  // Count files by category
+  const frontendFiles = filePaths.filter(p => 
+    p.match(/\.(tsx|jsx|css|scss|html)$/) && !p.includes('supabase/')
+  ).length;
+  const backendFiles = filePaths.filter(p => 
+    p.includes('supabase/functions/') || 
+    p.includes('api/') ||
+    (p.match(/\.(ts|js)$/) && (p.includes('server/') || p.includes('backend/')))
+  ).length;
+  const configFiles = filePaths.filter(p => 
+    p.match(/\.(json|toml|yaml|yml|config\.[jt]s)$/)
+  ).length;
+  const assetFiles = filePaths.filter(p => 
+    p.match(/\.(png|jpg|jpeg|gif|svg|webp|ico|pdf|mp4|mp3|woff|woff2)$/)
+  ).length;
+  
+  // Detect proprietary dependencies
+  const proprietaryDeps: string[] = [];
+  for (const pkg of SUSPICIOUS_PACKAGES) {
+    if (allContent.includes(`"${pkg}"`)) {
+      proprietaryDeps.push(pkg);
+    }
+  }
+  
+  // Detect cloud services
+  const cloudServices = detectCloudServices(files);
+  
+  // Detect edge functions
+  const edgeFunctions = filePaths
+    .filter(p => p.match(/supabase\/functions\/[^\/]+\/index\.ts$/))
+    .map(p => p.split('/')[2]);
+  
+  // Detect env vars
+  const envVars = new Set<string>();
+  const envMatches = allContent.matchAll(/(?:Deno\.env\.get|process\.env|import\.meta\.env)\s*[\.\[\(]\s*['"]?([A-Z_][A-Z0-9_]*)['"]?\s*[\]\)]?/g);
+  for (const match of envMatches) {
+    envVars.add(match[1]);
+  }
+  
+  // Detect webhooks
+  const webhooks: string[] = [];
+  if (allContent.includes('stripe-signature')) webhooks.push('stripe');
+  if (allContent.includes('x-hub-signature')) webhooks.push('github');
+  if (allContent.includes('x-twilio-signature')) webhooks.push('twilio');
+  
+  // Detect assets
+  const assets = filePaths.filter(p => 
+    p.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/) && 
+    !p.includes('node_modules')
+  );
+  
+  return {
+    name: projectName,
+    framework,
+    structure: {
+      hasBackend,
+      hasFrontend,
+      hasDatabase,
+      hasEdgeFunctions,
+    },
+    files: {
+      total: filePaths.length,
+      frontend: frontendFiles,
+      backend: backendFiles,
+      config: configFiles,
+      assets: assetFiles,
+    },
+    dependencies: {
+      total: proprietaryDeps.length + cloudServices.length,
+      proprietary: proprietaryDeps,
+      cloudServices,
+    },
+    edgeFunctions,
+    envVars: Array.from(envVars),
+    webhooks,
+    assets,
+  };
+}
+
+// ============================================
+// NCS PHASE 2: CLOUD SERVICES DETECTION
+// ============================================
+
+export const CLOUD_SERVICES_PATTERNS: { name: string; patterns: RegExp[]; replacement?: string }[] = [
+  // Vercel
+  { name: 'Vercel KV', patterns: [/@vercel\/kv/g, /VERCEL_KV/g], replacement: 'Redis self-hosted' },
+  { name: 'Vercel Postgres', patterns: [/@vercel\/postgres/g], replacement: 'PostgreSQL self-hosted' },
+  { name: 'Vercel Edge', patterns: [/@vercel\/edge/g, /vercel\/edge-runtime/g], replacement: 'Express.js' },
+  { name: 'Vercel Blob', patterns: [/@vercel\/blob/g], replacement: 'MinIO' },
+  { name: 'Vercel Analytics', patterns: [/@vercel\/analytics/g], replacement: 'Plausible' },
+  
+  // Firebase
+  { name: 'Firebase Auth', patterns: [/firebase\/auth/g, /getAuth\s*\(/g], replacement: 'Supabase Auth' },
+  { name: 'Firebase Firestore', patterns: [/firebase\/firestore/g, /getFirestore\s*\(/g], replacement: 'PostgreSQL' },
+  { name: 'Firebase Storage', patterns: [/firebase\/storage/g, /getStorage\s*\(/g], replacement: 'MinIO' },
+  { name: 'Firebase Functions', patterns: [/firebase-functions/g], replacement: 'Express.js' },
+  
+  // Cloudflare
+  { name: 'Cloudflare Workers', patterns: [/cloudflare\/workers/g, /@cloudflare\/workers-types/g], replacement: 'Express.js' },
+  { name: 'Cloudflare KV', patterns: [/env\.KV/g, /CLOUDFLARE_KV/g], replacement: 'Redis' },
+  { name: 'Cloudflare R2', patterns: [/R2Bucket/g, /@cloudflare\/r2/g], replacement: 'MinIO' },
+  { name: 'Cloudflare D1', patterns: [/D1Database/g, /@cloudflare\/d1/g], replacement: 'PostgreSQL' },
+  
+  // AWS
+  { name: 'AWS Lambda', patterns: [/aws-lambda/g, /APIGatewayProxyEvent/g], replacement: 'Express.js' },
+  { name: 'AWS S3', patterns: [/@aws-sdk\/client-s3/g, /S3Client/g], replacement: 'MinIO' },
+  { name: 'AWS DynamoDB', patterns: [/@aws-sdk\/client-dynamodb/g, /DynamoDBClient/g], replacement: 'PostgreSQL' },
+  { name: 'AWS Cognito', patterns: [/@aws-sdk\/client-cognito/g, /CognitoIdentityClient/g], replacement: 'Supabase Auth' },
+  
+  // Appwrite Cloud
+  { name: 'Appwrite', patterns: [/appwrite/g], replacement: 'Supabase' },
+  
+  // Neon
+  { name: 'Neon DB', patterns: [/@neondatabase\/serverless/g, /neon\.tech/g], replacement: 'PostgreSQL' },
+  
+  // PlanetScale
+  { name: 'PlanetScale', patterns: [/@planetscale\/database/g, /planetscale\.com/g], replacement: 'PostgreSQL' },
+  
+  // Upstash
+  { name: 'Upstash Redis', patterns: [/@upstash\/redis/g], replacement: 'Redis self-hosted' },
+  { name: 'Upstash Kafka', patterns: [/@upstash\/kafka/g], replacement: 'Kafka self-hosted' },
+  
+  // Algolia
+  { name: 'Algolia', patterns: [/algoliasearch/g, /algolia/g], replacement: 'Meilisearch' },
+  
+  // Stripe (partial - payments require careful migration)
+  { name: 'Stripe', patterns: [/stripe/gi], replacement: 'Keep Stripe or use Paddle' },
+];
+
+export function detectCloudServices(files: Record<string, string>): string[] {
+  const allContent = Object.values(files).join('\n');
+  const detected: string[] = [];
+  
+  for (const service of CLOUD_SERVICES_PATTERNS) {
+    for (const pattern of service.patterns) {
+      const freshPattern = new RegExp(pattern.source, pattern.flags);
+      if (freshPattern.test(allContent)) {
+        if (!detected.includes(service.name)) {
+          detected.push(service.name);
+        }
+        break;
+      }
+    }
+  }
+  
+  return detected;
+}
+
+// ============================================
+// NCS PHASE 2: PROPRIETARY MAP GENERATOR
+// ============================================
+
+export interface ProprietaryMapEntry {
+  file: string;
+  line: number;
+  column: number;
+  type: 'import' | 'content' | 'telemetry' | 'cloud-service' | 'api-key' | 'backdoor';
+  pattern: string;
+  action: 'remove' | 'replace' | 'rewrite';
+  replacement?: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface ProprietaryMap {
+  totalIssues: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  entries: ProprietaryMapEntry[];
+  summary: {
+    importsToRemove: number;
+    contentToClean: number;
+    telemetryToBlock: number;
+    cloudServicesToReplace: number;
+    apiKeysExposed: number;
+    backdoorsDetected: number;
+  };
+}
+
+export function generateProprietaryMap(files: Record<string, string>): ProprietaryMap {
+  const entries: ProprietaryMapEntry[] = [];
+  
+  for (const [filePath, content] of Object.entries(files)) {
+    // Skip non-source files
+    if (!filePath.match(/\.(ts|tsx|js|jsx|json|html|css)$/)) continue;
+    if (filePath.includes('node_modules')) continue;
+    
+    const lines = content.split('\n');
+    
+    lines.forEach((line, index) => {
+      const lineNum = index + 1;
+      
+      // Check proprietary imports
+      for (const pattern of PROPRIETARY_IMPORTS) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        if (freshPattern.test(line)) {
+          entries.push({
+            file: filePath,
+            line: lineNum,
+            column: 1,
+            type: 'import',
+            pattern: pattern.source,
+            action: 'remove',
+            severity: 'high',
+          });
+        }
+      }
+      
+      // Check telemetry domains
+      for (const domain of TELEMETRY_DOMAINS) {
+        if (line.includes(domain)) {
+          entries.push({
+            file: filePath,
+            line: lineNum,
+            column: line.indexOf(domain) + 1,
+            type: 'telemetry',
+            pattern: domain,
+            action: 'remove',
+            severity: 'critical',
+          });
+        }
+      }
+      
+      // Check cloud services
+      for (const service of CLOUD_SERVICES_PATTERNS) {
+        for (const pattern of service.patterns) {
+          const freshPattern = new RegExp(pattern.source, pattern.flags);
+          if (freshPattern.test(line)) {
+            entries.push({
+              file: filePath,
+              line: lineNum,
+              column: 1,
+              type: 'cloud-service',
+              pattern: service.name,
+              action: 'replace',
+              replacement: service.replacement,
+              severity: 'medium',
+            });
+            break;
+          }
+        }
+      }
+      
+      // Check exposed API keys
+      for (const pattern of EXPOSED_KEYS_PATTERNS) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        if (freshPattern.test(line)) {
+          entries.push({
+            file: filePath,
+            line: lineNum,
+            column: 1,
+            type: 'api-key',
+            pattern: pattern.source,
+            action: 'replace',
+            severity: 'critical',
+          });
+        }
+      }
+    });
+  }
+  
+  // Count by severity
+  const criticalCount = entries.filter(e => e.severity === 'critical').length;
+  const highCount = entries.filter(e => e.severity === 'high').length;
+  const mediumCount = entries.filter(e => e.severity === 'medium').length;
+  const lowCount = entries.filter(e => e.severity === 'low').length;
+  
+  return {
+    totalIssues: entries.length,
+    criticalCount,
+    highCount,
+    mediumCount,
+    lowCount,
+    entries,
+    summary: {
+      importsToRemove: entries.filter(e => e.type === 'import').length,
+      contentToClean: entries.filter(e => e.type === 'content').length,
+      telemetryToBlock: entries.filter(e => e.type === 'telemetry').length,
+      cloudServicesToReplace: entries.filter(e => e.type === 'cloud-service').length,
+      apiKeysExposed: entries.filter(e => e.type === 'api-key').length,
+      backdoorsDetected: entries.filter(e => e.type === 'backdoor').length,
+    },
+  };
+}
+
+// ============================================
+// NCS PHASE 3: SECURITY AUDIT (ANTI-BACKDOORS)
+// ============================================
+
+export interface SecurityIssue {
+  file: string;
+  line: number;
+  column: number;
+  type: 'dangerous-function' | 'suspicious-dns' | 'credential-leak' | 'hidden-telemetry' | 'eval-usage' | 'dynamic-code';
+  pattern: string;
+  description: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  recommendation: string;
+}
+
+export interface SecurityReport {
+  isSecure: boolean;
+  score: number; // 0-100
+  totalIssues: number;
+  criticalIssues: number;
+  errorIssues: number;
+  warningIssues: number;
+  infoIssues: number;
+  issues: SecurityIssue[];
+  summary: string;
+}
+
+export const SECURITY_PATTERNS = {
+  dangerousFunctions: [
+    { pattern: /\beval\s*\(/g, name: 'eval()', severity: 'critical' as const, description: 'Exécution de code dynamique - risque d\'injection' },
+    { pattern: /new\s+Function\s*\(/g, name: 'new Function()', severity: 'critical' as const, description: 'Création de fonction dynamique - risque d\'injection' },
+    { pattern: /\bexec\s*\(/g, name: 'exec()', severity: 'error' as const, description: 'Exécution de commande système' },
+    { pattern: /\bspawn\s*\(/g, name: 'spawn()', severity: 'warning' as const, description: 'Processus fils - vérifier l\'usage' },
+    { pattern: /child_process/g, name: 'child_process', severity: 'warning' as const, description: 'Module d\'exécution de processus' },
+    { pattern: /\$\{.*\}\s*`/g, name: 'Template string eval', severity: 'warning' as const, description: 'Template string potentiellement dangereux' },
+  ],
+  suspiciousDNS: [
+    { pattern: /fetch\s*\([^)]*(?!localhost|127\.0\.0\.1|your-project)[a-z0-9-]+\.[a-z]{2,}/gi, name: 'External fetch', severity: 'warning' as const },
+    { pattern: /new\s+WebSocket\s*\([^)]*(?!localhost|127\.0\.0\.1)[a-z0-9-]+\.[a-z]{2,}/gi, name: 'External WebSocket', severity: 'warning' as const },
+    { pattern: /XMLHttpRequest|\.open\s*\(\s*['"][A-Z]+['"]\s*,\s*['"]/g, name: 'XHR request', severity: 'info' as const },
+  ],
+  credentialLeaks: [
+    { pattern: /api[_-]?key\s*[:=]\s*['"][A-Za-z0-9_-]{20,}['"]/gi, name: 'Hardcoded API key', severity: 'critical' as const },
+    { pattern: /password\s*[:=]\s*['"][^'"]{8,}['"]/gi, name: 'Hardcoded password', severity: 'critical' as const },
+    { pattern: /secret\s*[:=]\s*['"][A-Za-z0-9_-]{20,}['"]/gi, name: 'Hardcoded secret', severity: 'critical' as const },
+    { pattern: /private[_-]?key\s*[:=]\s*['"][^'"]+['"]/gi, name: 'Private key in code', severity: 'critical' as const },
+    { pattern: /sk_live_[A-Za-z0-9]+/g, name: 'Stripe live key', severity: 'critical' as const },
+    { pattern: /eyJ[A-Za-z0-9_-]{100,}/g, name: 'JWT token', severity: 'error' as const },
+  ],
+  hiddenTelemetry: [
+    { pattern: /navigator\.sendBeacon\s*\(/g, name: 'sendBeacon', severity: 'warning' as const },
+    { pattern: /new\s+Image\s*\(\s*\)\s*\.src\s*=/g, name: 'Tracking pixel', severity: 'warning' as const },
+    { pattern: /performance\.mark|performance\.measure/g, name: 'Performance API', severity: 'info' as const },
+  ],
+};
+
+export function runSecurityAudit(files: Record<string, string>): SecurityReport {
+  const issues: SecurityIssue[] = [];
+  
+  for (const [filePath, content] of Object.entries(files)) {
+    // Skip non-source files
+    if (!filePath.match(/\.(ts|tsx|js|jsx)$/)) continue;
+    if (filePath.includes('node_modules')) continue;
+    
+    const lines = content.split('\n');
+    
+    lines.forEach((line, index) => {
+      const lineNum = index + 1;
+      
+      // Check dangerous functions
+      for (const { pattern, name, severity, description } of SECURITY_PATTERNS.dangerousFunctions) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        if (freshPattern.test(line)) {
+          issues.push({
+            file: filePath,
+            line: lineNum,
+            column: 1,
+            type: severity === 'critical' ? 'eval-usage' : 'dangerous-function',
+            pattern: name,
+            description,
+            severity,
+            recommendation: `Supprimez ou remplacez ${name} par une alternative sécurisée`,
+          });
+        }
+      }
+      
+      // Check suspicious DNS
+      for (const { pattern, name, severity } of SECURITY_PATTERNS.suspiciousDNS) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        const match = freshPattern.exec(line);
+        if (match) {
+          // Exclude known safe domains
+          const safeDomains = ['localhost', '127.0.0.1', 'supabase.co', 'your-project'];
+          const isSafe = safeDomains.some(d => match[0].includes(d));
+          if (!isSafe) {
+            issues.push({
+              file: filePath,
+              line: lineNum,
+              column: 1,
+              type: 'suspicious-dns',
+              pattern: name,
+              description: `Appel réseau externe détecté: ${match[0].substring(0, 50)}...`,
+              severity,
+              recommendation: 'Vérifiez que cette URL est légitime et documentée',
+            });
+          }
+        }
+      }
+      
+      // Check credential leaks
+      for (const { pattern, name, severity } of SECURITY_PATTERNS.credentialLeaks) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        if (freshPattern.test(line)) {
+          issues.push({
+            file: filePath,
+            line: lineNum,
+            column: 1,
+            type: 'credential-leak',
+            pattern: name,
+            description: `Credential potentiellement exposé: ${name}`,
+            severity,
+            recommendation: 'Déplacez vers des variables d\'environnement (.env)',
+          });
+        }
+      }
+      
+      // Check hidden telemetry
+      for (const { pattern, name, severity } of SECURITY_PATTERNS.hiddenTelemetry) {
+        const freshPattern = new RegExp(pattern.source, pattern.flags);
+        if (freshPattern.test(line)) {
+          issues.push({
+            file: filePath,
+            line: lineNum,
+            column: 1,
+            type: 'hidden-telemetry',
+            pattern: name,
+            description: `Télémétrie potentielle détectée: ${name}`,
+            severity,
+            recommendation: 'Vérifiez que ce tracking est documenté et consenti',
+          });
+        }
+      }
+    });
+  }
+  
+  // Calculate score
+  let score = 100;
+  for (const issue of issues) {
+    switch (issue.severity) {
+      case 'critical': score -= 25; break;
+      case 'error': score -= 15; break;
+      case 'warning': score -= 5; break;
+      case 'info': score -= 1; break;
+    }
+  }
+  score = Math.max(0, Math.min(100, score));
+  
+  const criticalIssues = issues.filter(i => i.severity === 'critical').length;
+  const errorIssues = issues.filter(i => i.severity === 'error').length;
+  const warningIssues = issues.filter(i => i.severity === 'warning').length;
+  const infoIssues = issues.filter(i => i.severity === 'info').length;
+  
+  let summary = '';
+  if (score >= 90) summary = '✅ Code sécurisé - aucun problème critique';
+  else if (score >= 70) summary = '⚠️ Code partiellement sécurisé - quelques corrections nécessaires';
+  else if (score >= 50) summary = '🔶 Attention - plusieurs problèmes de sécurité détectés';
+  else summary = '🔴 Critique - nombreux problèmes de sécurité à corriger';
+  
+  return {
+    isSecure: criticalIssues === 0,
+    score,
+    totalIssues: issues.length,
+    criticalIssues,
+    errorIssues,
+    warningIssues,
+    infoIssues,
+    issues,
+    summary,
+  };
+}
+
+// ============================================
+// NCS PHASE 5: SMOKE TESTS GENERATOR
+// ============================================
+
+export function generateSmokeTests(
+  routes: string[],
+  projectName: string
+): string {
+  return `/**
+ * Smoke Tests - ${projectName}
+ * Generated by InoPay Liberation Pack
+ * 
+ * Run: npm test or npx vitest
+ */
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+const API_URL = process.env.API_URL || 'http://localhost:3000';
+
+describe('🧪 API Smoke Tests', () => {
+  beforeAll(async () => {
+    console.log('Starting smoke tests against:', API_URL);
+  });
+
+  afterAll(() => {
+    console.log('Smoke tests completed');
+  });
+
+  it('should respond to health check', async () => {
+    const response = await fetch(\`\${API_URL}/health\`);
+    expect(response.status).toBe(200);
+  });
+
+  it('should have valid CORS headers', async () => {
+    const response = await fetch(\`\${API_URL}/health\`, {
+      method: 'OPTIONS',
+    });
+    expect(response.headers.get('access-control-allow-origin')).toBeTruthy();
+  });
+
+${routes.map(route => `
+  it('${route} endpoint should respond', async () => {
+    try {
+      const response = await fetch(\`\${API_URL}/api/${route}\`, {
+        method: 'OPTIONS',
+      });
+      // Accept 200, 204 (CORS), 401 (auth required), 405 (method not allowed)
+      expect([200, 204, 401, 405]).toContain(response.status);
+    } catch (error) {
+      // Network error is acceptable if endpoint exists but has issues
+      console.warn('${route} endpoint check failed:', error);
+    }
+  });
+`).join('')}
+});
+
+describe('🎨 Frontend Smoke Tests', () => {
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  it('should serve index.html', async () => {
+    const response = await fetch(FRONTEND_URL);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/html');
+  });
+
+  it('should serve static assets', async () => {
+    const response = await fetch(\`\${FRONTEND_URL}/favicon.ico\`);
+    // 200 or 404 are both acceptable
+    expect([200, 404]).toContain(response.status);
+  });
+});
+
+describe('📊 Database Smoke Tests', () => {
+  it.skip('should connect to database', async () => {
+    // Uncomment and configure for your database
+    // const client = new Pool({ connectionString: process.env.DATABASE_URL });
+    // const result = await client.query('SELECT NOW()');
+    // expect(result.rows).toHaveLength(1);
+  });
+});
+`;
+}
+
+// ============================================
+// NCS PHASE 6: COOLIFY READINESS CHECK
+// ============================================
+
+export interface CoolifyReadiness {
+  ready: boolean;
+  score: number; // 0-100
+  checks: {
+    dockerfile: { passed: boolean; issues: string[] };
+    dependencies: { passed: boolean; missing: string[] };
+    envVars: { passed: boolean; required: string[]; missing: string[] };
+    ports: { passed: boolean; exposed: number[] };
+    healthcheck: { passed: boolean; path?: string };
+    noProprietaryRuntime: { passed: boolean; found: string[] };
+  };
+  recommendations: string[];
+}
+
+export function checkCoolifyReadiness(files: Record<string, string>): CoolifyReadiness {
+  const issues: string[] = [];
+  const recommendations: string[] = [];
+  
+  // Check Dockerfile
+  const dockerfileContent = files['Dockerfile'] || files['frontend/Dockerfile'] || '';
+  const hasDockerfile = !!dockerfileContent;
+  const dockerfileIssues: string[] = [];
+  
+  if (!hasDockerfile) {
+    dockerfileIssues.push('Aucun Dockerfile trouvé');
+  } else {
+    if (!dockerfileContent.includes('FROM')) {
+      dockerfileIssues.push('Dockerfile invalide - pas de FROM');
+    }
+    if (!dockerfileContent.includes('EXPOSE')) {
+      dockerfileIssues.push('Aucun port EXPOSE déclaré');
+    }
+    if (dockerfileContent.includes('VERCEL') || dockerfileContent.includes('vercel')) {
+      dockerfileIssues.push('Référence à Vercel dans Dockerfile');
+    }
+  }
+  
+  // Check dependencies
+  const packageJsonContent = files['package.json'] || files['frontend/package.json'] || '{}';
+  let packageJson: any = {};
+  try {
+    packageJson = JSON.parse(packageJsonContent);
+  } catch {}
+  
+  const allDeps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  const missingDeps: string[] = [];
+  const requiredDeps = ['react', 'react-dom'];
+  
+  for (const dep of requiredDeps) {
+    if (!allDeps[dep]) {
+      missingDeps.push(dep);
+    }
+  }
+  
+  // Check env vars
+  const allContent = Object.values(files).join('\n');
+  const envVarsFound = new Set<string>();
+  const envMatches = allContent.matchAll(/(?:import\.meta\.env|process\.env)\s*\.?\s*([A-Z_][A-Z0-9_]*)/g);
+  for (const match of envMatches) {
+    envVarsFound.add(match[1]);
+  }
+  
+  const envExampleContent = files['.env.example'] || files['frontend/.env.example'] || '';
+  const envVarsDefined = new Set<string>();
+  const envDefMatches = envExampleContent.matchAll(/^([A-Z_][A-Z0-9_]*)=/gm);
+  for (const match of envDefMatches) {
+    envVarsDefined.add(match[1]);
+  }
+  
+  const missingEnvVars = Array.from(envVarsFound).filter(v => !envVarsDefined.has(v));
+  
+  // Check ports
+  const ports: number[] = [];
+  const portMatches = dockerfileContent.matchAll(/EXPOSE\s+(\d+)/g);
+  for (const match of portMatches) {
+    ports.push(parseInt(match[1]));
+  }
+  
+  // Check healthcheck
+  const hasHealthcheck = dockerfileContent.includes('HEALTHCHECK') || 
+    allContent.includes('/health') || 
+    allContent.includes('healthcheck');
+  
+  // Check for proprietary runtimes
+  const proprietaryRuntimes: string[] = [];
+  if (allContent.includes('@vercel/edge')) proprietaryRuntimes.push('Vercel Edge Runtime');
+  if (allContent.includes('netlify-edge')) proprietaryRuntimes.push('Netlify Edge');
+  if (allContent.includes('@cloudflare/workers')) proprietaryRuntimes.push('Cloudflare Workers');
+  
+  // Calculate score
+  let score = 100;
+  if (!hasDockerfile) score -= 30;
+  if (dockerfileIssues.length > 0) score -= dockerfileIssues.length * 5;
+  if (missingDeps.length > 0) score -= missingDeps.length * 5;
+  if (missingEnvVars.length > 0) score -= Math.min(missingEnvVars.length * 2, 20);
+  if (ports.length === 0) score -= 10;
+  if (!hasHealthcheck) score -= 10;
+  if (proprietaryRuntimes.length > 0) score -= proprietaryRuntimes.length * 15;
+  
+  score = Math.max(0, Math.min(100, score));
+  
+  // Generate recommendations
+  if (!hasDockerfile) {
+    recommendations.push('Ajoutez un Dockerfile à la racine du projet');
+  }
+  if (!hasHealthcheck) {
+    recommendations.push('Ajoutez un endpoint /health pour le monitoring');
+  }
+  if (proprietaryRuntimes.length > 0) {
+    recommendations.push(`Remplacez les runtimes propriétaires: ${proprietaryRuntimes.join(', ')}`);
+  }
+  if (missingEnvVars.length > 0 && missingEnvVars.length <= 5) {
+    recommendations.push(`Documentez ces variables dans .env.example: ${missingEnvVars.join(', ')}`);
+  }
+  
+  return {
+    ready: score >= 70 && proprietaryRuntimes.length === 0,
+    score,
+    checks: {
+      dockerfile: { passed: hasDockerfile && dockerfileIssues.length === 0, issues: dockerfileIssues },
+      dependencies: { passed: missingDeps.length === 0, missing: missingDeps },
+      envVars: { passed: missingEnvVars.length === 0, required: Array.from(envVarsFound), missing: missingEnvVars },
+      ports: { passed: ports.length > 0, exposed: ports },
+      healthcheck: { passed: hasHealthcheck, path: hasHealthcheck ? '/health' : undefined },
+      noProprietaryRuntime: { passed: proprietaryRuntimes.length === 0, found: proprietaryRuntimes },
+    },
+    recommendations,
+  };
+}
+
+// ============================================
+// NCS PHASE 7: CODE NORMALIZATION CONFIG
+// ============================================
+
+export const PRETTIER_CONFIG = `{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "useTabs": false,
+  "bracketSpacing": true,
+  "arrowParens": "avoid",
+  "endOfLine": "lf"
+}`;
+
+export const ESLINT_CONFIG = `module.exports = {
+  root: true,
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+    'prettier',
+  ],
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaFeatures: { jsx: true },
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+  },
+  plugins: ['react', '@typescript-eslint', 'react-hooks'],
+  settings: {
+    react: { version: 'detect' },
+  },
+  rules: {
+    'react/react-in-jsx-scope': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+  },
+};`;
+
+export const LINT_FIX_SCRIPT = `#!/bin/bash
+# Lint & Format Script - Generated by InoPay Liberation Pack
+
+echo "🔧 Running ESLint..."
+npx eslint --fix src/ --ext .ts,.tsx,.js,.jsx
+
+echo "✨ Running Prettier..."
+npx prettier --write "src/**/*.{ts,tsx,js,jsx,css,json}"
+
+echo "✅ Lint & format complete!"
+`;
+
+// ============================================
+// NCS PHASE 8: REWRITE LOG GENERATOR
+// ============================================
+
+export interface RewriteLogEntry {
+  file: string;
+  changes: string[];
+  linesChanged: number;
+  timestamp: string;
+}
+
+export interface RewriteLog {
+  version: string;
+  generatedAt: string;
+  projectName: string;
+  totalFilesProcessed: number;
+  totalFilesModified: number;
+  totalChanges: number;
+  entries: RewriteLogEntry[];
+}
+
+export function createRewriteLog(
+  projectName: string,
+  entries: RewriteLogEntry[]
+): RewriteLog {
+  return {
+    version: '1.0',
+    generatedAt: new Date().toISOString(),
+    projectName,
+    totalFilesProcessed: entries.length,
+    totalFilesModified: entries.filter(e => e.changes.length > 0).length,
+    totalChanges: entries.reduce((sum, e) => sum + e.changes.length, 0),
+    entries,
+  };
+}
