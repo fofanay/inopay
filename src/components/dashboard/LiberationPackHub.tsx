@@ -27,7 +27,17 @@ import {
   ClipboardCheck,
   Image,
   Code,
-  GitCompare
+  GitCompare,
+  Lock,
+  FileSignature,
+  TestTube,
+  FileText,
+  Network,
+  Key,
+  Hash,
+  Award,
+  Layers,
+  Cloud
 } from "lucide-react";
 import { SovereigntyAuditReport } from "./SovereigntyAuditReport";
 import { FileDiffPreview, AssetDownloader, TypeScriptValidator } from "./liberation";
@@ -1424,9 +1434,9 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            {/* Tabs for Pack Generation, Preview, Assets, Validation and Audit */}
+            {/* Tabs for Pack Generation, Preview, Assets, Validation, NCS 2.0 and Audit */}
             <Tabs defaultValue="preview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="preview" className="gap-1 text-xs">
                   <GitCompare className="h-3 w-3" />
                   <span className="hidden sm:inline">Prévisualisation</span>
@@ -1438,6 +1448,10 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                 <TabsTrigger value="validate" className="gap-1 text-xs">
                   <Code className="h-3 w-3" />
                   <span className="hidden sm:inline">Validation</span>
+                </TabsTrigger>
+                <TabsTrigger value="ncs2" className="gap-1 text-xs">
+                  <Award className="h-3 w-3" />
+                  <span className="hidden sm:inline">NCS 2.0</span>
                 </TabsTrigger>
                 <TabsTrigger value="pack" className="gap-1 text-xs">
                   <Package className="h-3 w-3" />
@@ -1488,6 +1502,120 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                     }
                   }}
                 />
+              </TabsContent>
+
+              {/* NCS 2.0 Tab - Detailed phases */}
+              <TabsContent value="ncs2" className="mt-4 space-y-4">
+                <Card className="border-2 border-amber-500/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-amber-500" />
+                      NCS Version 2.0 - Les 10 Phases de Purification
+                    </CardTitle>
+                    <CardDescription>
+                      La Grande Messe de Libération Numérique - Système de purification ultime
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Phase list with status */}
+                    <div className="space-y-3">
+                      {[
+                        { phase: 1, icon: FileSignature, name: "Manifest Signé SHA-256", desc: "Sceau cryptographique de souveraineté avec traçabilité complète", status: "included" },
+                        { phase: 2, icon: Cloud, name: "Multi-Deployment", desc: "Configs Fly.io, Render, Railway, Helm Charts, Ansible Playbooks", status: "included" },
+                        { phase: 3, icon: Shield, name: "Audit OWASP Automatique", desc: "Détection SQL injection, XSS, CSRF, SSRF (A01-A09)", status: "included" },
+                        { phase: 4, icon: TestTube, name: "Tests Automatiques", desc: "Tests unitaires, intégration et sécurité générés automatiquement", status: "included" },
+                        { phase: 5, icon: FileText, name: "Rapport 10 Pages", desc: "Documentation complète avec failles, corrections et certification", status: "included" },
+                        { phase: 6, icon: Lock, name: "Audit Sécurité Avancé", desc: "Détection backdoors, DNS suspects, credentials exposées", status: "included" },
+                        { phase: 7, icon: Network, name: "Diagrammes Mermaid", desc: "Architecture, flux de données et schéma de déploiement", status: "included" },
+                        { phase: 8, icon: Layers, name: "Clean Architecture", desc: "Restructuration Domain/Application/Infrastructure/UI", status: "optional" },
+                        { phase: 9, icon: Key, name: "Coffre Secrets", desc: "Intégration Hashicorp Vault, Doppler, Infisical", status: "included" },
+                        { phase: 10, icon: Hash, name: "Signature Cryptographique", desc: "CHECKSUM.sha256 pour garantir l'intégrité du pack", status: "included" },
+                      ].map(({ phase, icon: Icon, name, desc, status }) => (
+                        <div key={phase} className={`flex items-start gap-4 p-3 rounded-lg border ${status === 'included' ? 'bg-green-500/5 border-green-500/20' : 'bg-muted/50 border-muted'}`}>
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${status === 'included' ? 'bg-green-500/20' : 'bg-muted'}`}>
+                            <Icon className={`h-4 w-4 ${status === 'included' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">Phase {phase}: {name}</span>
+                              {status === 'included' ? (
+                                <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-500 border-green-500/20">
+                                  <CheckCircle2 className="h-2 w-2 mr-1" />
+                                  Inclus
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px]">Optionnel</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Generated files summary */}
+                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 mt-4">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <FolderArchive className="h-4 w-4 text-primary" />
+                        Fichiers générés par NCS 2.0
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📁 /deployment-configs</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>fly.toml</li>
+                            <li>render.yaml</li>
+                            <li>railway.json</li>
+                            <li>helm/ (values.yaml, Chart.yaml)</li>
+                            <li>ansible/ (playbook.yml, inventory)</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📁 /reports</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>owasp_compliance.json</li>
+                            <li>security_audit_v2.json</li>
+                            <li>project_graph.json</li>
+                            <li>rewrite_log.json</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📁 /tests</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>unit/ (components.test.ts)</li>
+                            <li>integration/ (api.test.ts)</li>
+                            <li>security/ (vulnerabilities.test.ts)</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📁 /secrets</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>vault-policy.hcl</li>
+                            <li>import-to-vault.sh</li>
+                            <li>doppler.yaml</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📁 /docs</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>ARCHITECTURE.md (Mermaid)</li>
+                            <li>DATA_FLOW.md</li>
+                            <li>DEPLOYMENT.md</li>
+                          </ul>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="font-medium text-foreground">📄 Racine</p>
+                          <ul className="space-y-1 text-muted-foreground pl-4">
+                            <li>sovereignty_manifest.json</li>
+                            <li>SOVEREIGNTY_BADGE.svg</li>
+                            <li>LIBERATION_REPORT_FULL.html</li>
+                            <li>CHECKSUM.sha256</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="audit" className="mt-4 space-y-4">
@@ -1669,19 +1797,120 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                   </div>
                 </div>
 
-                {/* What's included */}
+                {/* NCS V2.0 Features */}
+                <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Award className="h-5 w-5 text-amber-500" />
+                      NCS Version 2.0 - La Grande Messe de Libération
+                    </CardTitle>
+                    <CardDescription>
+                      Pack de souveraineté ultime avec 10 phases de purification
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-3">
+                      {/* Phase 1: Manifest Signé */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <FileSignature className="h-6 w-6 text-green-500" />
+                        <span className="text-xs font-medium">Manifest SHA-256</span>
+                        <Badge variant="outline" className="text-[10px]">Phase 1</Badge>
+                      </div>
+                      
+                      {/* Phase 2: Multi-Deploy */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Cloud className="h-6 w-6 text-blue-500" />
+                        <span className="text-xs font-medium">Multi-Deploy</span>
+                        <Badge variant="outline" className="text-[10px]">Fly/Render/Railway</Badge>
+                      </div>
+                      
+                      {/* Phase 3: OWASP */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Shield className="h-6 w-6 text-red-500" />
+                        <span className="text-xs font-medium">Audit OWASP</span>
+                        <Badge variant="outline" className="text-[10px]">A01-A09</Badge>
+                      </div>
+                      
+                      {/* Phase 4: Tests Auto */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <TestTube className="h-6 w-6 text-purple-500" />
+                        <span className="text-xs font-medium">Tests Auto</span>
+                        <Badge variant="outline" className="text-[10px]">Unit/Intég/Sécu</Badge>
+                      </div>
+                      
+                      {/* Phase 5: Rapport 10 pages */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <FileText className="h-6 w-6 text-orange-500" />
+                        <span className="text-xs font-medium">Rapport Complet</span>
+                        <Badge variant="outline" className="text-[10px]">10 pages HTML</Badge>
+                      </div>
+                      
+                      {/* Phase 6: Sécurité Avancée */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Lock className="h-6 w-6 text-rose-500" />
+                        <span className="text-xs font-medium">Audit Sécurité</span>
+                        <Badge variant="outline" className="text-[10px]">Backdoors/DNS</Badge>
+                      </div>
+                      
+                      {/* Phase 7: Diagrammes Mermaid */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Network className="h-6 w-6 text-cyan-500" />
+                        <span className="text-xs font-medium">Architecture</span>
+                        <Badge variant="outline" className="text-[10px]">Mermaid</Badge>
+                      </div>
+                      
+                      {/* Phase 8: Clean Architecture */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Layers className="h-6 w-6 text-indigo-500" />
+                        <span className="text-xs font-medium">Clean Arch</span>
+                        <Badge variant="outline" className="text-[10px]">Domain/App/UI</Badge>
+                      </div>
+                      
+                      {/* Phase 9: Coffre Secrets */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Key className="h-6 w-6 text-yellow-500" />
+                        <span className="text-xs font-medium">Coffre Secrets</span>
+                        <Badge variant="outline" className="text-[10px]">Vault/Doppler</Badge>
+                      </div>
+                      
+                      {/* Phase 10: Signature ZIP */}
+                      <div className="p-3 rounded-lg bg-background border flex flex-col items-center text-center gap-2">
+                        <Hash className="h-6 w-6 text-emerald-500" />
+                        <span className="text-xs font-medium">Signature ZIP</span>
+                        <Badge variant="outline" className="text-[10px]">CHECKSUM.sha256</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* What's included - Updated for V2 */}
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <Rocket className="h-4 w-4 text-primary" />
-                    Contenu du pack
+                    Contenu du Pack NCS 2.0
                   </h4>
-                  <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                    <div>• docker-compose.yml complet</div>
-                    <div>• Dockerfile optimisé</div>
-                    <div>• .env.example pré-rempli</div>
-                    <div>• Script quick-deploy.sh</div>
-                    <div>• Guide interactif HTML</div>
-                    <div>• {cleaningStats.polyfillsGenerated} polyfills générés</div>
+                  <div className="grid md:grid-cols-3 gap-2 text-sm text-muted-foreground">
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground text-xs">Infrastructure</p>
+                      <div>• docker-compose.yml</div>
+                      <div>• Dockerfile optimisé</div>
+                      <div>• fly.toml / render.yaml</div>
+                      <div>• railway.json / helm/</div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground text-xs">Sécurité</p>
+                      <div>• sovereignty_manifest.json</div>
+                      <div>• SOVEREIGNTY_BADGE.svg</div>
+                      <div>• reports/owasp_compliance.json</div>
+                      <div>• CHECKSUM.sha256</div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground text-xs">Documentation</p>
+                      <div>• LIBERATION_REPORT.html</div>
+                      <div>• docs/ARCHITECTURE.md</div>
+                      <div>• tests/ (unit/intég/sécu)</div>
+                      <div>• secrets/ (vault/doppler)</div>
+                    </div>
                   </div>
                 </div>
 
