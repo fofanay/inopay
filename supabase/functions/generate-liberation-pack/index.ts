@@ -122,7 +122,7 @@ kill_signal = "SIGINT"
 kill_timeout = 5
 
 [build]
-  dockerfile = "frontend/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   NODE_ENV = "production"
@@ -164,8 +164,8 @@ services:
   - type: web
     name: ${serviceName}-frontend
     env: docker
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /
     autoDeploy: false
     scaling:
@@ -190,7 +190,7 @@ databases:
 function generateRailwayConfig(): string {
   return JSON.stringify({
     "$schema": "https://railway.app/railway.schema.json",
-    "build": { "builder": "DOCKERFILE", "dockerfilePath": "frontend/Dockerfile" },
+    "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
     "deploy": { "restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 3, "healthcheckPath": "/" }
   }, null, 2);
 }
@@ -5620,7 +5620,7 @@ services:
   # ─────────────────────────────────────────────────────────────
   frontend:
     build:
-      context: ./frontend
+      context: .
       dockerfile: Dockerfile
     container_name: ${serviceName}-frontend
     restart: unless-stopped
@@ -6602,9 +6602,8 @@ serve(async (req) => {
     );
 
     // ==========================================
-    // 1. FRONTEND
+    // 1. FRONTEND FILES (à la racine du ZIP)
     // ==========================================
-    const frontendFolder = zip.folder('frontend')!;
     
     // ==========================================
     // 1a. VALIDATION ET CORRECTION DU PACKAGE.JSON
@@ -6619,9 +6618,10 @@ serve(async (req) => {
       console.warn(`[generate-liberation-pack] Package.json errors: ${packageJsonFix.errors.join(', ')}`);
     }
     
+    // Fichiers source directement à la racine (pas de dossier frontend/)
     for (const [path, content] of Object.entries(doubleCleanedFiles)) {
       if (!path.startsWith('supabase/')) {
-        frontendFolder.file(path, content as string);
+        zip.file(path, content as string);
       }
     }
     
@@ -6650,29 +6650,29 @@ serve(async (req) => {
               bytes[i] = binaryString.charCodeAt(i);
             }
             
-            // Add as binary file to the ZIP
-            frontendFolder.file(assetPath, bytes);
+            // Add as binary file to the ZIP (à la racine)
+            zip.file(assetPath, bytes);
             console.log(`[generate-liberation-pack] Added asset: ${assetPath} (${bytes.length} bytes)`);
           }
         } else {
           // Plain text content (e.g., comment for failed downloads)
-          frontendFolder.file(assetPath, content);
+          zip.file(assetPath, content);
         }
       }
     }
     
     // Ajouter le client IA configurable
     if (hasAIUsage) {
-      frontendFolder.file('src/lib/ai-client.ts', AI_CLIENT_TEMPLATE);
+      zip.file('src/lib/ai-client.ts', AI_CLIENT_TEMPLATE);
     }
     
-    frontendFolder.file('Dockerfile', FRONTEND_DOCKERFILE);
-    frontendFolder.file('nginx.conf', NGINX_CONF);
+    zip.file('Dockerfile', FRONTEND_DOCKERFILE);
+    zip.file('nginx.conf', NGINX_CONF);
     
     // ==========================================
     // 1c. POLYFILLS AUTOMATIQUES (pour éviter erreurs TS)
     // ==========================================
-    const polyfillResult = addPolyfillsToFrontend(frontendFolder, doubleCleanedFiles);
+    const polyfillResult = addPolyfillsToFrontend(zip, doubleCleanedFiles);
     if (polyfillResult.count > 0) {
       console.log(`[generate-liberation-pack] Added ${polyfillResult.count} polyfills: ${polyfillResult.added.join(', ')}`);
     }
@@ -6696,7 +6696,7 @@ ${includeBackend ? `  handle /api/* {
 # {$DOMAIN} {
 #   ...
 # }`;
-    frontendFolder.file('Caddyfile', caddyfile);
+    zip.file('Caddyfile', caddyfile);
 
     // ==========================================
     // 2. BACKEND (depuis Edge Functions - CONVERSION COMPLÈTE)
@@ -7222,8 +7222,8 @@ $$ LANGUAGE sql STABLE;
     authFolder.file('docker-compose.yml', authApiCode.dockerCompose);
     authFolder.file('README.md', authApiCode.readme);
     
-    // Auth client adapter for frontend
-    frontendFolder.file('src/lib/auth-client.ts', generateAuthClientAdapter());
+    // Auth client adapter for frontend (à la racine)
+    zip.file('src/lib/auth-client.ts', generateAuthClientAdapter());
     
     // User migration script
     authFolder.file('migrate-users.ts', authApiCode.migrateScript);
@@ -7823,12 +7823,22 @@ sudo ./scripts/quick-deploy.sh
 
 \`\`\`
 ${safeName}/
-├── frontend/               # Application React nettoyée
-│   ├── src/
-│   │   └── lib/
-│   │       └── ai-client.ts   # Client IA configurable
-│   ├── Dockerfile
-│   └── Caddyfile
+├── src/                    # Code source React
+│   ├── components/
+│   ├── hooks/
+│   ├── lib/
+│   │   └── ai-client.ts    # Client IA configurable
+│   └── ...
+├── public/                 # Assets statiques
+├── package.json            # Dépendances
+├── vite.config.ts          # Configuration Vite
+├── tailwind.config.ts      # Configuration Tailwind
+├── index.html              # Point d'entrée HTML
+├── Dockerfile              # Build + Nginx
+├── Caddyfile               # Alternative Caddy (auto-SSL)
+├── .env.example            # Variables d'environnement
+├── docker-compose.yml      # Stack principale
+├── docker-compose.full.yml # Stack avec tous les services
 ${includeBackend ? `├── backend/                # API Express (depuis Edge Functions)
 │   ├── src/
 │   │   ├── routes/         # Routes converties
@@ -7836,19 +7846,21 @@ ${includeBackend ? `├── backend/                # API Express (depuis Edge
 │   ├── _original-edge-functions/  # Code original pour référence
 │   └── Dockerfile
 ` : ''}${includeDatabase ? `├── database/
-│   └── migrations/         # Schéma SQL
+│   ├── migrations/         # Schéma SQL
+│   └── FULL_DATABASE_EXPORT.sql  # Export complet
 ` : ''}├── services/               # 🆕 Services Open Source optionnels
 │   ├── ollama/             # IA locale (remplace OpenAI)
 │   ├── meilisearch/        # Recherche (remplace Algolia)
 │   └── minio/              # Stockage (remplace S3)
 ├── scripts/
 │   └── quick-deploy.sh     # Script de déploiement automatique
-├── docker-compose.yml      # Stack principale
-├── docker-compose.full.yml # Stack avec tous les services
-├── .env.example            # Variables d'environnement
+├── docs/                   # Documentation
+├── reports/                # Rapports d'audit
+├── tests/                  # Tests générés
 ├── DEPLOY_GUIDE.html       # Guide interactif
 ├── OPEN_SOURCE_SERVICES.md # Guide des alternatives
-└── SOVEREIGNTY_REPORT.md   # Rapport de nettoyage
+├── SOVEREIGNTY_REPORT.md   # Rapport de nettoyage
+└── README.md
 \`\`\`
 
 ---
