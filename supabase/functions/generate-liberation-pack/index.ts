@@ -7038,7 +7038,7 @@ Thumbs.db
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('cleaned-archives')
-      .upload(filePath, zipBuffer, {
+      .upload(filePath, finalZipBuffer, {
         contentType: 'application/zip',
         upsert: true
       });
