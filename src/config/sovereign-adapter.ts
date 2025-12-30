@@ -61,7 +61,7 @@ const getInfraMode = (): InfraMode => {
 export const getInfraConfig = (): InfraConfig => {
   const mode = getInfraMode();
   
-  // Configuration Cloud (Lovable Cloud / Supabase hébergé)
+  // Configuration Cloud (Supabase hébergé)
   if (mode === 'cloud') {
     return {
       mode: 'cloud',

@@ -192,7 +192,7 @@ const AdminSettings = () => {
             <Badge variant="default" className="bg-green-500">Configuré</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Clé API configurée via les secrets Lovable Cloud
+            Clé API configurée via les secrets d'environnement
           </p>
           <Button variant="outline" className="w-full" asChild>
             <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer">

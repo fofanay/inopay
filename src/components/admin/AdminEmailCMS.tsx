@@ -80,8 +80,8 @@ interface EmailCampaign {
   created_at: string;
 }
 
-// Logo Inopay hébergé publiquement
-const INOPAY_LOGO_URL = "https://5686b0fc-e7aa-43ec-a843-21de6b6b3340.lovableproject.com/inopay-logo-email.png";
+// Logo Inopay - utilise l'URL relative pour auto-hébergement
+const INOPAY_LOGO_URL = "/inopay-logo-email.png";
 
 // Couleurs Inopay
 const INOPAY_GREEN = "#2E8B57";
@@ -236,16 +236,16 @@ const defaultTemplates = [
       
       <p>Bonjour <strong>{{user_name}}</strong>,</p>
       
-      <p>Nous sommes ravis de vous accueillir sur Inopay, la plateforme qui vous permet de <strong>reprendre le contrôle total</strong> de vos projets Lovable.</p>
+      <p>Nous sommes ravis de vous accueillir sur Inopay, la plateforme qui vous permet de <strong>reprendre le contrôle total</strong> de vos projets IA.</p>
       
       <div class="highlight-box">
-        <p>💡 Avec Inopay, vous pouvez exporter, déployer et gérer vos applications en toute liberté, sans dépendre d'aucune plateforme.</p>
+        <p>💡 Avec Inopay, vous pouvez exporter, déployer et gérer vos applications en toute liberté, sans dépendre d'aucune plateforme propriétaire.</p>
       </div>
       
       <h2>Ce que vous pouvez faire maintenant :</h2>
       
       <ul>
-        <li><strong>Analyser</strong> vos projets Lovable pour évaluer leur portabilité</li>
+        <li><strong>Analyser</strong> vos projets pour évaluer leur portabilité</li>
         <li><strong>Exporter</strong> votre code source complet et nettoyé</li>
         <li><strong>Déployer</strong> directement sur votre hébergeur favori</li>
         <li><strong>Gérer</strong> vos bases de données en toute autonomie</li>

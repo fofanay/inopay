@@ -3,21 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
-// INOPAY: Import conditionnel du tagger uniquement en dev
-const loadComponentTagger = async () => {
-  try {
-    const { componentTagger } = await import("lovable-tagger");
-    return componentTagger;
-  } catch {
-    return null;
-  }
-};
-
+// INOPAY SOVEREIGN: Configuration Vite 100% autonome
 // https://vitejs.dev/config/
-export default defineConfig(async ({ mode }) => {
-  // En dev uniquement, charger le tagger
-  const tagger = mode === 'development' ? await loadComponentTagger() : null;
-  
+export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "::",
@@ -25,8 +13,6 @@ export default defineConfig(async ({ mode }) => {
     },
     plugins: [
       react(),
-      // INOPAY: Tagger uniquement en dev, jamais en production
-      mode === 'development' && tagger && tagger(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['inopay-logo-email.png'],
@@ -70,15 +56,14 @@ export default defineConfig(async ({ mode }) => {
           ]
         }
       }),
-    ].filter(Boolean),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    // INOPAY: Build optimisé pour l'exil souverain
+    // Build optimisé pour déploiement souverain
     build: {
-      // Minification agressive avec terser
       minify: 'terser' as const,
       terserOptions: {
         compress: {
@@ -88,7 +73,6 @@ export default defineConfig(async ({ mode }) => {
           passes: 2,
         },
         mangle: {
-          // Obfusquer les noms de propriétés
           properties: {
             regex: /^_private_/,
           },
@@ -99,40 +83,24 @@ export default defineConfig(async ({ mode }) => {
       },
       rollupOptions: {
         output: {
-          // INOPAY: Noms de chunks aléatoires pour empêcher l'analyse de structure
-          chunkFileNames: () => {
-            const hash = Math.random().toString(36).substring(2, 10);
-            return `assets/${hash}-[hash].js`;
-          },
-          entryFileNames: () => {
-            const hash = Math.random().toString(36).substring(2, 10);
-            return `assets/${hash}-[hash].js`;
-          },
-          assetFileNames: () => {
-            const hash = Math.random().toString(36).substring(2, 10);
-            return `assets/${hash}-[hash][extname]`;
-          },
-          // Mangling des noms d'exports
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]',
           manualChunks: (id: string) => {
             if (id.includes('node_modules')) {
-              // Grouper les vendors dans des chunks anonymes
-              const vendorHash = Math.random().toString(36).substring(2, 6);
-              if (id.includes('react')) return `v-${vendorHash}`;
-              if (id.includes('@radix') || id.includes('shadcn')) return `u-${vendorHash}`;
-              if (id.includes('framer')) return `m-${vendorHash}`;
-              return `d-${vendorHash}`;
+              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('@radix') || id.includes('shadcn')) return 'vendor-ui';
+              if (id.includes('framer')) return 'vendor-motion';
+              return 'vendor';
             }
             return undefined;
           },
         },
       },
-      // Supprimer les sourcemaps en production
       sourcemap: mode !== 'production',
-      // Nettoyer le dossier de build
       emptyOutDir: true,
     },
     define: {
-      // INOPAY: Variables d'environnement pour services self-hosted
       __SUPABASE_URL__: JSON.stringify(process.env.VITE_SUPABASE_URL || 'http://localhost:54321'),
       __SUPABASE_ANON_KEY__: JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || ''),
       __OLLAMA_BASE_URL__: JSON.stringify(process.env.VITE_OLLAMA_BASE_URL || 'http://localhost:11434'),
@@ -143,9 +111,8 @@ export default defineConfig(async ({ mode }) => {
       __SOKETI_HOST__: JSON.stringify(process.env.VITE_SOKETI_HOST || 'localhost'),
       __SOKETI_PORT__: JSON.stringify(process.env.VITE_SOKETI_PORT || '6001'),
       __POCKETBASE_URL__: JSON.stringify(process.env.VITE_POCKETBASE_URL || 'http://localhost:8090'),
-      __INFRA_MODE__: JSON.stringify(process.env.VITE_INFRA_MODE || 'cloud'),
+      __INFRA_MODE__: JSON.stringify(process.env.VITE_INFRA_MODE || 'self-hosted'),
     },
-    // INOPAY: Suppression des logs de build sensibles
     logLevel: (mode === 'production' ? 'warn' : 'info') as 'info' | 'warn' | 'error' | 'silent',
   };
 });
