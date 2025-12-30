@@ -12,7 +12,7 @@
 export type InfraMode = 'cloud' | 'self-hosted' | 'hybrid';
 export type StorageProvider = 'supabase' | 'minio' | 's3';
 export type AuthProvider = 'supabase' | 'pocketbase' | 'custom';
-export type AIProvider = 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'lovable';
+export type AIProvider = 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'custom';
 export type EmailProvider = 'resend' | 'smtp' | 'sendgrid';
 export type RealtimeProvider = 'supabase' | 'soketi' | 'pusher';
 export type SearchProvider = 'postgres' | 'meilisearch' | 'algolia';
@@ -120,8 +120,8 @@ const buildCloudConfig = (): InfraConfig => ({
     url: env('VITE_SUPABASE_URL'),
   },
   ai: {
-    provider: 'lovable',
-    url: env('VITE_SUPABASE_URL') + '/functions/v1',
+    provider: 'openai',
+    url: env('VITE_AI_BASE_URL', 'https://api.openai.com/v1'),
   },
   email: {
     provider: 'resend',

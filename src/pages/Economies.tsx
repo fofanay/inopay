@@ -450,7 +450,7 @@ const Economies = () => {
                 Prêt à réduire vos factures API ?
               </h2>
               <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-                Importez votre projet Lovable et laissez notre IA détecter automatiquement 
+                Importez votre projet et laissez notre IA détecter automatiquement 
                 les services coûteux et proposer des alternatives Open Source.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
