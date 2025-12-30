@@ -751,6 +751,498 @@ function validateDockerBuild(files: Record<string, string>, hasBackend: boolean,
   return result;
 }
 
+// ============================================
+// PHASE PRODUCTION READY - VALIDATION COMPLÈTE
+// ============================================
+
+interface ProductionReadyReport {
+  isProductionReady: boolean;
+  overallScore: number;
+  timestamp: string;
+  projectName: string;
+  checklist: {
+    build: { passed: boolean; details: string[]; score: number };
+    runtime: { passed: boolean; details: string[]; score: number };
+    database: { passed: boolean; details: string[]; score: number };
+    api: { passed: boolean; details: string[]; score: number };
+    security: { passed: boolean; details: string[]; score: number };
+    coolify: { passed: boolean; details: string[]; score: number };
+    integrity: { passed: boolean; details: string[]; score: number };
+    documentation: { passed: boolean; details: string[]; score: number };
+  };
+  criticalBlockers: string[];
+  warnings: string[];
+  recommendations: string[];
+  certifications: {
+    coolifyReady: boolean;
+    dockerReady: boolean;
+    sovereigntyCompliant: boolean;
+    securityAudited: boolean;
+  };
+}
+
+function validateProductionReady(
+  files: Record<string, string>,
+  projectName: string,
+  hasBackend: boolean,
+  hasDatabase: boolean,
+  sovereigntyScore: number,
+  securityScore: number
+): ProductionReadyReport {
+  const report: ProductionReadyReport = {
+    isProductionReady: true,
+    overallScore: 100,
+    timestamp: new Date().toISOString(),
+    projectName,
+    checklist: {
+      build: { passed: true, details: [], score: 100 },
+      runtime: { passed: true, details: [], score: 100 },
+      database: { passed: true, details: [], score: 100 },
+      api: { passed: true, details: [], score: 100 },
+      security: { passed: true, details: [], score: 100 },
+      coolify: { passed: true, details: [], score: 100 },
+      integrity: { passed: true, details: [], score: 100 },
+      documentation: { passed: true, details: [], score: 100 },
+    },
+    criticalBlockers: [],
+    warnings: [],
+    recommendations: [],
+    certifications: {
+      coolifyReady: true,
+      dockerReady: true,
+      sovereigntyCompliant: sovereigntyScore >= 90,
+      securityAudited: securityScore >= 80,
+    },
+  };
+
+  // ==========================================
+  // TEST 1: BUILD VALIDATION
+  // ==========================================
+  let hasPackageJson = false;
+  let hasBuildScript = false;
+  let hasStartScript = false;
+  let packageJsonContent: any = null;
+
+  for (const [path, content] of Object.entries(files)) {
+    if ((path === 'package.json' || path.endsWith('/package.json')) && !path.includes('node_modules')) {
+      hasPackageJson = true;
+      try {
+        packageJsonContent = JSON.parse(content);
+        if (packageJsonContent.scripts?.build) {
+          hasBuildScript = true;
+          report.checklist.build.details.push('✅ Script build présent');
+        } else {
+          report.checklist.build.passed = false;
+          report.checklist.build.score -= 30;
+          report.checklist.build.details.push('❌ Script build manquant');
+          report.criticalBlockers.push('package.json: script "build" manquant');
+        }
+        if (packageJsonContent.scripts?.start || packageJsonContent.scripts?.preview) {
+          hasStartScript = true;
+          report.checklist.build.details.push('✅ Script start/preview présent');
+        } else {
+          report.checklist.build.score -= 10;
+          report.warnings.push('Aucun script start/preview - utiliser nginx pour servir');
+        }
+        
+        // Check dependencies are not empty
+        const depsCount = Object.keys(packageJsonContent.dependencies || {}).length;
+        if (depsCount > 0) {
+          report.checklist.build.details.push('✅ ' + depsCount + ' dépendances déclarées');
+        } else {
+          report.checklist.build.score -= 20;
+          report.warnings.push('Aucune dépendance déclarée dans package.json');
+        }
+      } catch (e) {
+        report.checklist.build.passed = false;
+        report.checklist.build.score -= 50;
+        report.criticalBlockers.push('package.json invalide (JSON malformé)');
+      }
+    }
+  }
+
+  if (!hasPackageJson) {
+    report.checklist.build.passed = false;
+    report.checklist.build.score = 0;
+    report.criticalBlockers.push('package.json manquant');
+  }
+
+  // ==========================================
+  // TEST 2: RUNTIME VALIDATION
+  // ==========================================
+  let hasIndexHtml = false;
+  let hasEntryPoint = false;
+  let hasViteConfig = false;
+
+  for (const path of Object.keys(files)) {
+    if (path.includes('index.html')) hasIndexHtml = true;
+    if (path.match(/main\.(tsx?|jsx?)$/) || path.match(/index\.(tsx?|jsx?)$/)) hasEntryPoint = true;
+    if (path.includes('vite.config')) hasViteConfig = true;
+  }
+
+  if (hasIndexHtml) {
+    report.checklist.runtime.details.push('✅ index.html présent');
+  } else {
+    report.checklist.runtime.score -= 30;
+    report.warnings.push('index.html manquant - vérifier la structure');
+  }
+
+  if (hasEntryPoint) {
+    report.checklist.runtime.details.push('✅ Point d\'entrée JS/TS détecté');
+  } else {
+    report.checklist.runtime.score -= 20;
+    report.warnings.push('Point d\'entrée main.tsx/index.tsx non détecté');
+  }
+
+  if (hasViteConfig) {
+    report.checklist.runtime.details.push('✅ Configuration Vite présente');
+  }
+
+  // Check for broken imports
+  let brokenImports = 0;
+  for (const [path, content] of Object.entries(files)) {
+    if (path.match(/\.(tsx?|jsx?)$/) && !path.includes('node_modules')) {
+      // Simple check for obviously broken imports
+      const imports = content.match(/from\s+['"]([^'"]+)['"]/g) || [];
+      for (const imp of imports) {
+        if (imp.includes('undefined') || imp.includes('null')) {
+          brokenImports++;
+        }
+      }
+    }
+  }
+
+  if (brokenImports > 0) {
+    report.checklist.runtime.passed = false;
+    report.checklist.runtime.score -= 20;
+    report.criticalBlockers.push(brokenImports + ' imports cassés détectés');
+  } else {
+    report.checklist.runtime.details.push('✅ Aucun import cassé détecté');
+  }
+
+  // ==========================================
+  // TEST 3: DATABASE VALIDATION
+  // ==========================================
+  if (hasDatabase) {
+    let hasSchemaFile = false;
+    let hasMigrations = false;
+
+    for (const path of Object.keys(files)) {
+      if (path.includes('migrations/') && path.endsWith('.sql')) hasMigrations = true;
+      if (path.includes('schema.sql') || path.includes('001_')) hasSchemaFile = true;
+    }
+
+    if (hasSchemaFile || hasMigrations) {
+      report.checklist.database.details.push('✅ Fichiers SQL présents');
+    } else {
+      report.checklist.database.score -= 20;
+      report.warnings.push('Aucun fichier de migration SQL détecté');
+    }
+
+    // Check for RLS policies in SQL
+    let hasRLSPolicies = false;
+    for (const [path, content] of Object.entries(files)) {
+      if (path.endsWith('.sql') && content.includes('POLICY')) {
+        hasRLSPolicies = true;
+        break;
+      }
+    }
+
+    if (hasRLSPolicies) {
+      report.checklist.database.details.push('✅ Politiques RLS détectées');
+    } else {
+      report.checklist.database.score -= 10;
+      report.recommendations.push('Ajouter des politiques RLS pour sécuriser les données');
+    }
+  } else {
+    report.checklist.database.details.push('ℹ️ Base de données non incluse');
+    report.checklist.database.score = 100; // N/A
+  }
+
+  // ==========================================
+  // TEST 4: API VALIDATION
+  // ==========================================
+  if (hasBackend) {
+    let hasHealthEndpoint = false;
+    let routeCount = 0;
+
+    for (const [path, content] of Object.entries(files)) {
+      if (path.includes('backend/') && path.endsWith('.ts')) {
+        if (content.includes('/health') || content.includes('healthcheck')) {
+          hasHealthEndpoint = true;
+        }
+        if (content.includes('Router()') || content.includes('router.')) {
+          routeCount++;
+        }
+      }
+    }
+
+    if (hasHealthEndpoint) {
+      report.checklist.api.details.push('✅ Endpoint /health présent');
+    } else {
+      report.checklist.api.score -= 15;
+      report.recommendations.push('Ajouter un endpoint /health pour les healthchecks');
+    }
+
+    if (routeCount > 0) {
+      report.checklist.api.details.push('✅ ' + routeCount + ' routes détectées');
+    }
+  } else {
+    report.checklist.api.details.push('ℹ️ Backend non inclus');
+    report.checklist.api.score = 100;
+  }
+
+  // ==========================================
+  // TEST 5: SECURITY VALIDATION
+  // ==========================================
+  let hardcodedSecrets = 0;
+  let consoleLogsInProd = 0;
+  let evalUsage = 0;
+
+  for (const [path, content] of Object.entries(files)) {
+    if (path.match(/\.(tsx?|jsx?)$/) && !path.includes('node_modules') && !path.includes('.test.')) {
+      // Hardcoded secrets
+      if (content.match(/sk_live_|sk_test_|ghp_[a-zA-Z0-9]{36}|password\s*[:=]\s*['"][^'"]{8,}['"]/gi)) {
+        hardcodedSecrets++;
+      }
+      // Console.log in production code
+      const consoleLogs = (content.match(/console\.(log|debug|info)\(/g) || []).length;
+      consoleLogsInProd += consoleLogs;
+      // Eval usage
+      if (content.match(/\beval\s*\(|new\s+Function\s*\(/g)) {
+        evalUsage++;
+      }
+    }
+  }
+
+  if (hardcodedSecrets > 0) {
+    report.checklist.security.passed = false;
+    report.checklist.security.score -= 40;
+    report.criticalBlockers.push(hardcodedSecrets + ' secrets codés en dur détectés');
+  } else {
+    report.checklist.security.details.push('✅ Aucun secret codé en dur');
+  }
+
+  if (consoleLogsInProd > 10) {
+    report.checklist.security.score -= 10;
+    report.warnings.push(consoleLogsInProd + ' console.log à retirer pour la production');
+  }
+
+  if (evalUsage > 0) {
+    report.checklist.security.passed = false;
+    report.checklist.security.score -= 30;
+    report.criticalBlockers.push('Usage de eval() détecté - risque d\'injection');
+  } else {
+    report.checklist.security.details.push('✅ Aucun usage de eval()');
+  }
+
+  report.checklist.security.score = Math.min(100, securityScore);
+
+  // ==========================================
+  // TEST 6: COOLIFY COMPLIANCE
+  // ==========================================
+  let hasDockerfile = false;
+  let hasDockerCompose = false;
+  let hasEnvExample = false;
+  let dockerfileValid = true;
+
+  for (const [path, content] of Object.entries(files)) {
+    if (path.toLowerCase().includes('dockerfile') && !path.includes('node_modules')) {
+      hasDockerfile = true;
+      // Validate Dockerfile basics
+      if (!content.includes('FROM')) {
+        dockerfileValid = false;
+        report.criticalBlockers.push('Dockerfile invalide: instruction FROM manquante');
+      }
+      if (!content.includes('EXPOSE')) {
+        report.warnings.push('Dockerfile: instruction EXPOSE recommandée');
+      }
+      if (!content.includes('HEALTHCHECK') && !content.includes('health')) {
+        report.recommendations.push('Ajouter HEALTHCHECK au Dockerfile');
+      }
+    }
+    if (path.includes('docker-compose') && path.endsWith('.yml')) {
+      hasDockerCompose = true;
+    }
+    if (path.includes('.env.example') || path.includes('env.example')) {
+      hasEnvExample = true;
+    }
+  }
+
+  if (hasDockerfile && dockerfileValid) {
+    report.checklist.coolify.details.push('✅ Dockerfile valide');
+  } else if (hasDockerfile) {
+    report.checklist.coolify.passed = false;
+    report.checklist.coolify.score -= 40;
+  } else {
+    report.checklist.coolify.passed = false;
+    report.checklist.coolify.score -= 50;
+    report.criticalBlockers.push('Dockerfile manquant');
+  }
+
+  if (hasDockerCompose) {
+    report.checklist.coolify.details.push('✅ docker-compose.yml présent');
+  } else {
+    report.checklist.coolify.score -= 20;
+    report.warnings.push('docker-compose.yml recommandé pour déploiement local');
+  }
+
+  if (hasEnvExample) {
+    report.checklist.coolify.details.push('✅ .env.example présent');
+  } else {
+    report.checklist.coolify.score -= 10;
+    report.recommendations.push('Créer .env.example pour documenter les variables');
+  }
+
+  report.certifications.coolifyReady = report.checklist.coolify.score >= 70;
+  report.certifications.dockerReady = hasDockerfile && dockerfileValid;
+
+  // ==========================================
+  // TEST 7: INTEGRITY VALIDATION
+  // ==========================================
+  let emptyFiles = 0;
+  let truncatedFiles = 0;
+  let syntaxErrors = 0;
+
+  for (const [path, content] of Object.entries(files)) {
+    // Empty files
+    if (content.trim().length === 0) {
+      emptyFiles++;
+    }
+    // Truncated files (ends mid-code)
+    if (path.match(/\.(tsx?|jsx?)$/) && content.length > 100) {
+      const lastChars = content.trim().slice(-10);
+      if (!lastChars.match(/[};)\]'"]/)) {
+        truncatedFiles++;
+      }
+    }
+    // Basic syntax validation for JSON
+    if (path.endsWith('.json')) {
+      try {
+        JSON.parse(content);
+      } catch (e) {
+        syntaxErrors++;
+        report.checklist.integrity.details.push('❌ JSON invalide: ' + path);
+      }
+    }
+  }
+
+  if (emptyFiles > 0) {
+    report.checklist.integrity.score -= emptyFiles * 2;
+    report.warnings.push(emptyFiles + ' fichiers vides détectés');
+  } else {
+    report.checklist.integrity.details.push('✅ Aucun fichier vide');
+  }
+
+  if (truncatedFiles > 0) {
+    report.checklist.integrity.passed = false;
+    report.checklist.integrity.score -= truncatedFiles * 10;
+    report.criticalBlockers.push(truncatedFiles + ' fichiers potentiellement tronqués');
+  } else {
+    report.checklist.integrity.details.push('✅ Aucun fichier tronqué');
+  }
+
+  if (syntaxErrors > 0) {
+    report.checklist.integrity.passed = false;
+    report.checklist.integrity.score -= syntaxErrors * 15;
+  } else {
+    report.checklist.integrity.details.push('✅ Tous les JSON sont valides');
+  }
+
+  // ==========================================
+  // TEST 8: DOCUMENTATION VALIDATION
+  // ==========================================
+  let hasReadme = false;
+  let hasDeployGuide = false;
+  let hasEnvDocs = false;
+
+  for (const path of Object.keys(files)) {
+    if (path.toLowerCase().includes('readme')) hasReadme = true;
+    if (path.toLowerCase().includes('deploy') || path.toLowerCase().includes('install')) hasDeployGuide = true;
+    if (path.includes('.env.example') || path.includes('ENV')) hasEnvDocs = true;
+  }
+
+  if (hasReadme) {
+    report.checklist.documentation.details.push('✅ README présent');
+  } else {
+    report.checklist.documentation.score -= 20;
+    report.warnings.push('README manquant');
+  }
+
+  if (hasDeployGuide) {
+    report.checklist.documentation.details.push('✅ Guide de déploiement présent');
+  } else {
+    report.checklist.documentation.score -= 15;
+    report.recommendations.push('Ajouter un guide de déploiement');
+  }
+
+  // ==========================================
+  // CALCULATE OVERALL SCORE
+  // ==========================================
+  const checkScores = Object.values(report.checklist).map(c => c.score);
+  report.overallScore = Math.round(checkScores.reduce((a, b) => a + b, 0) / checkScores.length);
+  
+  // Adjust for critical blockers
+  if (report.criticalBlockers.length > 0) {
+    report.overallScore = Math.min(report.overallScore, 60);
+    report.isProductionReady = false;
+  }
+
+  // Final certification
+  report.isProductionReady = 
+    report.overallScore >= 70 &&
+    report.criticalBlockers.length === 0 &&
+    report.certifications.dockerReady;
+
+  report.certifications.sovereigntyCompliant = sovereigntyScore >= 90;
+  report.certifications.securityAudited = securityScore >= 80;
+
+  return report;
+}
+
+// Generate ZIP integrity checksum list
+function generateZipIntegrityReport(files: Record<string, string>): string {
+  const lines: string[] = [
+    '# ZIP INTEGRITY REPORT',
+    '# Generated: ' + new Date().toISOString(),
+    '# Total files: ' + Object.keys(files).length,
+    '',
+    '## File List with Sizes',
+    '',
+  ];
+
+  const sortedPaths = Object.keys(files).sort();
+  let totalSize = 0;
+
+  for (const path of sortedPaths) {
+    const size = files[path].length;
+    totalSize += size;
+    lines.push('- ' + path + ' (' + size + ' bytes)');
+  }
+
+  lines.push('');
+  lines.push('## Summary');
+  lines.push('- Total files: ' + sortedPaths.length);
+  lines.push('- Total size: ' + (totalSize / 1024).toFixed(2) + ' KB');
+  lines.push('');
+  lines.push('## Required Files Checklist');
+  
+  const requiredFiles = [
+    'package.json',
+    'Dockerfile',
+    'docker-compose.yml',
+    '.env.example',
+    'README.md',
+  ];
+
+  for (const req of requiredFiles) {
+    const exists = sortedPaths.some(p => p.includes(req));
+    lines.push((exists ? '✅' : '❌') + ' ' + req);
+  }
+
+  return lines.join('\n');
+}
+
 // PHASE 5: FULL LIBERATION REPORT
 function generateFullLiberationReport(
   projectName: string,
@@ -7249,6 +7741,33 @@ ${backendRouteNames.slice(0, 10).map((route: string) => `
     const dockerValidation = validateDockerBuild(doubleCleanedFiles, includeBackend, includeDatabase);
     reportsFolder.file('docker_validation.json', JSON.stringify(dockerValidation, null, 2));
     
+    // ==========================================
+    // PHASE PRODUCTION READY - VALIDATION FINALE
+    // ==========================================
+    console.log('[generate-liberation-pack] Running Production Ready validation...');
+    
+    const productionReadyReport = validateProductionReady(
+      doubleCleanedFiles,
+      projectName,
+      includeBackend && detectedEdgeFunctions?.length > 0,
+      includeDatabase,
+      sovereigntyCheck.score,
+      securityAudit.score
+    );
+    
+    reportsFolder.file('production_ready_report.json', JSON.stringify(productionReadyReport, null, 2));
+    
+    // ZIP Integrity Report
+    const zipIntegrityReport = generateZipIntegrityReport(doubleCleanedFiles);
+    reportsFolder.file('zip_integrity.md', zipIntegrityReport);
+    
+    // Log critical blockers
+    if (productionReadyReport.criticalBlockers.length > 0) {
+      console.warn('[generate-liberation-pack] CRITICAL BLOCKERS:', productionReadyReport.criticalBlockers);
+    }
+    
+    console.log(`[generate-liberation-pack] Production Ready: ${productionReadyReport.isProductionReady ? 'YES' : 'NO'} (Score: ${productionReadyReport.overallScore}%)`);
+    
     // PHASE 5: Full Liberation Report (10 pages HTML)
     zip.file('LIBERATION_REPORT_FULL.html', generateFullLiberationReport(projectName, manifest, owaspReport, securityAudit));
     
@@ -7486,7 +8005,25 @@ Thumbs.db
             stats: (extractedSchema as any).validation.stats
           } : null
         },
-        version: '4.4',
+        // PRODUCTION READY - NEW FIELDS
+        productionReady: {
+          isReady: productionReadyReport.isProductionReady,
+          overallScore: productionReadyReport.overallScore,
+          criticalBlockers: productionReadyReport.criticalBlockers,
+          warnings: productionReadyReport.warnings.slice(0, 5),
+          certifications: productionReadyReport.certifications,
+          checklist: {
+            build: productionReadyReport.checklist.build.passed,
+            runtime: productionReadyReport.checklist.runtime.passed,
+            database: productionReadyReport.checklist.database.passed,
+            api: productionReadyReport.checklist.api.passed,
+            security: productionReadyReport.checklist.security.passed,
+            coolify: productionReadyReport.checklist.coolify.passed,
+            integrity: productionReadyReport.checklist.integrity.passed,
+            documentation: productionReadyReport.checklist.documentation.passed,
+          }
+        },
+        version: '5.0',
         features: [
           'Complete Edge Function conversion',
           'Open Source services templates (Ollama, Meilisearch, MinIO)',
@@ -7498,7 +8035,10 @@ Thumbs.db
           'SQL schema validator with dependency analysis',
           'Downloaded assets integration',
           'Coolify-compatible Dockerfile with build args',
-          'Centralized polyfills for TypeScript compatibility'
+          'Centralized polyfills for TypeScript compatibility',
+          'Production Ready validation (8 tests)',
+          'ZIP integrity verification',
+          'Coolify Deployment Compliance (CDC)'
         ],
         assetsIncluded: assetCount,
         polyfillsAdded: polyfillResult.added

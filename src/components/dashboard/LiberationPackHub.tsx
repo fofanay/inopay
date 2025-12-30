@@ -204,6 +204,22 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
   const [isCodeValid, setIsCodeValid] = useState(true);
   const [validationResult, setValidationResult] = useState<PackValidationResult | null>(null);
   const [downloadedAssets, setDownloadedAssets] = useState<Map<string, { content: string; isBase64: boolean }>>(new Map());
+  
+  // Production Ready state
+  interface ProductionReadySummary {
+    isReady: boolean;
+    overallScore: number;
+    criticalBlockers: string[];
+    warnings: string[];
+    certifications: {
+      coolifyReady: boolean;
+      dockerReady: boolean;
+      sovereigntyCompliant: boolean;
+      securityAudited: boolean;
+    };
+    checklist: Record<string, boolean>;
+  }
+  const [productionReadyInfo, setProductionReadyInfo] = useState<ProductionReadySummary | null>(null);
 
   // Helper to extract full_name from GitHub URL
   const extractRepoFullName = (url: string): string | null => {
@@ -507,6 +523,7 @@ export function LiberationPackHub({ initialConfig }: LiberationPackHubProps) {
     });
     setDownloadUrl(null);
     setGitHubRepoUrl(null);
+    setProductionReadyInfo(null);
   };
 
   // Filter files for GitHub export - only include source files
@@ -1270,6 +1287,11 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
       if (data?.downloadUrl) {
         setDownloadUrl(data.downloadUrl);
         
+        // Store production ready info
+        if (data.summary?.productionReady) {
+          setProductionReadyInfo(data.summary.productionReady);
+        }
+        
         // Save to deployment_history with archive path
         if (user) {
           const { error: historyError } = await supabase
@@ -1290,7 +1312,8 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                 filesRemoved: cleaningStats.filesRemoved,
                 filesCleaned: cleaningStats.filesCleaned,
                 polyfillsGenerated: cleaningStats.polyfillsGenerated,
-                packagesRemoved: cleaningStats.packagesRemoved
+                packagesRemoved: cleaningStats.packagesRemoved,
+                productionReady: data.summary?.productionReady?.isReady ?? false
               }
             });
           
@@ -1299,7 +1322,15 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
           }
         }
         
-        toast.success(`Pack généré: ${data.summary?.frontendFiles || 0} fichiers, score ${cleaningStats.sovereigntyScore}%`);
+        // Show production ready status in toast
+        const prodReady = data.summary?.productionReady;
+        if (prodReady?.isReady) {
+          toast.success(`Pack PRODUCTION READY: ${data.summary?.frontendFiles || 0} fichiers, score ${prodReady.overallScore}%`);
+        } else if (prodReady) {
+          toast.warning(`Pack généré mais ${prodReady.criticalBlockers?.length || 0} blocages critiques détectés`);
+        } else {
+          toast.success(`Pack généré: ${data.summary?.frontendFiles || 0} fichiers, score ${cleaningStats.sovereigntyScore}%`);
+        }
       }
     } catch (error) {
       console.error('Error generating pack:', error);
@@ -2409,6 +2440,23 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                       <p className="text-sm text-muted-foreground">
                         Score de souveraineté: {cleaningStats.sovereigntyScore}%
                       </p>
+                      {/* Production Ready Status */}
+                      {productionReadyInfo && (
+                        <div className={`mt-2 p-2 rounded ${productionReadyInfo.isReady ? 'bg-success/20' : 'bg-yellow-500/20'}`}>
+                          <p className={`text-sm font-medium ${productionReadyInfo.isReady ? 'text-success' : 'text-yellow-600'}`}>
+                            {productionReadyInfo.isReady 
+                              ? `✅ PRODUCTION READY (${productionReadyInfo.overallScore}%)` 
+                              : `⚠️ ${productionReadyInfo.criticalBlockers?.length || 0} blocages`}
+                          </p>
+                          {productionReadyInfo.certifications && (
+                            <div className="flex gap-2 justify-center mt-1 flex-wrap">
+                              {productionReadyInfo.certifications.coolifyReady && <Badge variant="outline" className="text-xs">Coolify ✓</Badge>}
+                              {productionReadyInfo.certifications.dockerReady && <Badge variant="outline" className="text-xs">Docker ✓</Badge>}
+                              {productionReadyInfo.certifications.sovereigntyCompliant && <Badge variant="outline" className="text-xs">Souverain ✓</Badge>}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <Button onClick={handleDownload} size="lg" className="gap-2">
                       <Download className="h-5 w-5" />
