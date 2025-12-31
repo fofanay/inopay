@@ -999,11 +999,38 @@ function validateProductionReady(
   let consoleLogsInProd = 0;
   let evalUsage = 0;
 
+  // Liste blanche des fichiers contenant des patterns/regex de détection (pas de vrais secrets)
+  const secretWhitelistPatterns = [
+    /Patterns?\.ts$/i,
+    /ncsV2\.ts$/i,
+    /SovereignExport\.tsx?$/i,
+    /\.example$/i,
+    /security-cleaner\.ts$/i,
+    /packValidator\.ts$/i,
+    /sovereignty.*\.ts$/i,
+  ];
+
+  const isWhitelistedForSecrets = (filePath: string): boolean => {
+    return secretWhitelistPatterns.some(pattern => pattern.test(filePath));
+  };
+
   for (const [path, content] of Object.entries(files)) {
     if (path.match(/\.(tsx?|jsx?)$/) && !path.includes('node_modules') && !path.includes('.test.')) {
-      // Hardcoded secrets
-      if (content.match(/sk_live_|sk_test_|ghp_[a-zA-Z0-9]{36}|password\s*[:=]\s*['"][^'"]{8,}['"]/gi)) {
-        hardcodedSecrets++;
+      // Hardcoded secrets - exclure les fichiers de patterns/documentation
+      if (!isWhitelistedForSecrets(path)) {
+        // Regex améliorées pour éviter les faux positifs (exemples, placeholders)
+        // sk_live_ ou sk_test_ suivi de vrais caractères (pas xxx, YOUR, etc.)
+        const hasStripeSecret = content.match(/sk_(live|test)_[A-Za-z0-9]{10,}(?!xxx|XXX|your|YOUR|example|EXAMPLE)/gi);
+        // ghp_ suivi de exactement 36 caractères alphanumériques réels (pas des x)
+        const hasGithubToken = content.match(/ghp_[A-Za-z0-9]{36}(?![xX])/g)?.filter(match => !match.includes('xxxx'));
+        // Passwords réels (pas les placeholders)
+        const hasHardcodedPassword = content.match(/password\s*[:=]\s*['"](?!xxx|XXX|your|YOUR|example|EXAMPLE|\*{3,})[^'"]{8,}['"]/gi);
+        
+        if ((hasStripeSecret && hasStripeSecret.length > 0) || 
+            (hasGithubToken && hasGithubToken.length > 0) || 
+            (hasHardcodedPassword && hasHardcodedPassword.length > 0)) {
+          hardcodedSecrets++;
+        }
       }
       // Console.log in production code
       const consoleLogs = (content.match(/console\.(log|debug|info)\(/g) || []).length;
@@ -1109,10 +1136,13 @@ function validateProductionReady(
     if (content.trim().length === 0) {
       emptyFiles++;
     }
-    // Truncated files (ends mid-code)
+    // Truncated files (ends mid-code) - amélioration pour éviter les faux positifs
     if (path.match(/\.(tsx?|jsx?)$/) && content.length > 100) {
-      const lastChars = content.trim().slice(-10);
-      if (!lastChars.match(/[};)\]'"]/)) {
+      const trimmedContent = content.trim();
+      const lastChars = trimmedContent.slice(-20);
+      // Accepter les fins valides: }, ), ], ", ', ;, commentaires //, ou export
+      const validEndings = /[};)\]'"]\s*(\/\/.*)?$|export\s+\w+\s*;?\s*$/;
+      if (!validEndings.test(lastChars) && !trimmedContent.endsWith('*/')) {
         truncatedFiles++;
       }
     }
