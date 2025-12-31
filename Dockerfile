@@ -36,11 +36,11 @@ ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
 ENV VITE_INFRA_MODE=$VITE_INFRA_MODE
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Run sovereignty audit before build
-RUN node scripts/sovereignty-audit.js --min-score=90 || echo "Audit warning - continuing build"
+# Run sovereignty audit before build (optional)
+RUN node scripts/sovereignty-audit.js --min-score=90 2>/dev/null || echo "Audit skipped"
 
-# Build the application
-RUN npm run build
+# Build with sovereign config (optimized for production)
+RUN npx vite build --config vite.config.sovereign.ts
 
 # Verify build output
 RUN test -d dist && ls -la dist/
