@@ -277,6 +277,40 @@ function generateRecommendations(
   return [...new Set(recommendations)]; // Supprimer les doublons
 }
 
+// Helper to detect and remove common root folder prefix from ZIP paths
+function normalizeZipPaths(paths: string[]): { normalizedPaths: string[]; rootPrefix: string } {
+  // Filter out directories and empty paths
+  const validPaths = paths.filter(p => p && !p.endsWith('/'));
+  if (validPaths.length === 0) return { normalizedPaths: paths, rootPrefix: '' };
+
+  // Check if all paths share a common root folder (e.g., "project-name/...")
+  const firstPath = validPaths[0];
+  const firstSlashIndex = firstPath.indexOf('/');
+  
+  if (firstSlashIndex === -1) {
+    // No common folder, paths are at root
+    return { normalizedPaths: paths, rootPrefix: '' };
+  }
+  
+  const potentialPrefix = firstPath.substring(0, firstSlashIndex + 1);
+  
+  // Check if ALL valid paths start with this prefix
+  const allHavePrefix = validPaths.every(p => p.startsWith(potentialPrefix));
+  
+  if (allHavePrefix) {
+    // Remove the common prefix from all paths
+    return {
+      normalizedPaths: paths.map(p => {
+        if (p.endsWith('/')) return p; // Keep directory markers as-is
+        return p.startsWith(potentialPrefix) ? p.substring(potentialPrefix.length) : p;
+      }),
+      rootPrefix: potentialPrefix.slice(0, -1) // Remove trailing slash
+    };
+  }
+  
+  return { normalizedPaths: paths, rootPrefix: '' };
+}
+
 // Fonction principale d'analyse
 export async function analyzeZipFile(
   file: File,
@@ -293,8 +327,23 @@ export async function analyzeZipFile(
 
   // Charger et extraire le ZIP
   const zip = await JSZip.loadAsync(file);
-  const files = Object.keys(zip.files);
+  const rawFiles = Object.keys(zip.files);
+  
+  // Normalize paths by removing common root folder prefix
+  const { normalizedPaths, rootPrefix } = normalizeZipPaths(rawFiles);
+  
+  // Create a mapping from normalized to original paths
+  const pathMapping = new Map<string, string>();
+  for (let i = 0; i < rawFiles.length; i++) {
+    pathMapping.set(normalizedPaths[i], rawFiles[i]);
+  }
+  
+  const files = normalizedPaths;
   totalFiles = files.length;
+  
+  if (rootPrefix) {
+    console.log(`[zipAnalyzer] Detected root folder prefix: "${rootPrefix}", normalizing paths...`);
+  }
 
   onProgress(15, `Archive extraite (${totalFiles} fichiers)`);
 
@@ -316,9 +365,13 @@ export async function analyzeZipFile(
   // Chercher et analyser package.json
   onProgress(20, "Recherche du package.json...");
   
+  // Helper to get original path from normalized path
+  const getOriginalPath = (normalizedPath: string) => pathMapping.get(normalizedPath) || normalizedPath;
+  
   for (const filePath of files) {
     if (filePath.endsWith("package.json") && !filePath.includes("node_modules")) {
-      const content = await zip.files[filePath].async("string");
+      const originalPath = getOriginalPath(filePath);
+      const content = await zip.files[originalPath].async("string");
       const pkgDeps = analyzePackageJson(content);
       dependencies.push(...pkgDeps);
       onProgress(30, `package.json analysé (${pkgDeps.length} dépendances)`);
@@ -351,7 +404,7 @@ export async function analyzeZipFile(
     f => (f.endsWith(".tsx") || f.endsWith(".ts") || f.endsWith(".jsx") || f.endsWith(".js") || 
           f.endsWith(".html") || f.endsWith(".json")) &&
          !f.includes("node_modules") &&
-         !zip.files[f].dir
+         !zip.files[getOriginalPath(f)]?.dir
   );
 
   const extractedFiles = new Map<string, string>();
@@ -364,8 +417,9 @@ export async function analyzeZipFile(
     // Skip files to remove
     if (filesToRemove.includes(filePath)) continue;
     
-    const content = await zip.files[filePath].async("string");
-    extractedFiles.set(filePath, content);
+    const originalPath = getOriginalPath(filePath);
+    const content = await zip.files[originalPath].async("string");
+    extractedFiles.set(filePath, content); // Use normalized path as key
     
     // Analyser le fichier
     const fileIssues = analyzeSourceFile(filePath, content);
@@ -403,7 +457,7 @@ export async function analyzeZipFile(
 
   // Analyser les services coûteux
   const pkgJsonForCost = files.find(f => f.endsWith("package.json") && !f.includes("node_modules"));
-  const pkgContentForCost = pkgJsonForCost ? await zip.files[pkgJsonForCost].async("string") : undefined;
+  const pkgContentForCost = pkgJsonForCost ? await zip.files[getOriginalPath(pkgJsonForCost)].async("string") : undefined;
   const costAnalysis = analyzeCostlyServices(extractedFiles, pkgContentForCost);
 
   onProgress(100, "Analyse terminée !");

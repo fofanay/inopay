@@ -6636,10 +6636,53 @@ serve(async (req) => {
     // ==========================================
     
     // ==========================================
-    // 1a. VALIDATION ET CORRECTION DU PACKAGE.JSON
+    // 1a. NORMALISATION DES CHEMINS (supprimer préfixe racine commun)
     // ==========================================
-    const allContentForValidation = Object.values(doubleCleanedFiles).join('\n');
-    const packageJsonFix = validateAndFixPackageJson(doubleCleanedFiles, allContentForValidation);
+    const paths = Object.keys(doubleCleanedFiles);
+    let rootPrefix = '';
+    
+    // Detect common root folder prefix (e.g., "project-name/...")
+    if (paths.length > 0) {
+      const validPaths = paths.filter(p => !p.endsWith('/'));
+      if (validPaths.length > 0) {
+        const firstPath = validPaths[0];
+        const firstSlashIndex = firstPath.indexOf('/');
+        
+        if (firstSlashIndex > 0) {
+          const potentialPrefix = firstPath.substring(0, firstSlashIndex + 1);
+          const allHavePrefix = validPaths.every(p => p.startsWith(potentialPrefix));
+          
+          if (allHavePrefix) {
+            rootPrefix = potentialPrefix;
+            console.log(`[generate-liberation-pack] Detected root folder prefix: "${rootPrefix.slice(0, -1)}", normalizing paths...`);
+          }
+        }
+      }
+    }
+    
+    // Helper to normalize path (remove root prefix)
+    const normalizePath = (path: string): string => {
+      if (rootPrefix && path.startsWith(rootPrefix)) {
+        return path.substring(rootPrefix.length);
+      }
+      return path;
+    };
+    
+    // Create normalized files map
+    const normalizedFiles: Record<string, string> = {};
+    for (const [path, content] of Object.entries(doubleCleanedFiles)) {
+      const normalizedPath = normalizePath(path);
+      normalizedFiles[normalizedPath] = content as string;
+    }
+    
+    // Use normalized files for all subsequent operations
+    const filesToProcess = normalizedFiles;
+    
+    // ==========================================
+    // 1b. VALIDATION ET CORRECTION DU PACKAGE.JSON
+    // ==========================================
+    const allContentForValidation = Object.values(filesToProcess).join('\n');
+    const packageJsonFix = validateAndFixPackageJson(filesToProcess, allContentForValidation);
     
     if (packageJsonFix.fixed) {
       console.log(`[generate-liberation-pack] Fixed package.json - added: ${packageJsonFix.added.join(', ')}`);
@@ -6649,7 +6692,7 @@ serve(async (req) => {
     }
     
     // Fichiers source directement à la racine (pas de dossier frontend/)
-    for (const [path, content] of Object.entries(doubleCleanedFiles)) {
+    for (const [path, content] of Object.entries(filesToProcess)) {
       if (!path.startsWith('supabase/')) {
         zip.file(path, content as string);
       }
@@ -6702,7 +6745,7 @@ serve(async (req) => {
     // ==========================================
     // 1c. POLYFILLS AUTOMATIQUES (pour éviter erreurs TS)
     // ==========================================
-    const polyfillResult = addPolyfillsToFrontend(zip, doubleCleanedFiles);
+    const polyfillResult = addPolyfillsToFrontend(zip, filesToProcess);
     if (polyfillResult.count > 0) {
       console.log(`[generate-liberation-pack] Added ${polyfillResult.count} polyfills: ${polyfillResult.added.join(', ')}`);
     }
@@ -6892,7 +6935,7 @@ ${Array.from(allEnvVars)
       const migrationsFolder = dbFolder.folder('migrations')!;
 
       // Extraction automatique du schéma
-      extractedSchema = extractSchemaFromProject(doubleCleanedFiles, sqlSchema);
+      extractedSchema = extractSchemaFromProject(filesToProcess, sqlSchema);
       
       console.log(`[generate-liberation-pack] Schema extracted from: ${extractedSchema.source}, tables: ${extractedSchema.tables.length}`);
 
