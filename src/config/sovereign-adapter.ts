@@ -26,9 +26,11 @@ export interface InfraConfig {
     url: string;
   };
   ai: {
-    provider: 'deepseek' | 'ollama' | 'openai' | 'anthropic';
+    // Types IA 100% Souverains - Zéro Cloud Propriétaire
+    provider: 'ollama' | 'lmstudio' | 'openwebui' | 'openai-compatible' | 'local' | 'none';
     url: string;
     apiKey?: string;
+    model?: string;
   };
   email: {
     provider: 'resend' | 'smtp' | 'sendgrid';
@@ -79,8 +81,9 @@ export const getInfraConfig = (): InfraConfig => {
         url: import.meta.env.VITE_SUPABASE_URL || '',
       },
       ai: {
-        provider: 'deepseek',
-        url: 'https://api.deepseek.com',
+        provider: 'openai-compatible',
+        url: import.meta.env.VITE_AI_BASE_URL || 'http://localhost:11434/v1',
+        model: import.meta.env.VITE_AI_MODEL || 'llama3',
       },
       email: {
         provider: 'resend',

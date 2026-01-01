@@ -12,7 +12,14 @@
 export type InfraMode = 'cloud' | 'self-hosted' | 'hybrid';
 export type StorageProvider = 'supabase' | 'minio' | 's3';
 export type AuthProvider = 'supabase' | 'pocketbase' | 'custom';
-export type AIProvider = 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'custom';
+// Types IA 100% Souverains - Zéro Cloud Propriétaire
+export type AIProvider = 
+  | 'ollama'           // Ollama local (recommandé)
+  | 'lmstudio'         // LM Studio
+  | 'openwebui'        // Open WebUI
+  | 'openai-compatible' // API compatible OpenAI (self-hosted)
+  | 'local'            // Modèle local embarqué
+  | 'none';            // Sans IA
 export type EmailProvider = 'resend' | 'smtp' | 'sendgrid';
 export type RealtimeProvider = 'supabase' | 'soketi' | 'pusher';
 export type SearchProvider = 'postgres' | 'meilisearch' | 'algolia';
@@ -120,8 +127,9 @@ const buildCloudConfig = (): InfraConfig => ({
     url: env('VITE_SUPABASE_URL'),
   },
   ai: {
-    provider: 'openai',
-    url: env('VITE_AI_BASE_URL', 'https://api.openai.com/v1'),
+    provider: 'openai-compatible',
+    url: env('VITE_AI_BASE_URL', 'http://localhost:11434/v1'),
+    model: env('VITE_AI_MODEL', 'llama3'),
   },
   email: {
     provider: 'resend',

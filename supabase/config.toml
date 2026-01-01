@@ -224,3 +224,12 @@ verify_jwt = false
 
 [functions.generate-liberation-pack]
 verify_jwt = false
+
+[functions.liberate]
+verify_jwt = false
+
+[functions.audit]
+verify_jwt = false
+
+[functions.download-liberation]
+verify_jwt = false

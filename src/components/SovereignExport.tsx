@@ -61,8 +61,9 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 # GitHub
 GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx
 
-# IA
-ANTHROPIC_API_KEY=sk-ant-xxx`,
+# IA Souveraine (optionnel - compatible Ollama, LMStudio, OpenWebUI)
+AI_BASE_URL=http://localhost:11434
+AI_MODEL=llama3`,
 
   "INSTALL.md": `# 🚀 Installation Inopay - Guide Complet
 
