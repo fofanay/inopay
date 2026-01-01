@@ -34,7 +34,7 @@ interface SecurityEvent {
   ip_address: unknown;
   user_id: string | null;
   endpoint: string | null;
-  details: Record<string, unknown>;
+  details: unknown;
   severity: string;
   created_at: string;
 }
@@ -91,21 +91,23 @@ export function AdminSecurityDashboard() {
       const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
       const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      const lastHourEvents = (eventsData || []).filter(
-        (e: SecurityEvent) => new Date(e.created_at) > hourAgo
+      const typedEvents = (eventsData || []) as SecurityEvent[];
+      
+      const lastHourEvents = typedEvents.filter(
+        (e) => new Date(e.created_at) > hourAgo
       ).length;
 
-      const criticalEvents = (eventsData || []).filter(
-        (e: SecurityEvent) => e.severity === "critical" || e.severity === "error"
+      const criticalEvents = typedEvents.filter(
+        (e) => e.severity === "critical" || e.severity === "error"
       ).length;
 
-      const rateLimitHits = (eventsData || []).filter(
-        (e: SecurityEvent) => e.event_type === "rate_limit_exceeded"
+      const rateLimitHits = typedEvents.filter(
+        (e) => e.event_type === "rate_limit_exceeded"
       ).length;
 
       // Simple trend calculation
-      const previousHour = (eventsData || []).filter(
-        (e: SecurityEvent) => {
+      const previousHour = typedEvents.filter(
+        (e) => {
           const date = new Date(e.created_at);
           return date > dayAgo && date < hourAgo;
         }
@@ -391,7 +393,7 @@ export function AdminSecurityDashboard() {
                         <div className="mt-1 text-sm text-muted-foreground">
                           {event.ip_address && (
                             <span className="mr-3">
-                              IP: <code className="bg-muted px-1 rounded">{event.ip_address}</code>
+                              IP: <code className="bg-muted px-1 rounded">{String(event.ip_address)}</code>
                             </span>
                           )}
                           {event.endpoint && (
