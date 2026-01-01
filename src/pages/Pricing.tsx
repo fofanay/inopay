@@ -54,6 +54,13 @@ const Pricing = () => {
     }
   };
 
+  // Get translated features arrays
+  const freeFeatures = t("pricingPage.free.features", { returnObjects: true }) as string[];
+  const liberationFeatures = t("pricingPage.liberationPack.features", { returnObjects: true }) as string[];
+  const enterpriseFeatures = t("pricingPage.enterprise.features", { returnObjects: true }) as string[];
+  const processSteps = t("pricingPage.process.steps", { returnObjects: true }) as Array<{ step: string; title: string; desc: string }>;
+  const whatsIncludedItems = t("pricingPage.whatsIncluded.items", { returnObjects: true }) as Array<{ title: string; desc: string }>;
+
   const mainOffers = [
     {
       id: "free",
@@ -63,54 +70,38 @@ const Pricing = () => {
       description: t("pricingPage.free.description"),
       icon: Sparkles,
       popular: false,
-      features: [
-        "Score de souveraineté complet",
-        "Audit des dépendances propriétaires",
-        "Prévisualisation du nettoyage IA",
-        "Recommandations personnalisées",
-      ],
-      cta: user ? t("pricingPage.free.cta") : t("pricingPage.free.ctaLoggedIn"),
+      features: freeFeatures,
+      cta: user ? t("pricingPage.free.ctaLoggedIn") : t("pricingPage.free.cta"),
       action: () => navigate(user ? "/dashboard" : "/auth"),
     },
     {
       id: "liberationPack",
-      name: "Liberation Pack",
-      price: "79$",
-      period: "one-time",
-      description: "ZIP autonome prêt à déployer sur n'importe quel VPS",
+      name: t("pricingPage.liberationPack.name"),
+      price: t("pricingPage.liberationPack.price"),
+      period: t("pricingPage.liberationPack.period"),
+      description: t("pricingPage.liberationPack.description"),
       icon: FolderArchive,
       popular: true,
-      features: [
-        "Nettoyage IA exhaustif (10 passes)",
-        "Score de souveraineté garanti > 95%",
-        "ZIP autonome téléchargeable",
-        "docker-compose.yml inclus",
-        "Guide de déploiement HTML",
-        "Polyfills générés automatiquement",
-      ],
-      cta: "Générer mon Liberation Pack",
+      features: liberationFeatures,
+      cta: t("pricingPage.liberationPack.cta"),
       action: () => handleCheckout(STRIPE_PRICES.liberationPack, "liberationPack"),
     },
     {
       id: "enterprise",
-      name: "Sur Mesure",
-      price: "Sur devis",
+      name: t("pricingPage.enterprise.name"),
+      price: t("pricingPage.enterprise.price"),
       period: "",
-      description: "Pour les gros projets (+50 fichiers) ou besoins spécifiques",
+      description: t("pricingPage.enterprise.description"),
       icon: FileText,
       popular: false,
-      features: [
-        "Supplément calculé automatiquement",
-        "Support dédié pendant migration",
-        "Configuration backend incluse",
-        "Migration base de données",
-        "Consultation architecture",
-        "SLA personnalisé",
-      ],
-      cta: "Nous contacter",
+      features: enterpriseFeatures,
+      cta: t("pricingPage.enterprise.cta"),
       action: () => window.open("mailto:support@inopay.io?subject=Liberation Pack Enterprise", "_blank"),
     },
   ];
+
+  const stepIcons = [Sparkles, Zap, Download];
+  const includedIcons = [FolderArchive, FileText, Shield, Download];
 
   return (
     <Layout>
@@ -120,14 +111,14 @@ const Pricing = () => {
         <div className="container mx-auto px-4 text-center">
           <Badge className="mb-6 bg-primary/10 text-primary border-primary/20">
             <Gift className="h-3 w-3 mr-1" />
-            Modèle Simple & Transparent
+            {t("pricingPage.hero.badge")}
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            <span className="text-foreground">Un prix. </span>
-            <span className="text-primary">Une libération.</span>
+            <span className="text-foreground">{t("pricingPage.hero.title1")} </span>
+            <span className="text-primary">{t("pricingPage.hero.title2")}</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Pas d'abonnement mensuel obligatoire. Payez une fois, possédez votre code pour toujours.
+            {t("pricingPage.hero.subtitle")}
           </p>
         </div>
       </section>
@@ -147,7 +138,7 @@ const Pricing = () => {
               >
                 {offer.popular && (
                   <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
-                    POPULAIRE
+                    {t("pricingPage.popular")}
                   </div>
                 )}
                 <CardHeader className="pb-4 pt-8">
@@ -165,7 +156,7 @@ const Pricing = () => {
                     <span className="text-4xl font-bold text-foreground">{offer.price}</span>
                     {offer.period && (
                       <span className="text-sm text-muted-foreground">
-                        {offer.period === "one-time" ? "paiement unique" : `/${offer.period}`}
+                        {offer.period === "one-time" ? t("pricingPage.oneTimePayment") : `/${offer.period}`}
                       </span>
                     )}
                   </div>
@@ -193,7 +184,7 @@ const Pricing = () => {
                     {loadingPlan === offer.id ? (
                       <span className="flex items-center gap-2">
                         <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Chargement...
+                        {t("pricingPage.loading")}
                       </span>
                     ) : (
                       <>
@@ -213,30 +204,29 @@ const Pricing = () => {
       <section className="py-12 md:py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">Comment ça marche ?</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">{t("pricingPage.process.title")}</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              De l'analyse à la production en 10 minutes
+              {t("pricingPage.process.subtitle")}
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              { step: "1", title: "Analysez", desc: "Upload votre ZIP ou connectez GitHub", icon: Sparkles },
-              { step: "2", title: "Nettoyez", desc: "L'IA supprime les dépendances propriétaires", icon: Zap },
-              { step: "3", title: "Téléchargez", desc: "ZIP autonome prêt à déployer", icon: Download },
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="relative inline-flex items-center justify-center mb-4">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <item.icon className="h-8 w-8 text-primary" />
+            {processSteps.map((item, index) => {
+              const IconComponent = stepIcons[index];
+              return (
+                <div key={index} className="text-center">
+                  <div className="relative inline-flex items-center justify-center mb-4">
+                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <IconComponent className="h-8 w-8 text-primary" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                      {item.step}
+                    </div>
                   </div>
-                  <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                    {item.step}
-                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.desc}</p>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -245,27 +235,25 @@ const Pricing = () => {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <Badge className="mb-4 bg-muted text-muted-foreground">Liberation Pack</Badge>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">Ce que vous obtenez</h2>
-            <p className="text-muted-foreground">Un pack autonome prêt à déployer n'importe où</p>
+            <Badge className="mb-4 bg-muted text-muted-foreground">{t("pricingPage.whatsIncluded.badge")}</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">{t("pricingPage.whatsIncluded.title")}</h2>
+            <p className="text-muted-foreground">{t("pricingPage.whatsIncluded.subtitle")}</p>
           </div>
           <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: FolderArchive, title: "ZIP complet", desc: "Frontend + Backend + Config" },
-              { icon: FileText, title: "docker-compose.yml", desc: "Déploiement en une commande" },
-              { icon: Shield, title: "Code nettoyé", desc: "Aucune dépendance propriétaire" },
-              { icon: Download, title: "Guide HTML", desc: "Instructions pas à pas" },
-            ].map((item, index) => (
-              <Card key={index} className="border-border hover:border-primary/50 transition-colors">
-                <CardContent className="p-6 text-center">
-                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <item.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold mb-1">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground">{item.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {whatsIncludedItems.map((item, index) => {
+              const IconComponent = includedIcons[index];
+              return (
+                <Card key={index} className="border-border hover:border-primary/50 transition-colors">
+                  <CardContent className="p-6 text-center">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold mb-1">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -275,9 +263,9 @@ const Pricing = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap justify-center gap-8 items-center">
             {[
-              { icon: Shield, text: "Zero-Knowledge" },
-              { icon: Clock, text: "Déploiement en 10 min" },
-              { icon: Package, text: "Code 100% à vous" },
+              { icon: Shield, text: t("pricingPage.trust.zeroKnowledge") },
+              { icon: Clock, text: t("pricingPage.trust.deployment") },
+              { icon: Package, text: t("pricingPage.trust.ownership") },
             ].map((badge, index) => (
               <div key={index} className="flex items-center gap-2 text-muted-foreground">
                 <badge.icon className="h-5 w-5 text-primary" />
@@ -299,14 +287,14 @@ const Pricing = () => {
       <section className="py-16 md:py-24 bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Prêt à libérer votre création ?
+            {t("pricingPage.finalCta.title")}
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-            Analysez gratuitement votre projet et découvrez votre Vibe-Score™
+            {t("pricingPage.finalCta.subtitle")}
           </p>
           <Link to={user ? "/dashboard" : "/auth"}>
             <Button size="lg" className="rounded-full px-8">
-              {user ? "Aller au Dashboard" : "Commencer gratuitement"}
+              {user ? t("pricingPage.finalCta.buttonLoggedIn") : t("pricingPage.finalCta.button")}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
