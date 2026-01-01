@@ -1,73 +1,160 @@
-# Welcome to your Lovable project
+# INOPAY - Plateforme de Libération de Code
 
-## Project info
+> **Libérez votre code des dépendances propriétaires et déployez en toute souveraineté.**
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
 
-## How can I edit this code?
+## 🚀 Qu'est-ce qu'INOPAY?
 
-There are several ways of editing your application.
+INOPAY est un PaaS (Platform as a Service) qui permet de:
+- **Scanner** votre code pour détecter les dépendances propriétaires
+- **Nettoyer** automatiquement les imports et patterns non-portables
+- **Reconstruire** avec des alternatives open-source souveraines
+- **Déployer** sur votre propre infrastructure (VPS, Coolify, Docker)
 
-**Use Lovable**
+## 📦 Installation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Prérequis
+- Node.js 18+ 
+- npm ou bun
+- Docker (pour le déploiement souverain)
 
-Changes made via Lovable will be committed automatically to this repo.
+### Installation locale
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Cloner le repository
 git clone <YOUR_GIT_URL>
+cd inopay
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Installer les dépendances
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Lancer en développement
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Installation CLI
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+# Installation globale
+npm install -g inopay-cli
 
-**Use GitHub Codespaces**
+# Utilisation
+inopay liberate ./mon-projet
+inopay audit ./mon-projet
+inopay scan ./mon-projet
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🏗️ Architecture
 
-## What technologies are used for this project?
+```
+inopay/
+├── src/                          # Frontend React
+│   ├── components/
+│   │   ├── dashboard/            # Composants du dashboard
+│   │   │   └── LiberationPackHub.tsx  # Hub central de libération
+│   │   └── ui/                   # Composants UI (shadcn)
+│   ├── lib/
+│   │   ├── unifiedLiberator.ts   # Orchestrateur unifié
+│   │   ├── lovablePatternScanner.ts
+│   │   ├── lovableCleanerEngine.ts
+│   │   ├── astRefactor.ts
+│   │   └── projectRebuilder.ts
+│   └── pages/
+├── backend/                      # Backend Express
+│   └── src/
+│       └── routes/
+│           └── liberate.ts       # API de libération
+├── supabase/
+│   └── functions/                # 95+ Edge Functions
+├── cli/                          # CLI Inopay
+└── docker/                       # Configuration Docker
+```
 
-This project is built with:
+## 🔧 Configuration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Variables d'environnement
 
-## How can I deploy this project?
+Créez un fichier `.env` à la racine:
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```env
+# Supabase (auto-configuré avec Lovable Cloud)
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJxxx
 
-## Can I connect a custom domain to my Lovable project?
+# Stripe (paiements)
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
 
-Yes, you can!
+# GitHub (export)
+GITHUB_TOKEN=ghp_xxx
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Email (Resend)
+RESEND_API_KEY=re_xxx
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 🚢 Déploiement
+
+### Option 1: Lovable Cloud (Recommandé)
+
+Cliquez sur **Publish** dans l'interface Lovable.
+
+### Option 2: Self-Hosted (VPS)
+
+```bash
+# Sur votre VPS
+curl -sSL https://inopay.dev/install.sh | bash
+
+# Ou manuellement
+docker-compose -f docker/docker-compose.sovereign.yml up -d
+```
+
+### Option 3: Coolify
+
+1. Connectez votre serveur Coolify
+2. Importez depuis GitHub
+3. INOPAY détecte automatiquement le Dockerfile
+
+## 📖 Documentation
+
+- [Guide d'installation complet](./INSTALL.md)
+- [Guide de migration](./MIGRATION_GUIDE.md)
+- [Référence CLI](./docs/CLI_REFERENCE.md)
+- [API Liberator](./docs/LIBERATOR_API.md)
+- [Self-hosting](./docs/SELF_HOSTING.md)
+
+## 🔒 Sécurité
+
+- Authentification email avec OTP
+- Row Level Security (RLS) sur toutes les tables
+- Chiffrement des secrets utilisateur
+- Rate limiting sur les API
+- Protection CORS configurée
+
+## 🛠️ Stack Technique
+
+| Composant | Technologie |
+|-----------|-------------|
+| Frontend | React 18, Vite, TypeScript |
+| Styling | Tailwind CSS, shadcn/ui |
+| Backend | Supabase Edge Functions, Express |
+| Database | PostgreSQL (Supabase) |
+| Auth | Supabase Auth |
+| Paiements | Stripe |
+| Déploiement | Docker, Coolify, Caddy |
+
+## 📊 Métriques
+
+- **95+ Edge Functions** déployées
+- **34 tables** PostgreSQL avec RLS
+- **Score de préparation**: 97%
+
+## 🤝 Support
+
+- Email: support@inopay.dev
+- Documentation: https://docs.inopay.dev
+
+---
+
+© 2024 Inovaq Canada Inc. Tous droits réservés.
