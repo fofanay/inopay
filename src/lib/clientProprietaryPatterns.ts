@@ -2210,6 +2210,11 @@ export function calculateSovereigntyScore(
       if (/['"][^'"]*lovable[^'"]*['"]\s*[,:\]]/i.test(line)) continue;
       if (/['"][^'"]*gptengineer[^'"]*['"]\s*[,:\]]/i.test(line)) continue;
       
+      // Skip if it's a module title/description comment (e.g., "Lovable Cleaner Engine", "Lovable Pattern Scanner")
+      // These are Inopay's own modules, not proprietary comments
+      if (/^\s*\*.*(?:Engine|Scanner|Cleaner|Liberation|Sovereign|Validator|Downloader)/i.test(line)) continue;
+      if (/^\s*\/\*\*?\s*\n?\s*\*?\s*(?:Lovable|GPT).*(?:Engine|Scanner|Cleaner|Liberation)/i.test(content)) continue;
+      
       // Check for real line comment: starts with // or has // not preceded by :
       // Exclude URLs by checking that // is not preceded by http: or https:
       const commentMatch = trimmed.match(/(?<!https?:)\/\/\s*.*$/i);
@@ -2223,6 +2228,10 @@ export function calculateSovereigntyScore(
       // Verify it's not inside a regex literal
       const match = content.match(blockCommentPattern);
       if (match && !/new RegExp|\.replace\(|\.test\(|\.match\(/.test(content.slice(Math.max(0, content.indexOf(match[0]) - 50), content.indexOf(match[0])))) {
+        // Skip if it looks like a module description (contains Engine, Scanner, etc.)
+        if (/(?:Engine|Scanner|Cleaner|Liberation|Sovereign|Validator)/i.test(match[0])) {
+          return false;
+        }
         return true;
       }
     }
@@ -2241,6 +2250,7 @@ export function calculateSovereigntyScore(
   // Helper: check if file is whitelisted (Inopay internal files)
   const isWhitelistedPath = (filePath: string): boolean => {
     const internalPaths = [
+      // Pattern detection files (contain patterns for detection, not proprietary code)
       'clientProprietaryPatterns',
       'proprietary-patterns',
       'security-cleaner',
@@ -2250,6 +2260,36 @@ export function calculateSovereigntyScore(
       'zipAnalyzer',
       'LiberationPackHub',
       '__tests__/aiReplacements',
+      
+      // Liberation engine files (Inopay core - contain "lovable" in name/content for cleaning purposes)
+      'lovableCleanerEngine',
+      'lovablePatternScanner',
+      'AssetDownloader',
+      'TypeScriptValidator',
+      'LiberationPipeline',
+      'FileDiffPreview',
+      'SovereignLiberationPipeline',
+      'ncsV2',
+      'completeLiberationGuide',
+      'unifiedLiberator',
+      'packValidator',
+      'liberatorCore',
+      'unifiedLLM',
+      'sovereignAIAdapter',
+      'projectRebuilder',
+      
+      // CLI files
+      'cli/src',
+      'cli/bin',
+      
+      // Dashboard liberation components
+      'dashboard/liberation/',
+      'SovereignExport',
+      'SovereignDeploymentWizard',
+      'SovereigntySetupWizard',
+      'SovereigntyPulse',
+      'SovereignExit',
+      
       // Inopay project files that legitimately contain Supabase IDs or references
       'SovereignConnections',
       'sovereign-adapter',
@@ -2263,6 +2303,15 @@ export function calculateSovereigntyScore(
       '.env.example',
       'INSTALL.md',
       'self-host',
+      
+      // Edge functions for liberation
+      'supabase/functions/liberate',
+      'supabase/functions/clean-code',
+      'supabase/functions/verify-zero-shadow-door',
+      'supabase/functions/generate-liberation-pack',
+      'supabase/functions/sovereign-liberation',
+      'supabase/functions/process-project-liberation',
+      'supabase/functions/diff-clean',
     ];
     return internalPaths.some(p => filePath.includes(p));
   };
@@ -2320,7 +2369,16 @@ export function calculateSovereigntyScore(
       if (isRealImport(content, keyword)) {
         // Skip if we've already replaced with standard alternatives
         if (keyword === '@/hooks/use-toast' && content.includes("from 'sonner'")) continue;
-        if (keyword === '@/hooks/use-mobile' && content.includes('const useIsMobile')) continue;
+        
+        // For use-mobile: check if the local hook file exists in the project
+        // If it exists, it's sovereign (local file), not proprietary
+        if (keyword === '@/hooks/use-mobile') {
+          const hasLocalHook = Object.keys(cleanedFiles).some(p => 
+            p.includes('hooks/use-mobile') || p.includes('hooks/useMobile')
+          );
+          if (hasLocalHook || content.includes('const useIsMobile')) continue;
+        }
+        
         if (keyword === 'lovable-tagger') {
           // Check it's not replaced with null
           if (/import\s*\(\s*['"]lovable-tagger['"]\s*\)/.test(content) === false) continue;
@@ -2363,9 +2421,31 @@ export function calculateSovereigntyScore(
     }
     
     // Check for proprietary comments - using contextual detection
+    // IMPORTANT: Skip files that are part of Inopay's liberation engine
+    // These files legitimately contain "lovable" references as they are the CLEANER, not the TARGET
+    const isLiberationEngineFile = (p: string): boolean => {
+      const liberationPatterns = [
+        /lovable.*Engine/i,
+        /lovable.*Scanner/i,
+        /liberation/i,
+        /sovereign/i,
+        /AssetDownloader/i,
+        /packValidator/i,
+        /liberatorCore/i,
+        /unifiedLLM/i,
+        /ncsV2/i,
+        /zipAnalyzer/i,
+        /cli\/src/i,
+        /supabase\/functions\/(liberate|clean-code|verify-zero|generate-liberation|sovereign-liberation|process-project-liberation|diff-clean)/i,
+      ];
+      return liberationPatterns.some(pattern => pattern.test(p));
+    };
+    
     if (isRealComment(content, 'lovable') || isRealComment(content, 'gptengineer')) {
-      // Skip patterns file
-      if (!path.includes('clientProprietaryPatterns') && !path.includes('proprietary-patterns')) {
+      // Skip patterns file and liberation engine files
+      if (!path.includes('clientProprietaryPatterns') && 
+          !path.includes('proprietary-patterns') &&
+          !isLiberationEngineFile(path)) {
         score -= 5;
         details.push(`MINEUR: Commentaire propriétaire dans ${path}`);
       }
