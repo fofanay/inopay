@@ -2014,11 +2014,16 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
                   files={cleanedFiles}
                   onValidationComplete={(isValid, errors) => {
                     setIsCodeValid(isValid);
-                    if (!isValid) {
-                      const frontendErrors = errors.filter(e => e.severity === 'error' && e.category !== 'backend');
-                      if (frontendErrors.length > 0) {
-                        toast.warning(`${frontendErrors.length} erreur${frontendErrors.length > 1 ? 's' : ''} frontend détectée${frontendErrors.length > 1 ? 's' : ''}`);
-                      }
+                    // Only show toast for actual frontend errors
+                    const frontendErrors = errors.filter(e => 
+                      e.severity === 'error' && 
+                      e.category !== 'backend' && 
+                      e.category !== 'tooling'
+                    );
+                    if (frontendErrors.length > 0) {
+                      toast.warning(`${frontendErrors.length} erreur${frontendErrors.length > 1 ? 's' : ''} frontend`);
+                    } else if (isValid) {
+                      toast.success('Validation frontend réussie');
                     }
                   }}
                   onAutoFix={(fixedFiles) => {
