@@ -26,7 +26,7 @@ i18n
       lookupLocalStorage: 'inopay-language',
     },
     react: {
-      useSuspense: true,
+      useSuspense: false,
     },
   });
 
