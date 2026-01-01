@@ -1,0 +1,134 @@
+# ═══════════════════════════════════════════════════════════════
+# INOPAY CADDYFILE
+# Reverse proxy with automatic HTTPS
+# ═══════════════════════════════════════════════════════════════
+
+# Global options
+{
+	email {$SSL_EMAIL}
+	# Uncomment for staging certificates during testing
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# Main site configuration
+{$DOMAIN:localhost} {
+	# ═══════════════════════════════════════════════════════════
+	# SSL Configuration (automatic with Let's Encrypt)
+	# ═══════════════════════════════════════════════════════════
+	tls {
+		protocols tls1.2 tls1.3
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Security Headers
+	# ═══════════════════════════════════════════════════════════
+	header {
+		# Security headers
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		
+		# HSTS (uncomment in production with valid SSL)
+		# Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		
+		# Remove server identification
+		-Server
+		-X-Powered-By
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# API Routes → Backend
+	# ═══════════════════════════════════════════════════════════
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:3001 {
+			header_up Host {host}
+			header_up X-Real-IP {remote}
+			header_up X-Forwarded-For {remote}
+			header_up X-Forwarded-Proto {scheme}
+			
+			# Timeouts for long operations
+			transport http {
+				dial_timeout 30s
+				response_header_timeout 300s
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Health Check Endpoint
+	# ═══════════════════════════════════════════════════════════
+	handle /health {
+		respond "OK" 200
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Metrics (internal only)
+	# ═══════════════════════════════════════════════════════════
+	@internal {
+		remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1
+	}
+	handle /metrics* {
+		@external not remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1
+		respond @external "Forbidden" 403
+		reverse_proxy backend:3001
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# WebSocket Support
+	# ═══════════════════════════════════════════════════════════
+	handle /ws/* {
+		reverse_proxy backend:3001 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Static Assets → Frontend
+	# ═══════════════════════════════════════════════════════════
+	handle /assets/* {
+		reverse_proxy frontend:80 {
+			header_up Host {host}
+		}
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Frontend (SPA) - Catch All
+	# ═══════════════════════════════════════════════════════════
+	handle {
+		reverse_proxy frontend:80 {
+			header_up Host {host}
+			header_up X-Real-IP {remote}
+			header_up X-Forwarded-For {remote}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# ═══════════════════════════════════════════════════════════
+	# Compression
+	# ═══════════════════════════════════════════════════════════
+	encode gzip zstd
+
+	# ═══════════════════════════════════════════════════════════
+	# Logging
+	# ═══════════════════════════════════════════════════════════
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10mb
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format json
+		level INFO
+	}
+}
+
+# ═══════════════════════════════════════════════════════════════
+# HTTP → HTTPS Redirect (handled automatically by Caddy)
+# ═══════════════════════════════════════════════════════════════
