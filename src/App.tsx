@@ -29,7 +29,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <Suspense fallback={<div className="flex items-center justify-center h-screen">Chargement...</div>}>
+  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
