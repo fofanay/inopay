@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,10 +49,17 @@ interface ValidationError {
   category?: "frontend" | "backend" | "config";
 }
 
+interface AutoFixResult {
+  fixedFiles: Record<string, string>;
+  fixCount: number;
+  fixedPatterns: string[];
+}
+
 interface TypeScriptValidatorProps {
   files: Record<string, string>;
   onValidationComplete: (isValid: boolean, errors: ValidationError[]) => void;
   onContinueAnyway?: () => void;
+  onAutoFix?: (fixedFiles: Record<string, string>) => void;
 }
 
 // Patterns to identify backend files (should not block frontend validation)
@@ -114,6 +122,84 @@ const SYNTAX_ERROR_PATTERNS: Array<{
   // Async/await issues
   { pattern: /await\s+[^;]*(?<!;)\s*$/m, message: "await sans point-virgule", severity: "warning" },
 ];
+
+/**
+ * Auto-fix common issues that can be safely corrected automatically
+ */
+function autoFixFiles(files: Record<string, string>): AutoFixResult {
+  const fixedFiles: Record<string, string> = {};
+  let fixCount = 0;
+  const fixedPatterns: string[] = [];
+  
+  for (const [filePath, content] of Object.entries(files)) {
+    // Skip non-JS/TS files
+    if (!/\.(ts|tsx|js|jsx)$/.test(filePath)) {
+      fixedFiles[filePath] = content;
+      continue;
+    }
+    
+    // Skip backend files
+    if (isBackendFile(filePath)) {
+      fixedFiles[filePath] = content;
+      continue;
+    }
+    
+    let fixed = content;
+    const originalContent = content;
+    
+    // 1. Remove console.log/debug/info statements (complete lines)
+    const consolePattern = /^\s*console\.(log|debug|info)\s*\([^)]*\);?\s*$/gm;
+    if (consolePattern.test(fixed)) {
+      fixed = fixed.replace(consolePattern, '');
+      if (!fixedPatterns.includes('console.log')) {
+        fixedPatterns.push('console.log');
+      }
+    }
+    
+    // 2. Remove empty imports: import {} from '...'
+    const emptyImportPattern = /import\s*{\s*}\s*from\s*['"][^'"]+['"];?\n?/g;
+    if (emptyImportPattern.test(fixed)) {
+      fixed = fixed.replace(emptyImportPattern, '');
+      if (!fixedPatterns.includes('imports vides')) {
+        fixedPatterns.push('imports vides');
+      }
+    }
+    
+    // 3. Remove empty JSX fragments: <></>
+    const emptyFragmentPattern = /<>\s*<\/>/g;
+    if (emptyFragmentPattern.test(fixed)) {
+      fixed = fixed.replace(emptyFragmentPattern, 'null');
+      if (!fixedPatterns.includes('fragments JSX vides')) {
+        fixedPatterns.push('fragments JSX vides');
+      }
+    }
+    
+    // 4. Remove empty template literals: ${}
+    const emptyTemplateLiteral = /\$\{\s*\}/g;
+    if (emptyTemplateLiteral.test(fixed)) {
+      fixed = fixed.replace(emptyTemplateLiteral, '');
+      if (!fixedPatterns.includes('template literals vides')) {
+        fixedPatterns.push('template literals vides');
+      }
+    }
+    
+    // 5. Clean up multiple empty lines (more than 2)
+    fixed = fixed.replace(/\n{4,}/g, '\n\n\n');
+    
+    // Count fixes for this file
+    if (fixed !== originalContent) {
+      fixCount++;
+    }
+    
+    fixedFiles[filePath] = fixed;
+  }
+  
+  return {
+    fixedFiles,
+    fixCount,
+    fixedPatterns,
+  };
+}
 
 // Check if a file is a backend file
 function isBackendFile(filePath: string): boolean {
@@ -288,12 +374,13 @@ function checkImports(content: string, filePath: string): ValidationError[] {
  * TypeScriptValidator - Validation TypeScript en temps réel
  * Détecte les erreurs de syntaxe avant génération du pack
  */
-export function TypeScriptValidator({ files, onValidationComplete, onContinueAnyway }: TypeScriptValidatorProps) {
+export function TypeScriptValidator({ files, onValidationComplete, onContinueAnyway, onAutoFix }: TypeScriptValidatorProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationProgress, setValidationProgress] = useState(0);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [hasRun, setHasRun] = useState(false);
+  const [isAutoFixing, setIsAutoFixing] = useState(false);
   
   // Filter options
   const [hideBackendErrors, setHideBackendErrors] = useState(true);
@@ -471,6 +558,30 @@ export function TypeScriptValidator({ files, onValidationComplete, onContinueAny
       onContinueAnyway();
     }
   };
+
+  // Handle auto-fix
+  const handleAutoFix = useCallback(async () => {
+    setIsAutoFixing(true);
+    
+    // Small delay for UI feedback
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const result = autoFixFiles(files);
+    
+    if (result.fixCount > 0 && onAutoFix) {
+      onAutoFix(result.fixedFiles);
+      toast.success(
+        `${result.fixCount} fichier${result.fixCount > 1 ? 's' : ''} corrigé${result.fixCount > 1 ? 's' : ''}: ${result.fixedPatterns.join(', ')}`
+      );
+      // Reset validation state so user re-runs
+      setHasRun(false);
+      setErrors([]);
+    } else {
+      toast.info('Aucune correction automatique applicable');
+    }
+    
+    setIsAutoFixing(false);
+  }, [files, onAutoFix]);
 
   return (
     <Card>
@@ -651,11 +762,22 @@ export function TypeScriptValidator({ files, onValidationComplete, onContinueAny
               </AlertDialogContent>
             </AlertDialog>
 
-            {/* Auto-fix suggestion */}
-            <Button variant="ghost" size="sm" disabled>
-              <Wand2 className="h-4 w-4 mr-2" />
-              Correction auto (bientôt)
-            </Button>
+            {/* Auto-fix button */}
+            {onAutoFix && (
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleAutoFix}
+                disabled={isAutoFixing}
+              >
+                {isAutoFixing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 mr-2" />
+                )}
+                Correction automatique
+              </Button>
+            )}
           </div>
         )}
 
