@@ -14,19 +14,54 @@ import { checkSubscriptionRouter } from './routes/check-subscription';
 import { createCheckoutRouter } from './routes/create-checkout';
 import { healthRouter } from './routes/health';
 
+// Security middleware
+import { 
+  apiLimiter, 
+  authLimiter, 
+  paymentLimiter, 
+  deployLimiter, 
+  aiLimiter,
+  bruteForceProtection,
+  suspiciousRequestLogger 
+} from './middleware/rateLimiter';
+import { sanitizeInputs, injectionProtection } from './middleware/inputValidator';
+
 // Configuration
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware de sécurité
-app.use(helmet());
+// Trust proxy pour obtenir les vraies IPs derrière un reverse proxy
+app.set('trust proxy', 1);
+
+// Middleware de sécurité de base
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://izqveyvcebolrqpqlmho.supabase.co"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS configuré
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-info', 'apikey'],
 }));
+
+// Logging
 app.use(morgan('combined'));
+
+// Détection des requêtes suspectes (avant le parsing)
+app.use(suspiciousRequestLogger);
 
 // Parser JSON (sauf pour les webhooks Stripe qui ont besoin du body brut)
 app.use((req, res, next) => {
@@ -37,14 +72,21 @@ app.use((req, res, next) => {
   }
 });
 
-// Routes
-app.use('/api/clean-code', cleanCodeRouter);
-app.use('/api/generate-archive', generateArchiveRouter);
-app.use('/api/deploy-ftp', deployFtpRouter);
-app.use('/api/export-github', exportGithubRouter);
-app.use('/api/stripe-webhook', stripeWebhookRouter);
-app.use('/api/check-subscription', checkSubscriptionRouter);
-app.use('/api/create-checkout', createCheckoutRouter);
+// Sanitisation et protection contre les injections
+app.use(sanitizeInputs);
+app.use(injectionProtection);
+
+// Protection brute-force globale
+app.use(bruteForceProtection());
+
+// Rate limiting par endpoint
+app.use('/api/clean-code', aiLimiter, cleanCodeRouter);
+app.use('/api/generate-archive', aiLimiter, generateArchiveRouter);
+app.use('/api/deploy-ftp', deployLimiter, deployFtpRouter);
+app.use('/api/export-github', deployLimiter, exportGithubRouter);
+app.use('/api/stripe-webhook', stripeWebhookRouter); // Pas de rate limit pour les webhooks
+app.use('/api/check-subscription', apiLimiter, checkSubscriptionRouter);
+app.use('/api/create-checkout', paymentLimiter, createCheckoutRouter);
 app.use('/health', healthRouter);
 
 // Gestion des erreurs globale
