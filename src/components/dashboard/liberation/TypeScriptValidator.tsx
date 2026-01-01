@@ -10,6 +10,9 @@ import {
   FileCode,
   ChevronRight,
   Bug,
+  SkipForward,
+  Wand2,
+  Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,11 +20,23 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ValidationError {
   file: string;
@@ -30,12 +45,23 @@ interface ValidationError {
   message: string;
   severity: "error" | "warning";
   code?: string;
+  category?: "frontend" | "backend" | "config";
 }
 
 interface TypeScriptValidatorProps {
   files: Record<string, string>;
   onValidationComplete: (isValid: boolean, errors: ValidationError[]) => void;
+  onContinueAnyway?: () => void;
 }
+
+// Patterns to identify backend files (should not block frontend validation)
+const BACKEND_FILE_PATTERNS = [
+  /^backend\//,
+  /^supabase\/functions\//,
+  /^server\//,
+  /^api\//,
+  /\.server\.(ts|js)$/,
+];
 
 // Common syntax error patterns to detect
 const SYNTAX_ERROR_PATTERNS: Array<{
@@ -89,6 +115,11 @@ const SYNTAX_ERROR_PATTERNS: Array<{
   { pattern: /await\s+[^;]*(?<!;)\s*$/m, message: "await sans point-virgule", severity: "warning" },
 ];
 
+// Check if a file is a backend file
+function isBackendFile(filePath: string): boolean {
+  return BACKEND_FILE_PATTERNS.some(pattern => pattern.test(filePath));
+}
+
 // Check for balanced brackets
 function checkBracketBalance(content: string): ValidationError[] {
   const errors: ValidationError[] = [];
@@ -99,7 +130,6 @@ function checkBracketBalance(content: string): ValidationError[] {
   // Skip string literals and comments for accurate bracket counting
   let inString = false;
   let stringChar = '';
-  let inComment = false;
   let inMultilineComment = false;
   
   for (let lineNum = 0; lineNum < lines.length; lineNum++) {
@@ -258,12 +288,17 @@ function checkImports(content: string, filePath: string): ValidationError[] {
  * TypeScriptValidator - Validation TypeScript en temps réel
  * Détecte les erreurs de syntaxe avant génération du pack
  */
-export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptValidatorProps) {
+export function TypeScriptValidator({ files, onValidationComplete, onContinueAnyway }: TypeScriptValidatorProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationProgress, setValidationProgress] = useState(0);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [hasRun, setHasRun] = useState(false);
+  
+  // Filter options
+  const [hideBackendErrors, setHideBackendErrors] = useState(true);
+  const [hideWarnings, setHideWarnings] = useState(false);
+  const [acknowledgeRisks, setAcknowledgeRisks] = useState(false);
 
   // Run validation
   const runValidation = useCallback(async () => {
@@ -285,10 +320,18 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
       // Small delay to show progress
       await new Promise(resolve => setTimeout(resolve, 10));
 
+      // Determine file category
+      const category: "frontend" | "backend" | "config" = isBackendFile(filePath) 
+        ? "backend" 
+        : filePath.includes('config') || filePath.includes('.config.')
+          ? "config"
+          : "frontend";
+
       // 1. Check bracket balance
       const bracketErrors = checkBracketBalance(content);
       bracketErrors.forEach(err => {
         err.file = filePath;
+        err.category = category;
         allErrors.push(err);
       });
 
@@ -307,6 +350,7 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
               column: 1,
               message,
               severity,
+              category,
             });
           }
         } else {
@@ -320,6 +364,7 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
                 column: match.index + 1,
                 message,
                 severity,
+                category,
                 code: line.trim().slice(0, 80),
               });
               
@@ -330,9 +375,14 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
         }
       }
 
-      // 3. Check imports
-      const importErrors = checkImports(content, filePath);
-      allErrors.push(...importErrors);
+      // 3. Check imports (only for frontend files)
+      if (category === "frontend") {
+        const importErrors = checkImports(content, filePath);
+        importErrors.forEach(err => {
+          err.category = category;
+        });
+        allErrors.push(...importErrors);
+      }
     }
 
     // Deduplicate errors
@@ -356,30 +406,47 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
     setIsValidating(false);
     setHasRun(true);
 
-    const errorCount = uniqueErrors.filter(e => e.severity === 'error').length;
-    const isValid = errorCount === 0;
+    // Only count frontend errors as blocking
+    const frontendErrors = uniqueErrors.filter(e => e.severity === 'error' && e.category !== 'backend');
+    const isValid = frontendErrors.length === 0;
     onValidationComplete(isValid, uniqueErrors);
 
   }, [files, onValidationComplete]);
 
+  // Filter displayed errors based on options
+  const displayedErrors = useMemo(() => {
+    return errors.filter(err => {
+      if (hideBackendErrors && err.category === 'backend') return false;
+      if (hideWarnings && err.severity === 'warning') return false;
+      return true;
+    });
+  }, [errors, hideBackendErrors, hideWarnings]);
+
   // Group errors by file
   const errorsByFile = useMemo(() => {
     const grouped = new Map<string, ValidationError[]>();
-    for (const error of errors) {
+    for (const error of displayedErrors) {
       const existing = grouped.get(error.file) || [];
       existing.push(error);
       grouped.set(error.file, existing);
     }
     return grouped;
-  }, [errors]);
+  }, [displayedErrors]);
 
   // Stats
-  const stats = useMemo(() => ({
-    totalFiles: Object.keys(files).filter(p => /\.(ts|tsx|js|jsx)$/.test(p)).length,
-    filesWithErrors: errorsByFile.size,
-    errors: errors.filter(e => e.severity === 'error').length,
-    warnings: errors.filter(e => e.severity === 'warning').length,
-  }), [files, errors, errorsByFile]);
+  const stats = useMemo(() => {
+    const frontendErrors = errors.filter(e => e.severity === 'error' && e.category !== 'backend');
+    const backendErrors = errors.filter(e => e.severity === 'error' && e.category === 'backend');
+    
+    return {
+      totalFiles: Object.keys(files).filter(p => /\.(ts|tsx|js|jsx)$/.test(p)).length,
+      filesWithErrors: errorsByFile.size,
+      frontendErrors: frontendErrors.length,
+      backendErrors: backendErrors.length,
+      totalErrors: errors.filter(e => e.severity === 'error').length,
+      warnings: errors.filter(e => e.severity === 'warning').length,
+    };
+  }, [files, errors, errorsByFile]);
 
   const toggleFile = (file: string) => {
     setExpandedFiles(prev => {
@@ -393,7 +460,17 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
     });
   };
 
-  const isValid = stats.errors === 0;
+  // Frontend is valid if no frontend errors
+  const isFrontendValid = stats.frontendErrors === 0;
+  
+  // Can continue if frontend is valid OR user acknowledged risks
+  const canContinue = isFrontendValid || acknowledgeRisks;
+
+  const handleContinueAnyway = () => {
+    if (onContinueAnyway) {
+      onContinueAnyway();
+    }
+  };
 
   return (
     <Card>
@@ -412,12 +489,12 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
           <Button
             onClick={runValidation}
             disabled={isValidating}
-            variant={hasRun ? (isValid ? "outline" : "destructive") : "default"}
+            variant={hasRun ? (isFrontendValid ? "outline" : "destructive") : "default"}
           >
             {isValidating ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : hasRun ? (
-              isValid ? (
+              isFrontendValid ? (
                 <CheckCircle2 className="h-4 w-4 mr-2" />
               ) : (
                 <Bug className="h-4 w-4 mr-2" />
@@ -449,15 +526,21 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
               <FileCode className="h-3 w-3 mr-1" />
               {stats.totalFiles} fichiers analysés
             </Badge>
-            {stats.errors > 0 ? (
+            {stats.frontendErrors > 0 ? (
               <Badge variant="destructive">
                 <XCircle className="h-3 w-3 mr-1" />
-                {stats.errors} erreur{stats.errors > 1 ? 's' : ''}
+                {stats.frontendErrors} erreur{stats.frontendErrors > 1 ? 's' : ''} frontend
               </Badge>
             ) : (
               <Badge variant="outline" className="bg-success/10 text-success">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                Aucune erreur
+                Frontend OK
+              </Badge>
+            )}
+            {stats.backendErrors > 0 && (
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-600">
+                <FileCode className="h-3 w-3 mr-1" />
+                {stats.backendErrors} erreur{stats.backendErrors > 1 ? 's' : ''} backend
               </Badge>
             )}
             {stats.warnings > 0 && (
@@ -469,13 +552,38 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
           </div>
         )}
 
+        {/* Filter options */}
+        {hasRun && errors.length > 0 && (
+          <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtres :</span>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox 
+                checked={hideBackendErrors}
+                onCheckedChange={(checked) => setHideBackendErrors(checked === true)}
+              />
+              <span className="text-sm">Masquer erreurs backend</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox 
+                checked={hideWarnings}
+                onCheckedChange={(checked) => setHideWarnings(checked === true)}
+              />
+              <span className="text-sm">Masquer avertissements</span>
+            </label>
+          </div>
+        )}
+
         {/* Validation result */}
         {hasRun && (
-          isValid ? (
+          isFrontendValid ? (
             <Alert className="border-success/30 bg-success/10">
               <CheckCircle2 className="h-4 w-4 text-success" />
               <AlertDescription className="text-success">
-                <strong>Validation réussie !</strong> Aucune erreur de syntaxe détectée.
+                <strong>Validation réussie !</strong> Aucune erreur bloquante détectée.
+                {stats.backendErrors > 0 && ` (${stats.backendErrors} erreurs backend ignorées)`}
                 {stats.warnings > 0 && ` (${stats.warnings} avertissements à vérifier)`}
               </AlertDescription>
             </Alert>
@@ -483,15 +591,93 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>{stats.errors} erreur{stats.errors > 1 ? 's' : ''} détectée{stats.errors > 1 ? 's' : ''}</strong> - 
-                Corrigez ces problèmes avant de générer le pack.
+                <strong>{stats.frontendErrors} erreur{stats.frontendErrors > 1 ? 's' : ''} frontend détectée{stats.frontendErrors > 1 ? 's' : ''}</strong>
+                {stats.backendErrors > 0 && ` + ${stats.backendErrors} backend (non bloquantes)`}
               </AlertDescription>
             </Alert>
           )
         )}
 
+        {/* Action buttons when errors exist */}
+        {hasRun && !isFrontendValid && (
+          <div className="flex flex-wrap gap-2 p-4 border rounded-lg bg-muted/30">
+            <div className="w-full mb-2">
+              <p className="text-sm text-muted-foreground">
+                Des erreurs ont été détectées. Vous pouvez :
+              </p>
+            </div>
+            
+            {/* Continue anyway option */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SkipForward className="h-4 w-4 mr-2" />
+                  Continuer malgré les erreurs
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    Continuer avec des erreurs ?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-3">
+                    <p>
+                      Le code contient <strong>{stats.frontendErrors} erreur{stats.frontendErrors > 1 ? 's' : ''}</strong> qui peuvent empêcher le build de fonctionner.
+                    </p>
+                    <div className="space-y-2">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <Checkbox 
+                          checked={acknowledgeRisks}
+                          onCheckedChange={(checked) => setAcknowledgeRisks(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <span className="text-sm">
+                          Je comprends que le pack généré peut ne pas fonctionner et je souhaite quand même continuer.
+                        </span>
+                      </label>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction 
+                    disabled={!acknowledgeRisks}
+                    onClick={handleContinueAnyway}
+                  >
+                    Continuer quand même
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Auto-fix suggestion */}
+            <Button variant="ghost" size="sm" disabled>
+              <Wand2 className="h-4 w-4 mr-2" />
+              Correction auto (bientôt)
+            </Button>
+          </div>
+        )}
+
+        {/* Backend errors info */}
+        {hasRun && stats.backendErrors > 0 && hideBackendErrors && (
+          <Alert className="border-blue-500/30 bg-blue-500/10">
+            <FileCode className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-700">
+              <strong>{stats.backendErrors} erreur{stats.backendErrors > 1 ? 's' : ''} backend masquée{stats.backendErrors > 1 ? 's' : ''}</strong> — 
+              Ces erreurs proviennent de fichiers serveur (backend/, supabase/functions/) qui ne sont pas bundlés avec le frontend.
+              <button 
+                onClick={() => setHideBackendErrors(false)}
+                className="ml-2 underline hover:no-underline"
+              >
+                Afficher
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Error list */}
-        {errors.length > 0 && (
+        {displayedErrors.length > 0 && (
           <ScrollArea className="h-[300px] border rounded-lg">
             <div className="divide-y">
               {Array.from(errorsByFile.entries()).map(([file, fileErrors]) => (
@@ -506,6 +692,11 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
                     }`} />
                     <FileCode className="h-4 w-4 text-muted-foreground" />
                     <span className="flex-1 font-mono text-sm truncate">{file}</span>
+                    {fileErrors[0]?.category === 'backend' && (
+                      <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600">
+                        backend
+                      </Badge>
+                    )}
                     <div className="flex gap-1">
                       {fileErrors.filter(e => e.severity === 'error').length > 0 && (
                         <Badge variant="destructive" className="h-5 text-xs">
@@ -559,6 +750,20 @@ export function TypeScriptValidator({ files, onValidationComplete }: TypeScriptV
               ))}
             </div>
           </ScrollArea>
+        )}
+
+        {/* No displayed errors after filtering */}
+        {hasRun && displayedErrors.length === 0 && errors.length > 0 && (
+          <div className="p-4 text-center text-muted-foreground border rounded-lg">
+            <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Toutes les erreurs sont masquées par les filtres actifs.</p>
+            <button 
+              onClick={() => { setHideBackendErrors(false); setHideWarnings(false); }}
+              className="text-primary underline hover:no-underline mt-1"
+            >
+              Afficher tout
+            </button>
+          </div>
         )}
 
         {/* Initial state */}
