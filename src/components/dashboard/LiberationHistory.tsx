@@ -19,10 +19,23 @@ import {
   RefreshCw,
   Calendar,
   FileCode,
-  Github
+  Github,
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import JSZip from 'jszip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface LiberationRecord {
   id: string;
@@ -45,10 +58,57 @@ export function LiberationHistory() {
   const [pushingToGitHubId, setPushingToGitHubId] = useState<string | null>(null);
   const [gitHubProgress, setGitHubProgress] = useState(0);
   const [gitHubMessage, setGitHubMessage] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
 
   useEffect(() => {
     loadLiberations();
   }, []);
+
+  const handleDeleteOne = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const { error } = await supabase
+        .from('deployment_history')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setLiberations(prev => prev.filter(l => l.id !== id));
+      toast.success('Libération supprimée');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    setClearingAll(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('deployment_history')
+        .delete()
+        .eq('user_id', session.user.id);
+      
+      if (error) throw error;
+      
+      setLiberations([]);
+      toast.success('Historique vidé', {
+        description: 'Vous pouvez relancer une nouvelle libération'
+      });
+    } catch (error) {
+      console.error('Clear all error:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setClearingAll(false);
+    }
+  };
 
   const loadLiberations = async () => {
     setIsLoading(true);
@@ -361,7 +421,7 @@ export function LiberationHistory() {
       {/* Header */}
       <Card className="bg-gradient-to-br from-primary/10 via-background to-background border-primary/20">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary/20">
                 <History className="h-6 w-6 text-primary" />
@@ -373,10 +433,46 @@ export function LiberationHistory() {
                 </CardDescription>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={loadLiberations}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualiser
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={loadLiberations}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualiser
+              </Button>
+              {liberations.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Tout supprimer
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer tout l'historique ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Cette action est irréversible. Tous les enregistrements de libération seront supprimés.
+                        Les archives téléchargées ne seront plus accessibles.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleClearAll}
+                        disabled={clearingAll}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {clearingAll ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Supprimer tout
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -469,6 +565,19 @@ export function LiberationHistory() {
                       Voir
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteOne(liberation.id)}
+                    disabled={deletingId === liberation.id}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    {deletingId === liberation.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
                 
                 {/* GitHub push progress */}
