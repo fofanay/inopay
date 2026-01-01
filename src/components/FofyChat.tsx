@@ -1,15 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Sparkles, Trash2, HelpCircle, ChevronLeft } from "lucide-react";
+import { X, Send, Sparkles, Trash2, HelpCircle, ChevronLeft, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import fofyAvatar from "@/assets/fofy-avatar.jpeg";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  id?: string;
+  feedback?: "positive" | "negative";
 }
 
 interface FAQCategory {
@@ -20,6 +26,7 @@ interface FAQCategory {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fofy-chat`;
 const STORAGE_KEY = "fofy-chat-history";
+const MAX_MESSAGES = 50;
 
 const FofyChat = () => {
   const { i18n } = useTranslation();
@@ -29,6 +36,7 @@ const FofyChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<FAQCategory | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // FAQ categories based on language
@@ -133,7 +141,9 @@ const FofyChat = () => {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          setMessages(parsed);
+          // Limit to max messages
+          const limited = parsed.slice(-MAX_MESSAGES);
+          setMessages(limited);
         }
       } catch (e) {
         console.error("Failed to parse saved FOFY chat:", e);
@@ -144,7 +154,9 @@ const FofyChat = () => {
   // Save conversation to localStorage whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+      // Keep only the last MAX_MESSAGES
+      const toSave = messages.slice(-MAX_MESSAGES);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     }
   }, [messages]);
 
@@ -159,14 +171,39 @@ const FofyChat = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const copyToClipboard = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      toast.success(i18n.language === "fr" ? "Copié !" : "Copied!");
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch {
+      toast.error(i18n.language === "fr" ? "Échec de la copie" : "Failed to copy");
+    }
+  };
+
+  const handleFeedback = (messageId: string, type: "positive" | "negative") => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, feedback: type } : msg
+    ));
+    toast.success(i18n.language === "fr" ? "Merci pour votre retour !" : "Thanks for your feedback!");
+  };
+
   const streamChat = async (userMessages: Message[]) => {
+    // Get auth token for user context
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages: userMessages }),
+      body: JSON.stringify({ 
+        messages: userMessages.map(m => ({ role: m.role, content: m.content })),
+        language: i18n.language
+      }),
     });
 
     if (!resp.ok) {
@@ -180,6 +217,7 @@ const FofyChat = () => {
     const decoder = new TextDecoder();
     let textBuffer = "";
     let assistantContent = "";
+    const messageId = `msg-${Date.now()}`;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -211,7 +249,7 @@ const FofyChat = () => {
                   i === prev.length - 1 ? { ...m, content: assistantContent } : m
                 );
               }
-              return [...prev, { role: "assistant", content: assistantContent }];
+              return [...prev, { role: "assistant", content: assistantContent, id: messageId }];
             });
           }
         } catch {
@@ -230,7 +268,7 @@ const FofyChat = () => {
     setShowFAQ(false);
     setSelectedCategory(null);
 
-    const userMessage: Message = { role: "user", content: messageToSend };
+    const userMessage: Message = { role: "user", content: messageToSend, id: `msg-${Date.now()}` };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
@@ -247,6 +285,7 @@ const FofyChat = () => {
           content: i18n.language === "fr" 
             ? "Désolé, une erreur s'est produite. Veuillez réessayer." 
             : "Sorry, an error occurred. Please try again.",
+          id: `msg-${Date.now()}`
         },
       ]);
     } finally {
@@ -262,8 +301,8 @@ const FofyChat = () => {
   };
 
   const greeting = i18n.language === "fr"
-    ? "Bonjour ! Je suis FOFY, votre assistant Inopay. Comment puis-je vous aider aujourd'hui ?"
-    : "Hello! I'm FOFY, your Inopay assistant. How can I help you today?";
+    ? "Bonjour ! Je suis **FOFY**, votre assistant Inopay. Comment puis-je vous aider aujourd'hui ?"
+    : "Hello! I'm **FOFY**, your Inopay assistant. How can I help you today?";
 
   // Quick suggestions for initial view
   const quickSuggestions = i18n.language === "fr" ? [
@@ -308,7 +347,7 @@ const FofyChat = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[calc(100vh-6rem)] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 w-[420px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-6rem)] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/30">
@@ -427,8 +466,12 @@ const FofyChat = () => {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
-                          <p className="text-sm text-foreground">{greeting}</p>
+                        <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%]">
+                          <div className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {greeting}
+                            </ReactMarkdown>
+                          </div>
                         </div>
                       </div>
                       
@@ -454,9 +497,9 @@ const FofyChat = () => {
                     </>
                   )}
 
-                  {messages.map((msg, idx) => (
+                  {messages.map((msg) => (
                     <div
-                      key={idx}
+                      key={msg.id}
                       className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
                     >
                       {msg.role === "assistant" && (
@@ -468,14 +511,61 @@ const FofyChat = () => {
                           />
                         </div>
                       )}
-                      <div
-                        className={`rounded-2xl px-4 py-2 max-w-[80%] ${
-                          msg.role === "user"
-                            ? "bg-primary text-primary-foreground rounded-tr-sm"
-                            : "bg-muted/50 rounded-tl-sm"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <div className="flex flex-col gap-1 max-w-[85%]">
+                        <div
+                          className={`rounded-2xl px-4 py-2 ${
+                            msg.role === "user"
+                              ? "bg-primary text-primary-foreground rounded-tr-sm"
+                              : "bg-muted/50 rounded-tl-sm"
+                          }`}
+                        >
+                          {msg.role === "assistant" ? (
+                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-background/50 [&_pre]:p-2 [&_pre]:rounded-lg [&_code]:text-xs [&_code]:bg-background/30 [&_code]:px-1 [&_code]:rounded [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          )}
+                        </div>
+                        
+                        {/* Action buttons for assistant messages */}
+                        {msg.role === "assistant" && msg.content && (
+                          <div className="flex items-center gap-1 pl-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(msg.content, msg.id || '')}
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              title={i18n.language === "fr" ? "Copier" : "Copy"}
+                            >
+                              {copiedMessageId === msg.id ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleFeedback(msg.id || '', 'positive')}
+                              className={`h-6 w-6 p-0 ${msg.feedback === 'positive' ? 'text-green-500' : 'text-muted-foreground hover:text-foreground'}`}
+                              title={i18n.language === "fr" ? "Utile" : "Helpful"}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleFeedback(msg.id || '', 'negative')}
+                              className={`h-6 w-6 p-0 ${msg.feedback === 'negative' ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'}`}
+                              title={i18n.language === "fr" ? "Pas utile" : "Not helpful"}
+                            >
+                              <ThumbsDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -490,22 +580,29 @@ const FofyChat = () => {
                         />
                       </div>
                       <div className="bg-muted/50 rounded-2xl rounded-tl-sm px-4 py-3">
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-2">
                           <motion.div
-                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                          />
-                          <motion.div
-                            className="w-2 h-2 bg-muted-foreground/50 rounded-full"
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
-                          />
+                            className="flex gap-1"
+                          >
+                            <motion.div
+                              className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
+                            />
+                            <motion.div
+                              className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
+                            />
+                            <motion.div
+                              className="w-2 h-2 bg-muted-foreground/50 rounded-full"
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
+                            />
+                          </motion.div>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            {i18n.language === "fr" ? "FOFY écrit..." : "FOFY is typing..."}
+                          </span>
                         </div>
                       </div>
                     </div>
