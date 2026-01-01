@@ -2491,6 +2491,144 @@ function serverSideDeepClean(content: string, filePath: string): { cleaned: stri
 }
 
 /**
+ * FINAL SOVEREIGNTY PURGE
+ * Nettoie TOUTES les mentions textuelles restantes de plateformes propriétaires,
+ * IA cloud, télémétrie, et services non-souverains.
+ */
+function finalSovereigntyPurge(content: string, filePath: string): {
+  cleaned: string;
+  purgedPatterns: string[];
+  wasModified: boolean;
+} {
+  const purgedPatterns: string[] = [];
+  let cleaned = content;
+  const originalContent = content;
+
+  // Skip config/pattern files that legitimately contain these terms
+  const isConfigFile = filePath.includes('proprietary') || 
+                       filePath.includes('patterns') || 
+                       filePath.includes('config.') ||
+                       filePath.includes('.config.') ||
+                       filePath.includes('_original');
+  
+  if (isConfigFile) {
+    return { cleaned, purgedPatterns, wasModified: false };
+  }
+
+  // === PHASE 1: Textual mentions of AI platforms in strings ===
+  const aiMentions = [
+    // Platform mentions
+    { pattern: /(['"`])([^'"`]*)\blovable\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'lovable' },
+    { pattern: /(['"`])([^'"`]*)\bgptengineer\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'gptengineer' },
+    { pattern: /(['"`])([^'"`]*)\bbolt\.new\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'bolt.new' },
+    // AI providers (keep as comments for awareness)
+    { pattern: /(['"`])([^'"`]*)openai\.com([^'"`]*)\1/gi, replacement: '$1$2${OLLAMA_BASE_URL}$3$1', name: 'openai.com' },
+    { pattern: /(['"`])([^'"`]*)api\.anthropic\.com([^'"`]*)\1/gi, replacement: '$1$2${OLLAMA_BASE_URL}$3$1', name: 'anthropic.com' },
+    // AI Gateway
+    { pattern: /ai\.gateway\.lovable\.dev/gi, replacement: '${OLLAMA_BASE_URL}', name: 'Lovable AI Gateway' },
+  ];
+
+  for (const { pattern, replacement, name } of aiMentions) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === PHASE 2: Telemetry and tracking ===
+  const telemetryPatterns = [
+    { pattern: /telemetry\s*\.\s*track\s*\([^)]*\)/gi, replacement: '/* telemetry removed */', name: 'telemetry.track' },
+    { pattern: /analytics\s*\.\s*track\s*\([^)]*\)/gi, replacement: '/* analytics removed */', name: 'analytics.track' },
+    { pattern: /sendAnalytics\s*\([^)]*\)/gi, replacement: '/* analytics removed */', name: 'sendAnalytics' },
+    { pattern: /trackEvent\s*\([^)]*\)/gi, replacement: '/* tracking removed */', name: 'trackEvent' },
+  ];
+
+  for (const { pattern, replacement, name } of telemetryPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === PHASE 3: Hardcoded API keys ===
+  const apiKeyPatterns = [
+    { pattern: /sk-[a-zA-Z0-9]{20,}/g, replacement: 'YOUR_OPENAI_KEY', name: 'OpenAI key' },
+    { pattern: /sk-ant-[a-zA-Z0-9-]{20,}/g, replacement: 'YOUR_ANTHROPIC_KEY', name: 'Anthropic key' },
+    { pattern: /r8_[a-zA-Z0-9]{30,}/g, replacement: 'YOUR_REPLICATE_TOKEN', name: 'Replicate token' },
+    { pattern: /hf_[a-zA-Z0-9]{30,}/g, replacement: 'YOUR_HUGGINGFACE_TOKEN', name: 'HuggingFace token' },
+    { pattern: /lov_[a-zA-Z0-9]{20,}/g, replacement: 'YOUR_API_KEY', name: 'Lovable key' },
+    { pattern: /LOVABLE_API_KEY/g, replacement: 'AI_API_KEY', name: 'LOVABLE_API_KEY' },
+  ];
+
+  for (const { pattern, replacement, name } of apiKeyPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === PHASE 4: Platform URLs ===
+  const urlPatterns = [
+    { pattern: /https?:\/\/[a-z0-9-]+\.lovableproject\.com[^\s'"`]*/gi, replacement: 'https://your-domain.com', name: 'lovableproject URL' },
+    { pattern: /https?:\/\/[a-z0-9-]+\.lovable\.(app|dev)[^\s'"`]*/gi, replacement: 'https://your-domain.com', name: 'lovable URL' },
+    { pattern: /https?:\/\/api\.openai\.com[^\s'"`]*/gi, replacement: '${OLLAMA_BASE_URL}/v1', name: 'OpenAI API' },
+    { pattern: /https?:\/\/api\.anthropic\.com[^\s'"`]*/gi, replacement: '${OLLAMA_BASE_URL}/api', name: 'Anthropic API' },
+  ];
+
+  for (const { pattern, replacement, name } of urlPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === PHASE 5: SDK imports ===
+  const sdkImports = [
+    { pattern: /import\s+[^;]*from\s*['"]openai['"][\s;]*/g, replacement: '// REMOVED: OpenAI SDK - use Ollama\n', name: 'openai SDK' },
+    { pattern: /import\s+[^;]*from\s*['"]@anthropic-ai\/sdk['"][\s;]*/g, replacement: '// REMOVED: Anthropic SDK - use Ollama\n', name: 'anthropic SDK' },
+    { pattern: /import\s+[^;]*from\s*['"]replicate['"][\s;]*/g, replacement: '// REMOVED: Replicate SDK\n', name: 'replicate SDK' },
+    { pattern: /import\s+[^;]*from\s*['"]ai['"][\s;]*/g, replacement: '// REMOVED: ai-sdk\n', name: 'ai-sdk' },
+  ];
+
+  for (const { pattern, replacement, name } of sdkImports) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === PHASE 6: Comments mentioning platforms ===
+  const commentPatterns = [
+    { pattern: /\/\/\s*[^\n]*\b(lovable|gptengineer)\b[^\n]*\n/gi, replacement: '', name: 'platform comment' },
+    { pattern: /\/\/\s*[Pp]owered by[^\n]*\n/g, replacement: '', name: 'powered by' },
+    { pattern: /\/\/\s*[Bb]uilt with[^\n]*\n/g, replacement: '', name: 'built with' },
+    { pattern: /\/\/\s*[Gg]enerated by[^\n]*\n/g, replacement: '', name: 'generated by' },
+  ];
+
+  for (const { pattern, replacement, name } of commentPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // Clean multiple newlines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  return {
+    cleaned,
+    purgedPatterns,
+    wasModified: cleaned !== originalContent
+  };
+}
+
+/**
  * FAST sovereignty verification - samples files instead of checking all
  * Optimized to avoid CPU timeout in edge functions
  */
@@ -6576,6 +6714,28 @@ serve(async (req) => {
     }
     
     console.log(`[generate-liberation-pack] Server-side cleaning complete: ${totalServerChanges} total changes`);
+
+    // ==========================================
+    // FINAL SOVEREIGNTY PURGE - PHASE 2
+    // Purge ALL textual mentions of proprietary platforms
+    // ==========================================
+    console.log(`[generate-liberation-pack] Starting final sovereignty purge...`);
+    
+    let totalPurgedPatterns = 0;
+    for (const [path, content] of Object.entries(doubleCleanedFiles)) {
+      if (path.match(/\.(ts|tsx|js|jsx|json|html|css|md|sh|yml|yaml)$/)) {
+        const purgeResult = finalSovereigntyPurge(content as string, path);
+        if (purgeResult.wasModified) {
+          doubleCleanedFiles[path] = purgeResult.cleaned;
+          totalPurgedPatterns += purgeResult.purgedPatterns.length;
+          if (purgeResult.purgedPatterns.length > 0) {
+            console.log(`[generate-liberation-pack] Purged ${path}: ${purgeResult.purgedPatterns.join(', ')}`);
+          }
+        }
+      }
+    }
+    
+    console.log(`[generate-liberation-pack] Final sovereignty purge complete: ${totalPurgedPatterns} patterns purged`);
 
     // ==========================================
     // SOVEREIGNTY VERIFICATION

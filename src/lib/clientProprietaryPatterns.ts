@@ -3569,3 +3569,243 @@ export function createRewriteLog(
     entries,
   };
 }
+
+// ============================================
+// NCS PHASE 9: FINAL SOVEREIGNTY PURGE
+// Nettoie TOUTES les mentions textuelles restantes
+// ============================================
+
+/**
+ * PURGE FINALE DE SOUVERAINETÉ
+ * Nettoie toutes les mentions textuelles de plateformes IA, 
+ * télémétrie, et services cloud propriétaires dans les strings et identifiants
+ */
+export function purgeProprietaryMentions(content: string, filePath: string): {
+  cleaned: string;
+  purgedPatterns: string[];
+  wasModified: boolean;
+} {
+  const purgedPatterns: string[] = [];
+  let cleaned = content;
+  const originalContent = content;
+
+  // === CATÉGORIE 1: Mentions de plateformes IA (dans les strings) ===
+  const aiPlatformMentions = [
+    // Lovable/GPTEngineer - mentions textuelles SEULEMENT dans strings/comments
+    { pattern: /(['"`])([^'"`]*)\blovable\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'lovable mention' },
+    { pattern: /(['"`])([^'"`]*)\bgptengineer\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'gptengineer mention' },
+    { pattern: /(['"`])([^'"`]*)\bbolt\.new\b([^'"`]*)\1/gi, replacement: '$1$2[PLATFORM]$3$1', name: 'bolt.new mention' },
+    // IA Cloud providers - mentions textuelles
+    { pattern: /(['"`])([^'"`]*)\bopenai\b([^'"`]*)\1/gi, replacement: '$1$2[AI_PROVIDER]$3$1', name: 'openai mention' },
+    { pattern: /(['"`])([^'"`]*)\banthropic\b([^'"`]*)\1/gi, replacement: '$1$2[AI_PROVIDER]$3$1', name: 'anthropic mention' },
+    { pattern: /(['"`])([^'"`]*)\bclaude\b([^'"`]*)\1/gi, replacement: '$1$2[AI_MODEL]$3$1', name: 'claude mention' },
+    { pattern: /(['"`])([^'"`]*)\bgpt-4\b([^'"`]*)\1/gi, replacement: '$1$2[AI_MODEL]$3$1', name: 'gpt-4 mention' },
+    { pattern: /(['"`])([^'"`]*)\bgpt-5\b([^'"`]*)\1/gi, replacement: '$1$2[AI_MODEL]$3$1', name: 'gpt-5 mention' },
+    // Assistants IA
+    { pattern: /(['"`])([^'"`]*)\bcopilot\b([^'"`]*)\1/gi, replacement: '$1$2[ASSISTANT]$3$1', name: 'copilot mention' },
+    { pattern: /(['"`])([^'"`]*)\btabnine\b([^'"`]*)\1/gi, replacement: '$1$2[ASSISTANT]$3$1', name: 'tabnine mention' },
+    { pattern: /(['"`])([^'"`]*)\bcodeium\b([^'"`]*)\1/gi, replacement: '$1$2[ASSISTANT]$3$1', name: 'codeium mention' },
+    { pattern: /(['"`])([^'"`]*)\bwindsurf\b([^'"`]*)\1/gi, replacement: '$1$2[ASSISTANT]$3$1', name: 'windsurf mention' },
+    // SDKs IA
+    { pattern: /(['"`])([^'"`]*)\bai-sdk\b([^'"`]*)\1/gi, replacement: '$1$2[SDK]$3$1', name: 'ai-sdk mention' },
+    { pattern: /(['"`])([^'"`]*)\breplicate\b([^'"`]*)\1/gi, replacement: '$1$2[SDK]$3$1', name: 'replicate mention' },
+    { pattern: /(['"`])([^'"`]*)\bhuggingface\b([^'"`]*)\1/gi, replacement: '$1$2[SDK]$3$1', name: 'huggingface mention' },
+  ];
+
+  // Appliquer SEULEMENT si ce n'est pas un fichier de config/pattern
+  const isConfigFile = filePath.includes('proprietary') || 
+                       filePath.includes('patterns') || 
+                       filePath.includes('config.') ||
+                       filePath.includes('.config.');
+  
+  if (!isConfigFile) {
+    for (const { pattern, replacement, name } of aiPlatformMentions) {
+      const before = cleaned;
+      cleaned = cleaned.replace(pattern, replacement);
+      if (cleaned !== before) {
+        purgedPatterns.push(name);
+      }
+    }
+  }
+
+  // === CATÉGORIE 2: Télémétrie et tracking ===
+  const telemetryPatterns = [
+    // Appels télémétrie explicites
+    { pattern: /telemetry\s*\.\s*track\s*\([^)]*\)/gi, replacement: '/* REMOVED: telemetry */', name: 'telemetry.track' },
+    { pattern: /analytics\s*\.\s*track\s*\([^)]*\)/gi, replacement: '/* REMOVED: analytics */', name: 'analytics.track' },
+    { pattern: /sendAnalytics\s*\([^)]*\)/gi, replacement: '/* REMOVED: sendAnalytics */', name: 'sendAnalytics' },
+    { pattern: /trackEvent\s*\([^)]*\)/gi, replacement: '/* REMOVED: trackEvent */', name: 'trackEvent' },
+    // Objets télémétrie
+    { pattern: /const\s+telemetry\s*=\s*\{[\s\S]*?\};/g, replacement: '/* REMOVED: telemetry config */', name: 'telemetry object' },
+    { pattern: /const\s+analytics\s*=\s*\{[\s\S]*?\};/g, replacement: '/* REMOVED: analytics config */', name: 'analytics object' },
+    // Imports télémétrie
+    { pattern: /import\s*{\s*[^}]*telemetry[^}]*}\s*from\s*['"][^'"]+['"]\s*;?\n?/gi, replacement: '', name: 'telemetry import' },
+  ];
+
+  for (const { pattern, replacement, name } of telemetryPatterns) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === CATÉGORIE 3: Variables et constantes avec noms propriétaires ===
+  const proprietaryIdentifiers = [
+    // Variables avec "lovable" dans le nom
+    { pattern: /const\s+\w*[Ll]ovable\w*\s*=/g, replacement: 'const _RENAMED_ =', name: 'lovable variable' },
+    { pattern: /let\s+\w*[Ll]ovable\w*\s*=/g, replacement: 'let _RENAMED_ =', name: 'lovable variable' },
+    { pattern: /var\s+\w*[Ll]ovable\w*\s*=/g, replacement: 'var _RENAMED_ =', name: 'lovable variable' },
+    // Fonctions avec "lovable" dans le nom
+    { pattern: /function\s+\w*[Ll]ovable\w*\s*\(/g, replacement: 'function _renamedFn(', name: 'lovable function' },
+    // Types avec "lovable" dans le nom
+    { pattern: /interface\s+\w*[Ll]ovable\w*/g, replacement: 'interface IRenamedType', name: 'lovable interface' },
+    { pattern: /type\s+\w*[Ll]ovable\w*\s*=/g, replacement: 'type RenamedType =', name: 'lovable type' },
+  ];
+
+  if (!isConfigFile) {
+    for (const { pattern, replacement, name } of proprietaryIdentifiers) {
+      const before = cleaned;
+      cleaned = cleaned.replace(pattern, replacement);
+      if (cleaned !== before) {
+        purgedPatterns.push(name);
+      }
+    }
+  }
+
+  // === CATÉGORIE 4: URLs et domaines propriétaires dans le code ===
+  const proprietaryUrls = [
+    // URLs Lovable
+    { pattern: /https?:\/\/[a-z0-9-]+\.lovableproject\.com[^\s'"`]*/gi, replacement: 'https://your-domain.com', name: 'lovableproject URL' },
+    { pattern: /https?:\/\/[a-z0-9-]+\.lovable\.(app|dev)[^\s'"`]*/gi, replacement: 'https://your-domain.com', name: 'lovable URL' },
+    { pattern: /https?:\/\/[a-z0-9-]+\.gptengineer\.(app|run)[^\s'"`]*/gi, replacement: 'https://your-domain.com', name: 'gptengineer URL' },
+    // API endpoints AI
+    { pattern: /https?:\/\/api\.openai\.com[^\s'"`]*/gi, replacement: '${OLLAMA_BASE_URL}/api', name: 'OpenAI API URL' },
+    { pattern: /https?:\/\/api\.anthropic\.com[^\s'"`]*/gi, replacement: '${OLLAMA_BASE_URL}/api', name: 'Anthropic API URL' },
+    // Gateway Lovable AI
+    { pattern: /https?:\/\/ai\.gateway\.lovable\.dev[^\s'"`]*/gi, replacement: '${OLLAMA_BASE_URL}/api', name: 'Lovable AI Gateway' },
+  ];
+
+  for (const { pattern, replacement, name } of proprietaryUrls) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === CATÉGORIE 5: Clés API et secrets hardcodés ===
+  const hardcodedSecrets = [
+    // OpenAI API keys
+    { pattern: /sk-[a-zA-Z0-9]{20,}/g, replacement: 'YOUR_OPENAI_KEY', name: 'OpenAI API key' },
+    // Anthropic API keys
+    { pattern: /sk-ant-[a-zA-Z0-9-]{20,}/g, replacement: 'YOUR_ANTHROPIC_KEY', name: 'Anthropic API key' },
+    // Replicate tokens
+    { pattern: /r8_[a-zA-Z0-9]{30,}/g, replacement: 'YOUR_REPLICATE_TOKEN', name: 'Replicate token' },
+    // HuggingFace tokens
+    { pattern: /hf_[a-zA-Z0-9]{30,}/g, replacement: 'YOUR_HUGGINGFACE_TOKEN', name: 'HuggingFace token' },
+    // Lovable API keys
+    { pattern: /lov_[a-zA-Z0-9]{20,}/g, replacement: 'YOUR_API_KEY', name: 'Lovable API key' },
+    // Generic API key patterns
+    { pattern: /LOVABLE_API_KEY/g, replacement: 'AI_API_KEY', name: 'LOVABLE_API_KEY env var' },
+  ];
+
+  for (const { pattern, replacement, name } of hardcodedSecrets) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === CATÉGORIE 6: Commentaires avec mentions propriétaires ===
+  const proprietaryComments = [
+    // Commentaires mentionnant des plateformes
+    { pattern: /\/\/\s*[^\n]*\b(lovable|gptengineer|bolt\.new)\b[^\n]*\n/gi, replacement: '', name: 'platform comment' },
+    { pattern: /\/\*[\s\S]*?\b(lovable|gptengineer)\b[\s\S]*?\*\//gi, replacement: '', name: 'platform block comment' },
+    // Commentaires "powered by"
+    { pattern: /\/\/\s*[Pp]owered by[^\n]*\n/g, replacement: '', name: 'powered by comment' },
+    { pattern: /\/\/\s*[Bb]uilt with[^\n]*\n/g, replacement: '', name: 'built with comment' },
+    { pattern: /\/\/\s*[Mm]ade with[^\n]*\n/g, replacement: '', name: 'made with comment' },
+    { pattern: /\/\/\s*[Cc]reated with[^\n]*\n/g, replacement: '', name: 'created with comment' },
+    { pattern: /\/\/\s*[Gg]enerated by[^\n]*\n/g, replacement: '', name: 'generated by comment' },
+  ];
+
+  for (const { pattern, replacement, name } of proprietaryComments) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === CATÉGORIE 7: Imports de SDKs propriétaires ===
+  const proprietaryImports = [
+    // AI SDKs
+    { pattern: /import\s+[^;]*from\s*['"]openai['"]\s*;?\n?/g, replacement: '// REMOVED: OpenAI import - use Ollama\n', name: 'openai import' },
+    { pattern: /import\s+[^;]*from\s*['"]@anthropic-ai\/sdk['"]\s*;?\n?/g, replacement: '// REMOVED: Anthropic import - use Ollama\n', name: 'anthropic import' },
+    { pattern: /import\s+[^;]*from\s*['"]replicate['"]\s*;?\n?/g, replacement: '// REMOVED: Replicate import - use local models\n', name: 'replicate import' },
+    { pattern: /import\s+[^;]*from\s*['"]@huggingface\/inference['"]\s*;?\n?/g, replacement: '// REMOVED: HuggingFace import - use local models\n', name: 'huggingface import' },
+    { pattern: /import\s+[^;]*from\s*['"]ai['"]\s*;?\n?/g, replacement: '// REMOVED: ai-sdk import - use fetch\n', name: 'ai-sdk import' },
+    // Lovable gateway
+    { pattern: /import\s+[^;]*from\s*['"]@lovable\/[^'"]*['"]\s*;?\n?/g, replacement: '', name: '@lovable import' },
+  ];
+
+  for (const { pattern, replacement, name } of proprietaryImports) {
+    const before = cleaned;
+    cleaned = cleaned.replace(pattern, replacement);
+    if (cleaned !== before) {
+      purgedPatterns.push(name);
+    }
+  }
+
+  // === Nettoyage final: lignes vides multiples ===
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  cleaned = cleaned.replace(/^\s*\/\/ REMOVED:[^\n]*\n(\s*\/\/ REMOVED:[^\n]*\n)+/gm, '// REMOVED: multiple proprietary imports\n');
+
+  return {
+    cleaned,
+    purgedPatterns,
+    wasModified: cleaned !== originalContent
+  };
+}
+
+/**
+ * Exécute la purge finale sur tous les fichiers source
+ */
+export function executeFinalSovereigntyPurge(files: Record<string, string>): {
+  cleanedFiles: Record<string, string>;
+  purgeReport: { file: string; patterns: string[] }[];
+  totalPatternsPurged: number;
+} {
+  const cleanedFiles: Record<string, string> = {};
+  const purgeReport: { file: string; patterns: string[] }[] = [];
+  let totalPatternsPurged = 0;
+
+  for (const [filePath, content] of Object.entries(files)) {
+    // Ignorer les fichiers binaires et certains fichiers de config
+    if (
+      filePath.endsWith('.png') || 
+      filePath.endsWith('.jpg') || 
+      filePath.endsWith('.ico') ||
+      filePath.endsWith('.woff') ||
+      filePath.endsWith('.woff2') ||
+      filePath.includes('node_modules/') ||
+      filePath.includes('.git/')
+    ) {
+      cleanedFiles[filePath] = content;
+      continue;
+    }
+
+    // Appliquer la purge finale
+    const result = purgeProprietaryMentions(content, filePath);
+    cleanedFiles[filePath] = result.cleaned;
+
+    if (result.purgedPatterns.length > 0) {
+      purgeReport.push({ file: filePath, patterns: result.purgedPatterns });
+      totalPatternsPurged += result.purgedPatterns.length;
+    }
+  }
+
+  return { cleanedFiles, purgeReport, totalPatternsPurged };
+}

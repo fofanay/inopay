@@ -221,3 +221,6 @@ verify_jwt = false
 
 [functions.recover-server-credentials]
 verify_jwt = false
+
+[functions.generate-liberation-pack]
+verify_jwt = false
