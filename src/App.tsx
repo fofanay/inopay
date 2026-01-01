@@ -19,6 +19,7 @@ import Economies from "./pages/Economies";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import LiberationReport from "./pages/LiberationReport";
 import Widget from "./pages/Widget";
+import Liberate from "./pages/Liberate";
 import { AgencyDashboard } from "./components/dashboard/AgencyDashboard";
 // Services page merged into Pricing - redirect handled via NotFound
 import Terms from "./pages/legal/Terms";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/rapport-liberation/:deploymentId" element={<LiberationReport />} />
             <Route path="/widget" element={<Widget />} />
             <Route path="/agence" element={<AgencyDashboard />} />
+            <Route path="/liberate" element={<Liberate />} />
             <Route path="/services" element={<Pricing />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/privacy" element={<Privacy />} />
