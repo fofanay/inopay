@@ -1,7 +1,7 @@
 {
   "name": "@inopay/cli",
-  "version": "1.0.0",
-  "description": "Inopay Liberator CLI - Libérez vos projets propriétaires",
+  "version": "2.0.0",
+  "description": "InoPay Liberator CLI - Libérez vos projets propriétaires",
   "bin": {
     "inopay": "./bin/inopay.js"
   },
@@ -10,7 +10,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "tsx src/index.ts",
+    "liberate": "tsx src/index.ts liberate",
+    "audit": "tsx src/index.ts audit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "inopay",
@@ -18,7 +21,9 @@
     "sovereign",
     "lovable",
     "migration",
-    "cli"
+    "cli",
+    "code-cleaner",
+    "proprietary-removal"
   ],
   "author": "Inovaq Canada Inc.",
   "license": "MIT",
@@ -26,14 +31,16 @@
     "commander": "^12.0.0",
     "chalk": "^5.3.0",
     "ora": "^8.0.0",
-    "archiver": "^6.0.0",
+    "archiver": "^7.0.0",
     "inquirer": "^9.2.0",
     "glob": "^10.3.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.3.0",
-    "ts-node": "^10.9.0"
+    "@types/node": "^22.0.0",
+    "@types/archiver": "^6.0.0",
+    "@types/inquirer": "^9.0.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -42,5 +49,10 @@
     "type": "git",
     "url": "https://github.com/inopay/cli"
   },
-  "homepage": "https://inopay.app/cli"
+  "homepage": "https://inopay.app/cli",
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ]
 }
