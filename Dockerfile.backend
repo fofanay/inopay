@@ -1,0 +1,70 @@
+# ═══════════════════════════════════════════════════════════════
+# INOPAY BACKEND - Production Dockerfile
+# Optimized for Ubuntu VPS minimal (1-2GB RAM)
+# ═══════════════════════════════════════════════════════════════
+
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+LABEL stage=deps
+
+WORKDIR /app
+
+# Copy package files
+COPY backend/package*.json ./
+
+# Install dependencies with clean cache
+RUN npm ci --only=production --legacy-peer-deps && \
+    npm cache clean --force
+
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+LABEL stage=builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY backend/ .
+
+# Build TypeScript
+RUN npm run build
+
+# Stage 3: Production Runtime
+FROM node:20-alpine AS runner
+LABEL maintainer="Inovaq Canada Inc."
+LABEL org.opencontainers.image.title="InoPay Liberator API"
+LABEL org.opencontainers.image.description="Backend API for sovereign project liberation"
+
+WORKDIR /app
+
+# Security: Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 backend
+
+# Copy only production dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy built application
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+
+# Create necessary directories
+RUN mkdir -p /app/uploads /app/exports /app/logs && \
+    chown -R backend:nodejs /app
+
+# Switch to non-root user
+USER backend
+
+# Environment
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --spider -q http://localhost:3001/health || exit 1
+
+# Start command
+CMD ["node", "dist/index.js"]

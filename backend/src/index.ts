@@ -13,6 +13,7 @@ import { stripeWebhookRouter } from './routes/stripe-webhook';
 import { checkSubscriptionRouter } from './routes/check-subscription';
 import { createCheckoutRouter } from './routes/create-checkout';
 import { healthRouter } from './routes/health';
+import { liberateRouter } from './routes/liberate';
 
 // Security middleware
 import { 
@@ -87,6 +88,7 @@ app.use('/api/export-github', deployLimiter, exportGithubRouter);
 app.use('/api/stripe-webhook', stripeWebhookRouter); // Pas de rate limit pour les webhooks
 app.use('/api/check-subscription', apiLimiter, checkSubscriptionRouter);
 app.use('/api/create-checkout', paymentLimiter, createCheckoutRouter);
+app.use('/api/liberate', aiLimiter, liberateRouter);
 app.use('/health', healthRouter);
 
 // Gestion des erreurs globale
