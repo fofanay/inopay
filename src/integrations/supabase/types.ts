@@ -720,6 +720,66 @@ export type Database = {
           },
         ]
       }
+      liberation_jobs: {
+        Row: {
+          audit_report: Json | null
+          audit_score: number | null
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          files_cleaned: number | null
+          files_count: number | null
+          id: string
+          progress: number | null
+          project_name: string | null
+          proprietary_removed: number | null
+          result_url: string | null
+          source_type: string
+          source_url: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          audit_report?: Json | null
+          audit_score?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          files_cleaned?: number | null
+          files_count?: number | null
+          id?: string
+          progress?: number | null
+          project_name?: string | null
+          proprietary_removed?: number | null
+          result_url?: string | null
+          source_type: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          audit_report?: Json | null
+          audit_score?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          files_cleaned?: number | null
+          files_count?: number | null
+          id?: string
+          progress?: number | null
+          project_name?: string | null
+          proprietary_removed?: number | null
+          result_url?: string | null
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       liberation_upsell_views: {
         Row: {
           converted: boolean | null
