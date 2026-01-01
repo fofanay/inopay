@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { RoleIndicator } from "@/components/ui/role-indicator";
-import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, ArrowDownRight, AlertTriangle } from "lucide-react";
+import { LogOut, User, Menu, X, Settings, Crown, Shield, Phone, Clock, MapPin, Mail, ArrowDownRight, AlertTriangle, Rocket } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import inopayLogo from "@/assets/inopay-logo.png";
@@ -153,6 +153,13 @@ const Header = () => {
               }`}
             >
               {t("common.dashboard")}
+            </Link>
+            <Link 
+              to="/dashboard?tab=liberation" 
+              className="text-sm font-bold transition-colors text-white hover:text-white/80 flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full"
+            >
+              <Rocket className="h-3.5 w-3.5" />
+              Libérer
             </Link>
           </div>
           
