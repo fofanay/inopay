@@ -23,6 +23,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
+  BookOpen,
+  Rocket,
+  Code2,
 } from "lucide-react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
@@ -44,6 +47,12 @@ const settingsItems = [
   { id: "monitoring", label: "Monitoring", icon: Activity, path: "/liberator/monitoring" },
   { id: "ai", label: "IA Settings", icon: Settings, path: "/liberator/ai-settings" },
   { id: "selfhost", label: "Self-Host", icon: Server, path: "/liberator/self-host" },
+];
+
+const docsItems = [
+  { id: "docs-official", label: "Documentation", icon: BookOpen, path: "/docs/official" },
+  { id: "docs-quickstart", label: "Quickstart", icon: Rocket, path: "/docs/quickstart" },
+  { id: "docs-api", label: "API Reference", icon: Code2, path: "/docs/api" },
 ];
 
 export function LiberatorLayout({ children }: LiberatorLayoutProps) {
@@ -133,6 +142,37 @@ export function LiberatorLayout({ children }: LiberatorLayoutProps) {
         </div>
         <ul className="space-y-1 px-2">
           {settingsItems.map((item) => (
+            <li key={item.id}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3 h-10 font-medium transition-all",
+                  isActive(item.path) 
+                    ? "bg-primary/10 text-primary hover:bg-primary/15" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  collapsed && "justify-center px-2"
+                )}
+                onClick={() => {
+                  navigate(item.path);
+                  setMobileOpen(false);
+                }}
+              >
+                <item.icon className={cn("h-4 w-4", isActive(item.path) && "text-primary")} />
+                {!collapsed && <span>{item.label}</span>}
+              </Button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="px-3 mt-6 mb-2">
+          {!collapsed && (
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Documentation
+            </span>
+          )}
+        </div>
+        <ul className="space-y-1 px-2">
+          {docsItems.map((item) => (
             <li key={item.id}>
               <Button
                 variant="ghost"
