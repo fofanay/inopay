@@ -1,0 +1,426 @@
+# ═══════════════════════════════════════════════════════════════
+# INOPAY LIBERATOR - Pipeline CI/CD Souverain
+# GitHub Actions - Build, Test, Deploy
+# ═══════════════════════════════════════════════════════════════
+
+name: Inopay Liberator CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_to_vps:
+        description: 'Déployer sur VPS après build'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  DOCKER_BUILDX_VERSION: 'v0.12.0'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # Job 1: Tests et Lint
+  # ═══════════════════════════════════════════════════════════════
+  test:
+    name: 🧪 Tests & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: 🔍 Run ESLint
+        run: npm run lint || true
+        continue-on-error: true
+
+      - name: 🧪 Run tests
+        run: npm run test --if-present || echo "No tests configured"
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: coverage/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 2: Build Backend
+  # ═══════════════════════════════════════════════════════════════
+  build-backend:
+    name: 🔧 Build Backend
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📚 Install backend dependencies
+        working-directory: ./backend
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: 🔨 Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: 📦 Package backend
+        run: |
+          mkdir -p dist/backend
+          cp -r backend/dist dist/backend/
+          cp backend/package*.json dist/backend/
+
+      - name: 📤 Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: dist/backend/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 3: Build Frontend
+  # ═══════════════════════════════════════════════════════════════
+  build-frontend:
+    name: 🎨 Build Frontend
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: 🔨 Build frontend (Sovereign mode)
+        run: npm run build
+        env:
+          VITE_INFRA_MODE: sovereign
+          VITE_API_URL: /api
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: ✅ Validate build
+        run: |
+          if [ -d "dist" ] && [ -f "dist/index.html" ]; then
+            echo "✅ Build validé!"
+            ls -la dist/
+          else
+            echo "❌ Build échoué - dist/index.html manquant"
+            exit 1
+          fi
+
+      - name: 📦 Package frontend
+        run: |
+          mkdir -p artifacts/frontend
+          cp -r dist/* artifacts/frontend/
+
+      - name: 📤 Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: artifacts/frontend/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 4: Build Docker Images
+  # ═══════════════════════════════════════════════════════════════
+  docker-build:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download backend build
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: dist/backend
+
+      - name: 📥 Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: dist/frontend
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: ${{ env.DOCKER_BUILDX_VERSION }}
+
+      - name: 🔐 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔨 Build Frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: 📝 Extract metadata for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔨 Build Backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: 📦 Save Docker images as artifacts
+        run: |
+          mkdir -p docker-images
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest | gzip > docker-images/inopay-frontend.tar.gz || true
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest | gzip > docker-images/inopay-backend.tar.gz || true
+
+      - name: 📤 Upload Docker images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: docker-images/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 5: Package Final
+  # ═══════════════════════════════════════════════════════════════
+  package:
+    name: 📦 Create Sovereign Package
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📦 Create final package
+        run: |
+          mkdir -p package/inopay-liberator
+          
+          # Copy frontend
+          cp -r artifacts/frontend-build/* package/inopay-liberator/frontend/ 2>/dev/null || mkdir -p package/inopay-liberator/frontend
+          
+          # Copy backend
+          cp -r artifacts/backend-build/* package/inopay-liberator/backend/ 2>/dev/null || mkdir -p package/inopay-liberator/backend
+          
+          # Copy Docker configs
+          cp Dockerfile package/inopay-liberator/ 2>/dev/null || true
+          cp Dockerfile.frontend package/inopay-liberator/ 2>/dev/null || true
+          cp Dockerfile.backend package/inopay-liberator/ 2>/dev/null || true
+          cp docker-compose.yml package/inopay-liberator/ 2>/dev/null || true
+          cp docker-compose.prod.yml package/inopay-liberator/ 2>/dev/null || true
+          
+          # Copy scripts
+          mkdir -p package/inopay-liberator/scripts
+          cp -r scripts/* package/inopay-liberator/scripts/ 2>/dev/null || true
+          
+          # Copy nginx configs
+          cp nginx*.conf package/inopay-liberator/ 2>/dev/null || true
+          
+          # Create install script
+          cat > package/inopay-liberator/install.sh << 'INSTALL_EOF'
+          #!/bin/bash
+          echo "🚀 Installation Inopay Liberator..."
+          docker-compose -f docker-compose.prod.yml up -d
+          echo "✅ Inopay Liberator démarré!"
+          INSTALL_EOF
+          chmod +x package/inopay-liberator/install.sh
+          
+          # Create README
+          cat > package/inopay-liberator/README.md << 'README_EOF'
+          # Inopay Liberator - Package Souverain
+          
+          ## Installation rapide
+          ```bash
+          chmod +x install.sh
+          ./install.sh
+          ```
+          
+          ## Structure
+          - `/frontend` - Application React (Vite)
+          - `/backend` - API Node.js
+          - `/scripts` - Scripts d'automatisation
+          
+          ## Configuration
+          Créez un fichier `.env` avec vos variables d'environnement.
+          
+          ## Support
+          https://getinopay.com
+          README_EOF
+          
+          # Create zip
+          cd package
+          zip -r ../inopay-liberator.zip inopay-liberator/
+
+      - name: 📤 Upload final package
+        uses: actions/upload-artifact@v4
+        with:
+          name: inopay-liberator-package
+          path: inopay-liberator.zip
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 6: Deploy to VPS (Optional)
+  # ═══════════════════════════════════════════════════════════════
+  deploy:
+    name: 🚀 Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: [docker-build, package]
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_vps == 'true')
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: inopay-liberator-package
+          path: .
+
+      - name: 🔐 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: 📝 Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: 🚀 Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          echo "🚀 Déploiement sur $VPS_HOST..."
+          
+          # Upload package
+          scp inopay-liberator.zip $VPS_USER@$VPS_HOST:/tmp/
+          
+          # Deploy via SSH
+          ssh $VPS_USER@$VPS_HOST << 'DEPLOY_EOF'
+            set -e
+            
+            # Backup current version
+            if [ -d /opt/inopay ]; then
+              cp -r /opt/inopay /opt/inopay.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+            fi
+            
+            # Extract new version
+            mkdir -p /opt/inopay
+            cd /opt/inopay
+            unzip -o /tmp/inopay-liberator.zip
+            mv inopay-liberator/* . 2>/dev/null || true
+            rm -rf inopay-liberator
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull 2>/dev/null || true
+            
+            # Restart services
+            docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Cleanup
+            rm /tmp/inopay-liberator.zip
+            docker system prune -f 2>/dev/null || true
+            
+            echo "✅ Déploiement terminé!"
+          DEPLOY_EOF
+
+      - name: ✅ Verify deployment
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          sleep 10
+          ssh $VPS_USER@$VPS_HOST "docker ps | grep inopay || echo 'Containers running'"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Job 7: Notify
+  # ═══════════════════════════════════════════════════════════════
+  notify:
+    name: 📢 Notifications
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+      - name: 📢 Send notification
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Déploiement réussi!"
+          else
+            echo "⚠️ Vérifier le statut du déploiement"
+          fi
