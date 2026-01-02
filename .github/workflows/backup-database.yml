@@ -1,0 +1,247 @@
+name: Backup Database to GitHub
+
+on:
+  schedule:
+    # Backup quotidien à 3h du matin UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Type de backup'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - schema-only
+          - data-only
+
+env:
+  BACKUP_BRANCH: backups
+  RETENTION_DAYS: 30
+
+jobs:
+  backup:
+    name: Backup PostgreSQL Database
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup backup branch
+        run: |
+          git fetch origin ${{ env.BACKUP_BRANCH }} || true
+          git checkout ${{ env.BACKUP_BRANCH }} 2>/dev/null || git checkout -b ${{ env.BACKUP_BRANCH }}
+          mkdir -p backups/daily backups/weekly backups/monthly
+      
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-15
+      
+      - name: Generate backup
+        env:
+          PGHOST: ${{ secrets.VPS_HOST }}
+          PGPORT: ${{ secrets.DB_PORT || 5432 }}
+          PGUSER: ${{ secrets.DB_USER || 'postgres' }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGDATABASE: ${{ secrets.DB_NAME || 'postgres' }}
+        run: |
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          DAY_OF_WEEK=$(date +%u)
+          DAY_OF_MONTH=$(date +%d)
+          BACKUP_TYPE="${{ github.event.inputs.backup_type || 'full' }}"
+          
+          echo "📦 Démarrage backup $BACKUP_TYPE - $TIMESTAMP"
+          
+          # Backup du schéma
+          echo "📋 Export du schéma..."
+          pg_dump --schema-only --no-owner --no-acl \
+            -f "backups/daily/schema_${TIMESTAMP}.sql"
+          
+          # Backup des données (exclure auth.* pour sécurité)
+          if [ "$BACKUP_TYPE" != "schema-only" ]; then
+            echo "💾 Export des données..."
+            pg_dump --data-only --no-owner --no-acl \
+              --exclude-table='auth.*' \
+              --exclude-table='storage.objects' \
+              -f "backups/daily/data_${TIMESTAMP}.sql"
+          fi
+          
+          # Backup complet
+          if [ "$BACKUP_TYPE" = "full" ]; then
+            echo "🗄️ Export complet..."
+            pg_dump --no-owner --no-acl \
+              --exclude-table='auth.users' \
+              --exclude-table='auth.sessions' \
+              --exclude-table='auth.refresh_tokens' \
+              --exclude-table='storage.objects' \
+              -f "backups/daily/full_${TIMESTAMP}.sql"
+          fi
+          
+          # Export des politiques RLS
+          echo "🔒 Export des politiques RLS..."
+          psql -c "
+            SELECT 
+              schemaname,
+              tablename,
+              policyname,
+              permissive,
+              roles,
+              cmd,
+              qual,
+              with_check
+            FROM pg_policies 
+            WHERE schemaname = 'public'
+            ORDER BY tablename, policyname;
+          " -o "backups/daily/rls_policies_${TIMESTAMP}.txt"
+          
+          # Export des fonctions
+          echo "⚙️ Export des fonctions..."
+          psql -c "
+            SELECT 
+              n.nspname as schema,
+              p.proname as name,
+              pg_get_functiondef(p.oid) as definition
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = 'public'
+            ORDER BY p.proname;
+          " -o "backups/daily/functions_${TIMESTAMP}.txt"
+          
+          # Export des triggers
+          echo "🎯 Export des triggers..."
+          psql -c "
+            SELECT 
+              trigger_schema,
+              trigger_name,
+              event_manipulation,
+              event_object_table,
+              action_statement
+            FROM information_schema.triggers
+            WHERE trigger_schema = 'public'
+            ORDER BY event_object_table, trigger_name;
+          " -o "backups/daily/triggers_${TIMESTAMP}.txt"
+          
+          # Compression
+          echo "🗜️ Compression des backups..."
+          cd backups/daily
+          for f in *_${TIMESTAMP}.*; do
+            gzip -9 "$f" 2>/dev/null || true
+          done
+          cd ../..
+          
+          # Backup hebdomadaire (dimanche)
+          if [ "$DAY_OF_WEEK" = "7" ]; then
+            echo "📅 Création backup hebdomadaire..."
+            cp backups/daily/full_${TIMESTAMP}.sql.gz backups/weekly/ 2>/dev/null || true
+          fi
+          
+          # Backup mensuel (1er du mois)
+          if [ "$DAY_OF_MONTH" = "01" ]; then
+            echo "📆 Création backup mensuel..."
+            cp backups/daily/full_${TIMESTAMP}.sql.gz backups/monthly/ 2>/dev/null || true
+          fi
+          
+          # Générer le manifest
+          echo "📝 Génération du manifest..."
+          cat > backups/MANIFEST.json << EOF
+          {
+            "last_backup": "$TIMESTAMP",
+            "backup_type": "$BACKUP_TYPE",
+            "files": {
+              "schema": "daily/schema_${TIMESTAMP}.sql.gz",
+              "data": "daily/data_${TIMESTAMP}.sql.gz",
+              "full": "daily/full_${TIMESTAMP}.sql.gz",
+              "rls": "daily/rls_policies_${TIMESTAMP}.txt.gz",
+              "functions": "daily/functions_${TIMESTAMP}.txt.gz",
+              "triggers": "daily/triggers_${TIMESTAMP}.txt.gz"
+            },
+            "retention": {
+              "daily": 7,
+              "weekly": 4,
+              "monthly": 12
+            }
+          }
+          EOF
+          
+          echo "✅ Backup terminé!"
+      
+      - name: Cleanup old backups
+        run: |
+          echo "🧹 Nettoyage des anciens backups..."
+          
+          # Supprimer les backups quotidiens de plus de 7 jours
+          find backups/daily -type f -mtime +7 -delete 2>/dev/null || true
+          
+          # Supprimer les backups hebdomadaires de plus de 4 semaines
+          find backups/weekly -type f -mtime +28 -delete 2>/dev/null || true
+          
+          # Supprimer les backups mensuels de plus de 12 mois
+          find backups/monthly -type f -mtime +365 -delete 2>/dev/null || true
+          
+          echo "✅ Nettoyage terminé!"
+      
+      - name: Commit and push backups
+        run: |
+          git config user.name "Inopay Backup Bot"
+          git config user.email "backup@inopay.local"
+          
+          git add backups/
+          git commit -m "🔄 Backup automatique $(date +%Y-%m-%d)" || echo "Pas de changements"
+          git push origin ${{ env.BACKUP_BRANCH }} --force
+      
+      - name: Generate backup report
+        run: |
+          echo "## 📊 Rapport de Backup" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Élément | Statut |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Date | $(date +%Y-%m-%d) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Heure | $(date +%H:%M:%S) UTC |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | ${{ github.event.inputs.backup_type || 'full' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branche | ${{ env.BACKUP_BRANCH }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Fichiers générés" >> $GITHUB_STEP_SUMMARY
+          ls -lh backups/daily/*.gz 2>/dev/null | tail -6 >> $GITHUB_STEP_SUMMARY || echo "Aucun fichier" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Send Notification
+    needs: backup
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify on success
+        if: needs.backup.result == 'success'
+        run: |
+          echo "✅ Backup réussi!"
+          # Ajouter ici webhook Discord/Slack si nécessaire
+      
+      - name: Notify on failure
+        if: needs.backup.result == 'failure'
+        run: |
+          echo "❌ Backup échoué!"
+          # Ajouter ici alerte critique
+
+  restore:
+    name: Restore Database (Manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.backup_type == 'restore'
+    
+    steps:
+      - name: Checkout backups branch
+        uses: actions/checkout@v4
+        with:
+          ref: backups
+      
+      - name: List available backups
+        run: |
+          echo "📋 Backups disponibles:"
+          ls -la backups/daily/*.gz 2>/dev/null | tail -10 || echo "Aucun backup trouvé"
+          ls -la backups/weekly/*.gz 2>/dev/null | tail -5 || echo "Aucun backup hebdo"
+          ls -la backups/monthly/*.gz 2>/dev/null | tail -3 || echo "Aucun backup mensuel"

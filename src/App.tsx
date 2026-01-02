@@ -36,6 +36,7 @@ import DownloadPackage from "./pages/liberator/DownloadPackage";
 import LiberationHistory from "./pages/liberator/LiberationHistory";
 import AISettings from "./pages/liberator/AISettings";
 import SelfHostInopay from "./pages/liberator/SelfHostInopay";
+import DeploymentMonitoring from "./pages/liberator/DeploymentMonitoring";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/liberator/history" element={<LiberatorLayout><LiberationHistory /></LiberatorLayout>} />
             <Route path="/liberator/ai-settings" element={<LiberatorLayout><AISettings /></LiberatorLayout>} />
             <Route path="/liberator/self-host" element={<LiberatorLayout><SelfHostInopay /></LiberatorLayout>} />
+            <Route path="/liberator/monitoring" element={<LiberatorLayout><DeploymentMonitoring /></LiberatorLayout>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
