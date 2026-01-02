@@ -20,11 +20,22 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import LiberationReport from "./pages/LiberationReport";
 import Widget from "./pages/Widget";
 import { AgencyDashboard } from "./components/dashboard/AgencyDashboard";
-// Services page merged into Pricing - redirect handled via NotFound
 import Terms from "./pages/legal/Terms";
 import Privacy from "./pages/legal/Privacy";
 import Imprint from "./pages/legal/Imprint";
 import NotFound from "./pages/NotFound";
+
+// Liberator Dashboard Pages
+import { LiberatorLayout } from "./components/liberator/LiberatorLayout";
+import HomeDashboard from "./pages/liberator/HomeDashboard";
+import UploadProject from "./pages/liberator/UploadProject";
+import AuditResults from "./pages/liberator/AuditResults";
+import CleanerProgress from "./pages/liberator/CleanerProgress";
+import RebuildView from "./pages/liberator/RebuildView";
+import DownloadPackage from "./pages/liberator/DownloadPackage";
+import LiberationHistory from "./pages/liberator/LiberationHistory";
+import AISettings from "./pages/liberator/AISettings";
+import SelfHostInopay from "./pages/liberator/SelfHostInopay";
 
 const queryClient = new QueryClient();
 
@@ -54,13 +65,23 @@ const App = () => (
             <Route path="/rapport-liberation/:deploymentId" element={<LiberationReport />} />
             <Route path="/widget" element={<Widget />} />
             <Route path="/agence" element={<AgencyDashboard />} />
-            {/* /liberate redirige vers le dashboard avec l'onglet liberation */}
             <Route path="/liberate" element={<Dashboard />} />
             <Route path="/services" element={<Pricing />} />
             <Route path="/legal/terms" element={<Terms />} />
             <Route path="/legal/privacy" element={<Privacy />} />
             <Route path="/legal/imprint" element={<Imprint />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            
+            {/* Liberator Dashboard Routes */}
+            <Route path="/liberator" element={<LiberatorLayout><HomeDashboard /></LiberatorLayout>} />
+            <Route path="/liberator/upload" element={<LiberatorLayout><UploadProject /></LiberatorLayout>} />
+            <Route path="/liberator/audit" element={<LiberatorLayout><AuditResults /></LiberatorLayout>} />
+            <Route path="/liberator/cleaner" element={<LiberatorLayout><CleanerProgress /></LiberatorLayout>} />
+            <Route path="/liberator/rebuild" element={<LiberatorLayout><RebuildView /></LiberatorLayout>} />
+            <Route path="/liberator/download" element={<LiberatorLayout><DownloadPackage /></LiberatorLayout>} />
+            <Route path="/liberator/history" element={<LiberatorLayout><LiberationHistory /></LiberatorLayout>} />
+            <Route path="/liberator/ai-settings" element={<LiberatorLayout><AISettings /></LiberatorLayout>} />
+            <Route path="/liberator/self-host" element={<LiberatorLayout><SelfHostInopay /></LiberatorLayout>} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
           </BrowserRouter>
