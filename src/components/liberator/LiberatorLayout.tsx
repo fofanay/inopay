@@ -22,6 +22,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  Activity,
 } from "lucide-react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
@@ -40,6 +41,7 @@ const menuItems = [
 ];
 
 const settingsItems = [
+  { id: "monitoring", label: "Monitoring", icon: Activity, path: "/liberator/monitoring" },
   { id: "ai", label: "IA Settings", icon: Settings, path: "/liberator/ai-settings" },
   { id: "selfhost", label: "Self-Host", icon: Server, path: "/liberator/self-host" },
 ];
