@@ -38,6 +38,11 @@ import AISettings from "./pages/liberator/AISettings";
 import SelfHostInopay from "./pages/liberator/SelfHostInopay";
 import DeploymentMonitoring from "./pages/liberator/DeploymentMonitoring";
 
+// Documentation Pages
+import OfficialDocumentation from "./pages/docs/OfficialDocumentation";
+import QuickstartGuide from "./pages/docs/QuickstartGuide";
+import APIReference from "./pages/docs/APIReference";
+
 const queryClient = new QueryClient();
 
 const App = () => (
