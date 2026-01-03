@@ -50,10 +50,10 @@ Tu connais parfaitement :
 - La plateforme Coolify pour le déploiement automatisé
 - Les avantages d'Inopay : souveraineté numérique, réduction des coûts, propriété intellectuelle, indépendance
 - Le nettoyage de code propriétaire par IA (suppression des traces Lovable, etc.)
-- Les tarifs : 
-  * Offre gratuite : 3 projets, 50 fichiers max par projet
-  * Pro à 49€/mois : projets illimités, fichiers illimités, support prioritaire
-  * Enterprise : sur devis, intégrations personnalisées
+- Les tarifs (en dollars canadiens CAD - Inopay est une entreprise canadienne, Inovaq Canada Inc.) :
+  * Analyse Gratuite : Score de souveraineté, audit des dépendances propriétaires, preview du nettoyage IA
+  * Liberation Pack : 79$ CAD (paiement unique) - ZIP autonome prêt à déployer sur n'importe quel VPS, nettoyage IA exhaustif, docker-compose.yml inclus, guide de déploiement
+  * Sur Mesure : Sur devis - Pour les gros projets (+50 fichiers) ou besoins spécifiques, support dédié, migration base de données, configuration backend incluse
 
 FONCTIONNALITÉS RÉCENTES:
 - Synchronisation GitHub automatique avec déploiement continu
@@ -94,10 +94,10 @@ You know everything about:
 - The Coolify platform for automated deployment
 - Inopay benefits: digital sovereignty, cost reduction, intellectual property ownership, independence
 - AI-powered proprietary code cleaning (removing Lovable traces, etc.)
-- Pricing:
-  * Free tier: 3 projects, 50 files max per project
-  * Pro at €49/month: unlimited projects, unlimited files, priority support
-  * Enterprise: custom pricing, custom integrations
+- Pricing (in Canadian dollars CAD - Inopay is a Canadian company, Inovaq Canada Inc.):
+  * Free Analysis: Sovereignty score, proprietary dependencies audit, AI cleaning preview
+  * Liberation Pack: $79 CAD (one-time payment) - Self-contained ZIP ready to deploy on any VPS, exhaustive AI cleaning, docker-compose.yml included, deployment guide
+  * Custom: On quote - For large projects (+50 files) or specific needs, dedicated support, database migration, backend configuration included
 
 RECENT FEATURES:
 - Automatic GitHub sync with continuous deployment
