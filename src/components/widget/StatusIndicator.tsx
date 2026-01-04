@@ -1,34 +1,40 @@
 import { cn } from "@/lib/utils";
 
 interface StatusIndicatorProps {
-  status: 'synced' | 'cleaning' | 'deploying' | 'error';
+  status: 'liberated' | 'cleaning' | 'deploying' | 'error' | 'pending';
   className?: string;
 }
 
 const statusConfig = {
-  synced: {
-    color: 'bg-green-500',
-    glow: 'shadow-[0_0_20px_rgba(34,197,94,0.6)]',
-    label: 'SYNCHRONISÉ',
+  liberated: {
+    color: 'bg-primary',
+    glow: 'shadow-[0_0_20px_hsl(var(--primary)/0.6)]',
+    label: 'LIBÉRÉ',
     animation: 'animate-pulse',
   },
   cleaning: {
     color: 'bg-blue-500',
     glow: 'shadow-[0_0_20px_rgba(59,130,246,0.6)]',
-    label: 'NETTOYAGE EN COURS...',
+    label: 'NETTOYAGE IA EN COURS...',
     animation: 'animate-spin',
   },
   deploying: {
     color: 'bg-orange-500',
     glow: 'shadow-[0_0_20px_rgba(249,115,22,0.6)]',
-    label: 'ENVOI VERS LE VPS...',
+    label: 'DÉPLOIEMENT VPS...',
     animation: 'animate-ping',
   },
   error: {
-    color: 'bg-red-500',
-    glow: 'shadow-[0_0_20px_rgba(239,68,68,0.6)]',
-    label: 'ALERTE',
+    color: 'bg-destructive',
+    glow: 'shadow-[0_0_20px_hsl(var(--destructive)/0.6)]',
+    label: 'ERREUR',
     animation: 'animate-pulse',
+  },
+  pending: {
+    color: 'bg-muted-foreground',
+    glow: 'shadow-[0_0_20px_hsl(var(--muted-foreground)/0.4)]',
+    label: 'EN ATTENTE',
+    animation: '',
   },
 };
 
@@ -69,10 +75,11 @@ export function StatusIndicator({ status, className }: StatusIndicatorProps) {
       {/* Status label */}
       <span className={cn(
         "text-lg font-bold tracking-wider",
-        status === 'synced' && "text-green-400",
+        status === 'liberated' && "text-primary",
         status === 'cleaning' && "text-blue-400",
         status === 'deploying' && "text-orange-400",
-        status === 'error' && "text-red-400"
+        status === 'error' && "text-destructive",
+        status === 'pending' && "text-muted-foreground"
       )}>
         {config.label}
       </span>

@@ -1,11 +1,11 @@
 {
-  "name": "Inopay Vibe Monitor",
-  "short_name": "VibeMonitor",
-  "description": "Surveillez votre infrastructure en temps réel",
-  "start_url": "/widget",
+  "name": "Inopay Liberator",
+  "short_name": "Liberator",
+  "description": "Libérez vos projets IA - Premier Liberation PaaS au monde",
+  "start_url": "/liberator",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#2ECC71",
+  "theme_color": "#10B981",
   "background_color": "#0F172A",
   "icons": [
     {
@@ -21,7 +21,7 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "utilities"],
+  "categories": ["productivity", "developer tools", "utilities"],
   "lang": "fr",
   "dir": "ltr"
 }
