@@ -13,19 +13,19 @@ export function OfflineIndicator() {
       className={cn(
         "fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium shadow-lg transition-all duration-300",
         isOnline
-          ? "bg-green-500/90 text-white animate-in fade-in slide-in-from-top-2"
+          ? "bg-primary/90 text-primary-foreground animate-in fade-in slide-in-from-top-2"
           : "bg-destructive text-destructive-foreground animate-pulse"
       )}
     >
       {isOnline ? (
         <>
           <Wifi className="w-4 h-4" />
-          <span>Connexion rétablie</span>
+          <span>Connexion rétablie - Synchronisation en cours</span>
         </>
       ) : (
         <>
           <WifiOff className="w-4 h-4" />
-          <span>Mode hors ligne</span>
+          <span>Mode hors ligne - Vos libérations seront synchronisées</span>
         </>
       )}
     </div>

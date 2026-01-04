@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CheckCircle2, AlertCircle, Loader2, Rocket, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Unlock, FileCode, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Activity {
@@ -18,26 +18,30 @@ interface ActivityFeedProps {
 
 const statusIcons = {
   success: CheckCircle2,
-  info: RefreshCw,
+  liberated: Unlock,
+  cleaning: FileCode,
+  deploying: Server,
   warning: AlertCircle,
   error: AlertCircle,
   pending: Loader2,
 };
 
 const statusColors = {
-  success: "text-green-400 bg-green-500/20",
-  info: "text-blue-400 bg-blue-500/20",
+  success: "text-primary bg-primary/20",
+  liberated: "text-primary bg-primary/20",
+  cleaning: "text-blue-400 bg-blue-500/20",
+  deploying: "text-orange-400 bg-orange-500/20",
   warning: "text-orange-400 bg-orange-500/20",
-  error: "text-red-400 bg-red-500/20",
-  pending: "text-gray-400 bg-gray-500/20",
+  error: "text-destructive bg-destructive/20",
+  pending: "text-muted-foreground bg-muted",
 };
 
 export function ActivityFeed({ activities, className }: ActivityFeedProps) {
   if (!activities || activities.length === 0) {
     return (
       <div className={cn("text-center py-6 text-muted-foreground", className)}>
-        <Rocket className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Aucune activité récente</p>
+        <Unlock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">Aucune libération récente</p>
       </div>
     );
   }
@@ -45,15 +49,15 @@ export function ActivityFeed({ activities, className }: ActivityFeedProps) {
   return (
     <div className={cn("space-y-3", className)}>
       {activities.slice(0, 3).map((activity, index) => {
-        const Icon = statusIcons[activity.status as keyof typeof statusIcons] || RefreshCw;
-        const colorClass = statusColors[activity.status as keyof typeof statusColors] || statusColors.info;
+        const Icon = statusIcons[activity.status as keyof typeof statusIcons] || FileCode;
+        const colorClass = statusColors[activity.status as keyof typeof statusColors] || statusColors.pending;
         
         return (
           <div 
             key={activity.id}
             className={cn(
               "flex items-start gap-3 p-3 rounded-xl",
-              "bg-white/5 backdrop-blur-sm border border-white/10",
+              "bg-card/50 backdrop-blur-sm border border-border",
               "animate-fade-in"
             )}
             style={{ animationDelay: `${index * 100}ms` }}
