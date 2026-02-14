@@ -6,6 +6,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// === Decrypt helpers for encrypted credentials ===
+const DEC_ALGORITHM = 'AES-GCM';
+const DEC_IV_LENGTH = 12;
+
+async function decDeriveKey(masterSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(masterSecret), { name: 'PBKDF2' }, false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt as BufferSource, iterations: 100000, hash: 'SHA-256' }, km, { name: DEC_ALGORITHM, length: 256 }, false, ['decrypt']);
+}
+
+async function decryptToken(enc: string, master: string): Promise<string> {
+  const combined = new Uint8Array(atob(enc).split('').map(c => c.charCodeAt(0)));
+  const salt = combined.slice(0, 16); const iv = combined.slice(16, 16 + DEC_IV_LENGTH); const ct = combined.slice(16 + DEC_IV_LENGTH);
+  const key = await decDeriveKey(master, salt);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: DEC_ALGORITHM, iv }, key, ct));
+}
+
+function isEncrypted(value: string): boolean {
+  if (!value || value.length < 50) return false;
+  try { return atob(value).length >= 44; } catch { return false; }
+}
+
+function getDecMasterKey(): string {
+  const dk = Deno.env.get('ENCRYPTION_MASTER_KEY');
+  if (dk) return dk;
+  const srk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!srk) throw new Error('No encryption key available');
+  return srk.substring(0, 64);
+}
+
+async function getDecryptedValue(value: string): Promise<string> {
+  if (!value || !isEncrypted(value)) return value;
+  try { return await decryptToken(value, getDecMasterKey()); } catch { return value; }
+}
+
 interface DeploymentStatus {
   status: 'queued' | 'in_progress' | 'building' | 'finished' | 'failed' | 'unknown';
   logs: string;
@@ -86,8 +120,9 @@ serve(async (req) => {
     }
 
     const coolifyUrl = normalizeCoolifyUrl(server.coolify_url);
+    const decryptedToken = await getDecryptedValue(server.coolify_token);
     const coolifyHeaders = {
-      'Authorization': `Bearer ${server.coolify_token}`,
+      'Authorization': `Bearer ${decryptedToken}`,
       'Accept': 'application/json'
     };
 
