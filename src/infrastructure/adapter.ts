@@ -272,6 +272,9 @@ const AUTHORIZED_DOMAINS = [
   'inopay.dev',
   'inopay.app',
   'getinopay.com',
+  'lovable.app',
+  'lovableproject.com',
+  'lovable.dev',
 ];
 
 export const isAuthorizedDomain = (): boolean => {

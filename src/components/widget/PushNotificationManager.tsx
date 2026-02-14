@@ -44,7 +44,7 @@ export function PushNotificationManager({ userId, syncConfigId }: PushNotificati
   const checkSubscription = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await (registration as any).pushManager?.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -76,7 +76,7 @@ export function PushNotificationManager({ userId, syncConfigId }: PushNotificati
       
       // Note: In production, you would need a real VAPID key
       // For now, we'll just show a success message
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await (registration as any).pushManager?.subscribe({
         userVisibleOnly: true,
         // In production, use your VAPID public key:
         // applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
@@ -103,7 +103,7 @@ export function PushNotificationManager({ userId, syncConfigId }: PushNotificati
     setIsLoading(true);
     try {
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await (registration as any).pushManager?.getSubscription();
       
       if (subscription) {
         await subscription.unsubscribe();
