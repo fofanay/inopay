@@ -13,6 +13,44 @@ const maskSecret = (value: string | null): string => {
   return `***${value.slice(-4)}`;
 };
 
+// === AES-256-GCM Encryption for secrets at rest ===
+const ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const IV_LENGTH = 12;
+
+async function deriveKey(masterSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(masterSecret), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt as BufferSource, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: ALGORITHM, length: KEY_LENGTH }, false, ['encrypt']
+  );
+}
+
+async function encryptToken(plaintext: string, masterSecret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plaintext);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const key = await deriveKey(masterSecret, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name: ALGORITHM, iv }, key, data);
+  const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+function getMasterKey(): string {
+  const dedicatedKey = Deno.env.get('ENCRYPTION_MASTER_KEY');
+  if (dedicatedKey) return dedicatedKey;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) throw new Error('No encryption key available');
+  return serviceRoleKey.substring(0, 64);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -111,9 +149,18 @@ serve(async (req) => {
       setup_id: null
     };
 
-    // Save Coolify token if provided
+    // SECURITY: Encrypt sensitive credentials before storing
+    const masterKey = getMasterKey();
+
+    // Save Coolify token if provided (encrypted)
     if (coolify_token) {
-      updateData.coolify_token = coolify_token;
+      try {
+        updateData.coolify_token = await encryptToken(coolify_token, masterKey);
+        console.log('[setup-callback] Coolify token encrypted before storage');
+      } catch (e) {
+        console.error('[setup-callback] Failed to encrypt coolify_token, storing as-is:', e);
+        updateData.coolify_token = coolify_token;
+      }
     }
 
     // Save all database credentials if provided
@@ -130,9 +177,19 @@ serve(async (req) => {
       updateData.db_user = db_user;
     }
     if (db_password) {
-      updateData.db_password = db_password;
-      updateData.db_url = dbUrl;
-      updateData.db_status = 'ready'; // Mark DB as ready since script created it
+      try {
+        updateData.db_password = await encryptToken(db_password, masterKey);
+        // Also encrypt the full db_url
+        if (dbUrl) {
+          updateData.db_url = await encryptToken(dbUrl, masterKey);
+        }
+        console.log('[setup-callback] Database password encrypted before storage');
+      } catch (e) {
+        console.error('[setup-callback] Failed to encrypt db_password, storing as-is:', e);
+        updateData.db_password = db_password;
+        updateData.db_url = dbUrl;
+      }
+      updateData.db_status = 'ready';
     }
 
     if (status === 'error') {

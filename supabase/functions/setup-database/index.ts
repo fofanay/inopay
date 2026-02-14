@@ -21,6 +21,43 @@ function generateJWTSecret(): string {
   return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// === AES-256-GCM Encryption ===
+const ENC_ALGORITHM = 'AES-GCM';
+const ENC_IV_LENGTH = 12;
+
+async function deriveEncKey(masterSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(masterSecret), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: salt as BufferSource, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: ENC_ALGORITHM, length: 256 }, false, ['encrypt']
+  );
+}
+
+async function encryptToken(plaintext: string, masterSecret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plaintext);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(ENC_IV_LENGTH));
+  const key = await deriveEncKey(masterSecret, salt);
+  const ciphertext = await crypto.subtle.encrypt({ name: ENC_ALGORITHM, iv }, key, data);
+  const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+function getEncMasterKey(): string {
+  const dedicatedKey = Deno.env.get('ENCRYPTION_MASTER_KEY');
+  if (dedicatedKey) return dedicatedKey;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!serviceRoleKey) throw new Error('No encryption key available');
+  return serviceRoleKey.substring(0, 64);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -93,17 +130,18 @@ serve(async (req) => {
       // Generate security keys if not already present
       let needsUpdate = false;
       const updateFields: Record<string, unknown> = {};
+      const masterKey = getEncMasterKey();
       
       if (!server.jwt_secret) {
-        updateFields.jwt_secret = generateJWTSecret();
+        updateFields.jwt_secret = await encryptToken(generateJWTSecret(), masterKey);
         needsUpdate = true;
       }
       if (!server.anon_key) {
-        updateFields.anon_key = generateSecureKey(48);
+        updateFields.anon_key = await encryptToken(generateSecureKey(48), masterKey);
         needsUpdate = true;
       }
       if (!server.service_role_key) {
-        updateFields.service_role_key = generateSecureKey(48);
+        updateFields.service_role_key = await encryptToken(generateSecureKey(48), masterKey);
         needsUpdate = true;
       }
       
@@ -112,7 +150,7 @@ serve(async (req) => {
           .from('user_servers')
           .update(updateFields)
           .eq('id', server.id);
-        console.log('[setup-database] Generated missing security keys');
+        console.log('[setup-database] Generated and encrypted missing security keys');
       }
       
       return new Response(
@@ -283,7 +321,8 @@ serve(async (req) => {
       const dbPort = 5432;
       const dbUrl = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
 
-      // Step 5: Update server with database credentials
+      // Step 5: Update server with database credentials (encrypted)
+      const masterKey = getEncMasterKey();
       const { error: updateError } = await supabase
         .from('user_servers')
         .update({
@@ -291,11 +330,11 @@ serve(async (req) => {
           db_port: dbPort,
           db_name: dbName,
           db_user: dbUser,
-          db_password: dbPassword,
-          db_url: dbUrl,
-          jwt_secret: jwtSecret,
-          anon_key: anonKey,
-          service_role_key: serviceRoleKey,
+          db_password: await encryptToken(dbPassword, masterKey),
+          db_url: await encryptToken(dbUrl, masterKey),
+          jwt_secret: await encryptToken(jwtSecret, masterKey),
+          anon_key: await encryptToken(anonKey, masterKey),
+          service_role_key: await encryptToken(serviceRoleKey, masterKey),
           db_status: 'ready'
         })
         .eq('id', server.id);

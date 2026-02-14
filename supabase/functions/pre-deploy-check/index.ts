@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// === Decrypt helpers ===
+const DEC_ALG = 'AES-GCM'; const DEC_IV = 12;
+async function decDK(m: string, s: Uint8Array): Promise<CryptoKey> {
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(m), { name: 'PBKDF2' }, false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: s as BufferSource, iterations: 100000, hash: 'SHA-256' }, km, { name: DEC_ALG, length: 256 }, false, ['decrypt']);
+}
+async function decToken(enc: string, master: string): Promise<string> {
+  const c = new Uint8Array(atob(enc).split('').map(ch => ch.charCodeAt(0)));
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: DEC_ALG, iv: c.slice(16, 16 + DEC_IV) }, await decDK(master, c.slice(0, 16)), c.slice(16 + DEC_IV)));
+}
+function isEnc(v: string): boolean { if (!v || v.length < 50) return false; try { return atob(v).length >= 44; } catch { return false; } }
+function getMK(): string { const d = Deno.env.get('ENCRYPTION_MASTER_KEY'); if (d) return d; const s = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); if (!s) throw new Error('No key'); return s.substring(0, 64); }
+async function getDecVal(v: string): Promise<string> { if (!v || !isEnc(v)) return v; try { return await decToken(v, getMK()); } catch { return v; } }
+
 interface PreDeployCheckResult {
   ready: boolean;
   actions_taken: string[];
@@ -301,10 +315,11 @@ serve(async (req) => {
     if (server.coolify_url && server.coolify_token) {
       try {
         const coolifyUrl = normalizeCoolifyUrl(server.coolify_url);
+        const decryptedToken = await getDecVal(server.coolify_token);
         const versionRes = await fetch(`${coolifyUrl}/api/v1/version`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${server.coolify_token}`,
+            'Authorization': `Bearer ${decryptedToken}`,
             'Accept': 'application/json'
           }
         });
