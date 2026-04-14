@@ -39,6 +39,11 @@ router.post('/register', async (req, res) => {
     );
 
     await client.query(
+      `INSERT INTO user_types (user_id, type) VALUES ($1, 'investor') ON CONFLICT DO NOTHING`,
+      [user.id]
+    );
+
+    await client.query(
       `INSERT INTO sandbox_balances (user_id, balance, created_at, updated_at) VALUES ($1, 10000000, NOW(), NOW()) ON CONFLICT (user_id) DO NOTHING`,
       [user.id]
     );

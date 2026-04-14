@@ -21,8 +21,7 @@ router.post('/:fn', async (req, res) => {
       // Renvoie les tenants visibles aux utilisateurs authentifiés (SGI, investisseurs)
       case 'get_tenants_safe': {
         const result = await pool.query(
-          `SELECT id, name, market, currency, payment_provider, country, status
-           FROM tenants WHERE status = 'active' ORDER BY name`
+          `SELECT * FROM tenants ORDER BY name`
         );
         return res.json(result.rows);
       }
@@ -32,7 +31,7 @@ router.post('/:fn', async (req, res) => {
         if (!user) return res.status(401).json({ error: 'Non authentifié' });
         const uid = req.body?._user_id || user.id;
         const result = await pool.query(
-          `SELECT t.id, t.name, t.market, t.currency, t.payment_provider, t.country, t.status
+          `SELECT t.*
            FROM tenants t
            JOIN profiles p ON p.tenant_id = t.id
            WHERE p.user_id = $1
@@ -45,9 +44,12 @@ router.post('/:fn', async (req, res) => {
       // Renvoie tous les tenants pour l'admin
       case 'get_tenants_for_admin': {
         if (!user) return res.status(401).json({ error: 'Non authentifié' });
+        const adminCheck = await pool.query(
+          `SELECT role FROM user_roles WHERE user_id=$1 AND role='admin' LIMIT 1`, [user.id]
+        );
+        if (!adminCheck.rows.length) return res.status(403).json({ error: 'Accès réservé aux admins' });
         const result = await pool.query(
-          `SELECT id, name, market, currency, payment_provider, country, status, created_at
-           FROM tenants ORDER BY created_at DESC`
+          `SELECT * FROM tenants ORDER BY created_at DESC`
         );
         return res.json(result.rows);
       }
@@ -55,6 +57,10 @@ router.post('/:fn', async (req, res) => {
       // Renvoie les intégrations SGI pour l'admin
       case 'get_sgi_integrations_for_admin': {
         if (!user) return res.status(401).json({ error: 'Non authentifié' });
+        const adminCheck2 = await pool.query(
+          `SELECT role FROM user_roles WHERE user_id=$1 AND role='admin' LIMIT 1`, [user.id]
+        );
+        if (!adminCheck2.rows.length) return res.status(403).json({ error: 'Accès réservé aux admins' });
         const result = await pool.query(
           `SELECT si.*, t.name as tenant_name
            FROM sgi_integrations si
