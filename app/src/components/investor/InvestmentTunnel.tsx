@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -30,14 +31,6 @@ const FEES = {
   tva_percent: 18,
 };
 
-const STEPS = [
-  { label: "Instrument", icon: ShoppingCart },
-  { label: "SGI", icon: Building2 },
-  { label: "KYC", icon: Shield },
-  { label: "Frais", icon: Receipt },
-  { label: "Paiement", icon: CreditCard },
-  { label: "Confirmation", icon: CheckCircle2 },
-];
 
 interface Instrument {
   id: string; name: string; symbol: string | null; last_price: number | null; currency: string | null; market?: string | null;
@@ -67,6 +60,15 @@ interface InvestmentTunnelProps {
 export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
   open, onClose, type, instruments, sgis, brokers = [], kycStatus, onComplete, sandbox = false,
 }) => {
+  const { t } = useTranslation();
+  const STEPS = [
+    { label: t("sandbox.tradeSteps.instrument"), icon: ShoppingCart },
+    { label: t("sandbox.tradeSteps.sgi"), icon: Building2 },
+    { label: t("sandbox.tradeSteps.kyc"), icon: Shield },
+    { label: t("sandbox.tradeSteps.fees"), icon: Receipt },
+    { label: t("sandbox.tradeSteps.payment"), icon: CreditCard },
+    { label: t("sandbox.tradeSteps.confirmation"), icon: CheckCircle2 },
+  ];
   const [step, setStep] = useState(0);
   const [selectedInstrument, setSelectedInstrument] = useState("");
   const [selectedSgi, setSelectedSgi] = useState(sgis.length > 0 ? sgis[0].id : "");
@@ -79,6 +81,8 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
   const [paymentDone, setPaymentDone] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("mobile_money");
   const [paymentGateway, setPaymentGateway] = useState<"cinetpay" | "paystack">("cinetpay");
+  // Track the order id saved at payment step to avoid duplicate inserts at confirmation step
+  const [savedOrderId, setSavedOrderId] = useState<string | null>(null);
 
   const instrument = instruments.find((i) => i.id === selectedInstrument);
   const isGse = instrument?.market === "GSE";
@@ -227,7 +231,25 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Non authentifié");
 
-    const { error } = await supabase.from("investment_orders").insert({
+    // If we already inserted this order at the payment step, update it instead
+    if (savedOrderId && status === "executed") {
+      const { error } = await supabase.from("investment_orders").update({
+        order_status: "executed",
+        payment_status: "completed",
+        executed_at: new Date().toISOString(),
+      } as any).eq("id", savedOrderId);
+      if (error) throw error;
+
+      try {
+        await supabase.from("sgi_orders").update({ status: "executed" } as any)
+          .eq("instrument_id", selectedInstrument).eq("user_id", user.id).eq("status", "pending");
+      } catch (_syncErr) {
+        console.warn("sgi_orders update skipped:", _syncErr);
+      }
+      return;
+    }
+
+    const { data: inserted, error } = await supabase.from("investment_orders").insert({
       user_id: user.id,
       instrument_id: selectedInstrument,
       tenant_id: isGse ? null : (selectedSgi || null),
@@ -249,9 +271,10 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
       payment_status: paymentDone || status === "executed" ? "completed" : "pending",
       order_status: status,
       executed_at: status === "executed" ? new Date().toISOString() : null,
-    } as any);
+    } as any).select("id").single();
 
     if (error) throw error;
+    if (inserted?.id) setSavedOrderId(inserted.id);
 
     // Also insert into sgi_orders for pipeline coherence (portfolio-agent, cinetpay-webhook)
     try {
@@ -278,6 +301,7 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
     setKycApproved(kycStatus === "VALIDE");
     setPaymentProcessing(false);
     setPaymentDone(false);
+    setSavedOrderId(null);
     onClose();
   };
 
@@ -358,6 +382,11 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
                     ))}
                   </SelectContent>
                 </Select>
+              ) : sgis.length === 0 ? (
+                <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-xs text-destructive">Aucune SGI disponible pour ce marché. Veuillez contacter le support INOPAY.</p>
+                </div>
               ) : (
                 <Select value={selectedSgi} onValueChange={setSelectedSgi}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner une SGI" /></SelectTrigger>
