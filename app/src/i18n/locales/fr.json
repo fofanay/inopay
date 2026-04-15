@@ -1,0 +1,2357 @@
+{
+  "nav": {
+    "investors": "Investisseurs",
+    "sgiBrokers": "SGI & Brokers",
+    "platform": "Plateforme",
+    "pricing": "Tarifs",
+    "whyInvest": "Pourquoi investir",
+    "whyInvestDesc": "Découvrez les opportunités sur les marchés africains",
+    "bonds": "Obligations disponibles",
+    "bondsDesc": "Explorez les émissions obligataires en cours",
+    "markets": "Marchés",
+    "marketsDesc": "BRVM, BVMAC et GSE en temps réel",
+    "calendar": "Calendrier financier",
+    "calendarDesc": "Dividendes, coupons et événements à venir",
+    "simulator": "Simulateur",
+    "simulatorDesc": "Testez vos stratégies sans risque",
+    "becomePartner": "Devenir partenaire",
+    "becomePartnerDesc": "Connectez votre SGI à notre infrastructure",
+    "demo": "Démo plateforme",
+    "demoDesc": "Découvrez l'interface dédiée aux institutions",
+    "partnerPricing": "Tarifs partenaires",
+    "partnerPricingDesc": "Plans et commissions pour les SGI",
+    "apiInfra": "Infrastructure API",
+    "apiInfraDesc": "Documentation technique et intégration",
+    "platformDesc": "KYC unifié, multi-marché, infrastructure intégrée",
+    "mySgi": "Mes SGI",
+    "login": "Connexion",
+    "register": "Créer un compte",
+    "dashboard": "Tableau de bord",
+    "language": "FR"
+  },
+  "footer": {
+    "tagline": "Investissez sur les bourses africaines — BRVM, BVMAC et GSE Ghana.",
+    "products": "Produits",
+    "marketsLink": "Marchés",
+    "bondsLink": "Obligations",
+    "bvmacLink": "BVMAC",
+    "invest": "Investir",
+    "pricingLink": "Tarifs",
+    "sandbox": "Simulateur",
+    "legal": "Légal",
+    "terms": "Conditions",
+    "privacy": "Confidentialité",
+    "compliance": "Conformité",
+    "legalMentions": "Mentions légales",
+    "trust": "Confiance",
+    "trustCenter": "Centre de confiance",
+    "security": "Sécurité",
+    "systemStatus": "État du système",
+    "infrastructure": "Infrastructure",
+    "support": "Support",
+    "howItWorks": "Comment ça marche",
+    "aiAssistant": "Assistant IA",
+    "copyright": "© {{year}} Inopay Group SARL — Société de droit ivoirien. Tous droits réservés.",
+    "disclaimer": "INOPAY est une infrastructure technologique. Vos fonds sont versés directement à votre SGI — jamais à INOPAY. Tous les ordres sont exécutés par des intermédiaires agréés (SGI, brokers LDM)."
+  },
+  "home": {
+    "badge": "Infrastructure panafricaine · BRVM · BVMAC · GSE",
+    "heroTitle1": "Investissez sur les",
+    "heroTitle2": "bourses africaines.",
+    "heroSubtitle": "Ouvrir un compte de bourse en Afrique depuis l'étranger était compliqué. INOPAY connecte la diaspora aux SGI agréées de la BRVM, BVMAC et du GSE — sans friction.",
+    "bondsBtn": "Obligations",
+    "marketsBtn": "Marchés africains",
+    "trustBadges": [
+      "BRVM · 52 actions",
+      "BVMAC · 9 titres",
+      "GSE Ghana · 25 titres",
+      "Vos fonds vont à votre SGI — jamais à INOPAY"
+    ],
+    "stats": {
+      "instruments": "Instruments cotés",
+      "exchanges": "Bourses africaines",
+      "countries": "Pays couverts",
+      "coupon": "Coupon moyen"
+    },
+    "forInvestors": "Pour les investisseurs",
+    "threeMarkets": "Trois marchés, une",
+    "platform": "plateforme.",
+    "threeMarketsDesc": "Obligations du marché primaire, actions BRVM & BVMAC, et bientôt le trading sur le Ghana Stock Exchange — tout depuis INOPAY.",
+    "bondsTab": "Obligations",
+    "brvmTab": "BRVM",
+    "bvmacTab": "BVMAC",
+    "stocksTab": "BRVM & BVMAC",
+    "gseTab": "GSE Ghana",
+    "bondsPrimary": "Marché primaire — Obligations",
+    "bondsPrimaryDesc": "Souscrivez aux émissions obligataires souveraines (OAT) et corporate de la zone UEMOA/CEMAC. Revenus réguliers via des coupons, risque souverain maîtrisé.",
+    "bondFeatures": [
+      "OAT et emprunts corporate disponibles",
+      "Coupons de 6 à 7% versés à échéance",
+      "Souscription digitale via SGI agréées",
+      "Accessible depuis la diaspora"
+    ],
+    "viewIssuances": "Voir les émissions",
+    "bondSubs": "Souscriptions obligataires",
+    "primaryMarket": "Marché primaire",
+    "subscriptions": "Souscriptions",
+    "active3": "3 actives",
+    "avgCoupon": "Coupon moyen",
+    "yield": "Rendement",
+    "yieldValue": "+6.5%/an",
+    "nextMaturity": "Prochaine échéance",
+    "nextMaturityValue": "Mars 2027",
+    "brvmTitle": "Marché secondaire — BRVM",
+    "brvmDesc": "Achetez et vendez des actions cotées sur la BRVM (Bourse Régionale des Valeurs Mobilières) couvrant les 8 pays de la zone UEMOA. 52 titres disponibles.",
+    "brvmFeatures": [
+      "52 actions cotées sur la BRVM",
+      "Sandbox de simulation avec 10M FCFA fictifs",
+      "Ordres exécutés via SGI agréées",
+      "Cours en temps réel et recommandations IA"
+    ],
+    "bvmacTitle": "BVMAC — Afrique Centrale",
+    "bvmacDesc": "Investissez sur la Bourse des Valeurs Mobilières de l'Afrique Centrale. 9+ titres couvrant les 6 pays de la zone CEMAC : Cameroun, Gabon, Congo, Tchad, Centrafrique et Guinée Équatoriale.",
+    "bvmacFeatures": [
+      "9+ titres cotés sur la BVMAC",
+      "Obligations souveraines CEMAC (OAT)",
+      "Paiement en Franc CFA (XAF) via CinetPay",
+      "Forte diaspora d'Afrique Centrale ciblée"
+    ],
+    "discoverBvmac": "Découvrir la BVMAC",
+    "bvmacCemac": "Afrique Centrale · CEMAC",
+    "bvmacRegulator": "Régulateur",
+    "bvmacDiaspora": "Diaspora",
+    "bvmacDiasporaValue": "5M+ en Europe",
+    "stocksSecondary": "Marché secondaire — BRVM & BVMAC",
+    "stocksSecondaryDesc": "Achetez et vendez des actions cotées sur la BRVM (Afrique de l'Ouest) et la BVMAC (Afrique Centrale). 61 titres disponibles, simulation sandbox gratuite.",
+    "stockFeatures": [
+      "52 actions BRVM + 9 titres BVMAC",
+      "Sandbox de simulation avec 10M FCFA fictifs",
+      "Ordres exécutés via SGI agréées",
+      "Cours en temps réel et recommandations IA"
+    ],
+    "exploreMarkets": "Explorer les marchés",
+    "cardBrvmRegion": "Afrique de l'Ouest · UEMOA",
+    "cardBrvmDesc": "52 actions cotées couvrant 8 pays d'Afrique de l'Ouest. Sénégal, Côte d'Ivoire, Burkina Faso et plus.",
+    "cardBvmacRegion": "Afrique Centrale · CEMAC",
+    "cardBvmacDesc": "9+ titres couvrant 6 pays d'Afrique Centrale. Cameroun, Gabon, Congo — forte diaspora en Europe.",
+    "cardGseRegion": "Ghana · Accra",
+    "cardGseDesc": "25 titres cotés dont MTN Ghana, Ecobank et GCB Bank. Paiement en Ghana Cedi.",
+    "cardStocks": "Actions cotées",
+    "cardSecurities": "Titres cotés",
+    "cardCurrency": "Devise",
+    "card8Countries": "8 pays UEMOA",
+    "card6Countries": "6 pays CEMAC",
+    "cardGhana": "Ghana",
+    "cardExploreBrvm": "Explorer la BRVM",
+    "cardExploreBvmac": "Découvrir la BVMAC",
+    "cardExploreGse": "Voir les cours GSE",
+    "myPortfolio": "Mon Portefeuille",
+    "sandboxSim": "Sandbox — Simulation",
+    "stocksHeld": "Actions détenues",
+    "stocksHeldValue": "5 titres",
+    "totalValue": "Valeur totale",
+    "totalValueAmount": "850K FCFA",
+    "returnLabel": "Rendement",
+    "returnValue": "+12.3%",
+    "bestStock": "Meilleur titre",
+    "gseTitle": "Ghana Stock Exchange — GSE",
+    "gseDesc": "Suivez les cours de 25 titres cotés sur le GSE : MTN Ghana, Ecobank, GCB Bank, AngloGold Ashanti et plus. Trading bientôt disponible via brokers LDM partenaires.",
+    "gseFeatures": [
+      "25 titres GSE en consultation temps réel",
+      "Prix affichés en Ghana Cedi (GH₵)",
+      "Trading via broker LDM — bientôt",
+      "Couverture Afrique de l'Ouest anglophone"
+    ],
+    "viewGse": "Voir les cours GSE",
+    "gseConsultation": "Consultation · GHS",
+    "listedSecurities": "Titres cotés",
+    "leader": "Leader",
+    "currency": "Devise",
+    "statusLabel": "Statut",
+    "consultationOnly": "Consultation",
+    "forInstitutions": "Pour les institutions",
+    "twoChannels": "Deux canaux de croissance pour",
+    "yourInstitution": "votre institution.",
+    "institutionDesc": "SGI, brokers LDM ou institutions financières — INOPAY est votre canal digital de distribution vers la diaspora. Recevez des investisseurs KYC-vérifiés via une infrastructure d'acquisition automatisée.",
+    "bondDistribution": "Distribution obligataire",
+    "bondDistributionDesc": "Placez vos OAT et emprunts corporate auprès de milliers de souscripteurs diaspora. Un canal digital de placement retail complémentaire.",
+    "bondDistFeatures": [
+      "Canal retail pour émissions primaires",
+      "Reporting souscriptions en temps réel",
+      "Nouveau segment diaspora inexploité"
+    ],
+    "qualifiedClients": "Clients qualifiés — Actions",
+    "qualifiedClientsDesc": "Recevez automatiquement des investisseurs diaspora KYC-vérifiés, prêts à transiger sur les marchés BRVM, BVMAC et GSE.",
+    "qualifiedClientsFeatures": [
+      "Investisseurs KYC-vérifiés livrés automatiquement",
+      "Pipeline de conversion automatisé",
+      "Multi-marché : BRVM, BVMAC, GSE"
+    ],
+    "becomePartner": "Devenir partenaire institutionnel",
+    "secureInvestment": "Investissement sécurisé de bout en bout",
+    "secureInvestmentDesc": "Sécurité, conformité et transparence à chaque étape.",
+    "trustItems": {
+      "brokers": "Intermédiaires agréés",
+      "brokersDesc": "SGI (UEMOA/CEMAC) et brokers licenciés (Ghana)",
+      "payments": "Paiements sécurisés",
+      "paymentsDesc": "CinetPay (XOF/XAF) · Paystack (GHS)",
+      "antiFraud": "Protection anti-fraude",
+      "antiFraudDesc": "Détection IA en temps réel",
+      "encrypted": "Données chiffrées",
+      "encryptedDesc": "Conformité RGPD, BCEAO & SEC Ghana"
+    },
+    "howItWorks": "Comment ça marche",
+    "howItWorksDesc": "Trois étapes pour accéder aux bourses africaines.",
+    "step1Title": "Créez votre compte",
+    "step1Desc": "Inscription gratuite en 2 minutes. Complétez votre vérification KYC pour investir réellement.",
+    "step2Title": "Choisissez votre investissement",
+    "step2Desc": "Obligations souveraines, actions BRVM/BVMAC ou cours GSE Ghana — explorez les opportunités via nos partenaires.",
+    "step3Title": "Investissez",
+    "step3Desc": "Souscrivez aux émissions primaires ou passez des ordres sur le marché secondaire. Suivez votre portefeuille en temps réel.",
+    "transparentPricing": "Des tarifs transparents",
+    "transparentPricingDesc": "Commencez gratuitement, évoluez à votre rythme.",
+    "free": "Gratuit",
+    "popular": "Populaire",
+    "perMonth": "FCFA/mois",
+    "viewAllPricing": "Voir tous les tarifs",
+    "marketNews": "Actualités des marchés",
+    "viewAll": "Voir tout",
+    "readyToInvest": "Prêt à investir sur les bourses africaines ?",
+    "readyToInvestDesc": "Créez votre compte gratuitement et accédez à la BRVM, BVMAC et au GSE Ghana.",
+    "createFreeAccount": "Créer un compte gratuit",
+    "institutionSpace": "Espace institutions",
+    "intelligence": {
+      "badge": "Intelligence Plateforme",
+      "title": "Au-delà du trading,",
+      "titleGradient": "l'intelligence africaine.",
+      "subtitle": "INOPAY ne se contente pas de connecter. Nous analysons, comparons et recommandons pour maximiser vos rendements sur les marchés africains.",
+      "thematic": "Portefeuilles thématiques",
+      "thematicDesc": "Stratégies packagées : Revenu Passif, Halal Sukuk, Banques Panafricaines, Télécoms et plus.",
+      "revenues": "Revenus & Dividendes",
+      "revenuesDesc": "Projection de cash-flow sur 12 mois, suivi des coupons et alertes ex-dividende automatiques.",
+      "social": "Social Investing",
+      "socialDesc": "Découvrez ce que la diaspora achète : tendances anonymisées et top picks par pays de résidence.",
+      "crossBorder": "Comparateur Cross-Border",
+      "crossBorderDesc": "Comparez BRVM, BVMAC et GSE en un coup d'œil : secteurs, rendements et opportunités d'arbitrage.",
+      "discover": "Découvrir"
+    },
+    "planFeatures": {
+      "STARTER": [
+        "Accès 3 marchés",
+        "Sandbox",
+        "Assistant IA"
+      ],
+      "INVESTOR": [
+        "Ordres illimités",
+        "Alertes prix",
+        "Support prioritaire"
+      ],
+      "PRO": [
+        "Analyses avancées",
+        "API accès",
+        "Multi-SGI"
+      ],
+      "ELITE": [
+        "Tout inclus",
+        "Gestionnaire dédié",
+        "Formation VIP"
+      ]
+    }
+  },
+  "login": {
+    "title": "Connexion",
+    "subtitle": "Accédez à votre espace INOPAY",
+    "email": "Email",
+    "emailPlaceholder": "votre@email.com",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Votre mot de passe",
+    "submit": "Se connecter",
+    "loading": "Connexion...",
+    "noAccount": "Pas encore de compte ?",
+    "createAccount": "Créer un compte",
+    "locked": "Compte verrouillé",
+    "lockedDesc": "Réessayez dans {{seconds}}s",
+    "lockedTemp": "Compte temporairement verrouillé",
+    "lockedTempDesc": "Trop de tentatives échouées. Réessayez dans 1 minute.",
+    "error": "Erreur de connexion",
+    "attemptsLeft": "{{remaining}} tentative(s) restante(s)",
+    "tooManyAttempts": "Trop de tentatives",
+    "waitOneMin": "Attendez 1 minute.",
+    "passwordRequired": "Mot de passe requis",
+    "success": "Connexion réussie",
+    "redirecting": "Redirection en cours...",
+    "forgotPassword": "Mot de passe oublié ?",
+    "enterEmailFirst": "Saisissez votre email d'abord",
+    "resetSent": "Email envoyé",
+    "resetSentDesc": "Vérifiez votre boîte mail pour réinitialiser votre mot de passe."
+  },
+  "resetPassword": {
+    "title": "Nouveau mot de passe",
+    "subtitle": "Choisissez un nouveau mot de passe pour votre compte",
+    "newPassword": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "8 car. min, majuscule, chiffre",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmPlaceholder": "Répétez le mot de passe",
+    "submit": "Réinitialiser",
+    "loading": "Mise à jour...",
+    "mismatch": "Les mots de passe ne correspondent pas",
+    "invalidPassword": "Mot de passe invalide",
+    "error": "Erreur",
+    "success": "Mot de passe mis à jour",
+    "successDesc": "Votre mot de passe a été modifié. Redirection..."
+  },
+  "register": {
+    "title": "Créer un compte",
+    "step1": "Étape 1/2 — Identifiants",
+    "step2": "Étape 2/2 — Informations personnelles",
+    "firstName": "Prénom",
+    "firstNamePlaceholder": "Votre prénom",
+    "firstNameRequired": "Prénom requis",
+    "lastName": "Nom",
+    "lastNamePlaceholder": "Votre nom",
+    "lastNameRequired": "Nom requis",
+    "email": "Email",
+    "emailPlaceholder": "votre@email.com",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "8 car. min, majuscule, chiffre",
+    "continue": "Continuer",
+    "country": "Pays de résidence",
+    "selectCountry": "Sélectionner un pays",
+    "phone": "Téléphone",
+    "phonePlaceholder": "+225 07 00 00 00 00",
+    "back": "Retour",
+    "submit": "Créer mon compte",
+    "loading": "Création...",
+    "alreadyRegistered": "Déjà inscrit ?",
+    "loginLink": "Se connecter",
+    "accountCreated": "Compte créé !",
+    "welcome": "Bienvenue sur INOPAY ! Accédez à votre tableau de bord.",
+    "sgiPendingApproval": "Votre demande SGI/Broker a été enregistrée. Complétez votre candidature pour activer votre espace partenaire.",
+    "error": "Erreur",
+    "genericError": "Une erreur est survenue.",
+    "tooManyAttempts": "Trop de tentatives",
+    "wait5min": "Attendez 5 minutes.",
+    "selectCountryError": "Veuillez sélectionner un pays",
+    "phoneRequired": "Numéro requis",
+    "phoneInvalid": "Format invalide",
+    "trustSecure": "Plateforme sécurisée",
+    "trustProtected": "Infrastructure protégée",
+    "trustTrusted": "Système de confiance",
+    "accountType": "Type de compte",
+    "typeInvestor": "Investisseur",
+    "typeInvestorDesc": "Investir dans les obligations",
+    "typeSgi": "SGI / Courtier",
+    "typeSgiDesc": "Gérer des investisseurs",
+    "selectMarket": "Marché",
+    "marketBrvmDesc": "Afrique de l'Ouest — XOF",
+    "marketBvmacDesc": "Afrique Centrale — XAF",
+    "marketGseDesc": "Ghana — GH₵",
+    "countries": {
+      "CI": "Côte d'Ivoire",
+      "SN": "Sénégal",
+      "ML": "Mali",
+      "BF": "Burkina Faso",
+      "BJ": "Bénin",
+      "TG": "Togo",
+      "NE": "Niger",
+      "GW": "Guinée-Bissau",
+      "CM": "Cameroun",
+      "GA": "Gabon",
+      "CG": "Congo",
+      "TD": "Tchad",
+      "CF": "Centrafrique",
+      "GQ": "Guinée Équatoriale",
+      "GH": "Ghana",
+      "FR": "France",
+      "BE": "Belgique",
+      "CH": "Suisse",
+      "DE": "Allemagne",
+      "US": "États-Unis",
+      "CA": "Canada",
+      "GB": "Royaume-Uni",
+      "OTHER": "Autre"
+    },
+    "disclaimer": "INOPAY est une infrastructure technologique. Vos fonds sont versés directement à votre SGI — jamais à INOPAY. Les ordres sont exécutés par des intermédiaires agréés BCEAO/CREPMF.",
+    "welcomeTitle": "Bienvenue sur INOPAY !",
+    "welcomeDesc": "Votre compte a été créé avec succès. Voici les prochaines étapes pour commencer à investir.",
+    "nextSteps": "Prochaines étapes",
+    "step_kyc_title": "Compléter votre KYC",
+    "step_kyc_desc": "Vérifiez votre identité pour accéder aux fonctionnalités d'investissement.",
+    "step_sub_title": "Choisir un abonnement",
+    "step_sub_desc": "Sélectionnez un plan pour accéder aux données de marché et passer des ordres.",
+    "step_invest_title": "Explorer les marchés",
+    "step_invest_desc": "Accédez aux marchés BRVM, BVMAC et GSE pour investir.",
+    "goToDashboard": "Accéder au tableau de bord"
+  },
+  "bonds": {
+    "title": "Obligations",
+    "subtitle": "Émissions obligataires UEMOA / CEMAC",
+    "pageTitle": "Marché obligataire primaire — Souscriptions | INOPAY",
+    "pageDesc": "Souscrivez aux émissions obligataires souveraines et corporate de la zone UEMOA/CEMAC.",
+    "noIssuance": "Aucune émission disponible",
+    "noIssuanceDesc": "Les prochaines émissions obligataires seront publiées ici.",
+    "open": "En cours",
+    "upcoming": "À venir",
+    "closed": "Clôturées",
+    "settled": "Réglée",
+    "sovereign": "Souverain",
+    "corporate": "Corporate",
+    "viaInopay": "✓ Via INOPAY",
+    "nonMemberSgi": "SGI non membre",
+    "annualCoupon": "coupon annuel",
+    "maturity": "Échéance",
+    "minSubscription": "Min",
+    "subscribed": "souscrits",
+    "placed": "placé",
+    "daysLeft": "{{days}}j restants",
+    "lastDay": "Dernier jour",
+    "opensOn": "Ouvre le {{date}}",
+    "closedLabel": "Clôturée",
+    "subscribe": "Souscrire",
+    "viewDetails": "Voir détails",
+    "noOpen": "Aucune émission en cours.",
+    "noUpcoming": "Aucune émission à venir.",
+    "noClosed": "Aucune émission clôturée.",
+    "allMarkets": "Tous"
+  },
+  "bondDetail": {
+    "bond": "Obligation",
+    "notFound": "Émission introuvable",
+    "back": "Retour",
+    "bondMarket": "Marché obligataire",
+    "partnerInopay": "✓ Partenaire INOPAY",
+    "nonMemberSgi": "SGI non membre",
+    "couponRate": "Taux coupon",
+    "annual": "annuel",
+    "semiAnnual": "semestriel",
+    "quarterly": "trimestriel",
+    "share": "Partager",
+    "source": "Source",
+    "prospectus": "Prospectus",
+    "characteristics": "Caractéristiques",
+    "coupons": "Coupons",
+    "issuer": "Émetteur",
+    "type": "Type",
+    "frequency": "Fréquence",
+    "nominalValue": "Valeur nominale",
+    "maturityDate": "Maturité",
+    "opening": "Ouverture",
+    "closing": "Clôture",
+    "settlement": "Règlement",
+    "minSub": "Min. souscription",
+    "guarantee": "Garantie",
+    "rating": "Notation",
+    "arranger": "Arrangeur",
+    "noCoupon": "Aucun coupon programmé.",
+    "date": "Date",
+    "rate": "Taux",
+    "amountPerUnit": "Montant/unité",
+    "status": "Statut",
+    "paid": "Payé",
+    "overdue": "En retard",
+    "scheduled": "Programmé",
+    "nonPartnerSgi": "SGI non partenaire",
+    "nonPartnerDesc": "La SGI émettrice ({{name}}) n'est pas encore partenaire INOPAY.",
+    "expressInterest": "Exprimez votre intérêt. Nous vous notifierons dès que disponible.",
+    "alertActivated": "Alerte activée ✓",
+    "alertMe": "M'alerter quand disponible",
+    "subscribeTo": "Souscrire",
+    "daysRemaining": "{{days}} jours restants",
+    "lastDayLabel": "Dernier jour",
+    "amount": "Montant",
+    "minAmount": "Min",
+    "maxAmount": "Max",
+    "estimatedAnnualYield": "Rendement annuel estimé",
+    "atMaturity": "À maturité",
+    "submitSubscription": "Souscrire maintenant",
+    "loginToSubscribe": "Connectez-vous pour souscrire",
+    "loginToAlert": "Connectez-vous pour activer l'alerte",
+    "subscriptionError": "Erreur lors de la souscription",
+    "subscriptionSuccess": "Souscription enregistrée !",
+    "minAmountError": "Montant minimum : {{amount}} {{currency}}",
+    "maxAmountError": "Montant maximum : {{amount}} {{currency}}",
+    "linkCopied": "Lien copié !"
+  },
+  "markets": {
+    "title": "Marchés Africains",
+    "subtitle": "BRVM · BVMAC · GSE — Cours en temps réel",
+    "realtime": "{{count}} cours en temps réel",
+    "estimated": "Cours estimés — données indisponibles",
+    "sync": "Sync",
+    "search": "Rechercher un instrument...",
+    "allMarkets": "Tous marchés",
+    "all": "Tout",
+    "stocks": "Actions",
+    "bondsFilter": "Obligations",
+    "instruments": "{{count}} instrument(s)",
+    "rising": "en hausse",
+    "falling": "en baisse",
+    "live": "live",
+    "estimatedShort": "estimés",
+    "createAccountCta": "Créez un compte gratuit pour investir sur la BRVM, BVMAC et accéder à votre portefeuille.",
+    "createAccountBtn": "Créer un compte",
+    "noInstrument": "Aucun instrument trouvé.",
+    "addToCart": "Ajouter au panier",
+    "alreadyInCart": "{{symbol}} est déjà dans votre panier",
+    "addedToCart": "{{symbol}} ajouté au panier",
+    "consultationOnly": "Consultation",
+    "gseTradingSoon": "Trading GSE bientôt disponible",
+    "investBtn": "Investir",
+    "estimatedLabel": "Estimé"
+  },
+  "calendar": {
+    "title": "Calendrier financier",
+    "subtitle": "Événements BRVM, BVMAC & GSE",
+    "pageTitle": "Calendrier financier multi-marchés | INOPAY",
+    "pageDesc": "Suivez les dividendes, coupons, AG et événements financiers de la BRVM, BVMAC et GSE Ghana. Alertes intelligentes pour investir au bon moment.",
+    "desc": "Dividendes, coupons, AG — BRVM, BVMAC & GSE Ghana",
+    "allEvents": "Tous les événements",
+    "allMarkets": "Tous les marchés",
+    "dividends": "Dividendes",
+    "coupons": "Coupons",
+    "agm": "Assemblées Générales",
+    "results": "Résultats",
+    "ipos": "Introductions",
+    "maturities": "Échéances",
+    "announcements": "Annonces",
+    "listView": "Liste",
+    "monthView": "Mois",
+    "noEvents": "Aucun événement financier pour cette période.",
+    "autoUpdate": "Les données sont mises à jour automatiquement depuis la BRVM, BVMAC et GSE.",
+    "syncNow": "Synchroniser maintenant",
+    "syncing": "Synchronisation en cours…",
+    "investAction": "Investir",
+    "more": "+{{count}} de plus",
+    "eventTypes": {
+      "dividend": "Dividende",
+      "coupon": "Coupon",
+      "agm": "Assemblée Générale",
+      "quarterly_results": "Résultats",
+      "ipo": "Introduction",
+      "bond_maturity": "Échéance",
+      "announcement": "Annonce"
+    },
+    "perShare": "{{amount}} {{currency}} / action"
+  },
+  "pricing": {
+    "title": "Forfaits & Tarifs",
+    "subtitle": "Choisissez le plan adapté à vos ambitions d'investissement. Commencez gratuitement, évoluez à votre rythme.",
+    "popular": "Populaire",
+    "free": "Gratuit",
+    "perMonth": "FCFA / mois",
+    "currentPlan": "Plan actuel",
+    "start": "Commencer",
+    "subscribePlan": "Souscrire",
+    "activeSub": "Votre abonnement actif",
+    "plan": "Plan",
+    "expiresOn": "Expire le",
+    "dashboardBtn": "Tableau de bord",
+    "planActivated": "Plan activé",
+    "planActivatedDesc": "Plan {{name}} activé avec succès.",
+    "activationError": "Impossible d'activer le plan.",
+    "paymentError": "Impossible d'initier le paiement.",
+    "paymentErrorTitle": "Erreur paiement",
+    "paymentErrorDesc": "Une erreur est survenue lors de l'initiation du paiement.",
+    "faq": "Questions fréquentes",
+    "faq1q": "Puis-je changer de plan ?",
+    "faq1a": "Oui, vous pouvez upgrader ou downgrader à tout moment. La différence sera calculée au prorata.",
+    "faq2q": "Comment fonctionne le paiement ?",
+    "faq2a": "Les paiements sont traités via CinetPay (Mobile Money, carte bancaire). Sécurisé et conforme aux normes UEMOA.",
+    "faq3q": "Le plan Starter est-il vraiment gratuit ?",
+    "faq3a": "Oui, le plan Starter est gratuit et vous donne accès au sandbox et aux marchés en temps réel. Aucune carte requise."
+  },
+  "howItWorks": {
+    "title": "Comment ça marche ?",
+    "subtitle": "Comprendre l'écosystème boursier africain (BRVM, BVMAC, GSE) et le rôle d'INOPAY dans la démocratisation de l'investissement pour la diaspora.",
+    "actorsTitle": "Les acteurs de l'écosystème",
+    "actorsSubtitle": "Chaque acteur a un rôle distinct et réglementé",
+    "role": "Rôle",
+    "journeyTitle": "Votre parcours investisseur",
+    "journeySubtitle": "De l'inscription à l'investissement en 8 étapes",
+    "instrumentsTitle": "Les instruments financiers",
+    "instrumentsSubtitle": "Ce que vous pouvez négocier sur la BRVM, la BVMAC et la GSE",
+    "aiTitle": "L'Intelligence Artificielle au service de votre investissement",
+    "aiDoes": "Ce que fait notre IA",
+    "aiDoesNot": "Ce que notre IA ne fait JAMAIS",
+    "aiFeatures": [
+      "Vous guide dans la prise en main de la plateforme",
+      "Vous éduque sur les marchés financiers africains (UEMOA, CEMAC, Ghana)",
+      "Vous aide à suivre vos ordres et transactions",
+      "Optimise votre expérience en continu"
+    ],
+    "aiRestrictions": [
+      "Donner des conseils financiers personnalisés",
+      "Recommander des investissements spécifiques",
+      "Passer des ordres à votre place",
+      "Toucher ou détenir vos fonds"
+    ],
+    "readyTitle": "Prêt à commencer ?",
+    "readyDesc": "Essayez d'abord avec notre Sandbox — 1 000 000 FCFA fictifs pour vous entraîner sans risque.",
+    "createAccount": "Créer mon compte",
+    "trySandbox": "Essayer le Sandbox",
+    "actors": {
+      "investor": {
+        "title": "L'Investisseur (Vous)",
+        "desc": "Particulier ou membre de la diaspora africaine souhaitant investir sur les marchés financiers de la zone UEMOA, CEMAC ou Ghana.",
+        "role": "Décide de ses investissements, passe des ordres via INOPAY, et suit l'évolution de son portefeuille."
+      },
+      "sgi": {
+        "title": "SGI / Broker (Intermédiaire agréé)",
+        "desc": "Intermédiaire financier agréé : SGI par le CREPMF (BRVM) ou la COSUMAF (BVMAC), ou broker LDM agréé par la SEC Ghana (GSE).",
+        "role": "Reçoit et exécute les ordres de bourse. C'est le seul acteur qui interagit directement avec la bourse."
+      },
+      "exchange": {
+        "title": "BRVM / BVMAC / GSE",
+        "desc": "Trois bourses africaines : BRVM (Afrique de l'Ouest — 8 pays UEMOA), BVMAC (Afrique Centrale — 6 pays CEMAC) et GSE (Ghana Stock Exchange — Accra).",
+        "role": "Lieu de confrontation des ordres d'achat et de vente. Assure la transparence et la liquidité du marché."
+      },
+      "regulator": {
+        "title": "CREPMF / COSUMAF / SEC Ghana",
+        "desc": "Régulateurs des marchés financiers : CREPMF (UEMOA), COSUMAF (CEMAC) et Securities and Exchange Commission (Ghana).",
+        "role": "Agrée les intermédiaires, protège les investisseurs, veille au bon fonctionnement du marché."
+      },
+      "inopay": {
+        "title": "INOPAY (Intermédiaire Technologique)",
+        "desc": "Plateforme numérique multi-marché qui connecte les investisseurs de la diaspora aux intermédiaires agréés sur les 3 bourses.",
+        "role": "Facilite la mise en relation, transmet les ordres aux SGI/brokers, ne détient jamais les fonds et n'exécute jamais les ordres."
+      },
+      "cinetpay": {
+        "title": "CinetPay (Paiement — UEMOA/CEMAC)",
+        "desc": "Solution de paiement sécurisée agréée dans l'espace UEMOA et CEMAC.",
+        "role": "Traite les paiements des investisseurs pour les marchés BRVM et BVMAC. Les fonds transitent directement vers la SGI."
+      },
+      "paystack": {
+        "title": "Paystack (Paiement — Ghana)",
+        "desc": "Solution de paiement sécurisée utilisée par les courtiers agréés (LDM) au Ghana.",
+        "role": "Le courtier agréé est le marchand de référence (Merchant of Record). Les fonds d'investissement sont versés directement sur le compte du courtier. INOPAY est enregistré comme sous-compte technique pour ses commissions."
+      }
+    },
+    "steps": [
+      {
+        "title": "Inscription",
+        "desc": "Créez votre compte sur INOPAY en quelques minutes."
+      },
+      {
+        "title": "Vérification KYC",
+        "desc": "Complétez votre vérification d'identité : pièce d'identité, justificatif de domicile et selfie."
+      },
+      {
+        "title": "Affiliation SGI / Broker",
+        "desc": "Choisissez une SGI partenaire (BRVM/BVMAC) ou un broker agréé LDM (Ghana) pour exécuter vos ordres."
+      },
+      {
+        "title": "Découvrez les marchés",
+        "desc": "Consultez les cours en temps réel, explorez les actions et obligations cotées sur la BRVM, la BVMAC et la GSE."
+      },
+      {
+        "title": "Passez un ordre",
+        "desc": "Sélectionnez un instrument, indiquez la quantité souhaitée. INOPAY transmet votre ordre à votre SGI ou broker."
+      },
+      {
+        "title": "Paiement sécurisé",
+        "desc": "Réglez via CinetPay (UEMOA/CEMAC) ou Paystack (Ghana). Les fonds vont directement à votre intermédiaire agréé — jamais à INOPAY."
+      },
+      {
+        "title": "Exécution par votre intermédiaire",
+        "desc": "Votre SGI ou broker exécute l'ordre sur la BRVM, BVMAC ou GSE. INOPAY n'intervient pas dans l'exécution."
+      },
+      {
+        "title": "Suivi en temps réel",
+        "desc": "Suivez le statut de vos ordres et l'évolution de votre portefeuille directement sur INOPAY."
+      }
+    ],
+    "instruments": [
+      {
+        "title": "Actions",
+        "desc": "Parts de propriété d'entreprises cotées sur la BRVM, BVMAC ou GSE. Vous devenez actionnaire et pouvez percevoir des dividendes.",
+        "example": "Ex : SONATEL, Ecobank (BRVM) · MTN Ghana, GCB Bank (GSE)"
+      },
+      {
+        "title": "Obligations d'État",
+        "desc": "Titres de dette émis par les États d'Afrique de l'Ouest, Centrale et du Ghana. Revenus réguliers sous forme de coupons.",
+        "example": "Ex : OAT Côte d'Ivoire · Ghana Fixed Rate Bond"
+      },
+      {
+        "title": "Obligations d'entreprise",
+        "desc": "Titres de dette émis par des entreprises. Rendement généralement supérieur aux obligations d'État.",
+        "example": "Ex : Emprunt obligataire BOA · Corporate bond GSE"
+      }
+    ]
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bienvenue, {{email}}",
+    "completeKyc": "Complétez votre vérification KYC",
+    "kycInProgress": "Vérification KYC en cours",
+    "kycRefused": "Vérification KYC refusée — veuillez corriger",
+    "kycRequired": "La vérification est requise pour investir via une SGI.",
+    "complete": "Compléter",
+    "myPlan": "Mon forfait",
+    "none": "Aucun",
+    "expiresOn": "Expire le {{date}}",
+    "viewPlans": "Voir les forfaits →",
+    "sandboxBalance": "Solde Sandbox",
+    "simulationOnly": "Simulation uniquement",
+    "openPositions": "Positions ouvertes",
+    "sandboxPortfolio": "Portefeuille sandbox",
+    "kycStatus": "Statut KYC",
+    "readyToInvest": "Prêt à investir",
+    "freeBrowsing": "Navigation libre",
+    "sandboxInvestments": "Investissements Sandbox",
+    "sandboxDesc": "Vos positions fictives dans le portefeuille de simulation",
+    "instrument": "Instrument",
+    "quantity": "Quantité",
+    "avgPrice": "Prix moyen",
+    "valueFcfa": "Valeur (FCFA)",
+    "noSandboxInvestment": "Aucun investissement sandbox",
+    "exploreMarkets": "Explorer les marchés",
+    "marketNews": "Actualités des marchés",
+    "viewAll": "Voir tout",
+    "guidesResources": "Guides & Ressources",
+    "activateAccount": "Activez votre compte pour investir réellement",
+    "activateDesc": "Complétez votre vérification KYC pour accéder aux investissements réels via nos SGI partenaires agréées BCEAO.",
+    "completeVerification": "Compléter ma vérification",
+    "later": "Plus tard",
+    "educCards": {
+      "diaspora": {
+        "title": "Investir depuis la diaspora",
+        "desc": "Accédez à la BRVM, BVMAC et au GSE Ghana depuis n'importe quel pays via des intermédiaires agréés."
+      },
+      "exchanges": {
+        "title": "3 bourses africaines",
+        "desc": "BRVM (Afrique de l'Ouest), BVMAC (Afrique Centrale) et GSE (Ghana) — 86+ instruments disponibles."
+      },
+      "sandbox": {
+        "title": "Le sandbox pour apprendre",
+        "desc": "Entraînez-vous avec 10 000 000 FCFA fictifs avant de passer à l'investissement réel."
+      },
+      "brokers": {
+        "title": "Intermédiaires agréés",
+        "desc": "SGI (zone UEMOA/CEMAC) et brokers LDM (Ghana) exécutent vos ordres en toute conformité."
+      }
+    }
+  },
+  "kyc": {
+    "title": "Vérification KYC",
+    "subtitle": "Complétez votre identification pour investir",
+    "verification": "Vérification KYC",
+    "completeIdentity": "Complétez votre vérification d'identité",
+    "progress": "Progression",
+    "processing": "Votre dossier KYC est en cours de traitement. Vous serez notifié une fois la vérification terminée.",
+    "verified": "Votre identité a été vérifiée avec succès. Vous pouvez investir via votre SGI.",
+    "refused": "Votre dossier a été refusé. Veuillez corriger les informations et soumettre à nouveau.",
+    "personalInfo": "Informations personnelles",
+    "personalInfoDesc": "Ces informations sont nécessaires pour vérifier votre identité conformément à la réglementation.",
+    "fullName": "Nom complet",
+    "fullNamePlaceholder": "Prénom et nom",
+    "fullNameRequired": "Nom complet requis",
+    "address": "Adresse complète",
+    "addressPlaceholder": "Rue, ville, pays",
+    "addressRequired": "Adresse requise",
+    "dateOfBirth": "Date de naissance",
+    "dateOfBirthRequired": "Date de naissance requise",
+    "documents": "Documents",
+    "idDocument": "Pièce d'identité (CNI, passeport)",
+    "idDocumentLabel": "Pièce d'identité",
+    "idDocumentRequired": "Pièce d'identité requise",
+    "documentProvided": "✓ Document fourni",
+    "documentNotProvided": "Non fourni",
+    "selfie": "Selfie avec pièce d'identité",
+    "selfieLabel": "Selfie",
+    "selfieRequired": "Selfie requis",
+    "photoProvided": "✓ Photo fournie",
+    "photoNotProvided": "Non fournie",
+    "proofOfResidence": "Justificatif de résidence",
+    "proofRequired": "Justificatif de résidence requis",
+    "submitKyc": "Soumettre mon dossier KYC",
+    "submitting": "Envoi en cours...",
+    "kycSubmitted": "KYC soumis",
+    "kycSubmittedDesc": "Votre dossier est en cours d'analyse automatique. Redirection vers votre tableau de bord...",
+    "error": "Erreur",
+    "retryMsg": "Réessayez.",
+    "notAuthenticated": "Non authentifié",
+    "additionalDocs": "Documents complémentaires demandés",
+    "additionalDocsDesc": "Votre SGI a demandé des documents supplémentaires.",
+    "uploadDoc": "Téléverser le document",
+    "docSent": "Document envoyé",
+    "docSentDesc": "Votre document complémentaire a été transmis.",
+    "pending": "En attente",
+    "submitted": "Soumis",
+    "reviewed": "Examiné",
+    "docSubmittedOn": "Document soumis le",
+    "marketRequired": "Sélectionnez un marché",
+    "nationalityRequired": "Nationalité requise",
+    "residenceRequired": "Pays de résidence requis",
+    "phoneRequired": "Téléphone requis",
+    "idTypeRequired": "Type de pièce requis",
+    "idNumberRequired": "Numéro de document requis",
+    "professionRequired": "Profession requise",
+    "sourceRequired": "Source des revenus requise",
+    "nationality": "Nationalité",
+    "nationalityPlaceholder": "Ex: Ivoirienne",
+    "countryOfResidence": "Pays de résidence",
+    "residencePlaceholder": "Ex: France",
+    "phone": "Téléphone",
+    "idType": "Type de pièce",
+    "selectIdType": "Sélectionner le type...",
+    "idNumber": "Numéro du document",
+    "idExpiry": "Date d'expiration",
+    "profession": "Profession",
+    "professionPlaceholder": "Ex: Ingénieur",
+    "employer": "Employeur",
+    "employerPlaceholder": "Optionnel",
+    "sourceOfFunds": "Source des revenus",
+    "selectSource": "Sélectionner...",
+    "fundsSalary": "Salaire",
+    "fundsBusiness": "Revenus d'entreprise",
+    "fundsInvestments": "Investissements",
+    "fundsInheritance": "Héritage",
+    "fundsOther": "Autre",
+    "taxId": "Numéro fiscal (optionnel)",
+    "step1Title": "Marché cible",
+    "step1Desc": "Sur quel marché souhaitez-vous investir ?",
+    "step2Title": "Identité",
+    "step2Desc": "Vos informations personnelles",
+    "step3Title": "Document d'identité",
+    "step3Desc": "Téléversez une pièce d'identité valide",
+    "step4Title": "Informations financières",
+    "step4Desc": "Requis par la réglementation anti-blanchiment",
+    "step5Title": "Documents complémentaires",
+    "step5Desc": "Selfie et justificatif de domicile",
+    "step6Title": "Récapitulatif",
+    "step6Desc": "Vérifiez vos informations avant soumission",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "reviewComments": "Commentaires de révision",
+    "you": "Vous",
+    "writeReply": "Écrire une réponse...",
+    "replySent": "Réponse envoyée",
+    "docTypes": {
+      "bulletin_salaire": "Bulletin de salaire",
+      "attestation_bancaire": "Attestation bancaire",
+      "source_fonds": "Source des fonds",
+      "releve_bancaire": "Relevé bancaire",
+      "autre": "Autre document"
+    }
+  },
+  "portfolio": {
+    "title": "Mon Portefeuille",
+    "subtitle": "Vue consolidée multi-SGI de vos positions",
+    "allSgi": "Toutes mes SGI",
+    "totalValue": "Valeur Totale",
+    "positions": "Positions",
+    "transactions": "Transactions",
+    "instrument": "Instrument",
+    "sgi": "SGI",
+    "quantity": "Quantité",
+    "currentPrice": "Prix actuel",
+    "value": "Valeur",
+    "noPosition": "Aucune position",
+    "recentTx": "Transactions récentes",
+    "date": "Date",
+    "type": "Type",
+    "qty": "Qté",
+    "price": "Prix",
+    "buy": "Achat",
+    "sell": "Vente",
+    "noTransaction": "Aucune transaction"
+  },
+  "orders": {
+    "title": "Mes Ordres",
+    "subtitle": "Suivi des ordres transmis à votre SGI",
+    "refresh": "Actualiser",
+    "activeOrders": "Ordres en cours de traitement",
+    "activeOrdersDesc": "Vos ordres sont transmis à votre SGI. Le statut se met à jour automatiquement.",
+    "history": "Historique des ordres",
+    "historyDesc": "INOPAY transmet vos ordres — seule votre SGI les exécute",
+    "noOrder": "Aucun ordre",
+    "investBtn": "Investir",
+    "instrument": "Instrument",
+    "qty": "Qté",
+    "price": "Prix",
+    "status": "Statut",
+    "date": "Date",
+    "statuses": {
+      "pending": "En attente",
+      "confirmed": "Confirmé",
+      "sent_to_sgi": "Envoyé à la SGI",
+      "executed": "Exécuté",
+      "partial": "Partiellement exécuté",
+      "rejected": "Rejeté",
+      "cancelled": "Annulé",
+      "sgi_error": "Erreur SGI",
+      "failed": "Échoué"
+    },
+    "allMarkets": "Toutes les bourses",
+    "exchange": "Bourse"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unread": "{{count}} non lue(s)",
+    "allRead": "Tout est à jour",
+    "markAllRead": "Tout marquer lu",
+    "noNotification": "Aucune notification pour le moment.",
+    "channels": {
+      "email": "Email",
+      "in_app": "In-App",
+      "fofy": "FOFY",
+      "system": "Système"
+    }
+  },
+  "sandbox": {
+    "title": "Portefeuille Virtuel INOPAY",
+    "guestDesc": "Simulez le processus complet d'investissement BRVM : sélection SGI, vérification KYC, frais détaillés et paiement CinetPay.",
+    "virtualCapital": "Capital virtuel",
+    "virtualCapitalDesc": "{{amount}} FCFA offerts",
+    "fullProcess": "Processus complet",
+    "fullProcessDesc": "KYC, frais, paiement simulés",
+    "noRisk": "Sans risque",
+    "noRiskDesc": "Apprenez à investir",
+    "createFreeAccount": "Créer un compte gratuit",
+    "signIn": "Se connecter",
+    "buy": "Acheter",
+    "sell": "Vendre",
+    "balance": "Solde",
+    "positions": "Positions",
+    "txCount": "Transactions",
+    "instrument": "Instrument",
+    "quantity": "Quantité",
+    "avgPrice": "Prix moyen",
+    "value": "Valeur",
+    "pnl": "P&L",
+    "noPosition": "Pas de positions",
+    "startTrading": "Commencer",
+    "recentTx": "Transactions récentes",
+    "showHistory": "Voir l'historique",
+    "hideHistory": "Masquer",
+    "noTx": "Aucune transaction",
+    "tradeSteps": {
+      "instrument": "Instrument",
+      "sgi": "SGI",
+      "kyc": "KYC",
+      "fees": "Frais",
+      "payment": "Paiement",
+      "confirmation": "Confirmation"
+    },
+    "stepOf": "Étape {{current}} sur {{total}} — Simulation du processus INOPAY",
+    "chooseInstrument": "Choisir un instrument",
+    "qty": "Quantité",
+    "subtotal": "Sous-total",
+    "insufficientBalance": "Solde insuffisant",
+    "sgiConfirmation": "Société de Gestion et d'Intermédiation",
+    "kycVerification": "Vérification KYC",
+    "kycChecking": "Vérification en cours…",
+    "kycVerified": "Identité vérifiée",
+    "kycRequired": "Validation requise",
+    "grossAmount": "Montant brut",
+    "inopayCommission": "Commission INOPAY",
+    "sgiFees": "Frais SGI",
+    "brvmFees": "Frais BRVM / DC-BR",
+    "totalCommissions": "Total commissions",
+    "tva": "TVA",
+    "totalFees": "Total frais",
+    "totalToPay": "Montant total à payer",
+    "totalToReceive": "Montant net à recevoir",
+    "breakdown": "Répartition",
+    "paymentConfirmed": "Paiement confirmé",
+    "paymentProcessing": "Traitement en cours…",
+    "cinetpayPayment": "Paiement CinetPay",
+    "amountToDebit": "Montant à débiter",
+    "amountToCredit": "Montant à créditer",
+    "method": "Méthode",
+    "mobileMoney": "Mobile Money / Carte",
+    "beneficiary": "Bénéficiaire",
+    "reference": "Référence",
+    "readyToExecute": "Prêt à exécuter",
+    "orderSummary": "Récapitulatif de votre",
+    "unitPrice": "Prix unitaire",
+    "totalDebited": "Total débité",
+    "totalCredited": "Total crédité",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "verifyKyc": "Vérifier KYC",
+    "pay": "Payer",
+    "confirmOrder": "Confirmer l'ordre",
+    "next": "Suivant"
+  },
+  "investorSidebar": {
+    "investorSpace": "Espace Investisseur",
+    "navigation": "Navigation",
+    "dashboard": "Tableau de bord",
+    "markets": "Marchés",
+    "bonds": "Obligations",
+    "calendar": "Calendrier financier",
+    "invest": "Investir",
+    "portfolio": "Mon Portefeuille",
+    "orders": "Mes Ordres",
+    "recommendations": "Recommandations",
+    "sandbox": "Sandbox",
+    "mySgi": "Mes SGI",
+    "kyc": "Vérification KYC",
+    "subscription": "Mon Abonnement",
+    "notifications": "Notifications",
+    "thematic": "Portefeuilles thématiques",
+    "revenues": "Revenus & Dividendes",
+    "crossBorder": "Comparateur Cross-Border",
+    "smartDeals": "Smart Deals",
+    "logout": "Déconnexion"
+  },
+  "adminSidebar": {
+    "administration": "Administration",
+    "management": "Gestion",
+    "tenants": "Tenants",
+    "kyc": "KYC",
+    "users": "Utilisateurs",
+    "agents": "Agents IA",
+    "sgi": "SGI",
+    "financial": "Financier",
+    "analytics": "Analytics",
+    "risk": "Risque",
+    "monitoring": "Monitoring",
+    "growth": "Growth",
+    "system": "Système",
+    "backups": "Backups",
+    "logs": "Logs",
+    "emails": "Emails & Outreach",
+    "notifications": "Notifications",
+    "diaspora": "Prospects Diaspora",
+    "social": "Social Media",
+    "payments": "Paiements",
+    "audit": "Audit",
+    "security": "Sécurité 2FA",
+    "agentMemory": "Agent Intelligence",
+    "logout": "Déconnexion"
+  },
+  "adminPayments": {
+    "title": "Moyens de paiement",
+    "description": "Gérez les gateways de paiement disponibles sur la plateforme",
+    "gateways": "Gateways",
+    "tenantConfigs": "Configs partenaires",
+    "tenantConfigsTitle": "Configurations des partenaires",
+    "tenantConfigsDesc": "Vérifiez et gérez les comptes de paiement des SGI/Brokers",
+    "addGateway": "Ajouter",
+    "addGatewayTitle": "Ajouter une gateway",
+    "apiKeyConfigured": "Clé API configurée",
+    "apiKeyNotConfigured": "Non configuré",
+    "inopaySubaccount": "Subaccount INOPAY",
+    "credentials": "Credentials",
+    "autoCreateSubaccount": "Auto-créer",
+    "createSubaccountTitle": "Créer le subaccount INOPAY chez le broker",
+    "createSubaccountDesc": "Cette action appelle l'API Paystack du broker (POST /subaccount) pour enregistrer INOPAY comme sous-compte technique."
+  },
+  "security": {
+    "title": "Sécurité",
+    "contactTitle": "Contact sécurité",
+    "contactDesc": "Pour toute question relative à la sécurité d'INOPAY, contactez notre équipe dédiée.",
+    "securityTeam": "Équipe Sécurité INOPAY",
+    "email": "Email",
+    "generalSupport": "Support général",
+    "backToSecurity": "← Retour à Sécurité"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "search": "Rechercher",
+    "noData": "Aucune donnée",
+    "retry": "Réessayer",
+    "submit": "Soumettre",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "partnersApply": {
+    "pageTitle": "Devenir partenaire — INOPAY",
+    "pageDesc": "Postulez pour devenir partenaire institutionnel INOPAY.",
+    "cardTitle": "Candidature partenaire",
+    "cardDesc": "Remplissez le formulaire ci-dessous pour postuler.",
+    "institutionName": "Nom de l'institution",
+    "institutionPlaceholder": "Ex: SGI Alpha",
+    "country": "Pays",
+    "countryPlaceholder": "Ex: Côte d'Ivoire",
+    "contactName": "Nom du contact",
+    "contactPlaceholder": "Nom complet",
+    "email": "Email de contact",
+    "emailPlaceholder": "email@institution.com",
+    "phone": "Téléphone",
+    "phonePlaceholder": "+225 07 00 00 00 00",
+    "message": "Message",
+    "messagePlaceholder": "Décrivez votre institution et vos objectifs...",
+    "submit": "Soumettre la candidature",
+    "submitting": "Envoi...",
+    "successTitle": "Candidature reçue",
+    "successDesc": "Merci pour votre intérêt. Notre équipe partenariats vous contactera sous 48h.",
+    "successToast": "Candidature envoyée",
+    "successToastDesc": "Nous reviendrons vers vous rapidement.",
+    "errorToast": "Erreur",
+    "errorToastDesc": "Une erreur est survenue. Réessayez.",
+    "secure": "Sécurisé",
+    "institutional": "Institutionnel",
+    "international": "International"
+  },
+  "partnersMeeting": {
+    "pageTitle": "Réserver un rendez-vous — INOPAY Partners",
+    "pageDesc": "Planifiez un rendez-vous pour activer votre institution sur INOPAY.",
+    "title": "Réservez votre rendez-vous",
+    "subtitle": "Choisissez un créneau pour activer votre institution sur INOPAY",
+    "institution": "Nom de l'institution",
+    "institutionPlaceholder": "Ex: SGI Exemple SA",
+    "email": "Email",
+    "emailPlaceholder": "contact@institution.com",
+    "date": "Date",
+    "time": "Heure",
+    "timePlaceholder": "Choisir un créneau",
+    "submit": "Confirmer le rendez-vous",
+    "submitting": "Réservation en cours...",
+    "confirmedTitle": "Rendez-vous Confirmé",
+    "confirmedPageTitle": "Rendez-vous confirmé — INOPAY",
+    "confirmedDesc": "Votre rendez-vous a été enregistré. Un email de confirmation vous a été envoyé à",
+    "fillAll": "Veuillez remplir tous les champs",
+    "errorBooking": "Erreur lors de la réservation",
+    "bookedToast": "Rendez-vous confirmé !"
+  },
+  "partnersSgi": {
+    "pageTitle": "Partenariat SGI — Deux canaux de croissance | INOPAY",
+    "pageDesc": "Distribuez vos émissions obligataires et recevez des investisseurs qualifiés pour le marché secondaire. Rejoignez le réseau de partenaires SGI d'INOPAY.",
+    "badge": "Pour les SGI et institutions financières",
+    "heroTitle1": "Deux canaux de croissance pour",
+    "heroTitle2": "votre institution.",
+    "heroDesc": "INOPAY ouvre un canal de distribution retail pour vos émissions obligataires et vous livre des investisseurs qualifiés pour le marché secondaire — le tout sans effort marketing.",
+    "ctaPartner": "Devenir partenaire institutionnel",
+    "ctaDeck": "Dossier de présentation",
+    "primaryLabel": "Marché primaire",
+    "primaryTitle": "Distribuez vos émissions obligataires auprès de la diaspora",
+    "primaryDesc": "Les SGI transigent essentiellement avec des entités étatiques pour des émissions de grande envergure. INOPAY vous offre un canal complémentaire pour toucher les investisseurs retail de la diaspora — un segment inexploité.",
+    "primaryFeatures": [
+      "Placez vos OAT et emprunts corporate auprès de la diaspora",
+      "Reporting en temps réel sur les souscriptions",
+      "Élargissez votre base d'investisseurs sans coût d'acquisition",
+      "Canal digital complémentaire à vos circuits institutionnels"
+    ],
+    "viewIssuances": "Voir les émissions en cours",
+    "dashboardLabel": "Dashboard Émissions",
+    "dashboardPreview": "Aperçu du dashboard SGI",
+    "activeIssuances": "Émissions actives",
+    "subscribed": "Souscrit",
+    "subscribers": "Souscripteurs",
+    "fillRate": "Taux de remplissage",
+    "dataAfterOnboarding": "Données réelles affichées après onboarding",
+    "secondaryLabel": "Marché secondaire",
+    "secondaryTitle": "Recevez des investisseurs qualifiés pour les actions BRVM",
+    "secondaryDesc": "Notre infrastructure acquiert, qualifie (KYC) et assigne automatiquement des investisseurs diaspora à votre SGI. Votre équipe se concentre sur le conseil, INOPAY vous apporte les clients.",
+    "secondaryFeatures": [
+      "Investisseurs diaspora KYC-vérifiés livrés automatiquement",
+      "Pipeline de conversion automatisé (assigné → contacté → actif)",
+      "Zéro effort marketing ni coût d'acquisition",
+      "48+ actions BRVM disponibles pour vos clients"
+    ],
+    "exploreMarkets": "Explorer les marchés BRVM",
+    "pipelineLabel": "Pipeline investisseurs",
+    "autoDelivery": "Livraison automatique",
+    "assigned": "Assignés",
+    "contacted": "Contactés",
+    "active": "Actifs",
+    "metricsAfterActivation": "Métriques réelles disponibles après activation",
+    "infraTitle": "Infrastructure commune",
+    "infraItems": [
+      {
+        "title": "Conforme BCEAO/CREPMF",
+        "desc": "Chiffrement AES-256, surveillance IA, audit continu."
+      },
+      {
+        "title": "Souscription automatisée",
+        "desc": "Paiement collecté, reporting en temps réel."
+      },
+      {
+        "title": "Zéro intégration complexe",
+        "desc": "Aucune infrastructure à déployer côté SGI."
+      },
+      {
+        "title": "Accès global diaspora",
+        "desc": "Investisseurs depuis 8+ pays UEMOA."
+      }
+    ],
+    "trustSignals": [
+      "Infrastructure sécurisée",
+      "Institutions de confiance",
+      "Accès global"
+    ],
+    "ctaTitle": "Prêt à développer votre base clients ?",
+    "ctaDesc": "Rejoignez le réseau de partenaires INOPAY et commencez à recevoir des investisseurs qualifiés et des souscripteurs pour vos émissions.",
+    "downloadDeck": "Télécharger le dossier",
+    "ldmTitle": "🇬🇭 Ghana Stock Exchange — Brokers LDM",
+    "ldmBadge": "Partenariat GSE",
+    "ldmDesc": "INOPAY s'étend au Ghana Stock Exchange. Nous intégrons des Licensed Dealing Members (LDM) comme partenaires d'exécution pour notre base d'investisseurs diaspora.",
+    "ldmFeatures": [
+      "Recevez des investisseurs diaspora KYC-vérifiés sans coût",
+      "Onboarding et livraison automatisés",
+      "Paiements sécurisés via Paystack (GHS)",
+      "Couverture multi-marché : BRVM, BVMAC & GSE"
+    ],
+    "ldmCta": "Postuler comme partenaire LDM",
+    "ctaMeeting": "Planifier un appel de 30 min",
+    "ctaDemo": "Essayer le dashboard SGI"
+  },
+  "trust": {
+    "pageTitle": "Centre de confiance — INOPAY",
+    "pageDesc": "Découvrez les mesures de sécurité, conformité et protection des données d'INOPAY.",
+    "title": "Infrastructure sécurisée et fiable",
+    "subtitle": "INOPAY utilise une infrastructure sécurisée permettant la connexion entre investisseurs et institutions financières.",
+    "learnMore": "En savoir plus",
+    "contactSecurity": "Contact sécurité",
+    "sections": [
+      {
+        "title": "Sécurité",
+        "desc": "INOPAY utilise des protocoles de sécurité avancés et une infrastructure surveillée en permanence. Nos systèmes sont protégés par du chiffrement de bout en bout et des contrôles d'accès stricts."
+      },
+      {
+        "title": "Infrastructure",
+        "desc": "Architecture distribuée et résiliente avec une disponibilité de 99.9%. Surveillance automatisée 24/7 par des agents IA autonomes."
+      },
+      {
+        "title": "Conformité",
+        "desc": "Conformité aux réglementations BCEAO, CREPMF et aux standards internationaux de protection des données personnelles."
+      },
+      {
+        "title": "Protection des données",
+        "desc": "Vos données personnelles et financières sont chiffrées en transit et au repos. Politique de confidentialité transparente et conforme au RGPD."
+      },
+      {
+        "title": "Intégrité du système",
+        "desc": "Audits de sécurité réguliers, détection de fraude en temps réel et réponse rapide aux incidents. Intégrité garantie à chaque transaction."
+      }
+    ]
+  },
+  "securityPage": {
+    "pageTitle": "Sécurité — INOPAY",
+    "pageDesc": "Découvrez l'infrastructure de sécurité d'INOPAY : chiffrement, monitoring, réponse aux incidents.",
+    "title": "Sécurité",
+    "subtitle": "INOPAY utilise des protocoles de sécurité avancés et une infrastructure surveillée en permanence.",
+    "sections": [
+      {
+        "title": "Sécurité de l'infrastructure",
+        "text": "Architecture distribuée avec isolation réseau, pare-feu applicatif et surveillance continue. Hébergement sécurisé avec redondance géographique."
+      },
+      {
+        "title": "Chiffrement des données",
+        "text": "Chiffrement AES-256 au repos et TLS 1.3 en transit. Les données sensibles KYC sont chiffrées avec des clés dédiées et une rotation automatique."
+      },
+      {
+        "title": "Surveillance système",
+        "text": "Surveillance 24/7 par des agents IA autonomes. Détection d'anomalies en temps réel, alertes automatiques et dashboards de santé système."
+      },
+      {
+        "title": "Réponse aux incidents",
+        "text": "Protocole de réponse aux incidents avec escalade automatique. Temps de réponse cible < 15 minutes pour les incidents critiques."
+      }
+    ],
+    "incidentLink": "Réponse aux incidents",
+    "contactLink": "Contact sécurité",
+    "trustLink": "Centre de confiance"
+  },
+  "infrastructure": {
+    "pageTitle": "Infrastructure — INOPAY",
+    "pageDesc": "Architecture technique et infrastructure sécurisée d'INOPAY.",
+    "title": "Infrastructure",
+    "subtitle": "L'infrastructure technique d'INOPAY est conçue pour la performance, la sécurité et la résilience.",
+    "sections": [
+      {
+        "title": "Architecture",
+        "text": "Architecture microservices distribuée avec isolation réseau. Base de données relationnelle sécurisée avec sauvegardes automatiques quotidiennes et réplication."
+      },
+      {
+        "title": "Sécurité",
+        "text": "Chiffrement TLS 1.3, pare-feu applicatif, rate limiting, et protection DDoS. Contrôle d'accès basé sur les rôles (RBAC) pour toutes les opérations sensibles."
+      },
+      {
+        "title": "Surveillance",
+        "text": "Agents IA autonomes surveillant en continu la santé du système. Détection d'anomalies, alertes automatiques et auto-remédiation pour les incidents courants."
+      },
+      {
+        "title": "Fiabilité",
+        "text": "Objectif de disponibilité 99.9%. Déploiements sans interruption de service. Plan de reprise d'activité testé régulièrement avec RTO < 1 heure."
+      }
+    ],
+    "backToTrust": "Centre de confiance"
+  },
+  "status": {
+    "pageTitle": "État des systèmes — INOPAY",
+    "pageDesc": "État des systèmes INOPAY. Surveillance en temps réel de tous les services.",
+    "title": "État des systèmes",
+    "allOperational": "Tous les systèmes opérationnels",
+    "allNormal": "Tous les services fonctionnent normalement",
+    "operational": "Opérationnel",
+    "degraded": "Dégradé",
+    "down": "Hors service",
+    "slow": "Lent",
+    "error": "Erreur",
+    "lastCheck": "Dernière vérification",
+    "monitoring": "Surveillance automatisée 24/7",
+    "latency": "Latence",
+    "liveStatus": "Statut en direct",
+    "loading": "Vérification en cours...",
+    "fetchError": "Impossible de récupérer le statut",
+    "recentHistory": "Historique récent",
+    "noHistory": "Aucun historique disponible",
+    "componentDatabase": "Base de données",
+    "componentAuth": "Authentification",
+    "componentStorage": "Stockage",
+    "componentEdge": "Fonctions backend",
+    "services": [
+      "Plateforme",
+      "Authentification",
+      "Données de marché",
+      "Traitement des ordres",
+      "Vérification KYC",
+      "Passerelle de paiement",
+      "Agents IA",
+      "Notifications"
+    ]
+  },
+  "compliance": {
+    "pageTitle": "Conformité — INOPAY",
+    "pageDesc": "Conformité KYC, protection des données et standards de sécurité d'INOPAY.",
+    "title": "Conformité",
+    "subtitle": "INOPAY respecte les normes réglementaires les plus strictes pour protéger ses utilisateurs et partenaires.",
+    "kycTitle": "Conformité KYC",
+    "kycText": "Vérification d'identité obligatoire conformément aux exigences de la BCEAO et de la CREPMF. Documents KYC chiffrés et stockés de manière sécurisée avec une durée de conservation de 5 ans.",
+    "dataTitle": "Protection des données",
+    "dataText": "Conformité à la loi ivoirienne sur la protection des données personnelles et aux principes du RGPD. Droit d'accès, de rectification et de suppression garantis.",
+    "standardsTitle": "Standards de sécurité",
+    "standardsText": "Audits de sécurité réguliers, tests de pénétration, et conformité aux meilleures pratiques de l'industrie financière. Politique de divulgation responsable active.",
+    "privacyLink": "Politique de Confidentialité",
+    "termsLink": "Conditions d'Utilisation",
+    "trustLink": "Centre de confiance"
+  },
+  "terms": {
+    "pageTitle": "Conditions d'Utilisation — INOPAY",
+    "pageDesc": "Conditions générales d'utilisation de la plateforme INOPAY.",
+    "title": "Conditions d'Utilisation",
+    "lastUpdate": "Dernière mise à jour : 21 février 2026",
+    "sections": [
+      {
+        "title": "1. Objet",
+        "text": "Les présentes conditions régissent l'utilisation de la plateforme INOPAY, éditée par Inopay Group SARL. INOPAY est un intermédiaire technique facilitant l'accès aux marchés financiers africains via des SGI partenaires agréées."
+      },
+      {
+        "title": "2. Inscription et Compte",
+        "text": "L'utilisateur doit créer un compte et compléter une vérification d'identité (KYC) pour accéder aux services d'investissement. Les informations fournies doivent être exactes et à jour."
+      },
+      {
+        "title": "3. Services",
+        "text": "INOPAY permet la transmission d'ordres d'investissement aux SGI partenaires (zone UEMOA/CEMAC) et aux brokers agréés LDM (Ghana). INOPAY ne détient aucun fonds et n'est pas une institution financière. Les ordres sont exécutés par les intermédiaires agréés conformément à la réglementation applicable (CREPMF, COSUMAF, SEC Ghana). Pour les transactions au Ghana, le courtier agréé est le marchand de référence (Merchant of Record) sur Paystack."
+      },
+      {
+        "title": "4. Responsabilité",
+        "text": "INOPAY met en œuvre les moyens nécessaires pour assurer la disponibilité et la sécurité de la plateforme. INOPAY ne garantit pas les résultats des investissements réalisés via les SGI partenaires."
+      },
+      {
+        "title": "5. Propriété intellectuelle",
+        "text": "L'ensemble des éléments de la plateforme (marque, design, algorithmes, agents IA) sont la propriété exclusive d'Inopay Group SARL."
+      },
+      {
+        "title": "6. Données personnelles",
+        "text": "Le traitement des données personnelles est régi par notre Politique de Confidentialité. INOPAY s'engage à protéger les données de ses utilisateurs conformément à la législation applicable."
+      },
+      {
+        "title": "7. Droit applicable",
+        "text": "Les présentes conditions sont régies par le droit ivoirien. Tout litige sera soumis aux juridictions compétentes d'Abidjan, Côte d'Ivoire."
+      }
+    ],
+    "company": "Inopay Group SARL — Société de droit ivoirien"
+  },
+  "privacy": {
+    "pageTitle": "Politique de Confidentialité",
+    "lastUpdate": "Dernière mise à jour : 21 février 2026",
+    "s1Title": "1. Responsable du traitement",
+    "s1Text": "Inopay Group SARL, société de droit ivoirien, est responsable du traitement des données personnelles collectées via la plateforme INOPAY.",
+    "s2Title": "2. Données collectées",
+    "idData": "Données d'identification",
+    "idItems": [
+      "Nom, prénom, date de naissance",
+      "Adresse email et numéro de téléphone",
+      "Pays de résidence et adresse",
+      "Pièce d'identité (dans le cadre du KYC)"
+    ],
+    "usageData": "Données d'utilisation",
+    "usageItems": [
+      "Historique de navigation sur la plateforme",
+      "Ordres passés et transactions",
+      "Interactions avec l'assistant IA",
+      "Données de connexion et logs"
+    ],
+    "s3Title": "3. Finalités du traitement",
+    "s3Items": [
+      "Création et gestion du compte utilisateur",
+      "Vérification d'identité (KYC) conformément aux obligations légales",
+      "Transmission des ordres aux SGI partenaires",
+      "Amélioration des services via l'analyse de données agrégées",
+      "Personnalisation de l'expérience utilisateur par nos agents IA",
+      "Prévention de la fraude et sécurité de la plateforme"
+    ],
+    "s4Title": "4. Intelligence Artificielle et données",
+    "aiTransparency": "Transparence IA",
+    "s4Text": "INOPAY utilise des agents IA autonomes pour l'onboarding, l'éducation financière, le suivi des investisseurs et l'optimisation de la plateforme. Les interactions avec ces agents sont enregistrées à des fins d'amélioration du service. Les agents IA n'accèdent jamais à vos données bancaires ou de paiement. Aucune décision d'investissement n'est prise automatiquement par les agents IA.",
+    "s5Title": "5. Partage des données",
+    "s5Intro": "Vos données personnelles peuvent être partagées avec :",
+    "s5Items": [
+      "Les SGI partenaires (BRVM/BVMAC) et brokers LDM (Ghana) : dans le cadre de la transmission de vos ordres d'investissement.",
+      "CinetPay (zone UEMOA/CEMAC) et Paystack (Ghana) : pour le traitement sécurisé de vos paiements. Au Ghana, le courtier est le marchand de référence.",
+      "Les autorités compétentes : en cas d'obligation légale (lutte contre le blanchiment, conformité réglementaire)."
+    ],
+    "s5NoSell": "INOPAY ne vend jamais vos données personnelles à des tiers.",
+    "s6Title": "6. Sécurité des données",
+    "s6Text": "Nous mettons en œuvre des mesures de sécurité techniques et organisationnelles appropriées : chiffrement des données sensibles, contrôle d'accès, audits de sécurité réguliers, et hébergement sécurisé.",
+    "s7Title": "7. Durée de conservation",
+    "s7Text": "Les données personnelles sont conservées pendant la durée de la relation contractuelle, puis pendant les durées légales de conservation applicables (notamment 5 ans pour les données KYC conformément aux exigences réglementaires).",
+    "s8Title": "8. Vos droits",
+    "s8Text": "Conformément à la loi ivoirienne relative à la protection des données personnelles, vous disposez des droits suivants : droit d'accès, droit de rectification, droit à l'effacement, droit d'opposition, et droit à la portabilité de vos données. Pour exercer ces droits, contactez-nous à :",
+    "company": "Inopay Group SARL — Société de droit ivoirien"
+  },
+  "legal": {
+    "title": "Mentions Légales",
+    "editorTitle": "Éditeur de la plateforme",
+    "companyName": "Inopay Group SARL",
+    "companyType": "Société à Responsabilité Limitée de droit ivoirien",
+    "activityTitle": "Nature de l'activité",
+    "activityText": "INOPAY est une plateforme technologique d'intermédiation numérique. Elle met en relation les investisseurs de la diaspora africaine avec les Sociétés de Gestion et d'Intermédiation (SGI) agréées par le CREPMF (BRVM), la COSUMAF (BVMAC), et les courtiers Licensed Dealing Members (LDM) agréés par la SEC du Ghana (GSE). Pour les transactions au Ghana, le courtier agréé est le marchand de référence (Merchant of Record) et les fonds d'investissement transitent directement vers son compte.",
+    "warningTitle": "Avertissement réglementaire",
+    "warningImportant": "Avertissement important",
+    "warningItems": [
+      "INOPAY n'est pas une institution financière agréée.",
+      "INOPAY n'est pas une société de gestion de portefeuille.",
+      "INOPAY ne fournit pas de conseils en investissement.",
+      "INOPAY ne détient pas les fonds des investisseurs.",
+      "INOPAY n'exécute pas d'ordres boursiers.",
+      "Les ordres sont transmis et exécutés exclusivement par les SGI partenaires agréées (BRVM/BVMAC) et les courtiers LDM agréés (GSE Ghana).",
+      "Au Ghana, le courtier agréé (LDM) est le marchand de référence (Merchant of Record). Les fonds d'investissement sont versés directement sur le compte Paystack du courtier."
+    ],
+    "hostingTitle": "Hébergement",
+    "hostingText": "La plateforme est hébergée par des prestataires de services cloud conformes aux standards de sécurité internationaux. Les données sont chiffrées en transit et au repos.",
+    "ipTitle": "Propriété intellectuelle",
+    "ipText": "L'ensemble des éléments constituant la plateforme INOPAY (textes, graphismes, logiciels, base de données, marques, logos) sont la propriété exclusive d'Inopay Group SARL ou font l'objet d'une autorisation d'utilisation. Toute reproduction, représentation ou exploitation non autorisée est interdite.",
+    "aiTitle": "Utilisation de l'Intelligence Artificielle",
+    "aiText": "INOPAY intègre des agents d'intelligence artificielle autonomes pour l'amélioration continue de ses services. Ces agents assistent les utilisateurs dans l'onboarding, l'éducation financière et le suivi, mais ne prennent aucune décision d'investissement et ne manipulent aucune donnée financière. Conformément aux principes de transparence, les utilisateurs sont informés de l'utilisation de l'IA dans les interactions.",
+    "copyright": "© {{year}} Inopay Group SARL. Tous droits réservés."
+  },
+  "press": {
+    "pageTitle": "INOPAY Press Center — Communiqués et Médias",
+    "pageDesc": "Centre presse officiel INOPAY. Communiqués de presse, media kit, et contact presse pour l'infrastructure financière des marchés africains.",
+    "badge": "PRESS CENTER",
+    "title": "INOPAY Press Center",
+    "subtitle": "Ressources officielles, communiqués de presse et informations médias pour INOPAY, l'infrastructure financière des marchés africains.",
+    "aboutTitle": "About INOPAY",
+    "aboutText": "INOPAY est une infrastructure financière moderne permettant aux investisseurs d'accéder aux marchés africains via une technologie sécurisée et une intégration directe avec les institutions financières partenaires. Notre mission est de démocratiser l'accès aux opportunités d'investissement sur le continent africain pour la diaspora et les investisseurs internationaux.",
+    "mission": "Mission",
+    "missionText": "Fournir une infrastructure financière moderne connectant les investisseurs aux marchés africains.",
+    "securityCompliance": "Sécurité & Compliance",
+    "securityComplianceText": "Infrastructure sécurisée, conforme aux régulations financières, avec des partenaires SGI agréés.",
+    "technology": "Technologie",
+    "technologyText": "Plateforme moderne avec intégration directe aux marchés BRVM et institutions financières.",
+    "pressReleases": "Communiqués de Presse",
+    "viewAll": "Voir tout",
+    "noPressReleases": "Les communiqués de presse seront publiés prochainement.",
+    "mediaKit": "Media Kit",
+    "mediaKitDesc": "Logos, couleurs, typographies et captures d'écran officielles.",
+    "releases": "Communiqués",
+    "releasesDesc": "Tous les communiqués de presse officiels INOPAY.",
+    "pressContact": "Contact Presse",
+    "pressContactDesc": "Demandes médias et partenariats presse."
+  },
+  "whyInvest": {
+    "pageTitle": "Pourquoi investir — INOPAY",
+    "pageDesc": "INOPAY connecte la diaspora aux bourses africaines via des SGI agréées — sans friction, sans détention de fonds.",
+    "title": "Pourquoi investir avec INOPAY",
+    "subtitle": "Distance, paperasse, comptes impossibles à ouvrir depuis l'étranger — INOPAY élimine les frictions qui empêchent la diaspora d'investir sur les marchés africains.",
+    "benefits": [
+      {
+        "title": "Hub panafricain unique",
+        "desc": "Le seul agrégateur couvrant BRVM, BVMAC et GSE Ghana. 86+ instruments accessibles depuis une seule plateforme — où que vous soyez."
+      },
+      {
+        "title": "Zéro friction diaspora",
+        "desc": "Pas de déplacement, pas de paperasse physique. Ouverture de compte digitale, KYC en ligne et investissement depuis le Canada, l'Europe ou les États-Unis."
+      },
+      {
+        "title": "Infrastructure, pas intermédiaire",
+        "desc": "INOPAY est un middleware technologique — comme Plaid pour la banque. Nous connectons, nous ne détenons pas. Vos fonds vont directement à votre SGI."
+      },
+      {
+        "title": "Potentiel de croissance africain",
+        "desc": "Coupons de 6-7%, diversification géographique, marchés en expansion. Les bourses africaines offrent des rendements que les marchés saturés n'offrent plus."
+      },
+      {
+        "title": "Fonds directs vers votre SGI",
+        "desc": "INOPAY ne touche jamais vos fonds. Chaque paiement va directement à votre SGI ou broker agréé. Transparence totale, traçabilité complète."
+      },
+      {
+        "title": "IA embarquée",
+        "desc": "L'assistant FOFY vous guide : recommandations personnalisées, alertes de marché, éducation financière et suivi multi-bourses en temps réel."
+      }
+    ],
+    "trustSignals": [
+      "Aucun fonds détenu par INOPAY",
+      "Ordres exécutés par SGI agréées",
+      "Infrastructure surveillée 24/7",
+      "KYC conforme BCEAO/CREPMF"
+    ],
+    "cta": "Créer mon compte",
+    "ctaNote": "Plan Starter gratuit — Aucune carte bancaire requise"
+  },
+  "incidentResponse": {
+    "pageTitle": "Réponse aux incidents — INOPAY",
+    "pageDesc": "Protocole de réponse aux incidents de sécurité d'INOPAY.",
+    "title": "Réponse aux incidents",
+    "subtitle": "INOPAY maintient une surveillance continue et une réponse rapide aux incidents.",
+    "protocolTitle": "Protocole",
+    "protocolItems": [
+      "Détection automatique par agents IA en < 5 minutes",
+      "Escalade immédiate vers l'équipe sécurité",
+      "Temps de réponse cible < 15 minutes pour incidents critiques",
+      "Communication proactive aux utilisateurs impactés",
+      "Post-mortem systématique et amélioration continue"
+    ],
+    "reportTitle": "Signaler un incident",
+    "reportText": "Pour signaler une vulnérabilité ou un incident de sécurité, contactez-nous à :",
+    "backToSecurity": "Retour à Sécurité"
+  },
+  "dashboardSubscription": {
+    "title": "Mon Abonnement",
+    "subtitle": "Gérez votre forfait et accédez aux fonctionnalités premium",
+    "currentSub": "Abonnement actuel",
+    "currentSubDesc": "Détails de votre forfait en cours",
+    "noSubDesc": "Vous n'avez pas encore d'abonnement actif",
+    "plan": "Plan",
+    "free": "Gratuit",
+    "perMonth": "FCFA / mois",
+    "active": "Actif",
+    "startDate": "Date de début",
+    "expiration": "Expiration",
+    "daysRemaining": "Jours restants",
+    "cycleProgress": "Progression du cycle",
+    "choosePlan": "Choisissez un plan ci-dessous pour commencer",
+    "availablePlans": "Forfaits disponibles",
+    "availablePlansDesc": "Choisissez le plan adapté à vos ambitions d'investissement",
+    "currentPlan": "Plan actuel",
+    "popular": "Populaire",
+    "current": "Actuel",
+    "start": "Commencer",
+    "upgrade": "Upgrader",
+    "subscribe": "Souscrire",
+    "faqTitle": "Questions fréquentes",
+    "faq1q": "Puis-je changer de plan ?",
+    "faq1a": "Oui, vous pouvez upgrader à tout moment.",
+    "faq2q": "Les paiements sont-ils sécurisés ?",
+    "faq2a": "Oui, via CinetPay (Mobile Money, carte bancaire), conforme aux normes UEMOA.",
+    "faq3q": "Le plan Starter est-il vraiment gratuit ?",
+    "faq3a": "Oui, il donne accès au sandbox et aux marchés en temps réel.",
+    "planActivated": "Plan {{name}} activé avec succès",
+    "activationError": "Impossible d'activer le plan.",
+    "paymentError": "Impossible d'initier le paiement.",
+    "genericError": "Une erreur est survenue."
+  },
+  "sgiFaq": {
+    "title": "Questions fréquentes — Comité de direction",
+    "subtitle": "Les réponses aux questions que votre comité de direction posera avant de valider un partenariat.",
+    "items": [
+      {
+        "q": "Quel est le cadre réglementaire d'INOPAY ?",
+        "a": "INOPAY agit en qualité d'apporteur d'affaires technologique auprès des SGI agréées par le CREPMF. Nous ne gérons aucun fonds — les investisseurs sont systématiquement orientés vers une SGI partenaire qui exécute les ordres et détient les titres. Notre activité respecte le cadre de l'OHADA et les directives BCEAO en matière de services financiers numériques."
+      },
+      {
+        "q": "Comment sont sécurisés les fonds des investisseurs ?",
+        "a": "INOPAY ne détient jamais les fonds des investisseurs. Les paiements transitent via des prestataires agréés (CinetPay) et sont reversés directement à la SGI partenaire. Les titres sont conservés par le Dépositaire Central (DC/BR). Notre infrastructure est chiffrée AES-256 en transit et au repos."
+      },
+      {
+        "q": "Quel est le SLA de disponibilité de la plateforme ?",
+        "a": "Notre infrastructure cible un SLA de 99,5% de disponibilité. Nous disposons d'un système de monitoring IA 24/7, de sauvegardes automatiques, et d'un plan de réponse aux incidents documenté et accessible publiquement sur notre page Sécurité."
+      },
+      {
+        "q": "Comment fonctionne le processus KYC ?",
+        "a": "Chaque investisseur passe un KYC automatisé (pièce d'identité + justificatif de domicile) validé par IA avant toute mise en relation avec une SGI. Les documents sont chiffrés et stockés conformément aux exigences BCEAO. La SGI partenaire reçoit uniquement des investisseurs pré-qualifiés."
+      },
+      {
+        "q": "Quel est le modèle de commission ?",
+        "a": "INOPAY applique une commission de performance sur les transactions réalisées via la plateforme. Aucun frais fixe ni abonnement obligatoire pour démarrer. Le modèle est détaillé dans la convention de partenariat transmise lors de l'onboarding."
+      },
+      {
+        "q": "Quelle intégration technique est nécessaire côté SGI ?",
+        "a": "Aucune intégration lourde n'est requise. La SGI reçoit les ordres par email sécurisé ou via un dashboard dédié. Pour les SGI souhaitant automatiser, nous proposons une API REST documentée (endpoints d'ordres, webhooks de statut, reporting)."
+      },
+      {
+        "q": "Comment sont protégées les données personnelles ?",
+        "a": "Les données personnelles sont chiffrées (AES-256), hébergées dans des data-centers certifiés, et traitées conformément à la législation OHADA sur la protection des données. Un DPO est désigné et les accès sont tracés via un journal d'audit immutable."
+      },
+      {
+        "q": "Combien de temps prend l'onboarding d'une SGI partenaire ?",
+        "a": "L'onboarding complet (convention signée, configuration du dashboard, première livraison d'investisseurs) prend en moyenne 5 à 10 jours ouvrés. Aucun déploiement informatique n'est requis côté SGI."
+      }
+    ]
+  },
+  "sgiTraction": {
+    "title": "Traction actuelle",
+    "subtitle": "Métriques en temps réel de la plateforme INOPAY.",
+    "issuances": "Émissions obligataires",
+    "listed": " listées",
+    "investors": "Investisseurs inscrits",
+    "countries": "Pays couverts",
+    "statusLabel": "Statut",
+    "statusText": "Lancement — partenaires pilotes"
+  },
+  "sgiTestimonials": {
+    "title": "Ce que disent nos partenaires"
+  },
+  "invest": {
+    "title": "Investir",
+    "subtitle": "BRVM · BVMAC — Investissez via votre SGI agréée",
+    "buy": "Acheter des titres",
+    "sell": "Vendre des titres",
+    "viewMarkets": "Voir les marchés",
+    "processTitle": "Processus d'investissement complet",
+    "processDesc": "Chaque ordre passe par 6 étapes : sélection de l'instrument, choix de la SGI, vérification KYC, détail des frais, paiement sécurisé et confirmation. Marchés BRVM & BVMAC disponibles.",
+    "gseTitle": "GSE Ghana",
+    "gseDesc": "Cours en direct disponibles. Le trading sera activé dès qu'un courtier LDM partenaire sera intégré.",
+    "comingSoon": "Bientôt",
+    "notifyMe": "M'alerter",
+    "interested": "Intéressé",
+    "interestRegistered": "Intérêt enregistré !",
+    "interestDesc": "Vous serez notifié quand le trading GSE sera disponible.",
+    "viewAllGse": "Voir les {{count}} instruments GSE",
+    "recentOrders": "Mes ordres récents",
+    "recentOrdersDesc": "Historique de vos investissements réels",
+    "noOrders": "Aucun ordre passé",
+    "noOrdersHint": "Cliquez \"Acheter des titres\" pour commencer",
+    "date": "Date",
+    "type": "Type",
+    "instrument": "Instrument",
+    "qty": "Qté",
+    "total": "Total",
+    "status": "Statut",
+    "buyLabel": "Achat",
+    "sellLabel": "Vente",
+    "executed": "Exécuté",
+    "failed": "Échoué",
+    "pending": "En cours"
+  },
+  "months": [
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre"
+  ],
+  "days": [
+    "Lun",
+    "Mar",
+    "Mer",
+    "Jeu",
+    "Ven",
+    "Sam",
+    "Dim"
+  ],
+  "bvmac": {
+    "pageTitle": "BVMAC — Investir sur la Bourse d'Afrique Centrale | INOPAY",
+    "pageDesc": "Accédez à la BVMAC (Bourse des Valeurs Mobilières de l'Afrique Centrale) depuis la diaspora. Actions, obligations CEMAC — Cameroun, Gabon, Congo, Tchad.",
+    "badge": "BVMAC · Afrique Centrale · 6 pays CEMAC",
+    "heroTitle1": "Investissez sur la",
+    "heroTitle2": "BVMAC depuis la diaspora.",
+    "heroSubtitle": "Cameroun, Gabon, Congo, Tchad, Centrafrique, Guinée Équatoriale — accédez aux titres cotés sur la bourse régionale d'Afrique Centrale via des SGI agréées COSUMAF.",
+    "ctaRegister": "Créer un compte gratuit",
+    "ctaMarkets": "Voir les cours BVMAC",
+    "ctaBonds": "Obligations CEMAC",
+    "cemacCountries": "Les 6 pays de la zone CEMAC",
+    "cameroon": "Cameroun",
+    "gabon": "Gabon",
+    "congo": "Congo",
+    "chad": "Tchad",
+    "car": "Centrafrique",
+    "eqGuinea": "Guinée Équatoriale",
+    "whyTitle": "Pourquoi investir sur la BVMAC ?",
+    "whySubtitle": "La bourse régionale d'Afrique Centrale offre des opportunités uniques pour la diaspora camerounaise, gabonaise et congolaise.",
+    "benefit1Title": "Obligations souveraines CEMAC",
+    "benefit1Desc": "Souscrivez aux OAT émis par les États du Cameroun, Gabon, Congo et Tchad. Rendements attractifs de 6 à 7% par an.",
+    "benefit2Title": "Paiement en Franc CFA (XAF)",
+    "benefit2Desc": "Investissez dans votre devise régionale via CinetPay. Pas de risque de change pour la diaspora CEMAC.",
+    "benefit3Title": "SGI agréées COSUMAF",
+    "benefit3Desc": "Vos ordres sont exécutés par des Sociétés de Gestion et d'Intermédiation agréées par la COSUMAF.",
+    "benefit4Title": "Accessible depuis l'étranger",
+    "benefit4Desc": "Que vous soyez en France, Belgique, Canada ou ailleurs — investissez sur la BVMAC 100% en ligne.",
+    "benefit5Title": "Diaspora connectée",
+    "benefit5Desc": "Rejoignez des milliers de membres de la diaspora d'Afrique Centrale qui investissent dans leur région d'origine.",
+    "benefit6Title": "Marché en croissance",
+    "benefit6Desc": "La BVMAC est un marché jeune avec un fort potentiel de croissance. Positionnez-vous tôt sur les titres les plus prometteurs.",
+    "statSecurities": "Titres cotés",
+    "statCountries": "Pays CEMAC",
+    "statCurrency": "Devise",
+    "statCoupon": "Coupon moyen",
+    "howTitle": "Comment investir sur la BVMAC ?",
+    "step1": "Créez votre compte",
+    "step1Desc": "Inscription gratuite en 2 minutes. Complétez votre KYC avec une pièce d'identité valide.",
+    "step2": "Choisissez une SGI CEMAC",
+    "step2Desc": "Sélectionnez votre intermédiaire financier agréé COSUMAF pour exécuter vos ordres.",
+    "step3": "Investissez en XAF",
+    "step3Desc": "Souscrivez aux obligations ou achetez des actions BVMAC. Payez via CinetPay (Mobile Money, carte).",
+    "ctaTitle": "La diaspora d'Afrique Centrale investit sur la BVMAC",
+    "ctaDesc": "Camerounais, Gabonais, Congolais, Tchadiens — investissez dans votre économie régionale depuis n'importe où dans le monde."
+  },
+  "sgiRoi": {
+    "badge": "Simulateur de revenus SGI",
+    "title": "Combien votre SGI va-t-elle gagner avec INOPAY ?",
+     "subtitle": "6 sources de revenus conformes à la tarification AMF-UMOA — commission INOPAY selon votre plan (STARTER 0.5%, PRO 0.35%, ELITE 0.2%).",
+     "planTier": "Votre plan SGI",
+    "parametersTitle": "Paramètres de simulation",
+    "investorsLabel": "Investisseurs livrés par INOPAY",
+    "ticketLabel": "Ticket moyen par transaction",
+    "txLabel": "Fréquence de transactions",
+    "year": "an",
+    "revenueBreakdown": "Détail des revenus (tarifs AMF-UMOA)",
+    "stream_brokerage": "Courtage secondaire",
+    "stream_placement": "Placement primaire",
+    "stream_custody": "Droits de garde",
+    "stream_management": "Gestion sous mandat",
+    "stream_accountKeeping": "Tenue de compte",
+    "stream_marketAnimation": "Animation de marché",
+    "amfRate": "Taux AMF",
+     "sgiShare": "Part SGI",
+     "inopayShare": "Part INOPAY",
+    "withInopay": "REVENUS SGI VIA INOPAY",
+    "withoutInopay": "SANS INOPAY",
+    "resultsTitle": "Revenus nets de la SGI",
+    "monthlyRevenue": "Revenus mensuels SGI",
+    "annualRevenue": "Revenus annuels SGI",
+    "inopayCommission": "Commission INOPAY",
+    "aumManaged": "Actifs sous gestion (AUM)",
+    "splitNote": "La commission INOPAY dépend de votre plan : STARTER (0.5%), PRO (0.35%), ELITE (0.2%). La SGI conserve le reste des frais réglementaires AMF-UMOA.",
+    "amfCompliant": "Tarifs conformes AMF-UMOA",
+    "freeServices": "Ouverture de compte et bourse en ligne : Gratuit",
+    "benefit_noProspecting": "Zéro prospection — clients livrés qualifiés",
+    "benefit_qualifiedClients": "Clients KYC vérifiés et prêts à investir",
+    "benefit_zeroAcquisitionCost": "Coût d'acquisition client : 0 FCFA",
+    "benefit_multiMarket": "Accès multi-marché : BRVM, BVMAC, GSE",
+    "benefit_amfCompliant": "Tarification conforme AMF-UMOA",
+    "tradApproach": "Approche traditionnelle",
+    "tradAcquisitionCost": "Coût d'acquisition client",
+    "tradProspectsNeeded": "Prospects à contacter",
+    "prospects": "prospects",
+    "tradConversionRate": "Taux de conversion moyen",
+    "drawback_manualProspecting": "Prospection manuelle chronophage",
+    "drawback_highCost": "200 000 FCFA / client acquis en moyenne",
+    "drawback_slowConversion": "Cycle de conversion 3-6 mois",
+    "drawback_localOnly": "Limité au marché local uniquement",
+    "ctaMeeting": "Obtenir ces résultats"
+  },
+  "sgiCaseStudies": {
+    "title": "Résultats partenaires",
+    "subtitle": "Exemples anonymisés de résultats obtenus par des SGI partenaires INOPAY.",
+    "investorsLabel": "Investisseurs",
+    "volumeLabel": "Volume",
+    "timeLabel": "Délai",
+    "cases": [
+      {
+        "title": "SGI leader zone UEMOA",
+        "region": "BRVM · Abidjan",
+        "investors": "89",
+        "volume": "156M FCFA",
+        "time": "4 mois",
+        "quote": "INOPAY nous a permis d'accéder à un segment diaspora que nous ne pouvions pas atteindre seuls."
+      },
+      {
+        "title": "Intermédiaire CEMAC",
+        "region": "BVMAC · Douala",
+        "investors": "34",
+        "volume": "62M FCFA",
+        "time": "3 mois",
+        "quote": "L'onboarding automatisé nous a fait gagner un temps considérable sur la qualification des investisseurs."
+      },
+      {
+        "title": "Broker agréé Ghana",
+        "region": "GSE · Accra",
+        "investors": "47",
+        "volume": "GH₵ 1.2M",
+        "time": "5 mois",
+        "quote": "La plateforme multi-marché nous ouvre un pipeline de clients diaspora qualifiés sans effort marketing."
+      }
+    ]
+  },
+  "sgiLegal": {
+    "badge": "Cadre juridique",
+    "title": "Un partenariat encadré et conforme",
+    "subtitle": "INOPAY opère dans le respect des réglementations de chaque marché couvert.",
+    "items": [
+      {
+        "title": "Convention d'apporteur d'affaires",
+        "desc": "Modèle de convention standardisé couvrant les responsabilités, la protection des données et les modalités de résiliation."
+      },
+      {
+        "title": "Conformité réglementaire",
+        "desc": "CREPMF (UEMOA), COSUMAF (CEMAC), SEC Ghana — INOPAY s'adapte au cadre réglementaire de chaque marché."
+      },
+      {
+        "title": "Protection des données",
+        "desc": "Chiffrement AES-256, hébergement sécurisé, politique RGPD. Les données KYC sont isolées par SGI."
+      },
+      {
+        "title": "Couverture multi-juridiction",
+        "desc": "Présence en Côte d'Ivoire (OHADA), zone CEMAC et Ghana. Convention adaptable par marché."
+      }
+    ],
+    "ctaConvention": "Demander la convention complète"
+  },
+  "sgiDemo": {
+    "pageTitle": "Démo Dashboard SGI — INOPAY",
+    "pageDesc": "Découvrez le dashboard SGI INOPAY avec des données simulées.",
+    "demoBadge": "Mode démo — Données simulées",
+    "title": "Votre futur dashboard SGI",
+    "subtitle": "Visualisez comment vous gérerez vos investisseurs et ordres avec INOPAY.",
+    "ctaMeeting": "Planifier un appel",
+    "kpiClients": "Investisseurs livrés",
+    "kpiVolume": "Volume total transigé",
+    "kpiIssuances": "Émissions actives",
+    "kpiConversion": "Taux de conversion",
+    "pipelineTitle": "Pipeline investisseurs",
+    "colName": "Nom",
+    "colCountry": "Pays",
+    "colStatus": "Statut",
+    "colInvested": "Investi",
+    "colDate": "Date",
+    "colInstrument": "Instrument",
+    "colType": "Type",
+    "colQty": "Qté",
+    "colPrice": "Prix",
+    "notifTitle": "Notifications récentes",
+    "notif1": "Nouvel investisseur assigné : Koffi M. (France)",
+    "notif2": "KYC validé pour Aminata K.",
+    "notif3": "Ordre exécuté : 100 SGBC à 12 500 FCFA",
+    "notif4": "Émission OAT 6.5% 2029 — souscription à 68%",
+    "ago": "Il y a {{time}}",
+    "ordersTitle": "Ordres récents",
+    "ctaTitle": "Prêt à recevoir vos premiers investisseurs ?",
+    "ctaDesc": "Planifiez un appel avec notre équipe partenariats pour activer votre dashboard."
+  },
+  "sgiDeck": {
+    "pageTitle": "Dossier de présentation — INOPAY",
+    "pageDesc": "One-pager institutionnel INOPAY pour les SGI, intermédiaires BVMAC et brokers GSE.",
+    "badge": "Dossier de présentation",
+    "title": "INOPAY — Canal de distribution digitale pour SGI & Brokers",
+    "subtitle": "Acquisition d'investisseurs diaspora qualifiés et distribution obligataire retail pour les intermédiaires financiers d'Afrique de l'Ouest, Centrale et du Ghana.",
+    "problemTitle": "Le problème",
+    "problems": [
+      "La diaspora africaine (~10M de personnes) veut investir mais n'a aucun accès digital simple",
+      "Les SGI et brokers n'ont pas de canal d'acquisition digital pour ce segment",
+      "Les émissions obligataires restent limitées aux circuits institutionnels"
+    ],
+    "solutionTitle": "La solution INOPAY",
+    "solutions": [
+      "Plateforme digitale d'investissement accessible depuis l'étranger",
+      "KYC automatisé + livraison d'investisseurs qualifiés aux SGI/LDM",
+      "Distribution retail des émissions obligataires",
+      "Zéro intégration complexe côté partenaire"
+    ],
+    "metricsTitle": "Métriques clés",
+    "metricIssuances": "Émissions listées",
+    "metricUsers": "Utilisateurs inscrits",
+    "metricCountries": "Pays couverts",
+    "metricAgents": "Agents IA actifs",
+    "marketsTitle": "3 marchés couverts",
+    "regionUemoa": "Zone UEMOA — 8 pays, 52+ instruments cotés. Marché le plus profond d'Afrique francophone.",
+    "regionCemac": "Zone CEMAC — 6 pays, marché en croissance. Cameroun, Gabon, Congo, Tchad, RCA, Guinée Équatoriale.",
+    "regionGhana": "Ghana — 25+ instruments, marché anglophone dynamique. MTN Ghana, Ecobank, GCB Bank.",
+    "brvmFeatures": [
+      "Souscription obligataire digitale",
+      "Pipeline investisseurs diaspora automatisé",
+      "Reporting temps réel pour SGI",
+      "Paiement CinetPay (Mobile Money, carte)"
+    ],
+    "bvmacFeatures": [
+      "Accès aux obligations CEMAC",
+      "KYC adapté COSUMAF",
+      "Distribution retail XAF",
+      "SGI CEMAC partenaires"
+    ],
+    "gseFeatures": [
+      "25+ actions GSE disponibles",
+      "KYC SEC Ghana (Ghana Card)",
+      "Paiement Paystack (GHS)",
+      "Partenariat LDM Broker"
+    ],
+    "regulator": "Régulateur",
+    "currency": "Devise",
+    "instruments": "Instruments",
+    "payment": "Paiement",
+    "archTitle": "Architecture simplifiée",
+    "bizModelTitle": "Modèle économique",
+    "bizModels": [
+      {
+        "title": "Commission par transaction",
+        "desc": "Pourcentage sur chaque ordre exécuté via un investisseur livré par INOPAY."
+      },
+      {
+        "title": "Frais de distribution",
+        "desc": "Commission sur les souscriptions obligataires collectées via la plateforme."
+      },
+      {
+        "title": "Zéro frais fixe",
+        "desc": "Aucun abonnement obligatoire. Paiement à la performance uniquement."
+      }
+    ],
+    "complianceEncryption": "Chiffrement AES-256",
+    "complianceRegulators": "Conforme CREPMF / COSUMAF / SEC Ghana",
+    "complianceMonitoring": "Monitoring IA 24/7",
+    "nextStepsTitle": "Prochaines étapes",
+    "nextSteps": [
+      "Échange introductif (30 min visio)",
+      "Signature de la convention de partenariat",
+      "Configuration du dashboard SGI (5 jours)",
+      "Première livraison d'investisseurs qualifiés"
+    ],
+    "ctaMeeting": "Planifier un appel",
+    "ctaDownload": "Télécharger en PDF"
+  },
+  "sgiRegister": {
+    "title": "Enregistrement SGI / Broker",
+    "desc": "Rejoignez le réseau INOPAY. Nous vous contacterons sous 48h pour activer votre institution.",
+    "institutionLabel": "Nom de l'institution",
+    "institutionPlaceholder": "Ex: SGI Capital SA",
+    "nameLabel": "Nom du demandeur",
+    "namePlaceholder": "Ex: Kouadio Jean",
+    "emailLabel": "Email professionnel",
+    "emailPlaceholder": "contact@sgi.com",
+    "countryLabel": "Pays",
+    "countryPlaceholder": "Côte d'Ivoire",
+    "phoneLabel": "Téléphone",
+    "phonePlaceholder": "+225 07 00 00 00 00",
+    "marketLabel": "Marché cible",
+    "marketPlaceholder": "Sélectionnez votre marché",
+    "multiMarket": "Multi-marché (BRVM + BVMAC + GSE)",
+    "submit": "Soumettre la demande",
+    "successTitle": "Demande enregistrée !",
+    "successDesc": "Votre institution sera contactée sous 48h.",
+    "successMessage": "Votre institution {{name}} est en cours de validation. Notre équipe vous contactera pour les prochaines étapes.",
+    "errorDesc": "Une erreur est survenue. Réessayez.",
+    "ctaMeeting": "Planifier un appel maintenant",
+    "ctaMeetingAlt": "Préférez un appel ? Planifier un rendez-vous",
+    "ctaHome": "Retour à l'accueil",
+    "orMeeting": "Ou parlez directement à notre équipe",
+    "footer": "INOPAY vous contactera sous 48h pour activer votre partenariat. L'intégration technique se fera après signature de la convention."
+  },
+  "socialProof": {
+    "badge": "Témoignages",
+    "title": "Ils investissent déjà avec INOPAY",
+    "subtitle": "Des investisseurs de la diaspora et des professionnels du marché nous font confiance.",
+    "bondsAvailable": "Obligations disponibles",
+    "markets": "Bourses africaines",
+    "countriesCovered": "Pays couverts"
+  },
+  "simulator": {
+    "badge": "Simulateur de rendement",
+    "title": "Estimez vos gains",
+    "subtitle": "Simulez le rendement de vos investissements obligataires sur les marchés africains.",
+    "selectMarket": "Choisir un marché",
+    "amount": "Montant à investir",
+    "duration": "Durée",
+    "years": "ans",
+    "year": "an",
+    "estimatedReturns": "Rendement estimé",
+    "annualIncome": "Revenu annuel brut",
+    "totalReturn": "Gain total brut",
+    "netReturn": "Gain net après frais",
+    "entryFees": "Frais d'entrée (courtage 1%)",
+    "custodyFees": "Droits de garde (0.5%/an)",
+    "totalFees": "Total frais estimés",
+    "grossLabel": "Brut",
+    "netLabel": "Net de frais",
+    "amfCompliant": "Tarifs conformes AMF-UMOA",
+    "disclaimer": "Simulation indicative basée sur les taux moyens du marché. Frais conformes à la tarification AMF-UMOA. Les rendements passés ne garantissent pas les résultats futurs.",
+    "cta": "Créer un compte gratuit"
+  },
+  "mobileNav": {
+    "home": "Accueil",
+    "invest": "Investir",
+    "portfolio": "Portefeuille",
+    "account": "Compte"
+  },
+  "install": {
+    "badge": "Application mobile",
+    "title": "Installez INOPAY sur votre mobile",
+    "subtitle": "Accédez à vos investissements BRVM, BVMAC et GSE directement depuis votre écran d'accueil. Rapide, sécurisé, hors ligne.",
+    "pageTitle": "Installer l'application INOPAY | Investir sur les bourses africaines",
+    "pageDesc": "Installez INOPAY sur votre mobile pour investir sur la BRVM, BVMAC et GSE Ghana.",
+    "installBtn": "Installer INOPAY",
+    "alreadyInstalled": "INOPAY est installé !",
+    "alreadyInstalledDesc": "L'application est déjà installée sur votre appareil.",
+    "goToDashboard": "Aller au tableau de bord",
+    "iosTitle": "Installation sur iPhone / iPad",
+    "iosStep1": "Appuyez sur le bouton Partager",
+    "iosStep2": "Sélectionnez « Sur l'écran d'accueil »",
+    "iosStep3": "Appuyez sur « Ajouter »",
+    "browserHint": "Ouvrez INOPAY depuis Chrome ou Safari sur mobile pour installer l'application.",
+    "offlineTitle": "Accès hors ligne",
+    "offlineDesc": "Consultez votre portefeuille et les cours même sans connexion internet.",
+    "fastTitle": "Ultra rapide",
+    "fastDesc": "Chargement instantané, comme une application native.",
+    "notifTitle": "Notifications",
+    "notifDesc": "Recevez des alertes sur vos investissements et les nouvelles émissions.",
+    "secureTitle": "Sécurisé",
+    "secureDesc": "Données chiffrées, authentification biométrique supportée.",
+    "secure": "Sécurisé",
+    "fast": "Ultra rapide"
+  },
+  "sgiPricing": {
+    "badge": "B2B — Partenaires SGI",
+    "title": "Tarification",
+    "subtitle": "Rejoignez le réseau INOPAY et accédez à la diaspora africaine. Choisissez le plan adapté à votre volume.",
+    "becomePartner": "Devenir partenaire",
+    "recommended": "Recommandé",
+    "perMonth": "FCFA / mois",
+    "commission": "Commission",
+    "subscribe": "Souscrire",
+    "whyJoin": "Pourquoi rejoindre INOPAY ?",
+    "valueProp1Title": "Diaspora connectée",
+    "valueProp1Desc": "Accédez à des investisseurs de la diaspora africaine dans 15+ pays.",
+    "valueProp2Title": "Ordres automatisés",
+    "valueProp2Desc": "Réception et suivi des ordres via API. Intégration transparente.",
+    "valueProp3Title": "IA intégrée",
+    "valueProp3Desc": "Agents IA pour optimiser la conversion et le suivi investisseurs.",
+    "paymentInitError": "Impossible d'initier le paiement.",
+    "paymentErrorTitle": "Erreur paiement",
+    "paymentErrorDesc": "Une erreur est survenue."
+  },
+  "partners": {
+    "pageTitle": "Partenariats institutionnels — INOPAY",
+    "pageDesc": "Rejoignez INOPAY en tant que partenaire institutionnel. Accédez à une base mondiale d'investisseurs via notre infrastructure technologique sécurisée.",
+    "schemaDesc": "Infrastructure technologique pour institutions financières",
+    "badge": "Institutions financières",
+    "heroTitle": "Partenariats",
+    "heroTitleGradient": "institutionnels",
+    "heroSubtitle": "INOPAY connecte les institutions financières à une base mondiale d'investisseurs qualifiés via une infrastructure technologique moderne et sécurisée.",
+    "becomePartner": "Devenir partenaire",
+    "whyTitle": "Pourquoi devenir partenaire INOPAY",
+    "benefits": [
+      {
+        "title": "Accès mondial aux investisseurs",
+        "desc": "Accédez à une base mondiale d'investisseurs de la diaspora africaine, qualifiés et vérifiés via notre processus KYC."
+      },
+      {
+        "title": "Intégration technologique",
+        "desc": "API moderne et documentation complète pour une intégration rapide avec vos systèmes existants. Transmission d'ordres automatisée."
+      },
+      {
+        "title": "Infrastructure institutionnelle",
+        "desc": "Infrastructure sécurisée, conforme aux normes BCEAO/CREPMF, avec surveillance 24/7 par agents IA autonomes."
+      },
+      {
+        "title": "Croissance des revenus",
+        "desc": "Augmentez vos revenus grâce à un flux continu d'investisseurs qualifiés sans coût d'acquisition client."
+      }
+    ],
+    "trustSignals": [
+      "Infrastructure sécurisée",
+      "Intégration institutionnelle",
+      "Accès mondial aux investisseurs"
+    ],
+    "sgiLink": "Partenaires SGI",
+    "infraLink": "Infrastructure",
+    "mediaKitLink": "Kit Média",
+    "ctaTitle": "Rejoignez le réseau INOPAY",
+    "ctaDesc": "Accédez à une base mondiale d'investisseurs qualifiés via notre infrastructure technologique."
+  },
+  "about": {
+    "pageTitle": "INOPAY — Infrastructure Financière pour les Marchés Africains",
+    "pageDesc": "INOPAY est une infrastructure financière technologique permettant aux investisseurs d'accéder aux marchés financiers africains via une plateforme moderne et sécurisée.",
+    "keywords": "INOPAY, infrastructure financière Afrique, plateforme investissement Afrique, BRVM, fintech Afrique, investissement diaspora",
+    "badge": "À propos",
+    "heroTitleGradient": "Infrastructure financière moderne",
+    "heroSubtitle": "INOPAY connecte les investisseurs et les institutions financières à travers une infrastructure technologique sécurisée et automatisée.",
+    "tocLabel": "Sommaire",
+    "toc": [
+      {
+        "id": "introduction",
+        "label": "Introduction"
+      },
+      {
+        "id": "history",
+        "label": "Historique"
+      },
+      {
+        "id": "technology",
+        "label": "Technologie"
+      },
+      {
+        "id": "services",
+        "label": "Services"
+      },
+      {
+        "id": "infrastructure",
+        "label": "Infrastructure"
+      },
+      {
+        "id": "market-focus",
+        "label": "Marchés cibles"
+      },
+      {
+        "id": "partnership-model",
+        "label": "Modèle de partenariat"
+      },
+      {
+        "id": "security",
+        "label": "Sécurité"
+      },
+      {
+        "id": "compliance",
+        "label": "Conformité"
+      },
+      {
+        "id": "vision",
+        "label": "Vision"
+      }
+    ],
+    "sections": [
+      {
+        "id": "introduction",
+        "title": "Introduction",
+        "content": "INOPAY est une infrastructure financière panafricaine qui connecte les investisseurs de la diaspora aux bourses africaines via des intermédiaires agréés (SGI et brokers). À l'image de ce que Plaid représente pour la connexion bancaire ou Stripe pour le paiement, INOPAY est le middleware technologique qui simplifie l'accès aux marchés financiers africains — sans jamais détenir les fonds des investisseurs.\n\nFondée par Youssouf Fofana, INOPAY résout un problème concret : la friction qui empêche des millions d'Africains de la diaspora (Canada, Europe, États-Unis) d'investir sur les marchés de leur continent d'origine — distance, paperasse, comptes impossibles à ouvrir depuis l'étranger. La plateforme couvre la BRVM (Afrique de l'Ouest), la BVMAC (Afrique Centrale) et le GSE (Ghana)."
+      },
+      {
+        "id": "history",
+        "title": "Historique",
+        "content": "INOPAY a été créé pour résoudre les défis d'accès aux marchés financiers africains pour les investisseurs internationaux et la diaspora. Face aux barrières technologiques, réglementaires et logistiques qui empêchaient de nombreux investisseurs de participer aux marchés africains, INOPAY a développé une infrastructure moderne permettant l'intégration directe avec les institutions financières partenaires.\n\nLa plateforme s'est construite autour d'une vision : démocratiser l'accès aux marchés financiers africains en fournissant une technologie fiable, sécurisée et conforme aux régulations en vigueur."
+      },
+      {
+        "id": "technology",
+        "title": "Technologie",
+        "content": "INOPAY utilise une architecture moderne basée sur des APIs sécurisées, permettant la communication directe avec les institutions financières partenaires. La plateforme intègre des systèmes d'automatisation, de sécurité et d'orchestration avancés.\n\nL'infrastructure technologique comprend des agents autonomes d'intelligence artificielle pour l'optimisation des opérations, la détection de risques, la recommandation d'investissements et la gestion automatisée des portefeuilles."
+      },
+      {
+        "id": "services",
+        "title": "Services",
+        "content": ""
+      },
+      {
+        "id": "infrastructure",
+        "title": "Infrastructure",
+        "content": "L'infrastructure INOPAY repose sur une architecture cloud distribuée, assurant haute disponibilité, performance et conformité aux standards de sécurité financière. Le système intègre des mécanismes de sauvegarde automatisée, de monitoring continu et de reprise sur incident."
+      },
+      {
+        "id": "market-focus",
+        "title": "Marchés cibles",
+        "content": "INOPAY se concentre sur les marchés financiers d'Afrique de l'Ouest, en particulier la BRVM (Bourse Régionale des Valeurs Mobilières), qui couvre huit pays de l'UEMOA. La plateforme cible principalement la diaspora africaine en Europe et en Amérique du Nord, ainsi que les investisseurs institutionnels et particuliers intéressés par les marchés africains."
+      },
+      {
+        "id": "partnership-model",
+        "title": "Modèle de partenariat",
+        "content": "INOPAY agit comme une infrastructure technologique connectant les investisseurs aux institutions financières partenaires. Le modèle de partenariat repose sur l'intégration avec les Sociétés de Gestion et d'Intermédiation (SGI) agréées, qui assurent l'exécution des ordres et la conformité réglementaire."
+      },
+      {
+        "id": "security",
+        "title": "Sécurité",
+        "content": "INOPAY utilise des protocoles de sécurité avancés et des systèmes de surveillance automatisés. L'infrastructure intègre le chiffrement de bout en bout, l'authentification multi-facteurs, la détection de fraude par intelligence artificielle et des audits de sécurité réguliers."
+      },
+      {
+        "id": "compliance",
+        "title": "Conformité",
+        "content": "La plateforme intègre des processus de vérification d'identité (KYC) et de conformité anti-blanchiment (AML) conformes aux régulations financières internationales. INOPAY collabore avec des institutions financières agréées pour assurer la conformité complète de toutes les opérations."
+      },
+      {
+        "id": "vision",
+        "title": "Vision",
+        "content": "La vision d'INOPAY est de devenir le standard d'accès aux marchés financiers africains pour la diaspora mondiale — une couche d'infrastructure sur laquelle les investisseurs, les SGI et les fintechs africaines peuvent s'appuyer pour connecter le capital diaspora aux opportunités de croissance du continent."
+      }
+    ],
+    "services": [
+      {
+        "title": "Infrastructure d'investissement",
+        "desc": "Accès aux marchés financiers africains via une plateforme unifiée"
+      },
+      {
+        "title": "Technologie d'intégration financière",
+        "desc": "APIs d'intégration avec les institutions financières partenaires (SGI)"
+      },
+      {
+        "title": "Suivi de portefeuille",
+        "desc": "Suivi en temps réel des portefeuilles d'investissement"
+      },
+      {
+        "title": "APIs d'intégration institutionnelle",
+        "desc": "Infrastructure technique pour les partenaires institutionnels"
+      }
+    ],
+    "seeAlsoTitle": "Voir aussi",
+    "seeAlso": [
+      {
+        "label": "Centre Presse INOPAY",
+        "to": "/press"
+      },
+      {
+        "label": "Kit Média",
+        "to": "/press/media-kit"
+      },
+      {
+        "label": "Comment ça marche",
+        "to": "/comment-ca-marche"
+      }
+    ],
+    "infoRows": [
+      {
+        "label": "Type",
+        "value": "Société de technologie financière"
+      },
+      {
+        "label": "Industrie",
+        "value": "Infrastructure financière"
+      },
+      {
+        "label": "Fondateur",
+        "value": "Youssouf Fofana"
+      },
+      {
+        "label": "Marchés",
+        "value": "BRVM, Afrique de l'Ouest"
+      },
+      {
+        "label": "Siège",
+        "value": "—"
+      },
+      {
+        "label": "Site web",
+        "value": "getinopay.com"
+      },
+      {
+        "label": "Contact presse",
+        "value": "contact@getinopay.com"
+      }
+    ],
+    "africaBadge": "Afrique"
+  },
+  "thematic": {
+    "title": "Portefeuilles Thématiques",
+    "subtitle": "Stratégies d'investissement packagées pour la diaspora africaine",
+    "badge": "Thématiques",
+    "instruments": "instruments",
+    "avgYield": "Rendement moyen",
+    "explore": "Explorer",
+    "packs": {
+      "passiveIncome": {
+        "title": "Revenu Passif Afrique",
+        "desc": "Obligations et actions à dividendes pour un cash-flow régulier"
+      },
+      "halal": {
+        "title": "Portefeuille Halal (Sukuk)",
+        "desc": "Finance islamique conforme via les émissions Sukuk BRVM"
+      },
+      "banks": {
+        "title": "Banques Panafricaines",
+        "desc": "Les grandes banques cotées sur les bourses africaines"
+      },
+      "telecoms": {
+        "title": "Télécoms Africains",
+        "desc": "Leaders des télécommunications en Afrique de l'Ouest et au Ghana"
+      },
+      "infra": {
+        "title": "Infrastructure & Énergie",
+        "desc": "Secteurs industriels et énergétiques en forte croissance"
+      }
+    }
+  },
+  "revenues": {
+    "title": "Revenus & Dividendes",
+    "subtitle": "Projection de cash-flow et suivi des revenus passifs",
+    "badge": "Revenus",
+    "annualEstimate": "Estimation annuelle",
+    "upcomingDividends": "Dividendes à venir",
+    "pendingCoupons": "Coupons en attente",
+    "cashFlowProjection": "Projection de cash-flow (12 mois)",
+    "cashFlowDesc": "Dividendes et coupons attendus par mois",
+    "dividends": "Dividendes",
+    "couponsLabel": "Coupons",
+    "nextDividends": "Prochains détachements",
+    "nextCoupons": "Prochains coupons",
+    "instrument": "Instrument",
+    "exDate": "Date ex-div",
+    "amount": "Montant",
+    "issuance": "Émission",
+    "couponDate": "Date coupon",
+    "rate": "Taux",
+    "noUpcomingDividends": "Aucun dividende à venir",
+    "noUpcomingCoupons": "Aucun coupon en attente"
+  },
+  "social": {
+    "trendingTitle": "Tendances Diaspora",
+    "trendingDesc": "Instruments les plus populaires ces 30 derniers jours",
+    "byCountryTitle": "Top picks par pays",
+    "byCountryDesc": "Ce que les investisseurs achètent selon leur pays de résidence"
+  },
+  "crossBorder": {
+    "title": "Comparateur Cross-Border",
+    "subtitle": "Analysez et comparez les marchés BRVM, BVMAC et GSE",
+    "badge": "Cross-Border",
+    "instruments": "Instruments",
+    "bonds": "Obligations",
+    "avgCoupon": "Coupon moyen",
+    "avgPrice": "Prix moyen",
+    "comparison": "Comparaison des marchés",
+    "comparisonDesc": "Nombre d'instruments et obligations par marché",
+    "sectorBreakdown": "Répartition sectorielle",
+    "sector": "Secteur",
+    "other": "Autre"
+  },
+  "smartDeals": {
+    "pageTitle": "Smart Deals — Opportunités scorées",
+    "title": "Opportunités scorées pour vous",
+    "subtitle": "Le moteur Smart Deal Engine™ analyse chaque opportunité et vous recommande les meilleurs investissements.",
+    "bond": "Obligation",
+    "stock": "Action",
+    "recommended": "Recommandé",
+    "popular": "Populaire",
+    "price": "Prix",
+    "performance": "Performance",
+    "coupon": "Coupon",
+    "minimum": "Minimum",
+    "daysLeft": "jours restants",
+    "closingSoon": "Fermeture imminente",
+    "investNow": "Investir maintenant",
+    "forYou": "Sélectionné pour vous",
+    "trending": "Trending Diaspora",
+    "newBonds": "Nouvelles émissions",
+    "allDeals": "Tous les deals",
+    "noDeals": "Aucun deal ne correspond à vos critères.",
+    "viewPacks": "Voir les Deal Packs",
+    "filterMarket": "Marché",
+    "allMarkets": "Tous les marchés",
+    "filterType": "Type",
+    "allTypes": "Tous les types",
+    "stocks": "Actions",
+    "bonds": "Obligations",
+    "filterRisk": "Risque",
+    "allRisks": "Tous les risques",
+    "risk": {
+      "low": "Risque faible",
+      "medium": "Risque moyen",
+      "high": "Risque élevé"
+    },
+    "engineTitle": "Diaspora Smart Deal Engine™",
+    "engineDesc": "Chaque opportunité africaine analysée, scorée et personnalisée. Investissez en 1 clic.",
+    "engineFeatures": ["Scoring intelligent 0-100", "Matching personnalisé diaspora", "Investissement en 1 clic", "Agrégation multi-marchés"]
+  },
+  "agentMemory": {
+    "title": "Agent Intelligence",
+    "subtitle": "Mémoire, règles apprises et performance des agents IA",
+    "activeRules": "Règles apprises actives",
+    "recentMemories": "Mémoires récentes",
+    "noRules": "Aucune règle dérivée. Cliquez sur 'Apprendre' pour lancer l'analyse.",
+    "noMemories": "Aucune mémoire enregistrée.",
+    "derive": "Apprendre"
+  }
+}
