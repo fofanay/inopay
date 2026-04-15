@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -61,6 +62,7 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
   open, onClose, type, instruments, sgis, brokers = [], kycStatus, onComplete, sandbox = false,
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const STEPS = [
     { label: t("sandbox.tradeSteps.instrument"), icon: ShoppingCart },
     { label: t("sandbox.tradeSteps.sgi"), icon: Building2 },
@@ -427,9 +429,18 @@ export const InvestmentTunnel: React.FC<InvestmentTunnelProps> = ({
                 </>
               )}
               {!kycApproved && !kycChecking && !sandbox && kycStatus !== "VALIDE" && (
-                <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                  <p className="text-xs text-destructive">Votre KYC n'est pas encore validé. Complétez votre vérification dans la section KYC pour pouvoir investir.</p>
+                <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                    <p className="text-xs text-destructive">Votre KYC n'est pas encore validé. Complétez votre vérification dans la section KYC pour pouvoir investir.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { handleClose(); navigate("/dashboard/kyc"); }}
+                    className="w-full text-xs font-medium text-primary underline hover:no-underline text-center"
+                  >
+                    Compléter mon dossier KYC →
+                  </button>
                 </div>
               )}
             </div>
