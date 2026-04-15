@@ -186,7 +186,7 @@ const Register = () => {
                   <label className="text-sm font-medium text-foreground">{t("register.country")}</label>
                   <select className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:border-primary" value={form.country} onChange={(e) => update("country", e.target.value)}>
                     <option value="">{t("register.selectCountry")}</option>
-                    {countryKeys.map((key) => <option key={key} value={t(`register.countries.${key}`)}>{t(`register.countries.${key}`)}</option>)}
+                    {countryKeys.map((key) => <option key={key} value={key}>{t(`register.countries.${key}`)}</option>)}
                   </select>
                   {errors.country && <p className="text-xs text-destructive">{errors.country}</p>}
                 </div>
