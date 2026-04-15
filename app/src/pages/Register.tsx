@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { emailSchema, passwordSchema, clientRateLimit } from "@/lib/security";
-import { Shield, Lock, CheckCircle2, Building2, TrendingUp } from "lucide-react";
+import { Shield, Lock, CheckCircle2, Building2, TrendingUp, FileText, CreditCard, BarChart2 } from "lucide-react";
 import inopayLogo from "@/assets/inopay-logo.png";
 
 const countryKeys = [
@@ -88,8 +88,7 @@ const Register = () => {
         return;
       }
 
-      toast({ title: t("register.accountCreated"), description: t("register.welcome") });
-      navigate("/dashboard");
+      setStep(3);
     } catch { toast({ title: t("register.error"), description: t("register.genericError"), variant: "destructive" }); } finally { setLoading(false); }
   };
 
@@ -101,13 +100,41 @@ const Register = () => {
             <img src={inopayLogo} alt="INOPAY" className="mx-auto mb-4 h-10" />
             <CardTitle>{t("register.title")}</CardTitle>
             <CardDescription>{step === 1 ? t("register.step1") : t("register.step2")}</CardDescription>
+            {step < 3 && (
             <div className="mt-4 flex gap-2">
               <div className="h-1 flex-1 rounded-full bg-primary" />
               <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
             </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            {step === 1 ? (
+            {step === 3 ? (
+              <>
+                <div className="text-center py-2">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <CheckCircle2 className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">{t("register.welcomeTitle")}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{t("register.welcomeDesc")}</p>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("register.nextSteps")}</p>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0"><FileText className="h-4 w-4 text-primary" /></div>
+                    <div><p className="text-sm font-medium text-foreground">{t("register.step_kyc_title")}</p><p className="text-xs text-muted-foreground">{t("register.step_kyc_desc")}</p></div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0"><CreditCard className="h-4 w-4 text-primary" /></div>
+                    <div><p className="text-sm font-medium text-foreground">{t("register.step_sub_title")}</p><p className="text-xs text-muted-foreground">{t("register.step_sub_desc")}</p></div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0"><BarChart2 className="h-4 w-4 text-primary" /></div>
+                    <div><p className="text-sm font-medium text-foreground">{t("register.step_invest_title")}</p><p className="text-xs text-muted-foreground">{t("register.step_invest_desc")}</p></div>
+                  </div>
+                </div>
+                <Button className="w-full" size="lg" onClick={() => navigate("/dashboard")}>{t("register.goToDashboard")}</Button>
+              </>
+            ) : step === 1 ? (
               <>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">{t("register.accountType")}</label>
@@ -201,16 +228,20 @@ const Register = () => {
                 </div>
               </>
             )}
-            <p className="text-center text-sm text-muted-foreground">
-              {t("register.alreadyRegistered")}{" "}
-              <Link to="/login" className="font-medium text-primary hover:underline">{t("register.loginLink")}</Link>
-            </p>
-            <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-muted-foreground/70">
-              <span className="flex items-center gap-1"><Shield className="h-3 w-3" /> {t("register.trustSecure")}</span>
-              <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> {t("register.trustProtected")}</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {t("register.trustTrusted")}</span>
-            </div>
-            <p className="text-center text-[10px] text-muted-foreground/60 mt-2">{t("register.disclaimer")}</p>
+            {step < 3 && (
+              <>
+                <p className="text-center text-sm text-muted-foreground">
+                  {t("register.alreadyRegistered")}{" "}
+                  <Link to="/login" className="font-medium text-primary hover:underline">{t("register.loginLink")}</Link>
+                </p>
+                <div className="flex items-center justify-center gap-4 mt-4 text-[10px] text-muted-foreground/70">
+                  <span className="flex items-center gap-1"><Shield className="h-3 w-3" /> {t("register.trustSecure")}</span>
+                  <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> {t("register.trustProtected")}</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {t("register.trustTrusted")}</span>
+                </div>
+                <p className="text-center text-[10px] text-muted-foreground/60 mt-2">{t("register.disclaimer")}</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
