@@ -1,0 +1,58 @@
+name: Build Mobile Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform'
+        required: true
+        default: 'android'
+        type: choice
+        options: [android, ios, both]
+
+jobs:
+  build-android:
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Install Capacitor
+        run: npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
+      - name: Build web assets
+        env:
+          VITE_INOPAY_INTERNAL_KEY: ${{ secrets.INOPAY_INTERNAL_KEY }}
+        run: npm run build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Init Capacitor config
+        run: printf '{"appId":"com.inopay.app","appName":"INOPAY","webDir":"dist","server":{"androidScheme":"https"}}' > capacitor.config.json
+      - name: Add Android and sync
+        run: npx cap add android && npx cap sync android
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/inopay-release.keystore
+      - name: Build AAB
+        working-directory: android
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/inopay-release.keystore \
+            -Pandroid.injected.signing.store.password=$KS_PASS \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inopay-release.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
