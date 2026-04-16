@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 android/
 ios/
+screenshots/*.png
+google-play-screenshots.zip
+app-store-screenshots.zip
