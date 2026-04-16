@@ -1,0 +1,141 @@
+name: Build Mobile Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - android
+          - ios
+
+jobs:
+  build-android:
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Build web assets
+        working-directory: app
+        env:
+          VITE_INOPAY_INTERNAL_KEY: ${{ secrets.INOPAY_INTERNAL_KEY }}
+        run: npm run build
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor CLI
+        working-directory: app
+        run: npm install -g @capacitor/cli
+
+      - name: Sync Capacitor Android
+        working-directory: app
+        run: npx cap sync android
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/android/app/inopay-release.keystore
+
+      - name: Build Android Release AAB
+        working-directory: app/android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/app/inopay-release.keystore \
+            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+
+      - name: Upload Android AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: inopay-release.aab
+          path: app/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+  build-ios:
+    if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci --legacy-peer-deps
+
+      - name: Build web assets
+        working-directory: app
+        env:
+          VITE_INOPAY_INTERNAL_KEY: ${{ secrets.INOPAY_INTERNAL_KEY }}
+        run: npm run build
+
+      - name: Install Capacitor CLI
+        working-directory: app
+        run: npm install -g @capacitor/cli
+
+      - name: Sync Capacitor iOS
+        working-directory: app
+        run: npx cap sync ios
+
+      - name: Build iOS (unsigned archive)
+        working-directory: app/ios/App
+        run: |
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/App.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA (ad-hoc unsigned)
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/App.xcarchive \
+            -exportPath $RUNNER_TEMP/IPA \
+            -exportOptionsPlist app/ios/ExportOptions.plist || true
+          # Fallback: zip the .app from archive
+          cd $RUNNER_TEMP/App.xcarchive/Products/Applications
+          zip -r $RUNNER_TEMP/INOPAY.ipa INOPAY.app || \
+          zip -r $RUNNER_TEMP/INOPAY.ipa *.app
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: INOPAY.ipa
+          path: ${{ runner.temp }}/INOPAY.ipa
+          retention-days: 30
